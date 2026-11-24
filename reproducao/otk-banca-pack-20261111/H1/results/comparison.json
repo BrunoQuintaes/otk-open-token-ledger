@@ -1,0 +1,611 @@
+{
+ "models": {
+  "gpt-4o-mini-2024-07-18": {
+   "profile": {
+    "file": "docs/_ops/OVERNIGHT2_20261006/calibration/calibration_profile_openai_gpt-4o-mini-2024-07-18.json",
+    "sha256": "3ff5a97f9d37b92fd1321f50626389e6adfd15770d29e18a399590ae5fdca63b",
+    "profileId": "otk.calib.ovn2-20261007.openai.openai.chat_completions.gpt-4o-mini-2024-07-18",
+    "evidenceHash": "0x03cf37137da56143a7f5a323ed0716ae1595086bc1946c9265abd57179094757",
+    "slope": "1.000000",
+    "intercept": "7.000000",
+    "thresholdAbs": "1",
+    "thresholdRel": "0.000000",
+    "calibrated": true
+   },
+   "splits": {
+    "train": {
+     "original": {
+      "n": 120,
+      "groups": 41,
+      "bias": 0,
+      "mae": 0,
+      "maxAbs": 0,
+      "p50": 0,
+      "p90": 0,
+      "p95": 0,
+      "p99": 0,
+      "alertRate": null
+     },
+     "recomputed": {
+      "n": 120,
+      "groups": 41,
+      "bias": 0,
+      "mae": 0,
+      "maxAbs": 0,
+      "p50": 0,
+      "p90": 0,
+      "p95": 0,
+      "p99": 0,
+      "alertRate": null
+     },
+     "rmse_NEW": 0,
+     "verdict": "REPRODUZIDO",
+     "diffs": [],
+     "note_train_alertRate": "original nao calcula alertRate no treino (null); recomputado tambem omitido aqui (valor disponivel em metrics_long.csv)"
+    },
+    "validation": {
+     "original": {
+      "n": 53,
+      "groups": 18,
+      "bias": 0,
+      "mae": 0,
+      "maxAbs": 0,
+      "p50": 0,
+      "p90": 0,
+      "p95": 0,
+      "p99": null,
+      "alertRate": 0
+     },
+     "recomputed": {
+      "n": 53,
+      "groups": 18,
+      "bias": 0,
+      "mae": 0,
+      "maxAbs": 0,
+      "p50": 0,
+      "p90": 0,
+      "p95": 0,
+      "p99": null,
+      "alertRate": 0
+     },
+     "rmse_NEW": 0,
+     "verdict": "REPRODUZIDO",
+     "diffs": []
+    },
+    "holdout": {
+     "original": {
+      "n": 38,
+      "groups": 13,
+      "bias": 0,
+      "mae": 0,
+      "maxAbs": 0,
+      "p50": 0,
+      "p90": 0,
+      "p95": 0,
+      "p99": null,
+      "alertRate": 0
+     },
+     "recomputed": {
+      "n": 38,
+      "groups": 13,
+      "bias": 0,
+      "mae": 0,
+      "maxAbs": 0,
+      "p50": 0,
+      "p90": 0,
+      "p95": 0,
+      "p99": null,
+      "alertRate": 0
+     },
+     "rmse_NEW": 0,
+     "verdict": "REPRODUZIDO",
+     "diffs": []
+    }
+   },
+   "acceptance": {
+    "holdout_alert_rate": {
+     "original": "0",
+     "recomputed": "0",
+     "verdict": "REPRODUZIDO",
+     "alerts_n": 0,
+     "n": 38
+    },
+    "holdout_detection_plus25pct": {
+     "original": "1",
+     "recomputed": "1",
+     "verdict": "REPRODUZIDO"
+    },
+    "holdout_detection_plus10pct_NEW": 1,
+    "holdout_detection_plus50tok_NEW": 1,
+    "validation_false_alert_in_derivation": {
+     "original_text": [
+      "0",
+      "1"
+     ],
+     "recomputed": [
+      0,
+      1
+     ],
+     "verdict": "REPRODUZIDO"
+    },
+    "calibrated_original": true,
+    "calibrated_recomputed_with_same_policy": true
+   },
+   "parameters_verification": {
+    "note": "VERIFICACAO apenas (minimos quadrados pelo mesmo metodo do H1 sobre o treino); os parametros USADOS nas metricas sao os congelados do perfil",
+    "frozen": {
+     "slope": "1.000000",
+     "intercept": "7.000000"
+    },
+    "refit_check": {
+     "slope": "1.000000",
+     "intercept": "7.000000"
+    },
+    "verdict": "REPRODUZIDO"
+   },
+   "threshold_verification": {
+    "note": "VERIFICACAO apenas (mesma grade do H1 sobre a validacao com os parametros congelados); o limiar USADO e o congelado",
+    "frozen": {
+     "absoluteTokens": "1",
+     "relative": "0.000000"
+    },
+    "grid_check": {
+     "absoluteTokens": "1",
+     "relative": "0.000000",
+     "falseAlertRate": 0,
+     "meanDetection": 1
+    },
+    "verdict": "REPRODUZIDO"
+   },
+   "resultados_md": {
+    "pairs": "120 / 53 / 38 (13)",
+    "fit": "1,000000 x local + 7",
+    "holdout": "0, 0, 0",
+    "falseAlert": "0",
+    "det25": "100%",
+    "calibrated": "true",
+    "n211": 211
+   },
+   "resultados_md_check": {
+    "pairs_recomputed": "120 / 53 / 38 (13)",
+    "holdout_recomputed": "0; 0; 0",
+    "falseAlert_recomputed": "0 (0 de 38)",
+    "det25_recomputed": "100%",
+    "calibrated_recomputed": "true"
+   }
+  },
+  "claude-haiku-4-5-20251001": {
+   "profile": {
+    "file": "docs/_ops/OVERNIGHT2_20261006/calibration/calibration_profile_anthropic_claude-haiku-4-5-20251001.json",
+    "sha256": "be0921343c1a88451ab3ca74a6af461b6633c0c21965a1e043b00c58a5222c85",
+    "profileId": "otk.calib.ovn2-20261007.anthropic.anthropic.messages.claude-haiku-4-5-20251001",
+    "evidenceHash": "0x167226f41dea12cb8612bf2c5168058770ef0c55510273913d2d9bc0a4d287bf",
+    "slope": "1.165964",
+    "intercept": "4.101752",
+    "thresholdAbs": "6",
+    "thresholdRel": "0.142062",
+    "calibrated": false
+   },
+   "splits": {
+    "train": {
+     "original": {
+      "n": 119,
+      "groups": 41,
+      "bias": 0.02521,
+      "mae": 13.10084,
+      "maxAbs": 46,
+      "p50": 0.063636,
+      "p90": 0.208333,
+      "p95": 0.208333,
+      "p99": 0.230769,
+      "alertRate": null
+     },
+     "recomputed": {
+      "n": 119,
+      "groups": 41,
+      "bias": 0.02521,
+      "mae": 13.10084,
+      "maxAbs": 46,
+      "p50": 0.063636,
+      "p90": 0.208333,
+      "p95": 0.208333,
+      "p99": 0.230769,
+      "alertRate": null
+     },
+     "rmse_NEW": 18.063613,
+     "verdict": "REPRODUZIDO",
+     "diffs": [],
+     "note_train_alertRate": "original nao calcula alertRate no treino (null); recomputado tambem omitido aqui (valor disponivel em metrics_long.csv)"
+    },
+    "validation": {
+     "original": {
+      "n": 54,
+      "groups": 18,
+      "bias": -1.907407,
+      "mae": 14.166667,
+      "maxAbs": 51,
+      "p50": 0.052632,
+      "p90": 0.138889,
+      "p95": 0.208333,
+      "p99": null,
+      "alertRate": 0
+     },
+     "recomputed": {
+      "n": 54,
+      "groups": 18,
+      "bias": -1.907407,
+      "mae": 14.166667,
+      "maxAbs": 51,
+      "p50": 0.052632,
+      "p90": 0.138889,
+      "p95": 0.208333,
+      "p99": null,
+      "alertRate": 0
+     },
+     "rmse_NEW": 18.564702,
+     "verdict": "REPRODUZIDO",
+     "diffs": []
+    },
+    "holdout": {
+     "original": {
+      "n": 37,
+      "groups": 13,
+      "bias": 6.027027,
+      "mae": 13.810811,
+      "maxAbs": 54,
+      "p50": 0.051948,
+      "p90": 0.143236,
+      "p95": 0.166667,
+      "p99": null,
+      "alertRate": 0.054054
+     },
+     "recomputed": {
+      "n": 37,
+      "groups": 13,
+      "bias": 6.027027,
+      "mae": 13.810811,
+      "maxAbs": 54,
+      "p50": 0.051948,
+      "p90": 0.143236,
+      "p95": 0.166667,
+      "p99": null,
+      "alertRate": 0.054054
+     },
+     "rmse_NEW": 18.339884,
+     "verdict": "REPRODUZIDO",
+     "diffs": []
+    }
+   },
+   "acceptance": {
+    "holdout_alert_rate": {
+     "original": "0.054054",
+     "recomputed": "0.054054",
+     "verdict": "REPRODUZIDO",
+     "alerts_n": 2,
+     "n": 37
+    },
+    "holdout_detection_plus25pct": {
+     "original": "0.783784",
+     "recomputed": "0.783784",
+     "verdict": "REPRODUZIDO"
+    },
+    "holdout_detection_plus10pct_NEW": 0.054054,
+    "holdout_detection_plus50tok_NEW": 0.567568,
+    "validation_false_alert_in_derivation": {
+     "original_text": [
+      "0",
+      "0.555556"
+     ],
+     "recomputed": [
+      0,
+      0.555556
+     ],
+     "verdict": "REPRODUZIDO"
+    },
+    "calibrated_original": false,
+    "calibrated_recomputed_with_same_policy": false
+   },
+   "parameters_verification": {
+    "note": "VERIFICACAO apenas (minimos quadrados pelo mesmo metodo do H1 sobre o treino); os parametros USADOS nas metricas sao os congelados do perfil",
+    "frozen": {
+     "slope": "1.165964",
+     "intercept": "4.101752"
+    },
+    "refit_check": {
+     "slope": "1.165964",
+     "intercept": "4.101752"
+    },
+    "verdict": "REPRODUZIDO"
+   },
+   "threshold_verification": {
+    "note": "VERIFICACAO apenas (mesma grade do H1 sobre a validacao com os parametros congelados); o limiar USADO e o congelado",
+    "frozen": {
+     "absoluteTokens": "6",
+     "relative": "0.142062"
+    },
+    "grid_check": {
+     "absoluteTokens": "6",
+     "relative": "0.142062",
+     "falseAlertRate": 0,
+     "meanDetection": 0.555556
+    },
+    "verdict": "REPRODUZIDO"
+   },
+   "resultados_md": {
+    "pairs": "119 / 54 / 37 (13)",
+    "fit": "1,165964 x local + 4,10",
+    "holdout": "+6,0; 13,8; 54",
+    "falseAlert": "5,4% (2 de 37)",
+    "det25": "78%",
+    "calibrated": "false"
+   },
+   "resultados_md_check": {
+    "pairs_recomputed": "119 / 54 / 37 (13)",
+    "holdout_recomputed": "6.027027; 13.810811; 54",
+    "falseAlert_recomputed": "0.054054 (2 de 37)",
+    "det25_recomputed": "78%",
+    "calibrated_recomputed": "false"
+   }
+  },
+  "gemini-3.5-flash-lite": {
+   "profile": {
+    "file": "docs/_ops/OVERNIGHT2_20261006/calibration/calibration_profile_gemini_gemini-3.5-flash-lite.json",
+    "sha256": "84cf934d3c26d81ab6cd12fb25a2971b14f8827f4454014338755805ea742ed6",
+    "profileId": "otk.calib.ovn2-20261007.gemini.gemini.generate_content.gemini-3.5-flash-lite",
+    "evidenceHash": "0xc398ef2767e513593fe3c6a46ca5c7a1dfeab18aa79a75b237cd572aaad2c5a9",
+    "slope": "1.252777",
+    "intercept": "-6.097995",
+    "thresholdAbs": "197",
+    "thresholdRel": "0.437778",
+    "calibrated": false
+   },
+   "splits": {
+    "train": {
+     "original": {
+      "n": 121,
+      "groups": 41,
+      "bias": -0.049587,
+      "mae": 48.099174,
+      "maxAbs": 264,
+      "p50": 0.285714,
+      "p90": 0.442953,
+      "p95": 0.681818,
+      "p99": 0.763158,
+      "alertRate": null
+     },
+     "recomputed": {
+      "n": 121,
+      "groups": 41,
+      "bias": -0.049587,
+      "mae": 48.099174,
+      "maxAbs": 264,
+      "p50": 0.285714,
+      "p90": 0.442953,
+      "p95": 0.681818,
+      "p99": 0.763158,
+      "alertRate": null
+     },
+     "rmse_NEW": 77.678507,
+     "verdict": "REPRODUZIDO",
+     "diffs": [],
+     "note_train_alertRate": "original nao calcula alertRate no treino (null); recomputado tambem omitido aqui (valor disponivel em metrics_long.csv)"
+    },
+    "validation": {
+     "original": {
+      "n": 54,
+      "groups": 18,
+      "bias": 10.185185,
+      "mae": 73.888889,
+      "maxAbs": 323,
+      "p50": 0.1875,
+      "p90": 0.603896,
+      "p95": 0.626263,
+      "p99": null,
+      "alertRate": 0
+     },
+     "recomputed": {
+      "n": 54,
+      "groups": 18,
+      "bias": 10.185185,
+      "mae": 73.888889,
+      "maxAbs": 323,
+      "p50": 0.1875,
+      "p90": 0.603896,
+      "p95": 0.626263,
+      "p99": null,
+      "alertRate": 0
+     },
+     "rmse_NEW": 115.430755,
+     "verdict": "REPRODUZIDO",
+     "diffs": []
+    },
+    "holdout": {
+     "original": {
+      "n": 37,
+      "groups": 13,
+      "bias": -0.189189,
+      "mae": 58.135135,
+      "maxAbs": 285,
+      "p50": 0.184524,
+      "p90": 0.412214,
+      "p95": 0.748837,
+      "p99": null,
+      "alertRate": 0
+     },
+     "recomputed": {
+      "n": 37,
+      "groups": 13,
+      "bias": -0.189189,
+      "mae": 58.135135,
+      "maxAbs": 285,
+      "p50": 0.184524,
+      "p90": 0.412214,
+      "p95": 0.748837,
+      "p99": null,
+      "alertRate": 0
+     },
+     "rmse_NEW": 100.249553,
+     "verdict": "REPRODUZIDO",
+     "diffs": []
+    }
+   },
+   "acceptance": {
+    "holdout_alert_rate": {
+     "original": "0",
+     "recomputed": "0",
+     "verdict": "REPRODUZIDO",
+     "alerts_n": 0,
+     "n": 37
+    },
+    "holdout_detection_plus25pct": {
+     "original": "0.081081",
+     "recomputed": "0.081081",
+     "verdict": "REPRODUZIDO"
+    },
+    "holdout_detection_plus10pct_NEW": 0.081081,
+    "holdout_detection_plus50tok_NEW": 0,
+    "validation_false_alert_in_derivation": {
+     "original_text": [
+      "0",
+      "0.111111"
+     ],
+     "recomputed": [
+      0,
+      0.111111
+     ],
+     "verdict": "REPRODUZIDO"
+    },
+    "calibrated_original": false,
+    "calibrated_recomputed_with_same_policy": false
+   },
+   "parameters_verification": {
+    "note": "VERIFICACAO apenas (minimos quadrados pelo mesmo metodo do H1 sobre o treino); os parametros USADOS nas metricas sao os congelados do perfil",
+    "frozen": {
+     "slope": "1.252777",
+     "intercept": "-6.097995"
+    },
+    "refit_check": {
+     "slope": "1.252777",
+     "intercept": "-6.097995"
+    },
+    "verdict": "REPRODUZIDO"
+   },
+   "threshold_verification": {
+    "note": "VERIFICACAO apenas (mesma grade do H1 sobre a validacao com os parametros congelados); o limiar USADO e o congelado",
+    "frozen": {
+     "absoluteTokens": "197",
+     "relative": "0.437778"
+    },
+    "grid_check": {
+     "absoluteTokens": "197",
+     "relative": "0.437778",
+     "falseAlertRate": 0,
+     "meanDetection": 0.111111
+    },
+    "verdict": "REPRODUZIDO"
+   },
+   "resultados_md": {
+    "pairs": "121 / 54 / 37 (13)",
+    "fit": "1,252777 x local - 6,10",
+    "holdout": "-0,2; 58,1; 285",
+    "falseAlert": "0",
+    "det25": "8%",
+    "calibrated": "false"
+   },
+   "resultados_md_check": {
+    "pairs_recomputed": "121 / 54 / 37 (13)",
+    "holdout_recomputed": "-0.189189; 58.135135; 285",
+    "falseAlert_recomputed": "0 (0 de 37)",
+    "det25_recomputed": "8%",
+    "calibrated_recomputed": "false"
+   }
+  }
+ },
+ "inputs": {
+  "inventory": {
+   "path": "runs/R02/inventory_662.jsonl",
+   "sha256": "6b9a0e6ac36f7618072399f27df2e12619057eb3ebf5a56998285c71cad65e26"
+  },
+  "profiles": {
+   "gpt-4o-mini-2024-07-18": {
+    "file": "docs/_ops/OVERNIGHT2_20261006/calibration/calibration_profile_openai_gpt-4o-mini-2024-07-18.json",
+    "sha256": "3ff5a97f9d37b92fd1321f50626389e6adfd15770d29e18a399590ae5fdca63b",
+    "profileId": "otk.calib.ovn2-20261007.openai.openai.chat_completions.gpt-4o-mini-2024-07-18",
+    "evidenceHash": "0x03cf37137da56143a7f5a323ed0716ae1595086bc1946c9265abd57179094757",
+    "slope": "1.000000",
+    "intercept": "7.000000",
+    "thresholdAbs": "1",
+    "thresholdRel": "0.000000",
+    "calibrated": true
+   },
+   "claude-haiku-4-5-20251001": {
+    "file": "docs/_ops/OVERNIGHT2_20261006/calibration/calibration_profile_anthropic_claude-haiku-4-5-20251001.json",
+    "sha256": "be0921343c1a88451ab3ca74a6af461b6633c0c21965a1e043b00c58a5222c85",
+    "profileId": "otk.calib.ovn2-20261007.anthropic.anthropic.messages.claude-haiku-4-5-20251001",
+    "evidenceHash": "0x167226f41dea12cb8612bf2c5168058770ef0c55510273913d2d9bc0a4d287bf",
+    "slope": "1.165964",
+    "intercept": "4.101752",
+    "thresholdAbs": "6",
+    "thresholdRel": "0.142062",
+    "calibrated": false
+   },
+   "gemini-3.5-flash-lite": {
+    "file": "docs/_ops/OVERNIGHT2_20261006/calibration/calibration_profile_gemini_gemini-3.5-flash-lite.json",
+    "sha256": "84cf934d3c26d81ab6cd12fb25a2971b14f8827f4454014338755805ea742ed6",
+    "profileId": "otk.calib.ovn2-20261007.gemini.gemini.generate_content.gemini-3.5-flash-lite",
+    "evidenceHash": "0xc398ef2767e513593fe3c6a46ca5c7a1dfeab18aa79a75b237cd572aaad2c5a9",
+    "slope": "1.252777",
+    "intercept": "-6.097995",
+    "thresholdAbs": "197",
+    "thresholdRel": "0.437778",
+    "calibrated": false
+   }
+  },
+  "heuristic_threshold_v0": {
+   "abs": 16,
+   "rel": 0.1
+  },
+  "resultados_md_sha256": "268c145722a14e97eff1d0038d1ab4bbff0a5e9cbdcf7ffaf9201ca2383ceabd"
+ },
+ "overall": {
+  "gpt-4o-mini-2024-07-18": {
+   "splits": {
+    "train": "REPRODUZIDO",
+    "validation": "REPRODUZIDO",
+    "holdout": "REPRODUZIDO"
+   },
+   "acceptance_alert": "REPRODUZIDO",
+   "acceptance_det25": "REPRODUZIDO",
+   "derivation": "REPRODUZIDO",
+   "parameters": "REPRODUZIDO",
+   "threshold": "REPRODUZIDO",
+   "calibrated": "true -> true"
+  },
+  "claude-haiku-4-5-20251001": {
+   "splits": {
+    "train": "REPRODUZIDO",
+    "validation": "REPRODUZIDO",
+    "holdout": "REPRODUZIDO"
+   },
+   "acceptance_alert": "REPRODUZIDO",
+   "acceptance_det25": "REPRODUZIDO",
+   "derivation": "REPRODUZIDO",
+   "parameters": "REPRODUZIDO",
+   "threshold": "REPRODUZIDO",
+   "calibrated": "false -> false"
+  },
+  "gemini-3.5-flash-lite": {
+   "splits": {
+    "train": "REPRODUZIDO",
+    "validation": "REPRODUZIDO",
+    "holdout": "REPRODUZIDO"
+   },
+   "acceptance_alert": "REPRODUZIDO",
+   "acceptance_det25": "REPRODUZIDO",
+   "derivation": "REPRODUZIDO",
+   "parameters": "REPRODUZIDO",
+   "threshold": "REPRODUZIDO",
+   "calibrated": "false -> false"
+  }
+ }
+}

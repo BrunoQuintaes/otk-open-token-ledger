@@ -1,0 +1,23 @@
+apiVersion: 1
+
+datasources:
+  - name: OTK-Indexer-JSONL
+    type: yesoreyeram-infinity-datasource
+    access: proxy
+    uid: otk-indexer
+    orgId: 1
+    isDefault: true
+    jsonData:
+      tlsSkipVerify: true
+    version: 1
+    editable: true
+
+  - name: OTK-Bench-CSV
+    type: yesoreyeram-infinity-datasource
+    access: proxy
+    uid: otk-bench
+    orgId: 1
+    jsonData:
+      tlsSkipVerify: true
+    version: 1
+    editable: true

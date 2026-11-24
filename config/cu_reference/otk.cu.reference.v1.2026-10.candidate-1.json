@@ -1,0 +1,224 @@
+{
+  "schema": "otk.cu.reference.v1",
+  "profileId": "otk.cu.reference.v1.2026-10.candidate-1",
+  "formulaVersion": "CU_REF_SUM_v1",
+  "basePeriod": "2026-10",
+  "snapshotDate": "2026-10-07",
+  "status": "CANDIDATE",
+  "referenceDefinition": null,
+  "scale": "1",
+  "entries": [
+    {
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5",
+      "category": "input_uncached",
+      "priceMicroUsdPerMTok": "1000000",
+      "column": "Base input tokens",
+      "source": {
+        "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+        "archivedCopy": "docs/_ops/OVERNIGHT2_20261006/evidence/price_sources_20261007/anthropic_pricing.md",
+        "sha256": "245b5d0472659075015551126902de479990475fa61deb58c5fc20ef5e51a909",
+        "literal": "| Claude Haiku 4.5 | $1 / MTok | $1.25 / MTok | $2 / MTok | $0.10 / MTok | $5 / MTok |",
+        "retrievedAt": [
+          "2026-10-01T00:00:00Z (scripts/pilot/price_table_pilot_v3_20261003.json)",
+          "2026-10-03T00:00:00Z (same table)",
+          "2026-10-07T03:15:41Z"
+        ]
+      }
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5",
+      "category": "input_cache_write",
+      "priceMicroUsdPerMTok": "1250000",
+      "column": "5m cache writes",
+      "source": {
+        "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+        "archivedCopy": "docs/_ops/OVERNIGHT2_20261006/evidence/price_sources_20261007/anthropic_pricing.md",
+        "sha256": "245b5d0472659075015551126902de479990475fa61deb58c5fc20ef5e51a909",
+        "literal": "| Claude Haiku 4.5 | $1 / MTok | $1.25 / MTok | $2 / MTok | $0.10 / MTok | $5 / MTok |",
+        "retrievedAt": [
+          "2026-10-01T00:00:00Z (scripts/pilot/price_table_pilot_v3_20261003.json)",
+          "2026-10-03T00:00:00Z (same table)",
+          "2026-10-07T03:15:41Z"
+        ]
+      },
+      "note": "5-minute TTL price. 1h-TTL writes ($2/MTok) are refused by the proxy before the provider (RV2-07), so they never occur under this profile."
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5",
+      "category": "input_cache_read",
+      "priceMicroUsdPerMTok": "100000",
+      "column": "Cache hits and refreshes",
+      "source": {
+        "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+        "archivedCopy": "docs/_ops/OVERNIGHT2_20261006/evidence/price_sources_20261007/anthropic_pricing.md",
+        "sha256": "245b5d0472659075015551126902de479990475fa61deb58c5fc20ef5e51a909",
+        "literal": "| Claude Haiku 4.5 | $1 / MTok | $1.25 / MTok | $2 / MTok | $0.10 / MTok | $5 / MTok |",
+        "retrievedAt": [
+          "2026-10-01T00:00:00Z (scripts/pilot/price_table_pilot_v3_20261003.json)",
+          "2026-10-03T00:00:00Z (same table)",
+          "2026-10-07T03:15:41Z"
+        ]
+      }
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5",
+      "category": "output_visible",
+      "priceMicroUsdPerMTok": "5000000",
+      "column": "Output tokens",
+      "source": {
+        "url": "https://platform.claude.com/docs/en/about-claude/pricing",
+        "archivedCopy": "docs/_ops/OVERNIGHT2_20261006/evidence/price_sources_20261007/anthropic_pricing.md",
+        "sha256": "245b5d0472659075015551126902de479990475fa61deb58c5fc20ef5e51a909",
+        "literal": "| Claude Haiku 4.5 | $1 / MTok | $1.25 / MTok | $2 / MTok | $0.10 / MTok | $5 / MTok |",
+        "retrievedAt": [
+          "2026-10-01T00:00:00Z (scripts/pilot/price_table_pilot_v3_20261003.json)",
+          "2026-10-03T00:00:00Z (same table)",
+          "2026-10-07T03:15:41Z"
+        ]
+      },
+      "note": "Anthropic reports thinking inside output_tokens (no separate reasoning count), so output_reasoning does not occur for this API."
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini",
+      "category": "input_uncached",
+      "priceMicroUsdPerMTok": "150000",
+      "column": "Standard, short context input",
+      "source": {
+        "url": "https://developers.openai.com/api/docs/pricing",
+        "archivedCopy": "docs/_ops/OVERNIGHT2_20261006/evidence/price_sources_20261007/openai_pricing.md",
+        "sha256": "0d9fb6b240209bb7b5a05d1d6ce0b8a796e0924b7e34c5ab183a3f1f890febe6",
+        "literal": "| gpt-4o-mini | $0.15 | $0.075 | - | $0.60 | - | - | - | - |",
+        "retrievedAt": [
+          "2026-10-03T00:00:00Z (scripts/pilot/price_table_pilot_v3_20261003.json)",
+          "2026-10-07T03:15:41Z"
+        ]
+      }
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini",
+      "category": "input_cache_read",
+      "priceMicroUsdPerMTok": "75000",
+      "column": "Standard, short context cached input",
+      "source": {
+        "url": "https://developers.openai.com/api/docs/pricing",
+        "archivedCopy": "docs/_ops/OVERNIGHT2_20261006/evidence/price_sources_20261007/openai_pricing.md",
+        "sha256": "0d9fb6b240209bb7b5a05d1d6ce0b8a796e0924b7e34c5ab183a3f1f890febe6",
+        "literal": "| gpt-4o-mini | $0.15 | $0.075 | - | $0.60 | - | - | - | - |",
+        "retrievedAt": [
+          "2026-10-03T00:00:00Z (scripts/pilot/price_table_pilot_v3_20261003.json)",
+          "2026-10-07T03:15:41Z"
+        ]
+      }
+    },
+    {
+      "provider": "openai",
+      "model": "gpt-4o-mini",
+      "category": "output_visible",
+      "priceMicroUsdPerMTok": "600000",
+      "column": "Standard, short context output",
+      "source": {
+        "url": "https://developers.openai.com/api/docs/pricing",
+        "archivedCopy": "docs/_ops/OVERNIGHT2_20261006/evidence/price_sources_20261007/openai_pricing.md",
+        "sha256": "0d9fb6b240209bb7b5a05d1d6ce0b8a796e0924b7e34c5ab183a3f1f890febe6",
+        "literal": "| gpt-4o-mini | $0.15 | $0.075 | - | $0.60 | - | - | - | - |",
+        "retrievedAt": [
+          "2026-10-03T00:00:00Z (scripts/pilot/price_table_pilot_v3_20261003.json)",
+          "2026-10-07T03:15:41Z"
+        ]
+      },
+      "note": "No output_reasoning entry: gpt-4o-mini is not a reasoning model; a reported reasoning count > 0 makes the CU not computable instead of inventing a weight."
+    },
+    {
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "category": "input_uncached",
+      "priceMicroUsdPerMTok": "300000",
+      "column": "Standard, paid tier, input price",
+      "source": {
+        "url": "https://ai.google.dev/gemini-api/docs/pricing",
+        "archivedCopy": "docs/_ops/OVERNIGHT2_20261006/evidence/price_sources_20261007/gemini_pricing.md.txt",
+        "sha256": "f1f751eea9139279429f812bd70998777778735cb85d1efc8a71afa793224132",
+        "literal": "| Input price | Free of charge | $0.30 (text / image / video / audio) |",
+        "retrievedAt": [
+          "2026-10-04T00:00:00Z (FECHAMENTO_GEMINI_AD/fontes_20261004/pricing.md, sha256 8ea72ea3...)",
+          "2026-10-07T03:15:41Z"
+        ]
+      }
+    },
+    {
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "category": "output_visible",
+      "priceMicroUsdPerMTok": "2500000",
+      "column": "Standard, paid tier, output price (including thinking tokens)",
+      "source": {
+        "url": "https://ai.google.dev/gemini-api/docs/pricing",
+        "archivedCopy": "docs/_ops/OVERNIGHT2_20261006/evidence/price_sources_20261007/gemini_pricing.md.txt",
+        "sha256": "f1f751eea9139279429f812bd70998777778735cb85d1efc8a71afa793224132",
+        "literal": "| Output price (including thinking tokens) | Free of charge | $2.50 |",
+        "retrievedAt": [
+          "2026-10-04T00:00:00Z (FECHAMENTO_GEMINI_AD/fontes_20261004/pricing.md, sha256 8ea72ea3...)",
+          "2026-10-07T03:15:41Z"
+        ]
+      }
+    },
+    {
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "category": "output_reasoning",
+      "priceMicroUsdPerMTok": "2500000",
+      "column": "Standard, paid tier, output price (including thinking tokens)",
+      "source": {
+        "url": "https://ai.google.dev/gemini-api/docs/pricing",
+        "archivedCopy": "docs/_ops/OVERNIGHT2_20261006/evidence/price_sources_20261007/gemini_pricing.md.txt",
+        "sha256": "f1f751eea9139279429f812bd70998777778735cb85d1efc8a71afa793224132",
+        "literal": "| Output price (including thinking tokens) | Free of charge | $2.50 |",
+        "retrievedAt": [
+          "2026-10-04T00:00:00Z (FECHAMENTO_GEMINI_AD/fontes_20261004/pricing.md, sha256 8ea72ea3...)",
+          "2026-10-07T03:15:41Z"
+        ]
+      },
+      "note": "The official line prices output INCLUDING thinking tokens: same base price as output_visible, from the same literal line (not an assumption)."
+    },
+    {
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "category": "input_cache_read",
+      "priceMicroUsdPerMTok": "30000",
+      "column": "Standard, paid tier, context caching price (per-token part)",
+      "source": {
+        "url": "https://ai.google.dev/gemini-api/docs/pricing",
+        "archivedCopy": "docs/_ops/OVERNIGHT2_20261006/evidence/price_sources_20261007/gemini_pricing.md.txt",
+        "sha256": "f1f751eea9139279429f812bd70998777778735cb85d1efc8a71afa793224132",
+        "literal": "| Context caching price | Not available | $0.03 $1.00 / 1,000,000 tokens per hour (storage price) |",
+        "retrievedAt": [
+          "2026-10-04T00:00:00Z (FECHAMENTO_GEMINI_AD/fontes_20261004/pricing.md, sha256 8ea72ea3...)",
+          "2026-10-07T03:15:41Z"
+        ]
+      },
+      "note": "AMBIGUITY RECORDED: the line shows \"$0.03 $1.00 / 1,000,000 tokens per hour (storage price)\"; the word \"read\" does not appear. $0.03 is read as the per-token price of cached input and $1.00/h as storage of explicit caches (not used: the proxy only sees implicit caching). Same reading as FECHAMENTO_GEMINI_AD/fontes_20261004/RESUMO.md (c)."
+    }
+  ],
+  "aliases": {
+    "claude-haiku-4-5-20251001": "claude-haiku-4-5",
+    "gpt-4o-mini-2024-07-18": "gpt-4o-mini",
+    "models/gemini-3.5-flash-lite": "gemini-3.5-flash-lite"
+  },
+  "provenance": {
+    "createdAt": "2026-10-07T03:40:00Z",
+    "createdBy": "OVERNIGHT 2 executor (Claude Code), from official list prices only",
+    "method": "Basket = the three models the OTK campaign uses in 2026-10 (one per provider, the ones already piloted). Each weight will be p/p_ref with p the official Standard list price per category, frozen with archived copy + sha256 + literal line. Prices re-read on 2026-10-07 equal the ones frozen on 2026-10-01/03/04.",
+    "limitations": [
+      "referenceDefinition is null: the normalization (reference category or abstract price, and scale) is Bruno's decision (DN-01) and was NOT chosen here; computations under this profile pass a reference explicitly and are labelled CU_REFERENCE_CANDIDATE.",
+      "Basket limited to three small text models; other models, modalities (audio, image) and tiers (batch, flex, priority, long context) are outside the profile and yield not-computable, never an invented weight.",
+      "gemini-2.5-flash-lite (piloted on 2026-10-03, closed by Google to new users) is not in the basket.",
+      "Prices are list prices of the Standard tier; they are not invoices and do not measure energy, FLOPs, quality or capability."
+    ]
+  }
+}

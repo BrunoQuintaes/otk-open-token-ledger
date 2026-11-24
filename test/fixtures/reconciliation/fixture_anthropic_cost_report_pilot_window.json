@@ -1,0 +1,37 @@
+{
+  "_synthetic": "SYNTHETIC FIXTURE (OTK Phase 10, 2026-10-06) for the OFFLINE run against the REAL pilot ledger (OTK side). The amounts were DERIVED FROM OTK's own pilot ledger (3700 input tokens at 1 USD/MTok = 0.37 cents; 344 output tokens at 5 USD/MTok = 0.172 cents). They are NOT an Anthropic export and NOT an invoice: agreement here only shows that the pipeline runs end to end.",
+  "data": [
+    {
+      "starting_at": "2026-10-03T00:00:00Z",
+      "ending_at": "2026-10-04T00:00:00Z",
+      "results": [
+        {
+          "amount": "0.37",
+          "context_window": "0-200k",
+          "cost_type": "tokens",
+          "currency": "USD",
+          "description": "Claude Haiku 4.5 Usage - Input Tokens",
+          "inference_geo": "not_available",
+          "model": "claude-haiku-4-5",
+          "service_tier": "standard",
+          "token_type": "uncached_input_tokens",
+          "workspace_id": null
+        },
+        {
+          "amount": "0.172",
+          "context_window": "0-200k",
+          "cost_type": "tokens",
+          "currency": "USD",
+          "description": "Claude Haiku 4.5 Usage - Output Tokens",
+          "inference_geo": "not_available",
+          "model": "claude-haiku-4-5",
+          "service_tier": "standard",
+          "token_type": "output_tokens",
+          "workspace_id": null
+        }
+      ]
+    }
+  ],
+  "has_more": false,
+  "next_page": null
+}

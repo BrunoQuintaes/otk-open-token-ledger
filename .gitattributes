@@ -1,0 +1,29 @@
+# Normalize line endings
+* text=auto
+
+# Force LF for scripts/configs commonly used in Linux containers
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.env text eol=lf
+
+# Markdown can be LF
+*.md text eol=lf
+
+# OVERNIGHT 2 (F-OVN2-05): archived official price pages are hashed byte for byte (profile sources, tests).
+# Never convert line endings on checkout, or a clean clone on Windows would break the sha256 check.
+docs/_ops/OVERNIGHT2_20261006/evidence/price_sources_*/** -text
+config/cu_reference/*.json text eol=lf
+
+# Verificador leigo (C160, X1 R1/R6): a página e os dados de teste são conferidos por sha256 byte a byte.
+web/verificador/verificador-otk.html -text
+web/verificador/test/simulado/** -text
+
+# Repositório público (REPO_PUBLICO, C160): dados, chaveiro e página são conferidos por sha256 byte a byte.
+# Nunca converter fim de linha nesses arquivos (senão a impressão digital e os hashes mudam num clone no Windows).
+reproducao/** -text
+chaveiro/** -text
+test/verifier/vetores/** -text
+web/verificador/verificador-otk.html -text
+docs/imagens/** -text

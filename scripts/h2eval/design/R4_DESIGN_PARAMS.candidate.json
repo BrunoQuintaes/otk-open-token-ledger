@@ -1,0 +1,192 @@
+{
+ "schema": "h2eval.design_params.v1",
+ "designId": "R4-candidate-from-v0",
+ "source": "CANDIDATE converted from runs/B1/R4/R4_DESIGN_PARAMS.json (h2eval.r4_design_params.v0, sha256 e03225e266951835f8fef3b10fa51a3cc958cec523f2967d68ccae3b97a1c21a; label: PROPOSTA_NAO_RATIFICADA / pos-piloto R17 / ANTES de qualquer dado confirmatorio R4). Structured fields read: maxTokensDeclared per arm, reasoningAllowanceInPlan (Gemini), opsPerSplit. Haiku 5.5 per-arm thinking TRANSCRIBED from the v0 prose (reasoningPolicy.primary) by the converter's caller: T1=OFF T2=OFF T3=ADAPTIVE T4=OFF T5=OFF. NOT RATIFIED: valid only after R4 ratification and ECON-02 confirmation.",
+ "perModel": {
+  "claude-haiku-5-5": {
+   "maxTokens": 256,
+   "thinking": {
+    "policy": "OFF"
+   },
+   "reasoningAllowanceTokens": 0,
+   "inputBound": {
+    "factor": 1.6,
+    "extraTokens": 64
+   },
+   "arms": {
+    "T1": {
+     "maxTokens": 512,
+     "thinking": {
+      "policy": "OFF"
+     },
+     "reasoningAllowanceTokens": 0
+    },
+    "T2": {
+     "maxTokens": 1024,
+     "thinking": {
+      "policy": "OFF"
+     },
+     "reasoningAllowanceTokens": 0
+    },
+    "T3": {
+     "maxTokens": 1024,
+     "thinking": {
+      "policy": "ADAPTIVE",
+      "effort": "low"
+     },
+     "reasoningAllowanceTokens": 1024
+    },
+    "T4": {
+     "maxTokens": 256,
+     "thinking": {
+      "policy": "OFF"
+     },
+     "reasoningAllowanceTokens": 0
+    },
+    "T5": {
+     "maxTokens": 256,
+     "thinking": {
+      "policy": "OFF"
+     },
+     "reasoningAllowanceTokens": 0
+    }
+   }
+  },
+  "claude-haiku-4-5-20251001": {
+   "maxTokens": 256,
+   "thinking": {
+    "policy": "OFF"
+   },
+   "reasoningAllowanceTokens": 0,
+   "inputBound": {
+    "factor": 1.6,
+    "extraTokens": 64
+   },
+   "arms": {
+    "T1": {
+     "maxTokens": 256
+    },
+    "T2": {
+     "maxTokens": 512
+    },
+    "T3": {
+     "maxTokens": 512
+    },
+    "T4": {
+     "maxTokens": 256
+    },
+    "T5": {
+     "maxTokens": 256
+    }
+   }
+  },
+  "gpt-4o-mini-2024-07-18": {
+   "maxTokens": 256,
+   "thinking": {
+    "policy": "OFF"
+   },
+   "reasoningAllowanceTokens": 0,
+   "inputBound": {
+    "factor": 1.6,
+    "extraTokens": 64
+   },
+   "arms": {
+    "T1": {
+     "maxTokens": 256
+    },
+    "T2": {
+     "maxTokens": 256
+    },
+    "T3": {
+     "maxTokens": 256
+    },
+    "T4": {
+     "maxTokens": 256
+    },
+    "T5": {
+     "maxTokens": 256
+    }
+   }
+  },
+  "gemini-3.5-flash-lite": {
+   "maxTokens": 256,
+   "thinking": {
+    "policy": "MINIMAL",
+    "thinkingLevel": "minimal"
+   },
+   "reasoningAllowanceTokens": 2048,
+   "inputBound": {
+    "factor": 1.6,
+    "extraTokens": 64
+   }
+  }
+ },
+ "d7": {
+  "option": "A",
+  "eligibleCalls": [
+   2,
+   3
+  ]
+ },
+ "integrity": {
+  "stopReasonRequired": true,
+  "thinkingDisabledRejectedStops": true
+ },
+ "expectedOpsPerSplit": {
+  "claude-haiku-4-5-20251001": {
+   "T1": {
+    "comparative": 12
+   },
+   "T2": {
+    "train": 52,
+    "validation": 29,
+    "holdout": 27
+   },
+   "T3": {
+    "train": 26,
+    "validation": 14,
+    "holdout": 14
+   },
+   "T4": {
+    "train": 27,
+    "validation": 9,
+    "holdout": 9
+   },
+   "T5": {
+    "train": 54,
+    "validation": 18,
+    "holdout": 18
+   }
+  },
+  "claude-haiku-5-5": {
+   "T1": {
+    "train": 27,
+    "validation": 14,
+    "holdout": 13
+   },
+   "T2": {
+    "train": 52,
+    "validation": 29,
+    "holdout": 27
+   },
+   "T3": {
+    "train": 26,
+    "validation": 14,
+    "holdout": 14
+   },
+   "T4": {
+    "train": 27,
+    "validation": 9,
+    "holdout": 9
+   },
+   "T5": {
+    "train": 54,
+    "validation": 18,
+    "holdout": 18
+   }
+  }
+ },
+ "notes": [
+  "R4 v0 executorRequirements.protocolHash says sha256(preregSha:corpusSha256:phase); v-next uses sha256(preregSha:corpusSha256:phase:designSha256) — the design file is part of the protocol identity."
+ ]
+}

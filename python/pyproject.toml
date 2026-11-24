@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "otk-client"
+version = "0.1.0"
+description = "Python client for the OTK zk-Metering REST API"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/brunomont/otk-zk-metering"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["otk_client*"]

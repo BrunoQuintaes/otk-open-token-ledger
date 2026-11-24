@@ -1,0 +1,55 @@
+version: "3.8"
+
+# =============================================================================
+# OTK Dashboard MVP — Grafana + CSV/JSON datasource
+#
+# Usage:
+#   cd infra/dashboard
+#   docker compose up -d
+#   # Open Grafana: http://localhost:3000 (admin / otk-admin)
+#
+# Data sources:
+#   1. Infinity plugin (CSV/JSON) — reads indexer output (docs/_ops/indexer/*.jsonl)
+#   2. (optional) Prometheus — if a metrics exporter is added later
+#
+# Panels:
+#   - CU by provider/model (bar chart)
+#   - Receipts/hour timeline (time series)
+#   - Proof time distribution (histogram)
+#   - Gas cost vs latency scatter
+#
+# Prerequisites:
+#   docker compose plugin (v2)
+#   Grafana Infinity datasource plugin (auto-installed below)
+# =============================================================================
+
+services:
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: otk-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=otk-admin
+      - GF_INSTALL_PLUGINS=yesoreyeram-infinity-datasource
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      # Mount indexer output for Infinity datasource to read
+      - ../../docs/_ops/indexer:/data/indexer:ro
+      # Mount benchmark outputs
+      - ../../docs/_ops/u9:/data/bench:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  grafana-data:
+    driver: local

@@ -1,0 +1,148 @@
+{
+  "runId": "pv3-gemini35-live-cacheprobe-2026-10-07t05-07-38-327",
+  "provider": "gemini",
+  "mode": "live",
+  "phase": "cacheprobe",
+  "commit": "b42d05cf2c88eab6325d036ad4ad7d3977c59375",
+  "tree": "28c6575b032d1e84e969f608539da91b7cd445ff",
+  "dirty": 4,
+  "model": "gemini-3.5-flash-lite",
+  "policy": "otk.money_bound_policy.v5@2026-10-04",
+  "contextWindow": "1048576",
+  "maxOutput": "65536",
+  "priceTable": {
+    "file": "scripts/pilot/price_table_pilot_v3_gemini35_20261004.json",
+    "version": "pilot-v3-anthropic-haiku45-openai-gpt4omini-gemini25fl-gemini35fl-official-2026-10-04",
+    "sha256": "ad2af5f655bab8c8479c95f86a49d57329ae37f12b117c2198ca8d4af61bc2a3"
+  },
+  "weightsOracle": {
+    "version": "dev-static-from-CostUnits.ts+gemini-2.5-flash-lite+gemini-3.5-flash-lite@2026-10-04",
+    "digest": "0xf5175787996e57b277954b96299c97efa24c3c5870cc79c46c7440a559895cb8",
+    "profile": "development-2026-10-04",
+    "provider": "gemini",
+    "wProviderMilli": "900",
+    "model": "gemini-3.5-flash-lite",
+    "wModelMilli": "600",
+    "developmentProfile": true,
+    "calibrated": false
+  },
+  "campaign": {
+    "corpus": {
+      "seed": 20261007,
+      "groupsPerFamily": 9,
+      "variantsPerGroup": 2,
+      "version": "otk.calibration_corpus.synthetic.v1",
+      "sha256": "043b2561b898a375aad62d13be0c4822ccddd2b2d2c94738fdb97462885353e6"
+    },
+    "slice": {
+      "startIndex": 0,
+      "maxCalls": null,
+      "of": 3
+    },
+    "skippedLabels": []
+  },
+  "plannedCalls": [
+    {
+      "meta": {
+        "cacheProbe": "1"
+      },
+      "label": "cache-1",
+      "stream": false,
+      "maxTokens": 24,
+      "disconnect": false,
+      "chain": false,
+      "expect": "final",
+      "promptSha256": "1dfaf3a30956d9acf0ab2eeaf570a9d2f7e23ff7a3864a5298fd3587b86534da",
+      "promptChars": 12099,
+      "conservativeOtkReservePico": "314632800000"
+    },
+    {
+      "meta": {
+        "cacheProbe": "2"
+      },
+      "label": "cache-2",
+      "stream": false,
+      "maxTokens": 24,
+      "disconnect": false,
+      "chain": false,
+      "expect": "final",
+      "promptSha256": "1dfaf3a30956d9acf0ab2eeaf570a9d2f7e23ff7a3864a5298fd3587b86534da",
+      "promptChars": 12099,
+      "conservativeOtkReservePico": "314632800000"
+    },
+    {
+      "meta": {
+        "cacheProbe": "3"
+      },
+      "label": "cache-3",
+      "stream": false,
+      "maxTokens": 24,
+      "disconnect": false,
+      "chain": false,
+      "expect": "final",
+      "promptSha256": "1dfaf3a30956d9acf0ab2eeaf570a9d2f7e23ff7a3864a5298fd3587b86534da",
+      "promptChars": 12099,
+      "conservativeOtkReservePico": "314632800000"
+    }
+  ],
+  "ledger": {
+    "file": "<HOME>/otk-pilot/gemini_budget_ledger.jsonl",
+    "summaryBefore": {
+      "capUsd": 3,
+      "reservations": 226,
+      "settledOk": 224,
+      "refused": 2,
+      "uncertain": 0,
+      "open": 0,
+      "confirmedUsd": 0.029309900000000014,
+      "uncertainUsd": 0,
+      "openUsd": 0,
+      "exposureUsd": 0.029309900000000014,
+      "remainingUsd": 2.9706901
+    }
+  },
+  "preflightModelsApi": {
+    "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite",
+    "status": 200,
+    "id": "models/gemini-3.5-flash-lite",
+    "displayName": "Gemini 3.5 Flash Lite",
+    "version": "3.5-flash-lite-07-2026",
+    "inputTokenLimit": 1048576,
+    "outputTokenLimit": 65536,
+    "thinking": true
+  },
+  "database": "otk_pilot_v3_pv3_gemini35_live_cacheprobe_2026_10_07t05_07_38_3",
+  "upstream": {
+    "kind": "gemini API (real)",
+    "override": "none"
+  },
+  "otkBudget": {
+    "budgetId": "pilot-v3-pv3-gemini35-live-cacheprobe-2026-10-07t05-07-38-327",
+    "ceilingPico": "2970690000000",
+    "correlation": "same spend as the canonical ledger (not a second charge)"
+  },
+  "tenantPlan": {
+    "tenantId": "pilot-v3",
+    "tier": "STARTER",
+    "why": "campaign volume above the FREE quota of 10 000 legacy CU per epoch; spend still bounded by the canonical ledger and the OTK money budget"
+  },
+  "attributionRegistered": {
+    "projectId": "otk",
+    "applicationId": "otk-ovn2-campaign",
+    "provenance": "CLIENT_DECLARED"
+  },
+  "entrypointLogRedactedSecrets": "no secret value in the child log",
+  "ledgerAfter": {
+    "capUsd": 3,
+    "reservations": 229,
+    "settledOk": 227,
+    "refused": 2,
+    "uncertain": 0,
+    "open": 0,
+    "confirmedUsd": 0.032167820000000014,
+    "uncertainUsd": 0,
+    "openUsd": 0,
+    "exposureUsd": 0.032167820000000014,
+    "remainingUsd": 2.96783218
+  }
+}

@@ -1,0 +1,62 @@
+[
+  {
+    "name": "v1_sample_1_openai_basic",
+    "description": "Baseline: openai/gpt-4o-mini, 100+50=150 tokens, CU=300",
+    "receipt": {
+      "provider": "openai",
+      "model": "gpt-4o-mini",
+      "input_tokens": "100",
+      "output_tokens": "50",
+      "total_tokens": "150",
+      "latency_ms": "1200",
+      "cost_unit": "300",
+      "user_id": "u1",
+      "project_id": "p1",
+      "timestamp": "1700000000000",
+      "nonce": "1",
+      "epoch": "472222222"
+    },
+    "expected_hash": "0x6506d40e6135f29024b6446a7e4eaea5d61436a62aae00e48797575e115c1fc5",
+    "expected_bytes_length": 85
+  },
+  {
+    "name": "v1_sample_2_anthropic_large",
+    "description": "Premium: anthropic/claude-opus-4, 2000+5000=7000 tokens, CU=15400",
+    "receipt": {
+      "provider": "anthropic",
+      "model": "claude-opus-4",
+      "input_tokens": "2000",
+      "output_tokens": "5000",
+      "total_tokens": "7000",
+      "latency_ms": "3500",
+      "cost_unit": "15400",
+      "user_id": "user-42",
+      "project_id": "proj-demo",
+      "timestamp": "1700000003600",
+      "nonce": "7",
+      "epoch": "472222223"
+    },
+    "expected_hash": "0xfbd7c4fb05fb0bc995184aab488b2f2e7f36a49b1a1ef57a496135174b852225",
+    "expected_bytes_length": 108
+  },
+  {
+    "name": "v1_sample_3_zero_tokens",
+    "description": "Edge case: zero tokens, zero CU, minimal timestamps",
+    "receipt": {
+      "provider": "openai",
+      "model": "gpt-4o",
+      "input_tokens": "0",
+      "output_tokens": "0",
+      "total_tokens": "0",
+      "latency_ms": "50",
+      "cost_unit": "0",
+      "user_id": "u-test",
+      "project_id": "p-test",
+      "timestamp": "1",
+      "nonce": "0",
+      "epoch": "0"
+    },
+    "expected_hash": "0xdb8f0a3e242d002a0be2748ab4b586de8162c4e1cf24d5b2c5dcc88819f52d52",
+    "expected_bytes_length": 59
+  }
+]

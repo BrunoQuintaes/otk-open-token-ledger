@@ -1,0 +1,4 @@
+# SYNTHETIC FIXTURE (OTK Phase 10 tests, 2026-10-06): invented values built to exercise the reconciliation classifications. NOT data exported by any provider; proves nothing about a real bill.
+date,service_description,sku_description,usage_amount,usage_unit,cost,currency
+2026-10-03,Gemini API,Gemini 3.5 Flash-Lite Input tokens,94,count,0.0000282,USD
+2026-10-03,Gemini API,Gemini 3.5 Flash-Lite Output tokens,26,count,0.000065,USD

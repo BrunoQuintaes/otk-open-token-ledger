@@ -1,0 +1,78 @@
+# OTK zk-Metering — Docker build context exclusions
+# Updated PA-08: comprehensive exclusions for leaner, faster builds
+
+# ── Node ──────────────────────────────────────────────────────────────────────
+node_modules
+npm-debug.log*
+
+# ── Git & IDE ─────────────────────────────────────────────────────────────────
+.git
+.gitignore
+.gitattributes
+.gitmodules
+.vscode
+.editorconfig
+
+# ── Dev / temp ────────────────────────────────────────────────────────────────
+*.log
+*.tmp
+*.bak
+.env
+.env.*
+!.env.example
+
+# ── Test & coverage ──────────────────────────────────────────────────────────
+test/
+coverage/
+
+# ── Docs & ops (not needed in image) ─────────────────────────────────────────
+docs/
+!docs/api/
+README.md
+CLAUDE.md
+*.md
+dissertacao/
+DEFESA_ACADEMICA*
+Contexto*
+infra/
+
+# ── ZK build artifacts (large binaries — not needed for API image) ─────────────
+# NOTE: ProverDaemon Dockerfile EXPLICITLY copies only what it needs before this.
+# These patterns exclude everything else from the build context sent to Docker.
+zk/build/*.r1cs
+zk/build/*.sym
+zk/build/*.wtns
+zk/build/pot*
+zk/build/*.ptau
+zk/build/*.json
+zk/build/*.log
+zk/build/demo_run_*
+zk/build/preimage*
+
+# ZK keys NOT needed for API image (Prover Dockerfile copies selectively)
+# The Prover Dockerfile COPYs specific key files; all others excluded:
+zk/keys/metering_v2_0000.zkey
+zk/keys/metering_v2_final.zkey
+zk/keys/metering_v2_hermez_final.zkey
+zk/keys/metering_v2_hermez_vkey.json
+zk/keys/metering_v2_vkey.json
+zk/keys/pot10_0000.ptau
+zk/keys/hermez_bn128_12_final.ptau
+zk/keys/README.md
+
+# ── Hardhat / Solidity ───────────────────────────────────────────────────────
+tools/
+scripts/ops/
+scripts/
+
+# ── Examples & bench ─────────────────────────────────────────────────────────
+examples/
+docker/bench/
+
+# ── Ceremony ─────────────────────────────────────────────────────────────────
+zk/ceremony/
+
+# ── MCP config ───────────────────────────────────────────────────────────────
+.mcp.json
+.auto-claude/
+.claude/

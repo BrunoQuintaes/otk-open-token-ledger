@@ -1,0 +1,141 @@
+{
+  "schema": "otk.banca.sanitization-scan.v1",
+  "scanner": "tools/scan_sanitization.mjs",
+  "rootName": "otk-banca-pack-20261111",
+  "filesScanned": 162,
+  "bytesScanned": 22796940,
+  "treeSha256": "22892ce01b538622cd73611855243dc8afda5611c78a019f40acb2bd2ff96d17",
+  "patternsBlocking": [
+    {
+      "category": "caminho_usuario_windows",
+      "regex": "[A-Za-z]:[\\\\/]+Users[\\\\/]+[^\\\\/\"'\\s<>|]+",
+      "flags": "gi"
+    },
+    {
+      "category": "caminho_usuario_unix",
+      "regex": "(?:^|[\\s\"'=(])\\/(?:Users|home)\\/[A-Za-z0-9._-]+",
+      "flags": "g"
+    },
+    {
+      "category": "email",
+      "regex": "[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)*\\.[A-Za-z]{2,}",
+      "flags": "g"
+    },
+    {
+      "category": "telefone_internacional",
+      "regex": "(?<![\\w.])\\+\\d{1,3}[ .-]?\\(?\\d{2,3}\\)?[ .-]\\d{3,5}[ .-]\\d{3,5}(?![\\w])",
+      "flags": "g"
+    },
+    {
+      "category": "telefone_br",
+      "regex": "(?<![\\w.])\\(\\d{2}\\)\\s?9?\\d{4}-\\d{4}(?![\\w])",
+      "flags": "g"
+    },
+    {
+      "category": "chave_sk",
+      "regex": "\\bsk-(?:ant-|proj-)?[A-Za-z0-9_-]{16,}",
+      "flags": "g"
+    },
+    {
+      "category": "chave_google",
+      "regex": "\\bAIza[0-9A-Za-z_-]{30,}",
+      "flags": "g"
+    },
+    {
+      "category": "token_github",
+      "regex": "\\bgh[pousr]_[A-Za-z0-9]{20,}",
+      "flags": "g"
+    },
+    {
+      "category": "token_slack",
+      "regex": "\\bxox[abprs]-[A-Za-z0-9-]{10,}",
+      "flags": "g"
+    },
+    {
+      "category": "chave_aws",
+      "regex": "\\bAKIA[0-9A-Z]{16}\\b",
+      "flags": "g"
+    },
+    {
+      "category": "bearer",
+      "regex": "\\bBearer\\s+[A-Za-z0-9._~+/=-]{20,}",
+      "flags": "g"
+    },
+    {
+      "category": "chave_privada_pem",
+      "regex": "-----BEGIN [A-Z ]*PRIVATE KEY-----",
+      "flags": "g"
+    },
+    {
+      "category": "atribuicao_segredo",
+      "regex": "\\b(?:api[_-]?key|secret|password|passwd|token|authorization)[\"']?\\s*[:=]\\s*[\"'][^\"'\\s]{12,}[\"']",
+      "flags": "gi"
+    },
+    {
+      "category": "id_requisicao_anthropic",
+      "regex": "\\bmsg_[A-Za-z0-9]{16,}",
+      "flags": "g"
+    },
+    {
+      "category": "id_requisicao_openai",
+      "regex": "\\b(?:chatcmpl|resp|req|run|thread|asst|file|org|proj)[-_][A-Za-z0-9]{12,}",
+      "flags": "g"
+    },
+    {
+      "category": "x_request_id",
+      "regex": "\\b(?:x-)?request-?id[\"']?\\s*[:=]\\s*[\"']?[A-Za-z0-9_-]{8,}",
+      "flags": "gi"
+    },
+    {
+      "category": "gemini_response_id_valor",
+      "regex": "[\"']responseId[\"']\\s*:\\s*[\"'][^\"']{6,}[\"']",
+      "flags": "g"
+    },
+    {
+      "category": "nome_pessoa_ou_conta",
+      "regex": "(lista omitida no relatório; veja o código do scanner)",
+      "flags": "gi"
+    },
+    {
+      "category": "arquivo_segredo",
+      "regex": "(lista omitida no relatório; veja o código do scanner)",
+      "flags": "g"
+    },
+    {
+      "category": "workspace_ou_org_nomeado",
+      "regex": "\\b(?:workspace|organization[_ -]?(?:id|name)|org[_-]?id)\\b[\"']?\\s*[:=]\\s*[\"'][^\"']+[\"']",
+      "flags": "gi"
+    }
+  ],
+  "patternsReview": [
+    "revisao_palavra_workspace",
+    "revisao_palavra_account"
+  ],
+  "blockingFindings": 0,
+  "countsPerCategory": {
+    "caminho_usuario_windows": 0,
+    "caminho_usuario_unix": 0,
+    "email": 0,
+    "telefone_internacional": 0,
+    "telefone_br": 0,
+    "chave_sk": 0,
+    "chave_google": 0,
+    "token_github": 0,
+    "token_slack": 0,
+    "chave_aws": 0,
+    "bearer": 0,
+    "chave_privada_pem": 0,
+    "atribuicao_segredo": 0,
+    "id_requisicao_anthropic": 0,
+    "id_requisicao_openai": 0,
+    "x_request_id": 0,
+    "gemini_response_id_valor": 0,
+    "nome_pessoa_ou_conta": 0,
+    "arquivo_segredo": 0,
+    "workspace_ou_org_nomeado": 0,
+    "revisao_palavra_workspace": 11,
+    "revisao_palavra_account": 1
+  },
+  "verdict": "PASS",
+  "findings": []
+}

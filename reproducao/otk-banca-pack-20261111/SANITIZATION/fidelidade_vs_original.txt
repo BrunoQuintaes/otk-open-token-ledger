@@ -1,0 +1,30 @@
+pairs idêntico byte a byte: true
+metrics_csv idêntico byte a byte: true
+tables_md idêntico byte a byte: true
+tables_tex idêntico byte a byte: true
+missing idêntico byte a byte: true
+excluded idêntico byte a byte: true
+== inventory_jsonl campos que diferem: 1
+   [].source_file_sha256 662
+== reconciliation campos que diferem: 14
+   .sourceFiles.docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/besu/pv3-live-besu-2026-10-07t05-17-21-275_calls.jsonl 1
+   .sourceFiles.docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/cacheprobe/pv3-live-cacheprobe-2026-10-07t05-17-01-243_calls.jsonl 1
+   .sourceFiles.docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign/pv3-live-campaign-2026-10-07t04-57-14-774_calls.jsonl 1
+   .sourceFiles.docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign_start-index-27/pv3-live-campaign-2026-10-07t05-11-27-123_calls.jsonl 1
+   .sourceFiles.docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/besu/pv3-gemini35-live-besu-2026-10-07t05-08-03-977_calls.jsonl 1
+   .sourceFiles.docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/cacheprobe/pv3-gemini35-live-cacheprobe-2026-10-07t05-07-38-327_calls.jsonl 1
+   .sourceFiles.docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign/pv3-gemini35-live-campaign-2026-10-07t04-52-52-082_calls.jsonl 1
+   .sourceFiles.docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign_start-index-66/pv3-gemini35-live-campaign-2026-10-07t05-03-44-975_calls.jsonl 1
+   .sourceFiles.docs/_ops/OVERNIGHT2_20261006/campaign/openai/besu/pv3-openai-live-besu-2026-10-07t05-16-34-630_calls.jsonl 1
+   .sourceFiles.docs/_ops/OVERNIGHT2_20261006/campaign/openai/cacheprobe/pv3-openai-live-cacheprobe-2026-10-07t05-16-12-321_calls.jsonl 1
+   .sourceFiles.docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_max-calls-10/pv3-openai-live-campaign-2026-10-07t04-47-10-738_calls.jsonl 1
+   .sourceFiles.docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-10/pv3-openai-live-campaign-2026-10-07t04-48-20-564_calls.jsonl 1
+   .sourceFiles.docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-137/pv3-openai-live-campaign-2026-10-07t05-09-06-868_calls.jsonl 1
+   .sourceFiles.docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-97/pv3-openai-live-campaign-2026-10-07t05-01-19-314_calls.jsonl 1
+== denominators campos que diferem: 2
+   .inventory.path 1
+   .inventory.sha256 1
+== comparison campos que diferem: 1
+   .inputs.inventory.sha256 1
+== example campos que diferem: 1
+   .source 1

@@ -1,0 +1,162 @@
+# OTK Helm — default values
+# Override per-environment: helm install otk ./infra/helm/otk -f values-production.yaml
+
+# -- Container image
+image:
+  repository: otk-zk-metering
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# -- Replica count (ignored when autoscaling.enabled=true)
+replicaCount: 1
+
+# -- Service
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8787
+
+# -- API configuration (non-secret env vars → ConfigMap)
+config:
+  API_PORT: "8787"
+  NODE_ENV: "production"
+  OTK_CORS_ORIGINS: ""
+  OTK_RL_MAX_REQUESTS: "1000"
+  OTK_AUTH_FAIL_MAX: "20"
+  OTK_SHUTDOWN_TIMEOUT_MS: "10000"
+  OTK_STRICT_VERSIONING: ""
+  OTK_RECEIPT_LOG: ""
+  GIT_HEAD: ""
+  PROVER_URL: "http://prover:3001"
+
+# -- Secrets (credentials → Secret)
+# Set existingSecret to use a pre-created Secret (SealedSecrets / External Secrets Operator).
+# Leave empty to render a chart-managed Secret from secrets.data.
+secrets:
+  existingSecret: ""
+  data:
+    OTK_ADMIN_KEY: ""
+    OTK_DB_URL: ""
+    OTK_REDIS_URL: ""
+    OTK_TENANTS: ""
+    RPC: ""
+    PRIVKEY: ""
+    OTK_JWT_SECRET: ""    # SEC-04: required for JWT signing
+    OTK_CSRF_SECRET: ""   # SEC-04: required for CSRF token signing
+
+# -- Resource requests/limits
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+# -- Liveness probe: process alive (H4.4 /healthz)
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: api
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# -- Readiness probe: can serve traffic, checks Redis (H4.4 /readyz)
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: api
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# -- Startup probe: slow-start guard before liveness kicks in
+startupProbe:
+  httpGet:
+    path: /healthz
+    port: api
+  periodSeconds: 5
+  failureThreshold: 10
+  timeoutSeconds: 3
+
+# -- Deployment strategy
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+
+# -- Graceful shutdown (preStop sleep + app SIGTERM drain)
+terminationGracePeriodSeconds: 20
+
+# -- Pod security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+# -- Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+# -- Service account
+serviceAccount:
+  create: false
+  name: ""
+  annotations: {}
+
+# -- PodDisruptionBudget
+pdb:
+  enabled: false
+  minAvailable: 1
+
+# -- Autoscaling (disabled by default — see Pack 3B-02)
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  customMetrics: []
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 60
+        - type: Pods
+          value: 4
+          periodSeconds: 60
+      selectPolicy: Max
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 25
+          periodSeconds: 60
+      selectPolicy: Min
+
+# -- Ingress (disabled by default — see Pack 3B-02)
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+  hosts: []
+  tls: []
+
+podAnnotations: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

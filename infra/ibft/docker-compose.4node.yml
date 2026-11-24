@@ -1,0 +1,157 @@
+name: otk-ibft
+
+networks:
+  otk-ibft-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.31.200.0/24
+
+services:
+  besu-node1:
+    image: hyperledger/besu:25.12.0
+    container_name: besu-node1
+    restart: unless-stopped
+    networks:
+      otk-ibft-net:
+        ipv4_address: 172.31.200.11
+    ports:
+      - '9545:8545'
+      - '9546:8546'
+      - '30303:30303'
+    volumes:
+      - './config/genesis.json:/config/genesis.json:ro'
+      - './config/static-nodes.json:/static/static-nodes.json:ro'
+      - './node1/data:/data'
+    command:
+      - --genesis-file=/config/genesis.json
+      - --network-id=1337
+      - --data-path=/data
+      - --node-private-key-file=/data/key
+      - --rpc-http-enabled=true
+      - --rpc-http-host=0.0.0.0
+      - --rpc-http-port=8545
+      - --rpc-http-api=ETH,NET,WEB3,IBFT,ADMIN
+      - --rpc-http-cors-origins=all
+      - --host-allowlist=*
+      - --rpc-ws-enabled=true
+      - --rpc-ws-host=0.0.0.0
+      - --rpc-ws-port=8546
+      - --rpc-ws-api=ETH,NET,WEB3,IBFT,ADMIN
+      - --discovery-enabled=false
+      - --p2p-host=172.31.200.11
+      - --p2p-port=30303
+      - --p2p-interface=0.0.0.0
+      - --static-nodes-file=/static/static-nodes.json
+      - --sync-min-peers=1
+
+  besu-node2:
+    image: hyperledger/besu:25.12.0
+    container_name: besu-node2
+    restart: unless-stopped
+    networks:
+      otk-ibft-net:
+        ipv4_address: 172.31.200.12
+    ports:
+      - '9547:8545'
+      - '9548:8546'
+      - '30304:30303'
+    volumes:
+      - './config/genesis.json:/config/genesis.json:ro'
+      - './config/static-nodes.json:/static/static-nodes.json:ro'
+      - './node2/data:/data'
+    command:
+      - --genesis-file=/config/genesis.json
+      - --network-id=1337
+      - --data-path=/data
+      - --node-private-key-file=/data/key
+      - --rpc-http-enabled=true
+      - --rpc-http-host=0.0.0.0
+      - --rpc-http-port=8545
+      - --rpc-http-api=ETH,NET,WEB3,IBFT,ADMIN
+      - --rpc-http-cors-origins=all
+      - --host-allowlist=*
+      - --rpc-ws-enabled=true
+      - --rpc-ws-host=0.0.0.0
+      - --rpc-ws-port=8546
+      - --rpc-ws-api=ETH,NET,WEB3,IBFT,ADMIN
+      - --discovery-enabled=false
+      - --p2p-host=172.31.200.12
+      - --p2p-port=30303
+      - --p2p-interface=0.0.0.0
+      - --static-nodes-file=/static/static-nodes.json
+      - --sync-min-peers=1
+
+  besu-node3:
+    image: hyperledger/besu:25.12.0
+    container_name: besu-node3
+    restart: unless-stopped
+    networks:
+      otk-ibft-net:
+        ipv4_address: 172.31.200.13
+    ports:
+      - '9549:8545'
+      - '9550:8546'
+      - '30305:30303'
+    volumes:
+      - './config/genesis.json:/config/genesis.json:ro'
+      - './config/static-nodes.json:/static/static-nodes.json:ro'
+      - './node3/data:/data'
+    command:
+      - --genesis-file=/config/genesis.json
+      - --network-id=1337
+      - --data-path=/data
+      - --node-private-key-file=/data/key
+      - --rpc-http-enabled=true
+      - --rpc-http-host=0.0.0.0
+      - --rpc-http-port=8545
+      - --rpc-http-api=ETH,NET,WEB3,IBFT,ADMIN
+      - --rpc-http-cors-origins=all
+      - --host-allowlist=*
+      - --rpc-ws-enabled=true
+      - --rpc-ws-host=0.0.0.0
+      - --rpc-ws-port=8546
+      - --rpc-ws-api=ETH,NET,WEB3,IBFT,ADMIN
+      - --discovery-enabled=false
+      - --p2p-host=172.31.200.13
+      - --p2p-port=30303
+      - --p2p-interface=0.0.0.0
+      - --static-nodes-file=/static/static-nodes.json
+      - --sync-min-peers=1
+
+  besu-node4:
+    image: hyperledger/besu:25.12.0
+    container_name: besu-node4
+    restart: unless-stopped
+    networks:
+      otk-ibft-net:
+        ipv4_address: 172.31.200.14
+    ports:
+      - '9551:8545'
+      - '9552:8546'
+      - '30306:30303'
+    volumes:
+      - './config/genesis.json:/config/genesis.json:ro'
+      - './config/static-nodes.json:/static/static-nodes.json:ro'
+      - './node4/data:/data'
+    command:
+      - --genesis-file=/config/genesis.json
+      - --network-id=1337
+      - --data-path=/data
+      - --node-private-key-file=/data/key
+      - --rpc-http-enabled=true
+      - --rpc-http-host=0.0.0.0
+      - --rpc-http-port=8545
+      - --rpc-http-api=ETH,NET,WEB3,IBFT,ADMIN
+      - --rpc-http-cors-origins=all
+      - --host-allowlist=*
+      - --rpc-ws-enabled=true
+      - --rpc-ws-host=0.0.0.0
+      - --rpc-ws-port=8546
+      - --rpc-ws-api=ETH,NET,WEB3,IBFT,ADMIN
+      - --discovery-enabled=false
+      - --p2p-host=172.31.200.14
+      - --p2p-port=30303
+      - --p2p-interface=0.0.0.0
+      - --static-nodes-file=/static/static-nodes.json
+      - --sync-min-peers=1

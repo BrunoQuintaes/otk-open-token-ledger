@@ -1,0 +1,4 @@
+# SYNTHETIC FIXTURE (OTK Phase 10 tests, 2026-10-06): invented values built to exercise the reconciliation classifications. NOT data exported by any provider; proves nothing about a real bill.
+date,line_item,project_id,cost_usd
+2026-10-01,"gpt-4o-mini-2024-07-18, input",proj_FIXTURE,0.00015
+2026-10-01,"gpt-4o-mini-2024-07-18, output",proj_FIXTURE,0.0003

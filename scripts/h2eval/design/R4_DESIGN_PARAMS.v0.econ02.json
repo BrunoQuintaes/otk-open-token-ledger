@@ -1,0 +1,93 @@
+{
+  "schema": "h2eval.r4_design_params.v0",
+  "label": "PROPOSTA_NAO_RATIFICADA / pos-piloto R17 / ANTES de qualquer dado confirmatorio R4",
+  "metReview": "INDEPENDENT_REVIEW_C149.md incorporada (T3 ON/demais OFF; criterios de gate P2; passo 0 Models API; T5-TTL NOT_PLANNED; count_tokens opcional; R4 arquivo novo). Revisao MET-02 do proprio R4 pendente.",
+  "authorization": "NENHUMA. Este arquivo e insumo OFFLINE para o BOT-02 gerar planos APOS ratificacao do R4, executor v-next e G15. Nao e plano, nao e GO.",
+  "basis": {
+    "preregistrationProposal": "R10_PREREGISTRATION_H2EVAL_R4_PROPOSAL.md",
+    "costsFile": "r4_costs.json (script r4_design_costs.mjs; leitura dos planos reais; tabela h2eval-v1 sha b7a9a2d6...)",
+    "corpusFile": "runs/R18_R20/evidence_final/corpus_candidate (manifesto imutavel; nada alterado)",
+    "committedAnthropicUsd": 0.01567128,
+    "anthropicCeilingUsd": 5,
+    "globalCeilingUsd": 11
+  },
+  "seed": 20261110,
+  "splitOrder": ["train", "comparative", "validation", "holdout"],
+  "gates": ["TRAIN_FROZEN", "VALIDATION_SELECTED(human select)", "HOLDOUT_EVALUATED_ONCE(human)"],
+  "armToCorpusCell": {
+    "T1": "S1 task=summary (sizeBucket S e L)",
+    "T2": "S1 task in {code_gen, code_fix}",
+    "T3": "S1 task=analysis",
+    "T4": "S2 (dialogo multi-mensagem, plannedCacheArm sem cache)",
+    "T5": "S3 (dialogo equivalente com cache; D7 opcao A)",
+    "M1": "imagem (sem celula no corpus; sem plano)",
+    "M2": "audio (sem celula no corpus; sem plano)"
+  },
+  "executorRequirements": {
+    "stopReasonRecorded": true,
+    "thinkingParamConfigurable": ["omitted(adaptive,low)", "{\"type\":\"disabled\"}"],
+    "maxTokensPerArm": "campanha deve aceitar maxOutputTokens por braco (hoje plan.ts:74 recusa campanha != 256)",
+    "usageSeparation": ["input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens", "visible_output", "reasoning_output(NOT_APPLICABLE se desligado)"],
+    "protocolHash": "sha256(preregSha:corpusSha256:phase) — hashes novos DEPOIS da ratificacao; este arquivo nao os contem",
+    "note": "mudar maxTokens/thinking/stop_reason = DELTA de executor + novo G15 + GO; nada disto e operacional"
+  },
+  "models": {
+    "claude-haiku-5-5": {
+      "role": "PRIMARIO (perfil novo prioritario; unico com G16 junto com Haiku 4.5)",
+      "provider": "anthropic",
+      "reasoningPolicy": {
+        "primary": "POR BRACO (MET-02 M-2): T1/T2/T4/T5 = OFF thinking {\"type\":\"disabled\"} (documentado publicamente; aceitacao na conta NOT_VERIFIED ate o passo 0 ou a SC1); T3 = ON adaptativo effort low, allowance 1024",
+        "contingencyIfRejected": "ON = adaptativo effort low, reasoning_allowance 1024 (folga conservadora de pior caso)",
+        "factorT3": "T3 primario em ON (teto 1024, allowance 1024); estrato T3 OFF pareado nos mesmos prompts (exploratorio); o estrato OFF pareado NAO entra no ajuste do M1"
+      },
+      "maxTokensDeclared": { "T1": 512, "T2": 1024, "T3": 1024, "T4": 256, "T5": 256 },
+      "maxTokensAdjustmentRule": "ver proposta §7.3 (regra da sonda P3, declarada antes do dado; os tetos acima sao o LIMITE SUPERIOR custeado: a regra so os mantem ou DESCE, nunca acima; refaz costCap e exige assinatura)",
+      "t5Ttl": "NOT_PLANNED (MET-02 M-5): releitura apos 5 min e concorrente exigem dialogos adicionais no corpus; sem plano nem custo",
+      "opsPerSplit": {
+        "T1": { "train": 27, "validation": 14, "holdout": 13, "groups": { "train": 8, "validation": 4, "holdout": 4 } },
+        "T2": { "train": 52, "validation": 29, "holdout": 27, "groups": { "train": 16, "validation": 8, "holdout": 8 } },
+        "T3": { "train": 26, "validation": 14, "holdout": 14, "groups": { "train": 8, "validation": 4, "holdout": 4 } },
+        "T4": { "train": 27, "validation": 9, "holdout": 9, "dialogs": { "train": 9, "validation": 3, "holdout": 3 } },
+        "T5": { "train": 54, "validation": 18, "holdout": 18, "dialogs": { "train": 18, "validation": 6, "holdout": 6 } }
+      },
+      "pooledS1": { "train": 105, "validation": 57, "holdout": 54, "groups": { "train": 32, "validation": 16, "holdout": 16 } },
+      "t3PairedOffStratum": { "calls": 54, "pairedWith": "T3 ON primario (mesmos prompts)", "usedFor": "estimandos de saida/raciocinio/custo; nunca para ajuste do M1", "worstCaseUsd": { "A_compacta": 0.055518, "B_generosa": 0.069342 } },
+      "d7CacheArm": { "eligibleCallsPerPilot": 6, "campaignEligibleCalls": 60, "rule": "opcao A preservada: denominador = chamadas S3 elegiveis posicao >= 2; numerador = HIT com cache_read>0 e outcome OK; Clopper-Pearson bilateral alfa 0,05; p_baixo >= 0,3; falha/inconclusiva permanece no denominador como nao-hit + STOP de integridade" }
+    },
+    "claude-haiku-4-5-20251001": {
+      "role": "SUPLEMENTAR (continuidade; D144-01); custa 10x o Haiku 5.5 na tabela h2eval-v1",
+      "provider": "anthropic",
+      "reasoningPolicy": { "primary": "sem raciocinio por padrao (allowance 0 no plano)", "contingency": "NA" },
+      "maxTokensDeclared": { "T1": 256, "T2": 512, "T3": 512, "T4": 256, "T5": 256 },
+      "opsPerSplit": {
+        "T1": { "comparative": 12, "groups": { "comparative": 4 } },
+        "T2": { "train": 52, "validation": 29, "holdout": 27 },
+        "T3": { "train": 26, "validation": 14, "holdout": 14 },
+        "T4": { "train": 27, "validation": 9, "holdout": 9 },
+        "T5": { "train": 54, "validation": 18, "holdout": 18 }
+      },
+      "stagedBehindSC": "SC1b e SC2b exigem GO proprio; a ordem preserva US$ 5"
+    },
+    "gpt-4o-mini-2024-07-18": { "role": "CONDICIONAL", "provider": "openai", "condition": "chave e conta atestadas (G16) + GO proprio", "maxTokensDeclared": { "T1": 256, "T2": 256, "T3": 256, "T4": 256, "T5": 256 }, "armsDesignedFor": ["T1", "T2", "T3", "T4", "T5"], "worstCaseUsdAllPlannedOps372At256": 0.30926, "ceilingUsd": 3, "armsExcluded": ["M1(NOT_EVALUATED nesta rodada)", "M2(NOT_SUPPORTED)"] },
+    "gemini-3.5-flash-lite": { "role": "CONDICIONAL / TRAVADO (fail-closed no Bot)", "provider": "google", "condition": "gate proprio do executor cientifico (cobranca, limite efetivo, saidas/raciocinio cobrados, credencial) + GO; se falhar SKIPPED_GATE", "reasoningAllowanceInPlan": 2048, "worstCaseUsdAllPlannedOps372At256": 2.70142, "ceilingUsd": 3, "armsExcluded": ["M1(NOT_EVALUATED)", "M2(NOT_EVALUATED: unico com API de audio, mas Google travado)"] }
+  },
+  "subcampaigns": {
+    "SC0": { "paid": false, "content": "executor v-next (stop_reason, thinking, maxTokens por braco), G15, planos, revisao MET-02, ratificacao R4" },
+    "SC1": { "model": "claude-haiku-5-5", "calls": 33, "blocksWorstCaseUsd": {"B1_OFF_1024_x6":0.006663,"B2_ON_1024_x6":0.009735,"B3_ON_256_x6_replica_R17":0.007431,"B4_S2_x6":0.00873,"B5_S3_x9":0.013122,"firstOffCallAlone":0.000751}, "composition": "6 S1 x {OFF teto 1024; ON teto 1024; ON teto 256 replicando R17} = 18 + 15 dialogos (S2 6 + S3 9, OFF, teto 256)", "worstCaseUsd": 0.045681, "cumulativeAnthropicUsd": 0.061352, "fractionOfUsd5": 0.0122, "label": "PILOTO_R4_EXPLORATORIO (ciclo 2; nunca treino/validacao/holdout)" },
+    "SC1b": { "model": "claude-haiku-4-5-20251001", "calls": 21, "worstCaseUsd": 0.285042, "optional": true },
+    "SC2": { "model": "claude-haiku-5-5", "calls": 216, "content": "S1 treino 105 -> freeze -> validacao 57 -> select -> holdout 54 (uma vez)", "worstCaseUsd": { "A_compacta": 0.245533, "B_generosa": 0.293917 }, "noteAllOff": { "A_compacta": 0.217885, "B_generosa": 0.266269 }, "pairedOffT3": { "calls": 54, "worstCaseUsd": { "A_compacta": 0.055518, "B_generosa": 0.069342 } } },
+    "SC3": { "model": "claude-haiku-5-5", "calls": 135, "content": "T4 45 + T5 90 (S2/S3)", "worstCaseUsd": 0.196782 },
+    "SC2b_SC3b": { "model": "claude-haiku-4-5-20251001", "calls": 309, "worstCaseUsd": { "S1_174_A": 1.780662, "S1_174_B": 2.210742, "conv_135": 1.967158 }, "note": "so cabe com Haiku 5.5 em configuracao A (total 4,592 = 91,8%); em B estoura US$ 5 (5,084)" },
+    "SC4": { "providers": ["openai", "google"], "status": "CONDICIONAL" },
+    "SC5": { "arms": ["M1", "M2"], "status": "EXPLORATORIO / sem plano / sem chamada paga proposta nesta rodada" }
+  },
+  "haiku55OnlyWorstCaseUsd": { "A_compacta": { "total": 0.543514, "cumulativeWithCommitted": 0.559185, "fractionOfUsd5": 0.1118 }, "B_generosa": { "total": 0.605722, "cumulativeWithCommitted": 0.621393, "fractionOfUsd5": 0.1242 } },
+  "anthropicBothModelsWorstCaseUsd": { "A_compacta": { "cumulative": 4.592047, "fractionOfUsd5": 0.9184 }, "B_generosa": { "cumulative": 5.084335, "fractionOfUsd5": 1.0169, "exceedsUsd5": true } },
+  "stops": {
+    "source": "R09 R2 §9 (inalterados)",
+    "list": [">20% EXCL_*", "2 erros consecutivos", "Ctab > costCap", "p_baixo < 0,3 => bracos de cache NOT_RUN", "pausa em 80% do subteto"],
+    "r4New": ["thinking disabled rejeitado (400) => bracos OFF NOT_RUN, politica contingente ON", "stop_reason ausente em qualquer RESPONSE => STOP de integridade"]
+  },
+  "notDelegable": ["select (assinatura humana)", "avaliar holdout (humano; uma vez)", "ratificacao do R4", "GO de cada subcampanha", "escolha da politica de raciocinio/teto apos a SC1"],
+  "pilotDerivedItems": "POS_HOC_DERIVADA_EXPLORATORIA: caps 512/1024 e politica OFF sao motivados pelo R17 (S1 6/6 sem resposta visivel com teto 256); nenhum threshold de hipotese existente foi criado a partir dele"
+}

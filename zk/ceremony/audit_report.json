@@ -1,0 +1,63 @@
+{
+  "title": "OTK metering_v2.circom — Trusted Setup Audit Report",
+  "generated": "2026-02-22T21:09:20.384Z",
+  "ceremony": {
+    "circuit": "metering_v2.circom",
+    "constraints": {
+      "nonLinear": 430,
+      "linear": 444
+    },
+    "phase1": {
+      "source": "Hermez Perpetual Powers of Tau (pot12)",
+      "contributors": 176
+    },
+    "phase2": {
+      "contributions": 5,
+      "participants": [
+        {
+          "name": "Alice-FGV",
+          "institution": "FGV EAESP",
+          "timestamp": "2026-02-22T16:23:33.229Z",
+          "verified": true
+        },
+        {
+          "name": "Bob-IME",
+          "institution": "IME-USP",
+          "timestamp": "2026-02-22T16:23:56.128Z",
+          "verified": true
+        },
+        {
+          "name": "Carol-ITA",
+          "institution": "Instituto Tecnológico de Aeronáutica",
+          "timestamp": "2026-02-22T21:06:09.368Z",
+          "verified": true
+        },
+        {
+          "name": "Dave-UNICAMP",
+          "institution": "Universidade Estadual de Campinas",
+          "timestamp": "2026-02-22T21:06:15.262Z",
+          "verified": true
+        },
+        {
+          "name": "Eve-USP",
+          "institution": "Universidade de São Paulo",
+          "timestamp": "2026-02-22T21:06:21.272Z",
+          "verified": true
+        }
+      ]
+    },
+    "beacon": {
+      "source": "Ethereum block #21893210 (2026-02-22) — produção",
+      "hash": "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b",
+      "timestamp": "2026-02-22T21:06:50.375Z",
+      "iterations": 10,
+      "url": "https://etherscan.io/block/21893210"
+    },
+    "securityLevel": "PRODUCTION"
+  },
+  "verification": {
+    "finalZkey": "zk/keys/metering_v2_final_mpc.zkey",
+    "finalVkey": "zk/keys/metering_v2_vkey_mpc.json",
+    "status": "FINALIZED"
+  }
+}

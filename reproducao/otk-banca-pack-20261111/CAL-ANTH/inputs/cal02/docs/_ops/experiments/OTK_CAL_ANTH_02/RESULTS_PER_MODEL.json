@@ -1,0 +1,756 @@
+{
+ "schema": "otk.cal_anth_02.results.v1",
+ "simulated": false,
+ "policy": {
+  "id": "otk.calibration_acceptance.v2.candidate",
+  "minValid": 150,
+  "minGroups": 50,
+  "maxAbstentionRate": 0.1,
+  "maxFalseAlertRate": 0.05,
+  "minDetectionPlus25": 0.5
+ },
+ "analysisCodeSha256": "27d7ee47e434965b4f172f0284af69651b9ae5bddf1d73c953aa203c83d47209",
+ "generatedAt": "2026-10-15T13:07:58.210Z",
+ "models": {
+  "claude-haiku-5-5": {
+   "status": "EXPERIMENTALLY_CALIBRATED",
+   "failedChecks": [],
+   "operations": {
+    "calls": 192,
+    "valid": 192,
+    "refusals": 0,
+    "notBilled": 0,
+    "uncertain": 0,
+    "wrongModel": 0,
+    "costMicroUsd": "13841"
+   },
+   "detector": {
+    "id": "D1",
+    "A": 12,
+    "R": 0.14,
+    "K": 0,
+    "s": [
+     0,
+     0
+    ]
+   },
+   "integral": {
+    "n": 192,
+    "groups": 64,
+    "abstained": 0,
+    "abstentionRate": 0,
+    "bias": -2.1406,
+    "mae": 16.2135,
+    "p95Abs": 40,
+    "relMedian": 0.0394,
+    "falseAlerts": 0,
+    "falseAlertRate": 0,
+    "detection": {
+     "+10%": 0.1094,
+     "+25%": 0.7708,
+     "+50 tokens": 0.5521
+    },
+    "m0Mae": 61.401
+   },
+   "excludingRefusals": {
+    "n": 192,
+    "groups": 64,
+    "abstained": 0,
+    "abstentionRate": 0,
+    "bias": -2.1406,
+    "mae": 16.2135,
+    "p95Abs": 40,
+    "relMedian": 0.0394,
+    "falseAlerts": 0,
+    "falseAlertRate": 0,
+    "detection": {
+     "+10%": 0.1094,
+     "+25%": 0.7708,
+     "+50 tokens": 0.5521
+    },
+    "m0Mae": 61.401
+   },
+   "bootstrap": {
+    "B": 2000,
+    "seed": 20261016,
+    "unit": "holdout text group",
+    "ci95": {
+     "falseAlertRate": [
+      0,
+      0
+     ],
+     "detectionPlus25": [
+      0.6615,
+      0.8646
+     ],
+     "mae": [
+      10.7552,
+      23.2969
+     ]
+    }
+   },
+   "confidenceSupplement": {
+    "faUpperBelow5pct": true,
+    "det25LowerAbove50pct": true
+   },
+   "byFamily": {
+    "code_ts": {
+     "n": 24,
+     "groups": 8,
+     "abstained": 0,
+     "abstentionRate": 0,
+     "bias": -24.5417,
+     "mae": 24.5417,
+     "p95Abs": 66,
+     "relMedian": 0.0286,
+     "falseAlerts": 0,
+     "falseAlertRate": 0,
+     "detection": {
+      "+10%": 0.25,
+      "+25%": 1,
+      "+50 tokens": 0.375
+     },
+     "m0Mae": 85.1667
+    },
+    "en_prose": {
+     "n": 24,
+     "groups": 8,
+     "abstained": 0,
+     "abstentionRate": 0,
+     "bias": 4.4583,
+     "mae": 4.4583,
+     "p95Abs": 12,
+     "relMedian": 0.0351,
+     "falseAlerts": 0,
+     "falseAlertRate": 0,
+     "detection": {
+      "+10%": 0,
+      "+25%": 0.875,
+      "+50 tokens": 0.75
+     },
+     "m0Mae": 39.3333
+    },
+    "json": {
+     "n": 24,
+     "groups": 8,
+     "abstained": 0,
+     "abstentionRate": 0,
+     "bias": 7.6667,
+     "mae": 9.5,
+     "p95Abs": 26,
+     "relMedian": 0.0114,
+     "falseAlerts": 0,
+     "falseAlertRate": 0,
+     "detection": {
+      "+10%": 0.0417,
+      "+25%": 1,
+      "+50 tokens": 0.375
+     },
+     "m0Mae": 33.0833
+    },
+    "markdown": {
+     "n": 24,
+     "groups": 8,
+     "abstained": 0,
+     "abstentionRate": 0,
+     "bias": -17.0417,
+     "mae": 32.9583,
+     "p95Abs": 160,
+     "relMedian": 0.0205,
+     "falseAlerts": 0,
+     "falseAlertRate": 0,
+     "detection": {
+      "+10%": 0.25,
+      "+25%": 1,
+      "+50 tokens": 0.375
+     },
+     "m0Mae": 73
+    },
+    "numeric": {
+     "n": 24,
+     "groups": 8,
+     "abstained": 0,
+     "abstentionRate": 0,
+     "bias": 27.25,
+     "mae": 27.25,
+     "p95Abs": 97,
+     "relMedian": 0.099,
+     "falseAlerts": 0,
+     "falseAlertRate": 0,
+     "detection": {
+      "+10%": 0,
+      "+25%": 0.375,
+      "+50 tokens": 0.1667
+     },
+     "m0Mae": 85.5417
+    },
+    "pt_prose": {
+     "n": 24,
+     "groups": 8,
+     "abstained": 0,
+     "abstentionRate": 0,
+     "bias": -5.4583,
+     "mae": 13.625,
+     "p95Abs": 36,
+     "relMedian": 0.0273,
+     "falseAlerts": 0,
+     "falseAlertRate": 0,
+     "detection": {
+      "+10%": 0.0833,
+      "+25%": 0.9167,
+      "+50 tokens": 0.5
+     },
+     "m0Mae": 55.25
+    },
+    "tiny": {
+     "n": 24,
+     "groups": 8,
+     "abstained": 0,
+     "abstentionRate": 0,
+     "bias": -1.2917,
+     "mae": 2.125,
+     "p95Abs": 6,
+     "relMedian": 0.0345,
+     "falseAlerts": 0,
+     "falseAlertRate": 0,
+     "detection": {
+      "+10%": 0,
+      "+25%": 0.25,
+      "+50 tokens": 1
+     },
+     "m0Mae": 14.3333
+    },
+    "unicode": {
+     "n": 24,
+     "groups": 8,
+     "abstained": 0,
+     "abstentionRate": 0,
+     "bias": -8.1667,
+     "mae": 15.25,
+     "p95Abs": 37,
+     "relMedian": 0.0492,
+     "falseAlerts": 0,
+     "falseAlertRate": 0,
+     "detection": {
+      "+10%": 0.25,
+      "+25%": 0.75,
+      "+50 tokens": 0.875
+     },
+     "m0Mae": 105.5
+    }
+   },
+   "countTokensVsFinal": {
+    "n": 192,
+    "equal": 192,
+    "finalMinusCountTokens": {
+     "0": 192
+    }
+   }
+  },
+  "claude-sonnet-5-5": {
+   "status": "EXPERIMENTALLY_CALIBRATED",
+   "failedChecks": [],
+   "operations": {
+    "calls": 192,
+    "valid": 192,
+    "refusals": 0,
+    "notBilled": 0,
+    "uncertain": 0,
+    "wrongModel": 0,
+    "costMicroUsd": "274698"
+   },
+   "detector": {
+    "id": "D1",
+    "A": 12,
+    "R": 0.14,
+    "K": 0,
+    "s": [
+     0,
+     0
+    ]
+   },
+   "integral": {
+    "n": 192,
+    "groups": 64,
+    "abstained": 0,
+    "abstentionRate": 0,
+    "bias": -2.1406,
+    "mae": 16.2135,
+    "p95Abs": 40,
+    "relMedian": 0.0394,
+    "falseAlerts": 0,
+    "falseAlertRate": 0,
+    "detection": {
+     "+10%": 0.1094,
+     "+25%": 0.7708,
+     "+50 tokens": 0.5521
+    },
+    "m0Mae": 61.401
+   },
+   "excludingRefusals": {
+    "n": 192,
+    "groups": 64,
+    "abstained": 0,
+    "abstentionRate": 0,
+    "bias": -2.1406,
+    "mae": 16.2135,
+    "p95Abs": 40,
+    "relMedian": 0.0394,
+    "falseAlerts": 0,
+    "falseAlertRate": 0,
+    "detection": {
+     "+10%": 0.1094,
+     "+25%": 0.7708,
+     "+50 tokens": 0.5521
+    },
+    "m0Mae": 61.401
+   },
+   "bootstrap": {
+    "B": 2000,
+    "seed": 20261016,
+    "unit": "holdout text group",
+    "ci95": {
+     "falseAlertRate": [
+      0,
+      0
+     ],
+     "detectionPlus25": [
+      0.6615,
+      0.8646
+     ],
+     "mae": [
+      10.7552,
+      23.2969
+     ]
+    }
+   },
+   "confidenceSupplement": {
+    "faUpperBelow5pct": true,
+    "det25LowerAbove50pct": true
+   },
+   "byFamily": {
+    "code_ts": {
+     "n": 24,
+     "groups": 8,
+     "abstained": 0,
+     "abstentionRate": 0,
+     "bias": -24.5417,
+     "mae": 24.5417,
+     "p95Abs": 66,
+     "relMedian": 0.0286,
+     "falseAlerts": 0,
+     "falseAlertRate": 0,
+     "detection": {
+      "+10%": 0.25,
+      "+25%": 1,
+      "+50 tokens": 0.375
+     },
+     "m0Mae": 85.1667
+    },
+    "en_prose": {
+     "n": 24,
+     "groups": 8,
+     "abstained": 0,
+     "abstentionRate": 0,
+     "bias": 4.4583,
+     "mae": 4.4583,
+     "p95Abs": 12,
+     "relMedian": 0.0351,
+     "falseAlerts": 0,
+     "falseAlertRate": 0,
+     "detection": {
+      "+10%": 0,
+      "+25%": 0.875,
+      "+50 tokens": 0.75
+     },
+     "m0Mae": 39.3333
+    },
+    "json": {
+     "n": 24,
+     "groups": 8,
+     "abstained": 0,
+     "abstentionRate": 0,
+     "bias": 7.6667,
+     "mae": 9.5,
+     "p95Abs": 26,
+     "relMedian": 0.0114,
+     "falseAlerts": 0,
+     "falseAlertRate": 0,
+     "detection": {
+      "+10%": 0.0417,
+      "+25%": 1,
+      "+50 tokens": 0.375
+     },
+     "m0Mae": 33.0833
+    },
+    "markdown": {
+     "n": 24,
+     "groups": 8,
+     "abstained": 0,
+     "abstentionRate": 0,
+     "bias": -17.0417,
+     "mae": 32.9583,
+     "p95Abs": 160,
+     "relMedian": 0.0205,
+     "falseAlerts": 0,
+     "falseAlertRate": 0,
+     "detection": {
+      "+10%": 0.25,
+      "+25%": 1,
+      "+50 tokens": 0.375
+     },
+     "m0Mae": 73
+    },
+    "numeric": {
+     "n": 24,
+     "groups": 8,
+     "abstained": 0,
+     "abstentionRate": 0,
+     "bias": 27.25,
+     "mae": 27.25,
+     "p95Abs": 97,
+     "relMedian": 0.099,
+     "falseAlerts": 0,
+     "falseAlertRate": 0,
+     "detection": {
+      "+10%": 0,
+      "+25%": 0.375,
+      "+50 tokens": 0.1667
+     },
+     "m0Mae": 85.5417
+    },
+    "pt_prose": {
+     "n": 24,
+     "groups": 8,
+     "abstained": 0,
+     "abstentionRate": 0,
+     "bias": -5.4583,
+     "mae": 13.625,
+     "p95Abs": 36,
+     "relMedian": 0.0273,
+     "falseAlerts": 0,
+     "falseAlertRate": 0,
+     "detection": {
+      "+10%": 0.0833,
+      "+25%": 0.9167,
+      "+50 tokens": 0.5
+     },
+     "m0Mae": 55.25
+    },
+    "tiny": {
+     "n": 24,
+     "groups": 8,
+     "abstained": 0,
+     "abstentionRate": 0,
+     "bias": -1.2917,
+     "mae": 2.125,
+     "p95Abs": 6,
+     "relMedian": 0.0345,
+     "falseAlerts": 0,
+     "falseAlertRate": 0,
+     "detection": {
+      "+10%": 0,
+      "+25%": 0.25,
+      "+50 tokens": 1
+     },
+     "m0Mae": 14.3333
+    },
+    "unicode": {
+     "n": 24,
+     "groups": 8,
+     "abstained": 0,
+     "abstentionRate": 0,
+     "bias": -8.1667,
+     "mae": 15.25,
+     "p95Abs": 37,
+     "relMedian": 0.0492,
+     "falseAlerts": 0,
+     "falseAlertRate": 0,
+     "detection": {
+      "+10%": 0.25,
+      "+25%": 0.75,
+      "+50 tokens": 0.875
+     },
+     "m0Mae": 105.5
+    }
+   },
+   "countTokensVsFinal": {
+    "n": 192,
+    "equal": 192,
+    "finalMinusCountTokens": {
+     "0": 192
+    }
+   }
+  },
+  "claude-opus-5-5": {
+   "status": "EXPERIMENTALLY_CALIBRATED",
+   "failedChecks": [],
+   "operations": {
+    "calls": 192,
+    "valid": 192,
+    "refusals": 0,
+    "notBilled": 0,
+    "uncertain": 0,
+    "wrongModel": 0,
+    "costMicroUsd": "558872"
+   },
+   "detector": {
+    "id": "D1",
+    "A": 12,
+    "R": 0.14,
+    "K": 0,
+    "s": [
+     0,
+     0
+    ]
+   },
+   "integral": {
+    "n": 192,
+    "groups": 64,
+    "abstained": 0,
+    "abstentionRate": 0,
+    "bias": -2.1406,
+    "mae": 16.2135,
+    "p95Abs": 40,
+    "relMedian": 0.0388,
+    "falseAlerts": 0,
+    "falseAlertRate": 0,
+    "detection": {
+     "+10%": 0.1094,
+     "+25%": 0.776,
+     "+50 tokens": 0.5521
+    },
+    "m0Mae": 61.401
+   },
+   "excludingRefusals": {
+    "n": 192,
+    "groups": 64,
+    "abstained": 0,
+    "abstentionRate": 0,
+    "bias": -2.1406,
+    "mae": 16.2135,
+    "p95Abs": 40,
+    "relMedian": 0.0388,
+    "falseAlerts": 0,
+    "falseAlertRate": 0,
+    "detection": {
+     "+10%": 0.1094,
+     "+25%": 0.776,
+     "+50 tokens": 0.5521
+    },
+    "m0Mae": 61.401
+   },
+   "bootstrap": {
+    "B": 2000,
+    "seed": 20261016,
+    "unit": "holdout text group",
+    "ci95": {
+     "falseAlertRate": [
+      0,
+      0
+     ],
+     "detectionPlus25": [
+      0.6667,
+      0.8698
+     ],
+     "mae": [
+      10.7552,
+      23.2969
+     ]
+    }
+   },
+   "confidenceSupplement": {
+    "faUpperBelow5pct": true,
+    "det25LowerAbove50pct": true
+   },
+   "byFamily": {
+    "code_ts": {
+     "n": 24,
+     "groups": 8,
+     "abstained": 0,
+     "abstentionRate": 0,
+     "bias": -24.5417,
+     "mae": 24.5417,
+     "p95Abs": 66,
+     "relMedian": 0.0286,
+     "falseAlerts": 0,
+     "falseAlertRate": 0,
+     "detection": {
+      "+10%": 0.25,
+      "+25%": 1,
+      "+50 tokens": 0.375
+     },
+     "m0Mae": 85.1667
+    },
+    "en_prose": {
+     "n": 24,
+     "groups": 8,
+     "abstained": 0,
+     "abstentionRate": 0,
+     "bias": 4.4583,
+     "mae": 4.4583,
+     "p95Abs": 12,
+     "relMedian": 0.0345,
+     "falseAlerts": 0,
+     "falseAlertRate": 0,
+     "detection": {
+      "+10%": 0,
+      "+25%": 0.875,
+      "+50 tokens": 0.75
+     },
+     "m0Mae": 39.3333
+    },
+    "json": {
+     "n": 24,
+     "groups": 8,
+     "abstained": 0,
+     "abstentionRate": 0,
+     "bias": 7.6667,
+     "mae": 9.5,
+     "p95Abs": 26,
+     "relMedian": 0.0114,
+     "falseAlerts": 0,
+     "falseAlertRate": 0,
+     "detection": {
+      "+10%": 0.0417,
+      "+25%": 1,
+      "+50 tokens": 0.375
+     },
+     "m0Mae": 33.0833
+    },
+    "markdown": {
+     "n": 24,
+     "groups": 8,
+     "abstained": 0,
+     "abstentionRate": 0,
+     "bias": -17.0417,
+     "mae": 32.9583,
+     "p95Abs": 160,
+     "relMedian": 0.0203,
+     "falseAlerts": 0,
+     "falseAlertRate": 0,
+     "detection": {
+      "+10%": 0.25,
+      "+25%": 1,
+      "+50 tokens": 0.375
+     },
+     "m0Mae": 73
+    },
+    "numeric": {
+     "n": 24,
+     "groups": 8,
+     "abstained": 0,
+     "abstentionRate": 0,
+     "bias": 27.25,
+     "mae": 27.25,
+     "p95Abs": 97,
+     "relMedian": 0.0984,
+     "falseAlerts": 0,
+     "falseAlertRate": 0,
+     "detection": {
+      "+10%": 0,
+      "+25%": 0.375,
+      "+50 tokens": 0.1667
+     },
+     "m0Mae": 85.5417
+    },
+    "pt_prose": {
+     "n": 24,
+     "groups": 8,
+     "abstained": 0,
+     "abstentionRate": 0,
+     "bias": -5.4583,
+     "mae": 13.625,
+     "p95Abs": 36,
+     "relMedian": 0.0273,
+     "falseAlerts": 0,
+     "falseAlertRate": 0,
+     "detection": {
+      "+10%": 0.0833,
+      "+25%": 0.9167,
+      "+50 tokens": 0.5
+     },
+     "m0Mae": 55.25
+    },
+    "tiny": {
+     "n": 24,
+     "groups": 8,
+     "abstained": 0,
+     "abstentionRate": 0,
+     "bias": -1.2917,
+     "mae": 2.125,
+     "p95Abs": 6,
+     "relMedian": 0.0323,
+     "falseAlerts": 0,
+     "falseAlertRate": 0,
+     "detection": {
+      "+10%": 0,
+      "+25%": 0.2917,
+      "+50 tokens": 1
+     },
+     "m0Mae": 14.3333
+    },
+    "unicode": {
+     "n": 24,
+     "groups": 8,
+     "abstained": 0,
+     "abstentionRate": 0,
+     "bias": -8.1667,
+     "mae": 15.25,
+     "p95Abs": 37,
+     "relMedian": 0.0491,
+     "falseAlerts": 0,
+     "falseAlertRate": 0,
+     "detection": {
+      "+10%": 0.25,
+      "+25%": 0.75,
+      "+50 tokens": 0.875
+     },
+     "m0Mae": 105.5
+    }
+   },
+   "countTokensVsFinal": {
+    "n": 192,
+    "equal": 192,
+    "finalMinusCountTokens": {
+     "0": 192
+    }
+   }
+  }
+ },
+ "aggregateDescriptive": {
+  "descriptiveOnly": true,
+  "determinesStatus": false,
+  "n": 576,
+  "groups": 64,
+  "abstained": 0,
+  "bias": -2.1406,
+  "mae": 16.2135,
+  "falseAlerts": 0,
+  "falseAlertRate": 0,
+  "detection": {
+   "+10%": 0.1094,
+   "+25%": 0.7726,
+   "+50 tokens": 0.5521
+  },
+  "bootstrap": {
+   "B": 2000,
+   "seed": 20261016,
+   "unit": "whole text group (all three models of the group together; paired)",
+   "ci95": {
+    "falseAlertRate": [
+     0,
+     0
+    ],
+    "detectionPlus25": [
+     0.6684,
+     0.8663
+    ],
+    "mae": [
+     10.7188,
+     22.6875
+    ]
+   }
+  }
+ }
+}

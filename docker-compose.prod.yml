@@ -1,0 +1,122 @@
+# OTK zk-Metering — Production-like Compose Stack
+#
+# Services:
+#   api     — REST API server (port 8787 exposed)
+#   prover  — ZK ProverDaemon (internal only)
+#   redis   — BullMQ queue backend (internal)
+#   postgres — Receipt write-behind store (internal)
+#
+# Usage:
+#   cp .env.example .env && edit .env
+#   docker compose -f docker-compose.prod.yml up --build
+#
+# Phase 1 (no Redis/Postgres — standalone without service dependencies):
+#   docker run --build otk-api:latest -e OTK_ADMIN_KEY=... -p 8787:8787
+#   docker run --build otk-prover:latest -p 3001:3001
+# NOTE: running `docker compose up api prover` will still start redis due to depends_on chain.
+# For pure Phase 1 without Redis, use standalone docker run commands above.
+#
+# Env file: create a .env file at repo root (see .env.example)
+# NEVER commit .env
+
+services:
+
+  # ── API Server ──────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    image: otk-api:latest
+    ports:
+      - "${API_PORT:-8787}:8787"
+    environment:
+      NODE_ENV: production
+      API_PORT: "8787"
+      PROVER_URL: "http://prover:3001"
+      OTK_ADMIN_KEY: "${OTK_ADMIN_KEY:?OTK_ADMIN_KEY is required}"
+      OTK_CSRF_SECRET: "${OTK_CSRF_SECRET:?OTK_CSRF_SECRET is required (PF-NEW-04)}"
+      OTK_JWT_SECRET: "${OTK_JWT_SECRET:-}"
+      OTK_TENANTS: "${OTK_TENANTS:?OTK_TENANTS is required: no default tenant or token (PF-NEW-04)}"
+      OTK_REDIS_URL: "redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required (PF-NEW-04)}@redis:6379"
+      OTK_RECEIPT_LOG: "${OTK_RECEIPT_LOG:-}"
+      # H1-S01 (FA-04): production refuses to start with in-memory plan assignments
+      OTK_DB_URL: "${OTK_DB_URL:?OTK_DB_URL is required: plan assignments must be durable (H1-S01)}"
+    depends_on:
+      prover:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "--input-type=module", "--eval",
+        "const r=await fetch('http://localhost:8787/health');process.exit(r.ok?0:1);"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+  # ── ProverDaemon ────────────────────────────────────────────────────────────
+  prover:
+    build:
+      context: .
+      dockerfile: docker/prover/Dockerfile
+    image: otk-prover:latest
+    # Port NOT exposed externally — only reachable via internal Docker network
+    expose:
+      - "3001"
+    environment:
+      NODE_ENV: production
+      PROVER_PORT: "3001"
+      OTK_REDIS_URL: "redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required (PF-NEW-04)}@redis:6379"
+      # On-chain ops (optional — leave empty for off-chain mode)
+      RPC: "${RPC:-}"
+      CHAIN_ID: "${CHAIN_ID:-}"
+      PRIVKEY: "${PRIVKEY:-}"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "--input-type=module", "--eval",
+        "const r=await fetch('http://localhost:3001/health');process.exit(r.ok?0:1);"]
+      interval: 20s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  # ── Redis (BullMQ backend) ───────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    # SEC-05: require password in production — set REDIS_PASSWORD in .env
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD is required (PF-NEW-04)}"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?REDIS_PASSWORD is required (PF-NEW-04)}", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+  # ── PostgreSQL (write-behind receipt store) ──────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB:-otk}"
+      POSTGRES_USER: "${POSTGRES_USER:-otk}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/ops/pa07_migration.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-otk} -d ${POSTGRES_DB:-otk}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  postgres_data:

@@ -1,0 +1,31 @@
+{
+ "schema": "h2eval.gate.validation_selected.v0",
+ "protocolHash": "85960ee8d55d0f1a1f4b57479d63c49484101458cb63b5fdd72f044b410c2868",
+ "selectedUtc": "2026-11-17T00:40:24.919Z",
+ "trainFrozenSha256": "b879e1e0ae39e22b7b3fae5167b69d416117085c1801fdfb0a5db453df9b961d",
+ "validationBatches": [
+  {
+   "batchId": "campaign-validation-gemini-3.1-flash-lite-b1",
+   "datasetSha256": "389e5e90bd2106df2e1b23e170b0d036ed07c5ee0fb375f6decbabbdf0d35533"
+  },
+  {
+   "batchId": "campaign-validation-gemini-3.1-flash-lite-b2",
+   "datasetSha256": "124b9b26232958db77795241ec13c9e820bca24ed3ef42f0e826ed46cd4c1464"
+  }
+ ],
+ "profile": {
+  "method": "M0",
+  "profileId": "otk-calgo-google-M0-0679733167b7",
+  "paramsSha256": "08c74cba14946c81d28408ce68079b3458c05cf8ca71ef7343fb3c1b35b78d10",
+  "trainedOn": "r6train:7b55ecfe23ddf6d70792e47a318e8a39df72583b924ec5e2608436a3c53ea10a validation:7a1eafc07e436c145589d7ec7841ac13402cd8f17fb58abc461736cea2312e22 label:REAL cycle:CAL-GO-google protocol:d113a28ee9d7dce8",
+  "params": {
+   "gemini-3.1-flash-lite": {
+    "a": 0,
+    "b": 1,
+    "out": 605
+   }
+  }
+ },
+ "selectedBy": "human:coordenadora (por delegacao de Bruno, GOOGLE-R)",
+ "forecastFrozen": null
+}

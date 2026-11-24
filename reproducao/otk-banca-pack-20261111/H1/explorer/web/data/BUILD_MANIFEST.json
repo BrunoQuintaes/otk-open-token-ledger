@@ -1,0 +1,31 @@
+{
+ "baseline": "7606bc9be46bde8c1bc427c2eb4873bc1a474779",
+ "figures": [
+  {
+   "file": "fig/fig1_error_by_model_split.png",
+   "sha256": "487070e273bfcf1c3793f8c6a0fb041cbe94789af474979d34bf2b91d43c64f7"
+  },
+  {
+   "file": "fig/fig2_mae_by_family.png",
+   "sha256": "7398c0cbb4a4b088c230124fc38a38f70c4d2726282db94963cac703007516b8"
+  },
+  {
+   "file": "fig/fig3_local_vs_declared.png",
+   "sha256": "42f7cbe12a8f83d4c005c61796f59e3fc573944de3b82f91bb2dfc8c055e1b1b"
+  },
+  {
+   "file": "fig/fig4_holdout_alert_detection.png",
+   "sha256": "bdd09a23da7041f9092ec451c471fdf1678fe00f47ada093dd26d8ac9cb69b30"
+  }
+ ],
+ "opsSource": "R02",
+ "outputs": {
+  "cal.json": "7b6a9fd9979feeb84e74f423bce55ea0ff41e44abb230da5f99c032e68a7a98a",
+  "denominators.json": "75ef659cfef3bcbfbbfb0bc0433bbc44bd42dcb9cd31325e850338b66b18801d",
+  "metrics.json": "399eb68ffbdbfc61f7bf98e9013391bf468f4a7e1f82dc51934049d57943b4ea",
+  "ops_detail.json": "d4cda159d9464af14af1fcdff4b1915e076159ccf3c04baebacc7e35954e590e",
+  "ops_index.json": "5c6b88efbdc4435382f47851a009d6b4e5256c011197b31a784ef99b09d270ad",
+  "overview.json": "15300c0b7c1a27e26d92b62b81a754b456638954dd668f31775ef2657d06d3ea",
+  "prompts.json": "38e76875d286dd17bc43d2a436115cc414be1096f17aa3f374a4cb5779b0368a"
+ }
+}

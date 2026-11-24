@@ -1,0 +1,24 @@
+provider,kind,item,detail
+openai,texto_nao_concluido,mixed_unicode-000-v1,recusa(s) sem repeticao bem-sucedida; tentativas=1: docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-97/pv3-openai-live-campaign-2026-10-07t05-01-19-314_calls.jsonl:40 http 400
+openai,recusa,cal-json-005-v1,http 429 (docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-10/pv3-openai-live-campaign-2026-10-07t04-48-20-564_calls.jsonl:88)
+openai,recusa,cal-mixed_unicode-000-v1,http 400 (docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-97/pv3-openai-live-campaign-2026-10-07t05-01-19-314_calls.jsonl:40)
+openai,sem_contagem_local,cal-code_ts-000-v0,conference.state=not_produced; split=holdout; family=code_ts (docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-10/pv3-openai-live-campaign-2026-10-07t04-48-20-564_calls.jsonl:45)
+openai,sem_contagem_local,cal-numeric-008-v0,conference.state=not_produced; split=train; family=numeric (docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-137/pv3-openai-live-campaign-2026-10-07t05-09-06-868_calls.jsonl:50)
+openai,sem_contagem_local,cal-tiny-007-v0,conference.state=not_produced; split=train; family=tiny (docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-137/pv3-openai-live-campaign-2026-10-07t05-09-06-868_calls.jsonl:74)
+openai,sem_contagem_local,cal-markdown_table-008-v2,conference.state=not_produced; split=validation; family=markdown_table (docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-97/pv3-openai-live-campaign-2026-10-07t05-01-19-314_calls.jsonl:38)
+anthropic,texto_nao_concluido,mixed_unicode-000-v1,nunca enviado a este provedor (ausente de todos os _calls.jsonl); tentativas=0: 
+anthropic,recusa,cal-en_prose-000-v0,http 429 (docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign/pv3-live-campaign-2026-10-07t04-57-14-774_calls.jsonl:28)
+anthropic,sem_contagem_local,cal-en_prose-001-v0,conference.state=not_produced; split=train; family=en_prose (docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign_start-index-27/pv3-live-campaign-2026-10-07t05-11-27-123_calls.jsonl:4)
+anthropic,sem_contagem_local,cal-code_ts-006-v2,conference.state=not_produced; split=train; family=code_ts (docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign_start-index-27/pv3-live-campaign-2026-10-07t05-11-27-123_calls.jsonl:48)
+anthropic,sem_contagem_local,cal-json-000-v0,conference.state=not_produced; split=holdout; family=json (docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign_start-index-27/pv3-live-campaign-2026-10-07t05-11-27-123_calls.jsonl:55)
+anthropic,sem_contagem_local,cal-markdown_table-002-v1,conference.state=not_produced; split=train; family=markdown_table (docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign_start-index-27/pv3-live-campaign-2026-10-07t05-11-27-123_calls.jsonl:89)
+anthropic,sem_contagem_local,cal-numeric-005-v1,conference.state=not_produced; split=holdout; family=numeric (docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign_start-index-27/pv3-live-campaign-2026-10-07t05-11-27-123_calls.jsonl:151)
+gemini,recusa,cal-code_ts-004-v0,http 429 (docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign/pv3-gemini35-live-campaign-2026-10-07t04-52-52-082_calls.jsonl:67)
+gemini,sem_contagem_local,cal-json-008-v2,conference.state=not_produced; split=train; family=json (docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign_start-index-66/pv3-gemini35-live-campaign-2026-10-07t05-03-44-975_calls.jsonl:42)
+gemini,sem_contagem_local,cal-markdown_table-005-v2,conference.state=not_produced; split=train; family=markdown_table (docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign_start-index-66/pv3-gemini35-live-campaign-2026-10-07t05-03-44-975_calls.jsonl:60)
+gemini,sem_contagem_local,cal-pt_prose-001-v2,conference.state=not_produced; split=holdout; family=pt_prose (docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign/pv3-gemini35-live-campaign-2026-10-07t04-52-52-082_calls.jsonl:6)
+gemini,sem_contagem_local,cal-code_ts-003-v1,conference.state=not_produced; split=holdout; family=code_ts (docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign/pv3-gemini35-live-campaign-2026-10-07t04-52-52-082_calls.jsonl:65)
+openai,sem_timestamp,cal-json-005-v1,sem evento no log: recusa antes do uso; o registro _calls.jsonl nao tem timestamp por chamada
+openai,sem_timestamp,cal-mixed_unicode-000-v1,sem evento no log: recusa antes do uso; o registro _calls.jsonl nao tem timestamp por chamada
+anthropic,sem_timestamp,cal-en_prose-000-v0,sem evento no log: recusa antes do uso; o registro _calls.jsonl nao tem timestamp por chamada
+gemini,sem_timestamp,cal-code_ts-004-v0,sem evento no log: recusa antes do uso; o registro _calls.jsonl nao tem timestamp por chamada

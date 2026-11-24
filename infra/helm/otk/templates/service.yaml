@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "otk.fullname" . }}
+  labels:
+    {{- include "otk.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: api
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "otk.selectorLabels" . | nindent 4 }}

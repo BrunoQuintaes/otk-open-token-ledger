@@ -1,0 +1,169 @@
+/**
+ * D1–D8 front B — offline calibration experiment and external runner (D8-G02; runner for D8-G03).
+ * Everything here is local: the "provider" is a simulator on 127.0.0.1 port 0 with a synthetic
+ * counting rule. These tests validate the method and the runner, not any real provider.
+ */
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { corpusToJsonl, generateCorpus, sha256, splitOf } from '../../scripts/calibration/corpus.js';
+import { fit, metrics, alerts, calibrateThreshold } from '../../scripts/calibration/models.js';
+import { CORPUS_PATH, CORPUS_SHA_PATH, loadCorpus, runExperiment, SYNTHETIC_ENVELOPE } from '../../scripts/calibration/runOffline.js';
+import {
+  analyzeExternal, createAnthropicCountTokensClient, createSimulationLedger, runExternalCalibration, type BudgetLedgerPort,
+} from '../../scripts/calibration/runExternal.js';
+import { startSimulatedAnthropic } from '../../scripts/calibration/simulatedProvider.js';
+
+describe('d1d8_b calibration — corpus and splits (D8-G02)', () => {
+  it('committed corpus is reproduced byte for byte from the seed and matches its sha256 manifest', () => {
+    const text = readFileSync(CORPUS_PATH, 'utf8').replace(/\r\n/g, '\n'); // checkout may be CRLF
+    assert.ok(!/\r/.test(text), 'documents must not contain raw CR');
+    assert.equal(sha256(text), readFileSync(CORPUS_SHA_PATH, 'utf8').split(/\s+/)[0]);
+    assert.equal(loadCorpus().sha, sha256(text));
+    assert.equal(sha256(corpusToJsonl(generateCorpus())), sha256(text));
+  });
+  it('splits are by group: near-duplicate variants never cross splits; all three splits populated', () => {
+    const { docs } = loadCorpus();
+    const byGroup = new Map<string, Set<string>>();
+    for (const d of docs) byGroup.set(d.group, (byGroup.get(d.group) ?? new Set()).add(splitOf(d.group)));
+    for (const s of byGroup.values()) assert.equal(s.size, 1);
+    const splits = new Set(docs.map((d) => splitOf(d.group)));
+    assert.deepEqual([...splits].sort(), ['test', 'train', 'validation']);
+  });
+  it('corpus covers zero/small sizes and several families/languages', () => {
+    const { docs } = loadCorpus();
+    assert.ok(docs.some((d) => d.sizeBucket === 'zero'));
+    assert.ok(docs.some((d) => d.sizeBucket === 'xs'));
+    assert.ok(docs.some((d) => d.sizeBucket === 'l'));
+    assert.ok(new Set(docs.map((d) => d.family)).size >= 8);
+    assert.ok(new Set(docs.map((d) => d.lang)).size >= 3);
+  });
+});
+
+describe('d1d8_b calibration — models and metrics', () => {
+  it('affine fit recovers a known exact relation y = 7 + x; quadratic term ≈ 0', () => {
+    const rows = Array.from({ length: 50 }, (_, i) => ({ id: String(i), x: i * 13, y: 7 + i * 13 }));
+    const a = fit('affine', rows);
+    assert.ok(Math.abs(a.coef[0]! - 7) < 1e-6 && Math.abs(a.coef[1]! - 1) < 1e-9);
+    const q = fit('quadratic', rows);
+    assert.ok(Math.abs(q.coef[2]!) < 1e-9);
+  });
+  it('relative metrics exclude target 0 rows and count them; absolute error still counts', () => {
+    const m = metrics(fit('baseline', []), [{ id: 'a', x: 5, y: 0 }, { id: 'b', x: 9, y: 10 }]);
+    assert.equal(m.zeroTargets, 1);
+    assert.equal(m.mape, 0.1);
+    assert.equal(m.mae, (5 + 1) / 2);
+  });
+  it('alert rule matches the conference rule: provider 0 with local 100 alerts', () => {
+    assert.deepEqual(alerts(fit('baseline', []), [{ id: 'z', x: 100, y: 0 }], { abs: 16, rel: 0.1 }), [true]);
+  });
+  it('threshold comes from validation residuals only', () => {
+    const thr = calibrateThreshold(fit('baseline', []), [{ id: 'a', x: 10, y: 12 }, { id: 'b', x: 10, y: 15 }], 1);
+    assert.equal(thr.abs, 5);
+  });
+  it('offline experiment: S2 (exact tokenizer + fixed envelope) recovers the envelope; target labelled synthetic', () => {
+    const r = runExperiment(loadCorpus().docs);
+    assert.match(r.target, /SYNTHETIC/);
+    const s2 = r.scenarios['S2_exact_tokenizer_envelope_synthetic'] as { models: Array<{ model: string; coef: number[]; test: { mae: number } }> };
+    const affine = s2.models.find((m) => m.model === 'affine')!;
+    assert.ok(Math.abs(affine.coef[0]! - SYNTHETIC_ENVELOPE) < 1e-6);
+    assert.ok(affine.test.mae < 1e-6);
+    assert.ok(s2.models.find((m) => m.model === 'baseline')!.test.mae >= SYNTHETIC_ENVELOPE - 1e-9);
+  });
+});
+
+describe('d1d8_b calibration — external runner against the local simulator (no real provider)', () => {
+  it('collects counts with ledger reservations, no text in rows, analysis labelled simulated', async () => {
+    const sim = await startSimulatedAnthropic();
+    try {
+      const docs = loadCorpus().docs.slice(0, 40);
+      const ledger = createSimulationLedger(1000);
+      const client = createAnthropicCountTokensClient({ model: 'claude-haiku-4-5', getApiKey: () => sim.acceptedKey, baseUrl: sim.baseUrl, simulated: true });
+      const res = await runExternalCalibration({ docs, client, ledger, maxCalls: 1000, reservePerCallUsdMicros: 0n, runId: 'test', localEncoding: 'cl100k_base' });
+      assert.equal(res.stoppedReason, 'completed');
+      const ok = res.rows.filter((r) => r.status === 'ok');
+      assert.equal(ok.length, sim.requests());
+      assert.equal(ledger.reserved, ok.length);
+      assert.ok(res.rows.every((r) => !('text' in r)));
+      const serialized = JSON.stringify(res.rows);
+      for (const d of docs.filter((x) => x.text.length > 20)) assert.ok(!serialized.includes(d.text.slice(0, 20)));
+      assert.ok(!serialized.includes(sim.acceptedKey));
+      assert.match(analyzeExternal(res).statement, /SIMULATED/);
+    } finally {
+      await sim.close();
+    }
+  });
+  it('a ledger denial stops the run at once (no retry that resets the ceiling)', async () => {
+    const sim = await startSimulatedAnthropic();
+    try {
+      const docs = loadCorpus().docs.filter((d) => d.text.trim()).slice(0, 10);
+      const ledger = createSimulationLedger(3);
+      const client = createAnthropicCountTokensClient({ model: 'm', getApiKey: () => sim.acceptedKey, baseUrl: sim.baseUrl, simulated: true });
+      const res = await runExternalCalibration({ docs, client, ledger, maxCalls: 100, reservePerCallUsdMicros: 1n, runId: 'test', localEncoding: 'cl100k_base' });
+      assert.equal(res.stoppedReason, 'budget_denied');
+      assert.equal(sim.requests(), 3);
+      assert.equal(res.rows.at(-1)!.status, 'denied_budget');
+    } finally {
+      await sim.close();
+    }
+  });
+  it('provider errors are settled as uncertain (never free) and stop after consecutive failures', async () => {
+    const sim = await startSimulatedAnthropic({ failEvery: 1 });
+    try {
+      const settled: string[] = [];
+      const ledger: BudgetLedgerPort = { reserve: async () => 'approved', settle: async (id, r) => { settled.push(r.outcome); void id; } };
+      const docs = loadCorpus().docs.filter((d) => d.text.trim()).slice(0, 10);
+      const client = createAnthropicCountTokensClient({ model: 'm', getApiKey: () => sim.acceptedKey, baseUrl: sim.baseUrl, simulated: true });
+      const res = await runExternalCalibration({ docs, client, ledger, maxCalls: 100, reservePerCallUsdMicros: 1n, runId: 'test', localEncoding: 'cl100k_base', maxConsecutiveErrors: 2 });
+      assert.equal(res.stoppedReason, 'too_many_errors');
+      assert.deepEqual(settled, ['uncertain', 'uncertain']);
+      assert.equal(res.rows.filter((r) => r.status === 'error')[0]!.errorCode, 'http_529');
+    } finally {
+      await sim.close();
+    }
+  });
+  it('wrong key is rejected by the simulator and surfaces as an error code only', async () => {
+    const sim = await startSimulatedAnthropic();
+    try {
+      const client = createAnthropicCountTokensClient({ model: 'm', getApiKey: () => 'wrong', baseUrl: sim.baseUrl, simulated: true });
+      await assert.rejects(client.count({ id: 'x', text: 'hi' }), (e: unknown) => (e as { code?: string }).code === 'http_401');
+    } finally {
+      await sim.close();
+    }
+  });
+  it('review MEDIUM-5: ledger exceptions stop the run; success settles with unknown cost by default; families interleaved; tiny samples not evaluated', async () => {
+    const sim = await startSimulatedAnthropic();
+    try {
+      const docs = loadCorpus().docs.filter((d) => d.text.trim());
+      const client = createAnthropicCountTokensClient({ model: 'm', getApiKey: () => sim.acceptedKey, baseUrl: sim.baseUrl, simulated: true });
+      const throwing: BudgetLedgerPort = { reserve: async () => { throw new Error('ledger down'); }, settle: async () => {} };
+      const r1 = await runExternalCalibration({ docs, client, ledger: throwing, runId: 't1', maxCalls: 10, reservePerCallUsdMicros: 1n, localEncoding: 'cl100k_base' });
+      assert.equal(r1.stoppedReason, 'ledger_error');
+      assert.equal(sim.requests(), 0);
+      const settled: Array<bigint | null> = [];
+      const recording: BudgetLedgerPort = { reserve: async () => 'approved', settle: async (_id, r) => { settled.push(r.actualUsdMicros); } };
+      const r2 = await runExternalCalibration({ docs, client, ledger: recording, runId: 't2', maxCalls: 8, reservePerCallUsdMicros: 1n, localEncoding: 'cl100k_base' });
+      assert.ok(settled.length === 8 && settled.every((v) => v === null));
+      assert.equal(new Set(r2.rows.filter((r) => r.status === 'ok').map((r) => r.family)).size, 8);
+      const a = analyzeExternal(r2);
+      assert.equal(a.evaluation, null);
+      assert.match(a.evaluationOmittedReason!, /minimum/);
+      assert.equal(Object.keys(a.familyCoverage).length, 8);
+    } finally {
+      await sim.close();
+    }
+  });
+
+  it('maxCalls bounds provider calls', async () => {
+    const sim = await startSimulatedAnthropic();
+    try {
+      const docs = loadCorpus().docs.filter((d) => d.text.trim()).slice(0, 10);
+      const client = createAnthropicCountTokensClient({ model: 'm', getApiKey: () => sim.acceptedKey, baseUrl: sim.baseUrl, simulated: true });
+      const res = await runExternalCalibration({ docs, client, ledger: createSimulationLedger(100), maxCalls: 4, reservePerCallUsdMicros: 0n, runId: 'test', localEncoding: 'cl100k_base' });
+      assert.equal(res.stoppedReason, 'max_calls');
+      assert.equal(sim.requests(), 4);
+    } finally {
+      await sim.close();
+    }
+  });
+});

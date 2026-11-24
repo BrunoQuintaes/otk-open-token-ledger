@@ -1,0 +1,212 @@
+# Seven-validator IBFT 2.0 test network, coherent with infra/ibft/config/genesis.json
+# (7 validators in extraData, 7 enodes in static-nodes.json: quorum 5 of 7).
+# infra/ibft/docker-compose.yml starts 6 of them and docker-compose.4node.yml 4 (below quorum).
+#
+# Fresh chain data in named volumes of this project: the chain databases under
+# infra/ibft/nodeN/data are NOT used. Node keys (not in git) are mounted read-only from
+# ${OTK_BESU_KEYS_DIR:-../ibft}/nodeN/data/key. Only node1 RPC is published, on loopback.
+#   docker compose -f infra/test/docker-compose.besu7.yml up -d
+#   docker compose -f infra/test/docker-compose.besu7.yml stop     # keeps chain data
+name: otk-besu7-test
+
+networks:
+  besu7:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.31.200.0/24
+
+x-besu: &besu
+  image: hyperledger/besu:25.12.0
+  restart: "no"
+  mem_limit: 768m
+  environment:
+    BESU_OPTS: "-Xmx384m"
+
+volumes:
+  data1:
+  data2:
+  data3:
+  data4:
+  data5:
+  data6:
+  data7:
+
+services:
+  node1:
+    <<: *besu
+    networks:
+      besu7:
+        ipv4_address: 172.31.200.11
+    ports:
+      - '127.0.0.1:${OTK_TEST_BESU_RPC_PORT:-58545}:8545'
+    volumes:
+      - '../ibft/config/genesis.json:/config/genesis.json:ro'
+      - '../ibft/config/static-nodes.json:/config/static-nodes.json:ro'
+      - '${OTK_BESU_KEYS_DIR:-../ibft}/node1/data/key:/keys/key:ro'
+      - 'data1:/data'
+    command:
+      - --genesis-file=/config/genesis.json
+      - --network-id=1337
+      - --data-path=/data
+      - --node-private-key-file=/keys/key
+      - --rpc-http-enabled=true
+      - --rpc-http-host=0.0.0.0
+      - --rpc-http-api=ETH,NET,WEB3,IBFT,TXPOOL
+      - --host-allowlist=*
+      - --discovery-enabled=false
+      - --p2p-host=172.31.200.11
+      - --p2p-port=30303
+      - --static-nodes-file=/config/static-nodes.json
+      - --min-gas-price=0
+
+  node2:
+    <<: *besu
+    networks:
+      besu7:
+        ipv4_address: 172.31.200.12
+    volumes:
+      - '../ibft/config/genesis.json:/config/genesis.json:ro'
+      - '../ibft/config/static-nodes.json:/config/static-nodes.json:ro'
+      - '${OTK_BESU_KEYS_DIR:-../ibft}/node2/data/key:/keys/key:ro'
+      - 'data2:/data'
+    command:
+      - --genesis-file=/config/genesis.json
+      - --network-id=1337
+      - --data-path=/data
+      - --node-private-key-file=/keys/key
+      - --rpc-http-enabled=true
+      - --rpc-http-host=0.0.0.0
+      - --rpc-http-api=ETH,NET,WEB3,IBFT,TXPOOL
+      - --host-allowlist=*
+      - --discovery-enabled=false
+      - --p2p-host=172.31.200.12
+      - --p2p-port=30303
+      - --static-nodes-file=/config/static-nodes.json
+      - --min-gas-price=0
+
+  node3:
+    <<: *besu
+    networks:
+      besu7:
+        ipv4_address: 172.31.200.13
+    volumes:
+      - '../ibft/config/genesis.json:/config/genesis.json:ro'
+      - '../ibft/config/static-nodes.json:/config/static-nodes.json:ro'
+      - '${OTK_BESU_KEYS_DIR:-../ibft}/node3/data/key:/keys/key:ro'
+      - 'data3:/data'
+    command:
+      - --genesis-file=/config/genesis.json
+      - --network-id=1337
+      - --data-path=/data
+      - --node-private-key-file=/keys/key
+      - --rpc-http-enabled=true
+      - --rpc-http-host=0.0.0.0
+      - --rpc-http-api=ETH,NET,WEB3,IBFT,TXPOOL
+      - --host-allowlist=*
+      - --discovery-enabled=false
+      - --p2p-host=172.31.200.13
+      - --p2p-port=30303
+      - --static-nodes-file=/config/static-nodes.json
+      - --min-gas-price=0
+
+  node4:
+    <<: *besu
+    networks:
+      besu7:
+        ipv4_address: 172.31.200.14
+    volumes:
+      - '../ibft/config/genesis.json:/config/genesis.json:ro'
+      - '../ibft/config/static-nodes.json:/config/static-nodes.json:ro'
+      - '${OTK_BESU_KEYS_DIR:-../ibft}/node4/data/key:/keys/key:ro'
+      - 'data4:/data'
+    command:
+      - --genesis-file=/config/genesis.json
+      - --network-id=1337
+      - --data-path=/data
+      - --node-private-key-file=/keys/key
+      - --rpc-http-enabled=true
+      - --rpc-http-host=0.0.0.0
+      - --rpc-http-api=ETH,NET,WEB3,IBFT,TXPOOL
+      - --host-allowlist=*
+      - --discovery-enabled=false
+      - --p2p-host=172.31.200.14
+      - --p2p-port=30303
+      - --static-nodes-file=/config/static-nodes.json
+      - --min-gas-price=0
+
+  node5:
+    <<: *besu
+    networks:
+      besu7:
+        ipv4_address: 172.31.200.15
+    volumes:
+      - '../ibft/config/genesis.json:/config/genesis.json:ro'
+      - '../ibft/config/static-nodes.json:/config/static-nodes.json:ro'
+      - '${OTK_BESU_KEYS_DIR:-../ibft}/node5/data/key:/keys/key:ro'
+      - 'data5:/data'
+    command:
+      - --genesis-file=/config/genesis.json
+      - --network-id=1337
+      - --data-path=/data
+      - --node-private-key-file=/keys/key
+      - --rpc-http-enabled=true
+      - --rpc-http-host=0.0.0.0
+      - --rpc-http-api=ETH,NET,WEB3,IBFT,TXPOOL
+      - --host-allowlist=*
+      - --discovery-enabled=false
+      - --p2p-host=172.31.200.15
+      - --p2p-port=30303
+      - --static-nodes-file=/config/static-nodes.json
+      - --min-gas-price=0
+
+  node6:
+    <<: *besu
+    networks:
+      besu7:
+        ipv4_address: 172.31.200.16
+    volumes:
+      - '../ibft/config/genesis.json:/config/genesis.json:ro'
+      - '../ibft/config/static-nodes.json:/config/static-nodes.json:ro'
+      - '${OTK_BESU_KEYS_DIR:-../ibft}/node6/data/key:/keys/key:ro'
+      - 'data6:/data'
+    command:
+      - --genesis-file=/config/genesis.json
+      - --network-id=1337
+      - --data-path=/data
+      - --node-private-key-file=/keys/key
+      - --rpc-http-enabled=true
+      - --rpc-http-host=0.0.0.0
+      - --rpc-http-api=ETH,NET,WEB3,IBFT,TXPOOL
+      - --host-allowlist=*
+      - --discovery-enabled=false
+      - --p2p-host=172.31.200.16
+      - --p2p-port=30303
+      - --static-nodes-file=/config/static-nodes.json
+      - --min-gas-price=0
+
+  node7:
+    <<: *besu
+    networks:
+      besu7:
+        ipv4_address: 172.31.200.17
+    volumes:
+      - '../ibft/config/genesis.json:/config/genesis.json:ro'
+      - '../ibft/config/static-nodes.json:/config/static-nodes.json:ro'
+      - '${OTK_BESU_KEYS_DIR:-../ibft}/node7/data/key:/keys/key:ro'
+      - 'data7:/data'
+    command:
+      - --genesis-file=/config/genesis.json
+      - --network-id=1337
+      - --data-path=/data
+      - --node-private-key-file=/keys/key
+      - --rpc-http-enabled=true
+      - --rpc-http-host=0.0.0.0
+      - --rpc-http-api=ETH,NET,WEB3,IBFT,TXPOOL
+      - --host-allowlist=*
+      - --discovery-enabled=false
+      - --p2p-host=172.31.200.17
+      - --p2p-port=30303
+      - --static-nodes-file=/config/static-nodes.json
+      - --min-gas-price=0
+

@@ -1,0 +1,86 @@
+{
+  "schema": "otk.h2eval.prereg.manifest.v1",
+  "id": "OTK-H2EVAL-PREREG-20261110",
+  "version": "h2eval-prereg-v0.2-draft",
+  "status": "AGUARDA_RATIFICACAO",
+  "ratified": false,
+  "roadmap": {
+    "id": "OTK-OPS-ACADEMIC-20261110-V2",
+    "sha256": "68864e0f82b9281b912f747f24c78a52c83a9a7140297c7170a1dfe232ccf28c"
+  },
+  "files": {
+    "R07_MATRIX_R2.md": {
+      "sha256": "8c5c94e9163c1395b20f1c3c65738ea290381a7d4a2cff81ffd18474779b1b94",
+      "bytes": 11158
+    },
+    "R07_MATRIX_R2.json": {
+      "sha256": "33429b012f9ee8a5eca8daf1f0b76988aac1209acb46b997151b2fcf694689f8",
+      "bytes": 17079
+    },
+    "r07_matrix_cost_r2.mjs": {
+      "sha256": "9b6a5f57c953ac4b0d3fa2e6b4940cf43f3aa94c5df3858d15280ee797baa568",
+      "bytes": 11611
+    },
+    "R09_METHOD_R2.md": {
+      "sha256": "706e459ae381522285681ea8ef5dc05ded0553c8c74cde09c70ac7a6e7a7d148",
+      "bytes": 10122
+    },
+    "R10_PREREGISTRATION_H2EVAL_R2.md": {
+      "sha256": "7f5eda3f9ec1b1fd817c4164d910518a051e98aaa443dbe507a571de2764e9f6",
+      "bytes": 13103
+    },
+    "CONTRACT_MIN_FOR_EXECUTOR_R2.md": {
+      "sha256": "d52be4dfdfaf934ebcc97a73f0e478fd7ca702b46389ef445fa52754aaa15bd2",
+      "bytes": 3915
+    },
+    "SEED_VERIFICATION_R2.json": {
+      "sha256": "d43875b43e415145b4da9622cd6cf7a9cf22a55406769d0b7fd7438b8b628588",
+      "bytes": 1801
+    },
+    "verify_seed_unused.mjs": {
+      "sha256": "8c3763af76b7d95d8db7706f81fe29380f8219427652d5264d4505fe7efa8ec2",
+      "bytes": 1890
+    }
+  },
+  "carriedFromV0_1_unchanged": {
+    "R06_HYPOTHESES.md": "5be5a3bbc3cfc8ddde44c2df03f420bafd85fa21374bd6336067b271def14a19",
+    "CONTRACT_MIN_FOR_EXECUTOR.md": "89be88ed66e4ac42857ec3491db566a7112d9281e3507dc443e39fa0049b1ef6"
+  },
+  "supersedes": {
+    "R07_MATRIX.*": "c882ee1f10ca2289cc9ef17ae26d64e0f4d644514ccffb6398195b4b1cbafe13",
+    "R09_METHOD.md": "072bdbf15076d7be60879fd643d49231b1ddcaccf2d56fc83dbe448df9cc49e9",
+    "R10_PREREGISTRATION_H2EVAL_DRAFT.md": "10232e8617ac00faa09e3f51e7facfc1854ecebf36a44fc8438e09ec8b9fbd2b"
+  },
+  "inputs": {
+    "R08": {
+      "path": "runs/R08/R08_COMPATIBILITY_MATRIX.md",
+      "terminalSha256Prefix": "6761411f"
+    },
+    "CAL_ANTH_VERIFY": {
+      "path": "runs/CAL_ANTH_VERIFY/CAL_ANTH_VERIFICATION_REPORT.md",
+      "terminalSha256Prefix": "5e92e68c"
+    }
+  },
+  "defaultsIfOnlyRatifico": {
+    "matrix": "M-FULL com Haiku 4.5 reduzido (B): 1494 chamadas, pior caso US$6,855",
+    "google": "braco preparado e NOT_RUN ate GO proprio",
+    "seed": 20261110,
+    "acceptancePolicy": "v1 inalterada",
+    "spend": "sub-ledgers 5/3/3, lote<=60 chamadas, pausa a 80%, STOP em Ctab>costCap",
+    "modalities": "imagem e audio exploratorios segregados"
+  },
+  "pending": {
+    "corpusManifestSha256": "PENDING (gerador ainda nao escrito)",
+    "analysisCodeSha256": "PENDING",
+    "executorVersion": "PENDING (B2)",
+    "ratificationHash": "PENDING_HUMAN",
+    "accountAvailability": "NOT_VERIFIED (so o autor)"
+  },
+  "untouched": [
+    "H1 7606bc9b",
+    "holdouts",
+    "pre-registros antigos",
+    "dissertacao"
+  ],
+  "generatedUtc": "2026-11-10T22:35:48.282Z"
+}

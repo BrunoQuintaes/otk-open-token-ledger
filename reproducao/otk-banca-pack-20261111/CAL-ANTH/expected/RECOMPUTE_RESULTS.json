@@ -1,0 +1,1206 @@
+{
+  "schema": "otk.cal_anth_verify.recompute.v1",
+  "generatedUtc": "2026-11-10T22:10:06.042Z",
+  "inputs": {
+    "docs/_ops/experiments/OTK_CAL_ANTH_01/CALL_RESULTS_SANITIZED.jsonl": "66e09e5b8f64b646a5c814143b9f5527750e29d36921a371da009c2239883c3c",
+    "docs/_ops/experiments/OTK_CAL_ANTH_01/COST_LEDGER.jsonl": "d0e32583e944d4a6030c26a20cfe76d0c00395d6cbc121a0061024f8b404e8c2",
+    "docs/_ops/experiments/OTK_CAL_ANTH_01/RESULTS_PER_MODEL.json": "f7a9585e08a6f0738d2bfd22fe61b373bc7cf700b268f0d5f6c2f0caddd54e15",
+    "docs/_ops/experiments/OTK_CAL_ANTH_01/MODEL_PRICE_SNAPSHOT.json": "5b25f75b07c5ce587d0e19cb8a7807038e5108048595160621a900991f85166d",
+    "docs/_ops/experiments/OTK_CAL_ANTH_01/E2E_RESULTS.jsonl": "4367eefca5d29bca80da2b089c5a0430410f44947aac8aa9cd505376b4285922",
+    "docs/_ops/experiments/OTK_CAL_ANTH_01/corpus.jsonl": "d1704e745716c9f0815de2566bdcf03194d298bb96d6e47352a0185dda061f21",
+    "cal02/CALL_RESULTS_SANITIZED.jsonl": "8b6435ffce1bc45dcd06d493833206319792ca46709bd444e4909dde0a40d150",
+    "cal02/RESULTS_PER_MODEL.json": "0fe80a61155e410e3718d9a1749a2379985e9fe09e8775b7f2602f9cef45f51c",
+    "cal02/dev_corpus.jsonl": "b7cb8a32224450065e962fe74b59ebde487b411d4c15a71b157d8d7ba371763f",
+    "cal02/holdout_corpus.jsonl": "33c3a55e1fad7554dbc4c9b84df3eb6760a45593a8753c13aed97eb7953595a8",
+    "cal02/DEV_LABELS.jsonl": "5e1dcf298b96f229bc7327c18c4eca53a686c5c482b235b474c8c4406fafa85c",
+    "cal02/FROZEN_MODEL.json": "19e6efc0647cc3edb013fb83b6770b59dbdf012cb78fdca18604000c56658816",
+    "cal02/HOLDOUT_EVALUATION_RECORD.json": "672fee01ddb02656802b1f6df4fd3a6d09a9dfd2b4fb1ed6bc89d24e881f7b79"
+  },
+  "cal01": {
+    "rowsInFile": 1197,
+    "perModel": {
+      "claude-haiku-4-5-20251001": {
+        "calls": 289,
+        "stages": {
+          "smoke": 1,
+          "core": 288
+        },
+        "valid": 288,
+        "refusalsWithUsage": 0,
+        "http400NotBilled": 1,
+        "uncertain": 0,
+        "modelReturnedEqual": 288,
+        "inputTokens": 71462,
+        "outputTokens": 12557,
+        "costMicroUsdFromRows": "134247",
+        "costMicroUsdRecalcCeilPerCall": "134247",
+        "reportedCostMicroUsd": "134055",
+        "refusalFamilies": []
+      },
+      "claude-haiku-5-5": {
+        "calls": 289,
+        "stages": {
+          "smoke": 1,
+          "core": 288
+        },
+        "valid": 288,
+        "refusalsWithUsage": 64,
+        "http400NotBilled": 1,
+        "uncertain": 0,
+        "modelReturnedEqual": 288,
+        "inputTokens": 87361,
+        "outputTokens": 13421,
+        "costMicroUsdFromRows": "15594",
+        "costMicroUsdRecalcCeilPerCall": "15576",
+        "reportedCostMicroUsd": "15562",
+        "refusalFamilies": [
+          [
+            "pt_prose",
+            33
+          ],
+          [
+            "en_prose",
+            30
+          ],
+          [
+            "mixed_unicode",
+            1
+          ]
+        ]
+      },
+      "claude-sonnet-5-5": {
+        "calls": 289,
+        "stages": {
+          "smoke": 1,
+          "core": 288
+        },
+        "valid": 288,
+        "refusalsWithUsage": 70,
+        "http400NotBilled": 1,
+        "uncertain": 0,
+        "modelReturnedEqual": 288,
+        "inputTokens": 87493,
+        "outputTokens": 13395,
+        "costMicroUsdFromRows": "308936",
+        "costMicroUsdRecalcCeilPerCall": "308936",
+        "reportedCostMicroUsd": "308334",
+        "refusalFamilies": [
+          [
+            "pt_prose",
+            33
+          ],
+          [
+            "en_prose",
+            31
+          ],
+          [
+            "mixed_unicode",
+            6
+          ]
+        ]
+      },
+      "claude-opus-5-5": {
+        "calls": 289,
+        "stages": {
+          "smoke": 1,
+          "core": 288
+        },
+        "valid": 288,
+        "refusalsWithUsage": 3,
+        "http400NotBilled": 1,
+        "uncertain": 0,
+        "modelReturnedEqual": 288,
+        "inputTokens": 87783,
+        "outputTokens": 17938,
+        "costMicroUsdFromRows": "709892",
+        "costMicroUsdRecalcCeilPerCall": "709892",
+        "reportedCostMicroUsd": "708480",
+        "refusalFamilies": [
+          [
+            "pt_prose",
+            2
+          ],
+          [
+            "mixed_unicode",
+            1
+          ]
+        ]
+      },
+      "claude-fable-5-1": {
+        "calls": 41,
+        "stages": {
+          "smoke": 1,
+          "exploratory": 40
+        },
+        "valid": 41,
+        "refusalsWithUsage": 10,
+        "http400NotBilled": 0,
+        "uncertain": 0,
+        "modelReturnedEqual": 41,
+        "inputTokens": 11833,
+        "outputTokens": 1773,
+        "costMicroUsdFromRows": "206980",
+        "costMicroUsdRecalcCeilPerCall": "206980",
+        "reportedCostMicroUsd": "203450",
+        "refusalFamilies": [
+          [
+            "pt_prose",
+            5
+          ],
+          [
+            "en_prose",
+            5
+          ]
+        ]
+      }
+    },
+    "totals": {
+      "callsInRows": 1197,
+      "e2eCalls": 5,
+      "callsTotal": 1202,
+      "valid": 1193,
+      "e2eValid": 5,
+      "refusalsWithUsage": 147,
+      "http400": 4,
+      "uncertain": 0,
+      "costRowsMicroUsd": "1375649",
+      "e2eCostMicroUsd": 4531,
+      "costTotalUsd": "1.380180",
+      "ledgerSettleCount": 1199,
+      "ledgerSettleSumMicroUsd": "1380180",
+      "ledgerReserveCount": 1199,
+      "ledgerOverruns": 0,
+      "firstCallAt": "2026-10-15T00:58:45.641Z",
+      "lastCallAt": "2026-10-15T01:34:53.416Z",
+      "firstLedgerAt": "2026-10-15T00:58:44.326Z",
+      "lastLedgerAt": "2026-10-15T01:37:54.179Z"
+    },
+    "primary": {
+      "claude-haiku-4-5-20251001": {
+        "n": {
+          "train": 143,
+          "validation": 72,
+          "holdout": 72,
+          "holdoutGroups": 24
+        },
+        "fitIndependent": {
+          "slope": 1.164781,
+          "intercept": 2.601779
+        },
+        "reportedParams": {
+          "slope": "1.164781",
+          "intercept": "2.601779"
+        },
+        "paramsMatch": true,
+        "thresholdIndependent": {
+          "abs": 7,
+          "rel": 0.139054,
+          "fa": 0,
+          "power": 0.634259
+        },
+        "reportedThreshold": {
+          "abs": 7,
+          "rel": 0.139054
+        },
+        "thresholdMatch": true,
+        "holdout": {
+          "n": 72,
+          "groups": 24,
+          "bias": -0.847222,
+          "mae": 16.597222,
+          "medianAbs": 11,
+          "p95Abs": 43,
+          "maxAbs": 56,
+          "relMedian": 0.056893,
+          "relP95": 0.25,
+          "falseAlarms": 3,
+          "falseAlarmRate": 0.041667,
+          "detection": {
+            "+10%": 0.361111,
+            "+25%": 0.791667,
+            "+50 tokens": 0.583333
+          }
+        },
+        "reportedHoldout": {
+          "n": 72,
+          "groups": 24,
+          "bias": -0.847222,
+          "mae": 16.597222,
+          "medianAbs": 11,
+          "p95Abs": 43,
+          "maxAbs": 56,
+          "relMedian": 0.056893,
+          "relP95": 0.25,
+          "falseAlarms": 3,
+          "falseAlarmRate": 0.041667,
+          "detection": {
+            "+10%": 0.361111,
+            "+25%": 0.791667,
+            "+50 tokens": 0.583333
+          }
+        },
+        "holdoutWithMyFit": {
+          "n": 72,
+          "groups": 24,
+          "bias": -0.847222,
+          "mae": 16.597222,
+          "medianAbs": 11,
+          "p95Abs": 43,
+          "maxAbs": 56,
+          "relMedian": 0.056893,
+          "relP95": 0.25,
+          "falseAlarms": 3,
+          "falseAlarmRate": 0.041667,
+          "detection": {
+            "+10%": 0.361111,
+            "+25%": 0.791667,
+            "+50 tokens": 0.583333
+          }
+        },
+        "train": {
+          "n": 143,
+          "groups": 48,
+          "bias": 0.013986,
+          "mae": 11.566434,
+          "medianAbs": 9,
+          "p95Abs": 32,
+          "maxAbs": 45,
+          "relMedian": 0.053097,
+          "relP95": 0.24,
+          "falseAlarms": 3,
+          "falseAlarmRate": 0.020979,
+          "detection": {
+            "+10%": 0.237762,
+            "+25%": 0.818182,
+            "+50 tokens": 0.685315
+          }
+        },
+        "validation": {
+          "n": 72,
+          "groups": 24,
+          "bias": -3.319444,
+          "mae": 14.680556,
+          "medianAbs": 9,
+          "p95Abs": 39,
+          "maxAbs": 47,
+          "relMedian": 0.056962,
+          "relP95": 0.25,
+          "falseAlarms": 0,
+          "falseAlarmRate": 0,
+          "detection": {
+            "+10%": 0.361111,
+            "+25%": 0.833333,
+            "+50 tokens": 0.708333
+          }
+        },
+        "bootstrapCi95": {
+          "bias": [
+            -9.347222,
+            7.819444
+          ],
+          "mae": [
+            11.777778,
+            22.472222
+          ],
+          "falseAlarmRate": [
+            0,
+            0.125
+          ],
+          "detPlus25": [
+            0.625,
+            0.958333
+          ]
+        },
+        "reportedBootstrap": {
+          "bias": [
+            -9.347222,
+            7.819444
+          ],
+          "mae": [
+            11.777778,
+            22.472222
+          ],
+          "falseAlarmRate": [
+            0,
+            0.125
+          ],
+          "detPlus25": [
+            0.625,
+            0.958333
+          ]
+        },
+        "policyChecks": {
+          "train_n": true,
+          "validation_n": true,
+          "holdout_n": true,
+          "holdout_groups": true,
+          "holdout_alert_rate": true,
+          "holdout_det25": true
+        },
+        "calibratedIndependent": true,
+        "reportedStatus": "CALIBRATION_ACCEPTED",
+        "holdoutByFamilyMae": {
+          "code_ts": {
+            "mae": 12.111111,
+            "falseAlarms": 0,
+            "det25": 1
+          },
+          "en_prose": {
+            "mae": 15.888889,
+            "falseAlarms": 0,
+            "det25": 0.333333
+          },
+          "json": {
+            "mae": 6.666667,
+            "falseAlarms": 0,
+            "det25": 1
+          },
+          "markdown_table": {
+            "mae": 26.666667,
+            "falseAlarms": 0,
+            "det25": 1
+          },
+          "mixed_unicode": {
+            "mae": 8.777778,
+            "falseAlarms": 0,
+            "det25": 1
+          },
+          "numeric": {
+            "mae": 39,
+            "falseAlarms": 3,
+            "det25": 0
+          },
+          "pt_prose": {
+            "mae": 17.666667,
+            "falseAlarms": 0,
+            "det25": 1
+          },
+          "tiny": {
+            "mae": 6,
+            "falseAlarms": 0,
+            "det25": 1
+          }
+        },
+        "reportedByFamilyMae": {
+          "code_ts": 12.111111,
+          "en_prose": 15.888889,
+          "json": 6.666667,
+          "markdown_table": 26.666667,
+          "mixed_unicode": 8.777778,
+          "numeric": 39,
+          "pt_prose": 17.666667,
+          "tiny": 6
+        },
+        "countTokensVsFinal": {
+          "n": 287,
+          "equal": 287,
+          "nonEqual": 0,
+          "nonEqualAllRefusals": true,
+          "nonEqualDiffs": []
+        }
+      },
+      "claude-haiku-5-5": {
+        "n": {
+          "train": 143,
+          "validation": 72,
+          "holdout": 72,
+          "holdoutGroups": 24
+        },
+        "fitIndependent": {
+          "slope": 1.471669,
+          "intercept": -3.111701
+        },
+        "reportedParams": {
+          "slope": "1.471669",
+          "intercept": "-3.111701"
+        },
+        "paramsMatch": true,
+        "thresholdIndependent": {
+          "abs": 13,
+          "rel": 0.407625,
+          "fa": 0,
+          "power": 0.125
+        },
+        "reportedThreshold": {
+          "abs": 13,
+          "rel": 0.407625
+        },
+        "thresholdMatch": true,
+        "holdout": {
+          "n": 72,
+          "groups": 24,
+          "bias": 2.5,
+          "mae": 40.944444,
+          "medianAbs": 16,
+          "p95Abs": 160,
+          "maxAbs": 165,
+          "relMedian": 0.098182,
+          "relP95": 0.41206,
+          "falseAlarms": 3,
+          "falseAlarmRate": 0.041667,
+          "detection": {
+            "+10%": 0.111111,
+            "+25%": 0.125,
+            "+50 tokens": 0.152778
+          }
+        },
+        "reportedHoldout": {
+          "n": 72,
+          "groups": 24,
+          "bias": 2.5,
+          "mae": 40.944444,
+          "medianAbs": 16,
+          "p95Abs": 160,
+          "maxAbs": 165,
+          "relMedian": 0.098182,
+          "relP95": 0.41206,
+          "falseAlarms": 3,
+          "falseAlarmRate": 0.041667,
+          "detection": {
+            "+10%": 0.111111,
+            "+25%": 0.125,
+            "+50 tokens": 0.152778
+          }
+        },
+        "holdoutWithMyFit": {
+          "n": 72,
+          "groups": 24,
+          "bias": 2.5,
+          "mae": 40.944444,
+          "medianAbs": 16,
+          "p95Abs": 160,
+          "maxAbs": 165,
+          "relMedian": 0.098182,
+          "relP95": 0.41206,
+          "falseAlarms": 3,
+          "falseAlarmRate": 0.041667,
+          "detection": {
+            "+10%": 0.111111,
+            "+25%": 0.125,
+            "+50 tokens": 0.152778
+          }
+        },
+        "train": {
+          "n": 143,
+          "groups": 48,
+          "bias": -0.062937,
+          "mae": 34.524476,
+          "medianAbs": 17,
+          "p95Abs": 132,
+          "maxAbs": 153,
+          "relMedian": 0.121212,
+          "relP95": 0.40303,
+          "falseAlarms": 0,
+          "falseAlarmRate": 0,
+          "detection": {
+            "+10%": 0.111888,
+            "+25%": 0.125874,
+            "+50 tokens": 0.230769
+          }
+        },
+        "validation": {
+          "n": 72,
+          "groups": 24,
+          "bias": 7.361111,
+          "mae": 39.472222,
+          "medianAbs": 22,
+          "p95Abs": 119,
+          "maxAbs": 139,
+          "relMedian": 0.118182,
+          "relP95": 0.407625,
+          "falseAlarms": 0,
+          "falseAlarmRate": 0,
+          "detection": {
+            "+10%": 0.083333,
+            "+25%": 0.125,
+            "+50 tokens": 0.166667
+          }
+        },
+        "bootstrapCi95": {
+          "bias": [
+            -22.375,
+            27.902778
+          ],
+          "mae": [
+            22.486111,
+            61.583333
+          ],
+          "falseAlarmRate": [
+            0,
+            0.125
+          ],
+          "detPlus25": [
+            0,
+            0.25
+          ]
+        },
+        "reportedBootstrap": {
+          "bias": [
+            -22.375,
+            27.902778
+          ],
+          "mae": [
+            22.486111,
+            61.583333
+          ],
+          "falseAlarmRate": [
+            0,
+            0.125
+          ],
+          "detPlus25": [
+            0,
+            0.25
+          ]
+        },
+        "policyChecks": {
+          "train_n": true,
+          "validation_n": true,
+          "holdout_n": true,
+          "holdout_groups": true,
+          "holdout_alert_rate": true,
+          "holdout_det25": false
+        },
+        "calibratedIndependent": false,
+        "reportedStatus": "CALIBRATION_NOT_ACCEPTED",
+        "holdoutByFamilyMae": {
+          "code_ts": {
+            "mae": 14.888889,
+            "falseAlarms": 0,
+            "det25": 0
+          },
+          "en_prose": {
+            "mae": 24.666667,
+            "falseAlarms": 0,
+            "det25": 0
+          },
+          "json": {
+            "mae": 19.777778,
+            "falseAlarms": 0,
+            "det25": 0
+          },
+          "markdown_table": {
+            "mae": 16,
+            "falseAlarms": 0,
+            "det25": 0
+          },
+          "mixed_unicode": {
+            "mae": 12.555556,
+            "falseAlarms": 0,
+            "det25": 0
+          },
+          "numeric": {
+            "mae": 118,
+            "falseAlarms": 3,
+            "det25": 0
+          },
+          "pt_prose": {
+            "mae": 110.555556,
+            "falseAlarms": 0,
+            "det25": 0
+          },
+          "tiny": {
+            "mae": 11.111111,
+            "falseAlarms": 0,
+            "det25": 1
+          }
+        },
+        "reportedByFamilyMae": {
+          "code_ts": 14.888889,
+          "en_prose": 24.666667,
+          "json": 19.777778,
+          "markdown_table": 16,
+          "mixed_unicode": 12.555556,
+          "numeric": 118,
+          "pt_prose": 110.555556,
+          "tiny": 11.111111
+        },
+        "countTokensVsFinal": {
+          "n": 287,
+          "equal": 280,
+          "nonEqual": 7,
+          "nonEqualAllRefusals": true,
+          "nonEqualDiffs": [
+            -22
+          ]
+        }
+      },
+      "claude-sonnet-5-5": {
+        "n": {
+          "train": 143,
+          "validation": 72,
+          "holdout": 72,
+          "holdoutGroups": 24
+        },
+        "fitIndependent": {
+          "slope": 1.473891,
+          "intercept": -3.092691
+        },
+        "reportedParams": {
+          "slope": "1.473891",
+          "intercept": "-3.092691"
+        },
+        "paramsMatch": true,
+        "thresholdIndependent": {
+          "abs": 11,
+          "rel": 0.407625,
+          "fa": 0,
+          "power": 0.148148
+        },
+        "reportedThreshold": {
+          "abs": 11,
+          "rel": 0.407625
+        },
+        "thresholdMatch": true,
+        "holdout": {
+          "n": 72,
+          "groups": 24,
+          "bias": 2.680556,
+          "mae": 41.263889,
+          "medianAbs": 17,
+          "p95Abs": 159,
+          "maxAbs": 166,
+          "relMedian": 0.098182,
+          "relP95": 0.414573,
+          "falseAlarms": 4,
+          "falseAlarmRate": 0.055556,
+          "detection": {
+            "+10%": 0.111111,
+            "+25%": 0.125,
+            "+50 tokens": 0.152778
+          }
+        },
+        "reportedHoldout": {
+          "n": 72,
+          "groups": 24,
+          "bias": 2.680556,
+          "mae": 41.263889,
+          "medianAbs": 17,
+          "p95Abs": 159,
+          "maxAbs": 166,
+          "relMedian": 0.098182,
+          "relP95": 0.414573,
+          "falseAlarms": 4,
+          "falseAlarmRate": 0.055556,
+          "detection": {
+            "+10%": 0.111111,
+            "+25%": 0.125,
+            "+50 tokens": 0.152778
+          }
+        },
+        "holdoutWithMyFit": {
+          "n": 72,
+          "groups": 24,
+          "bias": 2.680556,
+          "mae": 41.263889,
+          "medianAbs": 17,
+          "p95Abs": 159,
+          "maxAbs": 166,
+          "relMedian": 0.098182,
+          "relP95": 0.414573,
+          "falseAlarms": 4,
+          "falseAlarmRate": 0.055556,
+          "detection": {
+            "+10%": 0.111111,
+            "+25%": 0.125,
+            "+50 tokens": 0.152778
+          }
+        },
+        "train": {
+          "n": 143,
+          "groups": 48,
+          "bias": -0.062937,
+          "mae": 35.041958,
+          "medianAbs": 18,
+          "p95Abs": 133,
+          "maxAbs": 160,
+          "relMedian": 0.123543,
+          "relP95": 0.4,
+          "falseAlarms": 4,
+          "falseAlarmRate": 0.027972,
+          "detection": {
+            "+10%": 0.111888,
+            "+25%": 0.132867,
+            "+50 tokens": 0.230769
+          }
+        },
+        "validation": {
+          "n": 72,
+          "groups": 24,
+          "bias": 7.333333,
+          "mae": 40.305556,
+          "medianAbs": 26,
+          "p95Abs": 120,
+          "maxAbs": 139,
+          "relMedian": 0.120553,
+          "relP95": 0.4,
+          "falseAlarms": 0,
+          "falseAlarmRate": 0,
+          "detection": {
+            "+10%": 0.125,
+            "+25%": 0.125,
+            "+50 tokens": 0.194444
+          }
+        },
+        "bootstrapCi95": {
+          "bias": [
+            -22.263889,
+            28.180556
+          ],
+          "mae": [
+            22.638889,
+            62.138889
+          ],
+          "falseAlarmRate": [
+            0,
+            0.152778
+          ],
+          "detPlus25": [
+            0,
+            0.25
+          ]
+        },
+        "reportedBootstrap": {
+          "bias": [
+            -22.263889,
+            28.180556
+          ],
+          "mae": [
+            22.638889,
+            62.138889
+          ],
+          "falseAlarmRate": [
+            0,
+            0.152778
+          ],
+          "detPlus25": [
+            0,
+            0.25
+          ]
+        },
+        "policyChecks": {
+          "train_n": true,
+          "validation_n": true,
+          "holdout_n": true,
+          "holdout_groups": true,
+          "holdout_alert_rate": false,
+          "holdout_det25": false
+        },
+        "calibratedIndependent": false,
+        "reportedStatus": "CALIBRATION_NOT_ACCEPTED",
+        "holdoutByFamilyMae": {
+          "code_ts": {
+            "mae": 15.444444,
+            "falseAlarms": 0,
+            "det25": 0
+          },
+          "en_prose": {
+            "mae": 26.444444,
+            "falseAlarms": 0,
+            "det25": 0
+          },
+          "json": {
+            "mae": 19.777778,
+            "falseAlarms": 0,
+            "det25": 0
+          },
+          "markdown_table": {
+            "mae": 16.777778,
+            "falseAlarms": 0,
+            "det25": 0
+          },
+          "mixed_unicode": {
+            "mae": 12.444444,
+            "falseAlarms": 0,
+            "det25": 0
+          },
+          "numeric": {
+            "mae": 118.666667,
+            "falseAlarms": 3,
+            "det25": 0
+          },
+          "pt_prose": {
+            "mae": 109.888889,
+            "falseAlarms": 0,
+            "det25": 0
+          },
+          "tiny": {
+            "mae": 10.666667,
+            "falseAlarms": 1,
+            "det25": 1
+          }
+        },
+        "reportedByFamilyMae": {
+          "code_ts": 15.444444,
+          "en_prose": 26.444444,
+          "json": 19.777778,
+          "markdown_table": 16.777778,
+          "mixed_unicode": 12.444444,
+          "numeric": 118.666667,
+          "pt_prose": 109.888889,
+          "tiny": 10.666667
+        },
+        "countTokensVsFinal": {
+          "n": 287,
+          "equal": 274,
+          "nonEqual": 13,
+          "nonEqualAllRefusals": true,
+          "nonEqualDiffs": [
+            -22
+          ]
+        }
+      },
+      "claude-opus-5-5": {
+        "n": {
+          "train": 143,
+          "validation": 72,
+          "holdout": 72,
+          "holdoutGroups": 24
+        },
+        "fitIndependent": {
+          "slope": 1.470861,
+          "intercept": -1.412222
+        },
+        "reportedParams": {
+          "slope": "1.470861",
+          "intercept": "-1.412222"
+        },
+        "paramsMatch": true,
+        "thresholdIndependent": {
+          "abs": 13,
+          "rel": 0.407408,
+          "fa": 0,
+          "power": 0.12037
+        },
+        "reportedThreshold": {
+          "abs": 13,
+          "rel": 0.407408
+        },
+        "thresholdMatch": true,
+        "holdout": {
+          "n": 72,
+          "groups": 24,
+          "bias": 2.638889,
+          "mae": 40.194444,
+          "medianAbs": 16,
+          "p95Abs": 161,
+          "maxAbs": 165,
+          "relMedian": 0.075975,
+          "relP95": 0.4075,
+          "falseAlarms": 3,
+          "falseAlarmRate": 0.041667,
+          "detection": {
+            "+10%": 0.111111,
+            "+25%": 0.125,
+            "+50 tokens": 0.152778
+          }
+        },
+        "reportedHoldout": {
+          "n": 72,
+          "groups": 24,
+          "bias": 2.638889,
+          "mae": 40.194444,
+          "medianAbs": 16,
+          "p95Abs": 161,
+          "maxAbs": 165,
+          "relMedian": 0.075975,
+          "relP95": 0.4075,
+          "falseAlarms": 3,
+          "falseAlarmRate": 0.041667,
+          "detection": {
+            "+10%": 0.111111,
+            "+25%": 0.125,
+            "+50 tokens": 0.152778
+          }
+        },
+        "holdoutWithMyFit": {
+          "n": 72,
+          "groups": 24,
+          "bias": 2.638889,
+          "mae": 40.194444,
+          "medianAbs": 16,
+          "p95Abs": 161,
+          "maxAbs": 165,
+          "relMedian": 0.075975,
+          "relP95": 0.4075,
+          "falseAlarms": 3,
+          "falseAlarmRate": 0.041667,
+          "detection": {
+            "+10%": 0.111111,
+            "+25%": 0.125,
+            "+50 tokens": 0.152778
+          }
+        },
+        "train": {
+          "n": 143,
+          "groups": 48,
+          "bias": 0.020979,
+          "mae": 34.034965,
+          "medianAbs": 17,
+          "p95Abs": 131,
+          "maxAbs": 154,
+          "relMedian": 0.12065,
+          "relP95": 0.4,
+          "falseAlarms": 0,
+          "falseAlarmRate": 0,
+          "detection": {
+            "+10%": 0.06993,
+            "+25%": 0.125874,
+            "+50 tokens": 0.230769
+          }
+        },
+        "validation": {
+          "n": 72,
+          "groups": 24,
+          "bias": 7.513889,
+          "mae": 38.930556,
+          "medianAbs": 21,
+          "p95Abs": 119,
+          "maxAbs": 138,
+          "relMedian": 0.11747,
+          "relP95": 0.40625,
+          "falseAlarms": 0,
+          "falseAlarmRate": 0,
+          "detection": {
+            "+10%": 0.069444,
+            "+25%": 0.125,
+            "+50 tokens": 0.166667
+          }
+        },
+        "bootstrapCi95": {
+          "bias": [
+            -22.166667,
+            27.819444
+          ],
+          "mae": [
+            21.75,
+            60.486111
+          ],
+          "falseAlarmRate": [
+            0,
+            0.125
+          ],
+          "detPlus25": [
+            0,
+            0.25
+          ]
+        },
+        "reportedBootstrap": {
+          "bias": [
+            -22.166667,
+            27.819444
+          ],
+          "mae": [
+            21.75,
+            60.486111
+          ],
+          "falseAlarmRate": [
+            0,
+            0.125
+          ],
+          "detPlus25": [
+            0,
+            0.25
+          ]
+        },
+        "policyChecks": {
+          "train_n": true,
+          "validation_n": true,
+          "holdout_n": true,
+          "holdout_groups": true,
+          "holdout_alert_rate": true,
+          "holdout_det25": false
+        },
+        "calibratedIndependent": false,
+        "reportedStatus": "CALIBRATION_NOT_ACCEPTED",
+        "holdoutByFamilyMae": {
+          "code_ts": {
+            "mae": 14.555556,
+            "falseAlarms": 0,
+            "det25": 0
+          },
+          "en_prose": {
+            "mae": 20.111111,
+            "falseAlarms": 0,
+            "det25": 0
+          },
+          "json": {
+            "mae": 19.777778,
+            "falseAlarms": 0,
+            "det25": 0
+          },
+          "markdown_table": {
+            "mae": 15.333333,
+            "falseAlarms": 0,
+            "det25": 0
+          },
+          "mixed_unicode": {
+            "mae": 12.444444,
+            "falseAlarms": 0,
+            "det25": 0
+          },
+          "numeric": {
+            "mae": 117.222222,
+            "falseAlarms": 3,
+            "det25": 0
+          },
+          "pt_prose": {
+            "mae": 111,
+            "falseAlarms": 0,
+            "det25": 0
+          },
+          "tiny": {
+            "mae": 11.111111,
+            "falseAlarms": 0,
+            "det25": 1
+          }
+        },
+        "reportedByFamilyMae": {
+          "code_ts": 14.555556,
+          "en_prose": 20.111111,
+          "json": 19.777778,
+          "markdown_table": 15.333333,
+          "mixed_unicode": 12.444444,
+          "numeric": 117.222222,
+          "pt_prose": 111,
+          "tiny": 11.111111
+        },
+        "countTokensVsFinal": {
+          "n": 287,
+          "equal": 287,
+          "nonEqual": 0,
+          "nonEqualAllRefusals": true,
+          "nonEqualDiffs": []
+        }
+      }
+    },
+    "historicalHaiku45OnNewHoldout": {
+      "parametersUsed": {
+        "slope": "1.165964",
+        "intercept": "4.101752"
+      },
+      "thresholdUsed": {
+        "abs": 6,
+        "rel": 0.142062
+      },
+      "fromReport": true,
+      "metrics": {
+        "n": 72,
+        "groups": 24,
+        "bias": 0.875,
+        "mae": 16.013889,
+        "medianAbs": 10,
+        "p95Abs": 41,
+        "maxAbs": 58,
+        "relMedian": 0.049505,
+        "relP95": 0.208333,
+        "falseAlarms": 3,
+        "falseAlarmRate": 0.041667,
+        "detection": {
+          "+10%": 0.194444,
+          "+25%": 0.791667,
+          "+50 tokens": 0.583333
+        }
+      },
+      "reported": {
+        "n": 72,
+        "groups": 24,
+        "bias": 0.875,
+        "mae": 16.013889,
+        "medianAbs": 10,
+        "p95Abs": 41,
+        "maxAbs": 58,
+        "relMedian": 0.049505,
+        "relP95": 0.208333,
+        "falseAlarms": 3,
+        "falseAlarmRate": 0.041667,
+        "detection": {
+          "+10%": 0.194444,
+          "+25%": 0.791667,
+          "+50 tokens": 0.583333
+        }
+      }
+    },
+    "sharedTokenizer": {
+      "haikuEqSonnet": "217/217",
+      "opusEqHaikuPlus2": "222/222"
+    },
+    "fableExploratory": {
+      "n": 40,
+      "ratioMedian": 1.461538,
+      "p05": 1.101266,
+      "p95": 2.285714,
+      "refusals": 10
+    },
+    "corpus": {
+      "texts": 288,
+      "splits": {
+        "train": 144,
+        "validation": 72,
+        "holdout": 72
+      },
+      "families": 8,
+      "holdoutGroups": 24
+    }
+  },
+  "cal02": {
+    "rows": 579,
+    "perStageModel": {
+      "smoke|claude-haiku-5-5": 1,
+      "smoke|claude-sonnet-5-5": 1,
+      "smoke|claude-opus-5-5": 1,
+      "holdout|claude-haiku-5-5": 192,
+      "holdout|claude-sonnet-5-5": 192,
+      "holdout|claude-opus-5-5": 192
+    },
+    "refusals": 0,
+    "modelReturnedDiff": 0,
+    "costMicroUsd": "849509",
+    "firstCallAt": "2026-10-15T12:45:59.104Z",
+    "lastCallAt": "2026-10-15T13:06:03.542Z",
+    "countTokensEqualFinal": "579/579",
+    "devCorpus": {
+      "texts": 720,
+      "labels": 2160,
+      "labelsPaid": 0,
+      "labelProvenance": [
+        "provider_count_tokens (free; provider-computed, not independent)"
+      ]
+    },
+    "holdoutCorpus": {
+      "texts": 192,
+      "groups": 64,
+      "overlapWithCal01Texts": 0,
+      "overlapWithDevTexts": 0
+    },
+    "devOverlapWithCal01": {
+      "count": 18,
+      "byCal01Split": {
+        "train": 16,
+        "holdout": 2
+      },
+      "cal01HoldoutTextsPresentInDev": [
+        {
+          "dev": "cal2dev-tiny-013-v0",
+          "cal01": "cal1-tiny-004-v1",
+          "cal01Split": "holdout"
+        },
+        {
+          "dev": "cal2dev-tiny-013-v1",
+          "cal01": "cal1-tiny-004-v2",
+          "cal01Split": "holdout"
+        }
+      ]
+    },
+    "statusPerModel": {
+      "claude-haiku-5-5": {
+        "status": "EXPERIMENTALLY_CALIBRATED"
+      },
+      "claude-sonnet-5-5": {
+        "status": "EXPERIMENTALLY_CALIBRATED"
+      },
+      "claude-opus-5-5": {
+        "status": "EXPERIMENTALLY_CALIBRATED"
+      }
+    }
+  }
+}

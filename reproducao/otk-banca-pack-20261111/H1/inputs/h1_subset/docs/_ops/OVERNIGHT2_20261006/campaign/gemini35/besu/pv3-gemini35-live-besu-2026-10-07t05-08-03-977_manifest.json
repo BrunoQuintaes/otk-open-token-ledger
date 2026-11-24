@@ -1,0 +1,103 @@
+{
+  "runId": "pv3-gemini35-live-besu-2026-10-07t05-08-03-977",
+  "provider": "gemini",
+  "mode": "live",
+  "phase": "besu",
+  "commit": "b42d05cf2c88eab6325d036ad4ad7d3977c59375",
+  "tree": "28c6575b032d1e84e969f608539da91b7cd445ff",
+  "dirty": 4,
+  "model": "gemini-3.5-flash-lite",
+  "policy": "otk.money_bound_policy.v5@2026-10-04",
+  "contextWindow": "1048576",
+  "maxOutput": "65536",
+  "priceTable": {
+    "file": "scripts/pilot/price_table_pilot_v3_gemini35_20261004.json",
+    "version": "pilot-v3-anthropic-haiku45-openai-gpt4omini-gemini25fl-gemini35fl-official-2026-10-04",
+    "sha256": "ad2af5f655bab8c8479c95f86a49d57329ae37f12b117c2198ca8d4af61bc2a3"
+  },
+  "weightsOracle": {
+    "version": "dev-static-from-CostUnits.ts+gemini-2.5-flash-lite+gemini-3.5-flash-lite@2026-10-04",
+    "digest": "0xf5175787996e57b277954b96299c97efa24c3c5870cc79c46c7440a559895cb8",
+    "profile": "development-2026-10-04",
+    "provider": "gemini",
+    "wProviderMilli": "900",
+    "model": "gemini-3.5-flash-lite",
+    "wModelMilli": "600",
+    "developmentProfile": true,
+    "calibrated": false
+  },
+  "plannedCalls": [
+    {
+      "label": "besu",
+      "stream": false,
+      "maxTokens": 16,
+      "disconnect": false,
+      "chain": true,
+      "expect": "final",
+      "promptSha256": "68173af2cf95b179d79e082dc43d04ae29327fa601b471f47807cb69a594dc97",
+      "promptChars": 33,
+      "conservativeOtkReservePico": "314612800000"
+    }
+  ],
+  "ledger": {
+    "file": "<HOME>/otk-pilot/gemini_budget_ledger.jsonl",
+    "summaryBefore": {
+      "capUsd": 3,
+      "reservations": 229,
+      "settledOk": 227,
+      "refused": 2,
+      "uncertain": 0,
+      "open": 0,
+      "confirmedUsd": 0.032167820000000014,
+      "uncertainUsd": 0,
+      "openUsd": 0,
+      "exposureUsd": 0.032167820000000014,
+      "remainingUsd": 2.96783218
+    }
+  },
+  "preflightModelsApi": {
+    "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite",
+    "status": 200,
+    "id": "models/gemini-3.5-flash-lite",
+    "displayName": "Gemini 3.5 Flash Lite",
+    "version": "3.5-flash-lite-07-2026",
+    "inputTokenLimit": 1048576,
+    "outputTokenLimit": 65536,
+    "thinking": true
+  },
+  "database": "otk_pilot_v3_pv3_gemini35_live_besu_2026_10_07t05_08_03_977",
+  "chain": {
+    "rpc": "http://127.0.0.1:58745",
+    "chainId": "16251",
+    "registry": "0x7D2347eBA8871B4DD81012FD361f722e94F6468f",
+    "deployment": "deploy_v3_besu.json (test deployment of this environment)"
+  },
+  "upstream": {
+    "kind": "gemini API (real)",
+    "override": "none"
+  },
+  "otkBudget": {
+    "budgetId": "pilot-v3-pv3-gemini35-live-besu-2026-10-07t05-08-03-977",
+    "ceilingPico": "2967832000000",
+    "correlation": "same spend as the canonical ledger (not a second charge)"
+  },
+  "tenantPlan": {
+    "tenantId": "pilot-v3",
+    "tier": "STARTER",
+    "why": "campaign volume above the FREE quota of 10 000 legacy CU per epoch; spend still bounded by the canonical ledger and the OTK money budget"
+  },
+  "entrypointLogRedactedSecrets": "no secret value in the child log",
+  "ledgerAfter": {
+    "capUsd": 3,
+    "reservations": 230,
+    "settledOk": 228,
+    "refused": 2,
+    "uncertain": 0,
+    "open": 0,
+    "confirmedUsd": 0.03217332000000001,
+    "uncertainUsd": 0,
+    "openUsd": 0,
+    "exposureUsd": 0.03217332000000001,
+    "remainingUsd": 2.96782668
+  }
+}

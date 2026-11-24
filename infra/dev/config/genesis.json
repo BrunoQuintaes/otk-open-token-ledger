@@ -1,0 +1,18 @@
+{
+  "config": {
+    "chainId": 2018,
+    "ethash": {},
+    "londonBlock": 0
+  },
+  "nonce": "0x0",
+  "timestamp": "0x0",
+  "extraData": "0x",
+  "gasLimit": "0x5F5E100",
+  "difficulty": "0x1",
+  "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+  "coinbase": "0x0000000000000000000000000000000000000000",
+  "alloc": {
+    "c2c9eaf90ecfdcb77ba7eea7928ab98b011ab8d1":  { "balance": "0x21e19e0c9bab2400000" },
+    "3000bafbd1b9f8dfc191a3575b1055e9155741f4": { "balance": "0x21e19e0c9bab2400000" }
+  }
+}

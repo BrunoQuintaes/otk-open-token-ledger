@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "Se usar este software ou estes dados, cite a dissertação e este repositório."
+title: "OTK — Open Token Ledger: medição auditável do uso de modelos de IA (código, dados sanitizados e reprodução da dissertação)"
+type: software
+authors:
+  - family-names: Quintaes
+    given-names: Bruno
+repository-code: "https://github.com/BrunoQuintaes/otk-open-token-ledger"
+url: "https://github.com/BrunoQuintaes/otk-open-token-ledger"
+license: MIT
+version: "h1-7606bc9b"
+keywords:
+  - medição de tokens
+  - modelos de linguagem
+  - recibos assinados
+  - reprodutibilidade

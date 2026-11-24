@@ -1,0 +1,24 @@
+% Gerado por analise_cmp8.mjs (CMP8_PREP, C160) a partir de TENTATIVAS_CMP8.jsonl (REAL). TEXTO NOVO, NAO APROVADO.
+\begin{table}[htbp]
+\centering
+\caption{Tokens de entrada declarados por oito modelos para os mesmos textos, por tipo de texto (mediana)}
+\label{tab:dif-oito-modelos-familia}
+\scriptsize
+\begin{tabular}{@{}lrrrrrrrrr@{}}
+\toprule
+Tipo de texto & Textos & gpt-4o-mini & gpt-6-luna & claude-haiku-4-5 & claude-haiku-5-5 & claude-sonnet-5-5 & claude-opus-5-5 & gemini-3.5-flash-lite & gemini-3.1-flash-lite \\
+\midrule
+Prosa em português & 27 & 299 & 298 (0\,\%) & 409 ($+$37\,\%) & 595 ($+$101\,\%) & 597 ($+$101\,\%) & 597 ($+$101\,\%) & 296 (0\,\%) & 296 (0\,\%) \\
+Prosa em inglês & 27 & 241 & 240 (0\,\%) & 261 ($+$6\,\%) & 369 ($+$51\,\%) & 371 ($+$52\,\%) & 371 ($+$52\,\%) & 242 (0\,\%) & 242 (0\,\%) \\
+Código & 27 & 142 & 141 ($-$1\,\%) & 170 ($+$19\,\%) & 195 ($+$37\,\%) & 197 ($+$39\,\%) & 197 ($+$39\,\%) & 165 ($+$16\,\%) & 165 ($+$16\,\%) \\
+JSON & 27 & 461 & 460 (0\,\%) & 531 ($+$15\,\%) & 590 ($+$28\,\%) & 592 ($+$29\,\%) & 592 ($+$29\,\%) & 574 ($+$25\,\%) & 574 ($+$25\,\%) \\
+Tabela em markdown & 27 & 165 & 164 ($-$1\,\%) & 208 ($+$25\,\%) & 231 ($+$42\,\%) & 233 ($+$43\,\%) & 233 ($+$43\,\%) & 208 ($+$26\,\%) & 208 ($+$26\,\%) \\
+Unicode misto & 26 & 114 & 113 ($-$1\,\%) & 171{,}5 ($+$50\,\%) & 198 ($+$74\,\%) & 200 ($+$75\,\%) & 200 ($+$75\,\%) & 100 ($-$13\,\%) & 100 ($-$13\,\%) \\
+Números & 27 & 239 & 238 (0\,\%)\,[26] & 244 ($+$2\,\%) & 247 ($+$3\,\%) & 249 ($+$4\,\%) & 249 ($+$4\,\%) & 466 ($+$95\,\%) & 466 ($+$95\,\%) \\
+Textos muito curtos & 27 & 19 & 18 ($-$5\,\%) & 24 ($+$26\,\%) & 27 ($+$42\,\%) & 29 ($+$53\,\%) & 29 ($+$53\,\%) & 14 ($-$26\,\%) & 14 ($-$26\,\%) \\
+\midrule
+\textbf{Todos} & \textbf{215} & \textbf{192} & \textbf{190{,}5 ($-$1\,\%)\,[214]} & \textbf{242 ($+$20\,\%)} & \textbf{279 ($+$42\,\%)} & \textbf{281 ($+$47\,\%)} & \textbf{281 ($+$47\,\%)} & \textbf{211 ($+$1\,\%)} & \textbf{211 ($+$1\,\%)} \\
+\bottomrule
+\end{tabular}
+\nota{Resultado PARCIAL: gpt-6-luna 214/215 (numeric-005-v1 EXCL\_SEM\_USO\_HTTP\_400).  Mediana dos tokens de entrada declarados por modelo; entre parênteses, a mediana da razão texto a texto contra o gpt-4o-mini, só com os textos incluídos nos dois; entre colchetes, o número de textos do modelo quando é menor que o da linha. Exclusões e cobertura no PROTOCOLO\_CMP8.}
+\end{table}

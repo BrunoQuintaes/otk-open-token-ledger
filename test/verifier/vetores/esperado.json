@@ -1,0 +1,273 @@
+{
+  "schema": "otk.verifier_vectors.v1",
+  "aviso": "CHAVES DE TESTE: os recibos foram assinados com chaves fixas públicas, sem valor. Não são recibos reais.",
+  "entrada": "pasta recibos/ (arrastar a pasta inteira) + chaveiro.json",
+  "impressaoDigital": "ef9d1aeb4f6ef0b412fad87dfba256cfcc7aa49c6b00f1dc27674d6351bbba24",
+  "relatorioSha256": {
+    "comImpressaoDigital": "bbcfeed1d0cfb3beb9685eb8157331ca3bd21d8186985f22676a0a18e5d19f01",
+    "semImpressaoDigital": "91e064cf527c424d8b25e3b3e55966bf24fa36c368051992458de8384d6c60ad"
+  },
+  "exitCode": {
+    "comImpressaoDigital": 20,
+    "semImpressaoDigital": 20
+  },
+  "vereditos": [
+    {
+      "id": "tenant-test-a/op-valido",
+      "verdict": "verde",
+      "code": "ok"
+    },
+    {
+      "id": "tenant-test-a/op-alt-contagem",
+      "verdict": "vermelho",
+      "code": "digest_mismatch"
+    },
+    {
+      "id": "tenant-test-a/op-alt-ausente-zero",
+      "verdict": "vermelho",
+      "code": "digest_mismatch"
+    },
+    {
+      "id": "tenant-test-b/op-alt-tenant",
+      "verdict": "vermelho",
+      "code": "digest_mismatch"
+    },
+    {
+      "id": "tenant-test-a/op-alt-operacao-trocada",
+      "verdict": "vermelho",
+      "code": "digest_mismatch"
+    },
+    {
+      "id": "tenant-test-a/op-alt-compromisso",
+      "verdict": "vermelho",
+      "code": "digest_mismatch"
+    },
+    {
+      "id": "tenant-test-a/op-alt-pesos-cu",
+      "verdict": "vermelho",
+      "code": "digest_mismatch"
+    },
+    {
+      "id": "tenant-test-a/op-alt-cu-exato",
+      "verdict": "vermelho",
+      "code": "digest_mismatch"
+    },
+    {
+      "id": "tenant-test-a/op-alt-origem",
+      "verdict": "vermelho",
+      "code": "digest_mismatch"
+    },
+    {
+      "id": "tenant-test-a/op-schema",
+      "verdict": "amarelo",
+      "code": "unsupported_version"
+    },
+    {
+      "id": "tenant-test-a/op-conteudo",
+      "verdict": "vermelho",
+      "code": "malformed"
+    },
+    {
+      "id": "tenant-test-a/op-dominio",
+      "verdict": "vermelho",
+      "code": "wrong_domain"
+    },
+    {
+      "id": "tenant-test-a/op-chave-fora",
+      "verdict": "amarelo",
+      "code": "unauthorized_signer"
+    },
+    {
+      "id": "tenant-test-a/op-data-alterada",
+      "verdict": "vermelho",
+      "code": "bad_signature"
+    },
+    {
+      "id": "tenant-test-a/op-forjada",
+      "verdict": "vermelho",
+      "code": "bad_signature"
+    },
+    {
+      "id": "tenant-test-a/op-revogada",
+      "verdict": "vermelho",
+      "code": "revoked_key"
+    },
+    {
+      "id": "tenant-test-a/op-aposentada-antes",
+      "verdict": "amarelo",
+      "code": "retired_key_before_date"
+    },
+    {
+      "id": "tenant-test-a/op-aposentada-depois",
+      "verdict": "vermelho",
+      "code": "revoked_key"
+    },
+    {
+      "id": "tenant-test-a/op-data-formato",
+      "verdict": "vermelho",
+      "code": "malformed"
+    },
+    {
+      "id": "tenant-test-a/op-x1-revogada-keyid-ativa",
+      "verdict": "vermelho",
+      "code": "revoked_key"
+    },
+    {
+      "id": "tenant-test-a/op-x1-revogada-keyid-inventado",
+      "verdict": "vermelho",
+      "code": "revoked_key"
+    },
+    {
+      "id": "tenant-test-a/op-x1-aposentada-depois-keyid-inventado",
+      "verdict": "vermelho",
+      "code": "revoked_key"
+    },
+    {
+      "id": "tenant-test-a/op-x1-aposentada-depois-keyid-ativa",
+      "verdict": "vermelho",
+      "code": "revoked_key"
+    },
+    {
+      "id": "tenant-test-a/op-x1-fora-keyid-ativa",
+      "verdict": "vermelho",
+      "code": "bad_signature"
+    },
+    {
+      "id": "tenant-test-a/op-x1-alterado-fora-keyid-ativa",
+      "verdict": "vermelho",
+      "code": "bad_signature"
+    },
+    {
+      "id": "tenant-test-a/op-x1-alterado-revogada-keyid-inventado",
+      "verdict": "vermelho",
+      "code": "revoked_key"
+    },
+    {
+      "id": "tenant-test-a/op-x1-ativa-keyid-aposentada",
+      "verdict": "vermelho",
+      "code": "bad_signature"
+    },
+    {
+      "id": "tenant-test-a/op-x1-signer-trocado",
+      "verdict": "vermelho",
+      "code": "bad_signature"
+    },
+    {
+      "id": "tenant-test-a/op-x1-alg-trocado",
+      "verdict": "amarelo",
+      "code": "unsupported_version"
+    },
+    {
+      "id": "tenant-test-a/op-conf-1",
+      "verdict": "verde",
+      "code": "ok"
+    },
+    {
+      "id": "tenant-test-a/op-conf-2",
+      "verdict": "verde",
+      "code": "ok"
+    },
+    {
+      "id": "tenant-test-a/op-conf-1",
+      "kind": "conference",
+      "verdict": "verde",
+      "code": "ok"
+    },
+    {
+      "id": "tenant-test-a/op-conf-2",
+      "kind": "conference",
+      "verdict": "vermelho",
+      "code": "binding_mismatch"
+    },
+    {
+      "id": "tenant-test-a/op-resumo-declarado",
+      "verdict": "vermelho",
+      "code": "declared_digest_mismatch"
+    },
+    {
+      "id": "tenant-test-a/op-conflito",
+      "verdict": "vermelho",
+      "code": "conflict"
+    },
+    {
+      "id": "recibos/f_arquivo.jsonl#3",
+      "verdict": "vermelho",
+      "code": "invalid_json"
+    },
+    {
+      "id": "tenant-test-a/op-codec-numero",
+      "verdict": "verde",
+      "code": "ok"
+    },
+    {
+      "id": "tenant-test-a/op-codec-1e3",
+      "verdict": "vermelho",
+      "code": "codec_error"
+    },
+    {
+      "id": "tenant-test-a/op-codec-vazio",
+      "verdict": "vermelho",
+      "code": "codec_error"
+    },
+    {
+      "id": "tenant-test-a/op-codec-grande",
+      "verdict": "vermelho",
+      "code": "codec_error"
+    },
+    {
+      "id": "tenant-test-a/op-dev",
+      "verdict": "amarelo",
+      "code": "development_profile"
+    },
+    {
+      "id": "tenant-test-a/op-parcial",
+      "verdict": "amarelo",
+      "code": "usage_incomplete"
+    },
+    {
+      "id": "tenant-test-a/op-declarado",
+      "verdict": "amarelo",
+      "code": "source_not_observed"
+    },
+    {
+      "id": "tenant-test-a/op-export",
+      "verdict": "vermelho",
+      "code": "digest_mismatch"
+    },
+    {
+      "id": "tenant-test-a/op-export-ok",
+      "verdict": "verde",
+      "code": "ok"
+    },
+    {
+      "id": "recibos/k_legado.json#1",
+      "verdict": "amarelo",
+      "code": "legacy_format"
+    },
+    {
+      "id": "recibos/k_legado.json#2",
+      "verdict": "amarelo",
+      "code": "legacy_unsupported"
+    },
+    {
+      "id": "recibos/k_legado.json#3",
+      "verdict": "amarelo",
+      "code": "unrecognized_record"
+    },
+    {
+      "id": "tenant-test-a/op-anthropic",
+      "verdict": "verde",
+      "code": "ok"
+    },
+    {
+      "id": "tenant-test-a/op-antes-do-corte",
+      "verdict": "verde",
+      "code": "ok"
+    },
+    {
+      "id": "recibos/m_cortado.jsonl#2",
+      "verdict": "amarelo",
+      "code": "truncated_line"
+    }
+  ]
+}

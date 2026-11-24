@@ -1,0 +1,168 @@
+{
+  "_synthetic": "SYNTHETIC FIXTURE (OTK Phase 10 tests, 2026-10-06): invented values built to exercise the reconciliation classifications. NOT data exported by any provider; proves nothing about a real bill.",
+  "data": [
+    {
+      "starting_at": "2026-10-01T00:00:00Z",
+      "ending_at": "2026-10-02T00:00:00Z",
+      "results": [
+        {
+          "amount": "0.15",
+          "context_window": "0-200k",
+          "cost_type": "tokens",
+          "currency": "USD",
+          "description": "Claude Haiku 4.5 Usage - uncached_input_tokens",
+          "inference_geo": "not_available",
+          "model": "claude-haiku-4-5",
+          "service_tier": "standard",
+          "token_type": "uncached_input_tokens",
+          "workspace_id": null
+        },
+        {
+          "amount": "0.15",
+          "context_window": "0-200k",
+          "cost_type": "tokens",
+          "currency": "USD",
+          "description": "Claude Haiku 4.5 Usage - output_tokens",
+          "inference_geo": "not_available",
+          "model": "claude-haiku-4-5",
+          "service_tier": "standard",
+          "token_type": "output_tokens",
+          "workspace_id": null
+        }
+      ]
+    },
+    {
+      "starting_at": "2026-10-02T00:00:00Z",
+      "ending_at": "2026-10-03T00:00:00Z",
+      "results": [
+        {
+          "amount": "0.02",
+          "context_window": "0-200k",
+          "cost_type": "tokens",
+          "currency": "USD",
+          "description": "Claude Haiku 4.5 Usage - uncached_input_tokens",
+          "inference_geo": "not_available",
+          "model": "claude-haiku-4-5",
+          "service_tier": "standard",
+          "token_type": "uncached_input_tokens",
+          "workspace_id": null
+        },
+        {
+          "amount": "0.008",
+          "context_window": "0-200k",
+          "cost_type": "tokens",
+          "currency": "USD",
+          "description": "Claude Haiku 4.5 Usage - cache_read_input_tokens",
+          "inference_geo": "not_available",
+          "model": "claude-haiku-4-5",
+          "service_tier": "standard",
+          "token_type": "cache_read_input_tokens",
+          "workspace_id": null
+        },
+        {
+          "amount": "0.05",
+          "context_window": "0-200k",
+          "cost_type": "tokens",
+          "currency": "USD",
+          "description": "Claude Haiku 4.5 Usage - output_tokens",
+          "inference_geo": "not_available",
+          "model": "claude-haiku-4-5",
+          "service_tier": "standard",
+          "token_type": "output_tokens",
+          "workspace_id": null
+        }
+      ]
+    },
+    {
+      "starting_at": "2026-10-03T00:00:00Z",
+      "ending_at": "2026-10-04T00:00:00Z",
+      "results": [
+        {
+          "amount": "0.24",
+          "context_window": "0-200k",
+          "cost_type": "tokens",
+          "currency": "USD",
+          "description": "Claude Haiku 4.5 Usage - uncached_input_tokens",
+          "inference_geo": "not_available",
+          "model": "claude-haiku-4-5",
+          "service_tier": "standard",
+          "token_type": "uncached_input_tokens",
+          "workspace_id": null
+        },
+        {
+          "amount": "0.24",
+          "context_window": "0-200k",
+          "cost_type": "tokens",
+          "currency": "USD",
+          "description": "Claude Haiku 4.5 Usage - output_tokens",
+          "inference_geo": "not_available",
+          "model": "claude-haiku-4-5",
+          "service_tier": "standard",
+          "token_type": "output_tokens",
+          "workspace_id": null
+        },
+        {
+          "amount": "0.01",
+          "context_window": "0-200k",
+          "cost_type": "tokens",
+          "currency": "USD",
+          "description": "Claude Mystery 9 Usage - Output Tokens",
+          "inference_geo": "not_available",
+          "model": "claude-mystery-9",
+          "service_tier": "standard",
+          "token_type": "output_tokens",
+          "workspace_id": null
+        }
+      ]
+    },
+    {
+      "starting_at": "2026-10-04T00:00:00Z",
+      "ending_at": "2026-10-05T00:00:00Z",
+      "results": [
+        {
+          "amount": "0.1",
+          "context_window": "0-200k",
+          "cost_type": "tokens",
+          "currency": "USD",
+          "description": "Claude Haiku 4.5 Usage - uncached_input_tokens",
+          "inference_geo": "not_available",
+          "model": "claude-haiku-4-5",
+          "service_tier": "standard",
+          "token_type": "uncached_input_tokens",
+          "workspace_id": null
+        },
+        {
+          "amount": "0.1",
+          "context_window": "0-200k",
+          "cost_type": "tokens",
+          "currency": "USD",
+          "description": "Claude Haiku 4.5 Usage - output_tokens",
+          "inference_geo": "not_available",
+          "model": "claude-haiku-4-5",
+          "service_tier": "standard",
+          "token_type": "output_tokens",
+          "workspace_id": null
+        },
+        {
+          "amount": "1.0",
+          "context_window": null,
+          "cost_type": "web_search",
+          "currency": "USD",
+          "description": "Web search",
+          "inference_geo": null,
+          "model": null,
+          "service_tier": null,
+          "token_type": null,
+          "workspace_id": null
+        }
+      ]
+    },
+    {
+      "starting_at": "2026-10-05T00:00:00Z",
+      "ending_at": "2026-10-06T00:00:00Z",
+      "results": []
+    }
+  ],
+  "has_more": false,
+  "next_page": null
+}

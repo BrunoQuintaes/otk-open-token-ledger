@@ -1,0 +1,363 @@
+{
+ "_note": "Documented response shapes (openai/chat-create.html, openai/prompt-caching.html, openai/gpt-4o-mini.html; R08 official_docs). Numbers are synthetic except ok_text, which copies the H1 record cal-pt_prose-000-v0 (448/24). No real ids.",
+ "ok_text": {
+  "httpStatus": 200,
+  "body": {
+   "id": "chatcmpl-fixture",
+   "object": "chat.completion",
+   "model": "gpt-4o-mini-2024-07-18",
+   "service_tier": "default",
+   "choices": [
+    {
+     "index": 0,
+     "finish_reason": "stop",
+     "message": {
+      "role": "assistant",
+      "content": "Resumo."
+     }
+    }
+   ],
+   "usage": {
+    "prompt_tokens": 448,
+    "completion_tokens": 24,
+    "total_tokens": 472,
+    "prompt_tokens_details": {
+     "cached_tokens": 0,
+     "audio_tokens": 0
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 0,
+     "audio_tokens": 0,
+     "accepted_prediction_tokens": 0,
+     "rejected_prediction_tokens": 0
+    }
+   }
+  }
+ },
+ "ok_cache_hit": {
+  "httpStatus": 200,
+  "body": {
+   "model": "gpt-4o-mini-2024-07-18",
+   "service_tier": "default",
+   "choices": [
+    {
+     "index": 0,
+     "finish_reason": "stop",
+     "message": {
+      "role": "assistant",
+      "content": "x"
+     }
+    }
+   ],
+   "usage": {
+    "prompt_tokens": 3396,
+    "completion_tokens": 24,
+    "total_tokens": 3420,
+    "prompt_tokens_details": {
+     "cached_tokens": 3328,
+     "audio_tokens": 0
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 0,
+     "audio_tokens": 0
+    }
+   }
+  }
+ },
+ "ok_details_absent": {
+  "httpStatus": 200,
+  "body": {
+   "model": "gpt-4o-mini-2024-07-18",
+   "service_tier": "default",
+   "choices": [
+    {
+     "index": 0,
+     "finish_reason": "stop",
+     "message": {
+      "role": "assistant",
+      "content": "x"
+     }
+    }
+   ],
+   "usage": {
+    "prompt_tokens": 100,
+    "completion_tokens": 10,
+    "total_tokens": 110
+   }
+  }
+ },
+ "ok_image": {
+  "httpStatus": 200,
+  "body": {
+   "model": "gpt-4o-mini-2024-07-18",
+   "service_tier": "default",
+   "choices": [
+    {
+     "index": 0,
+     "finish_reason": "stop",
+     "message": {
+      "role": "assistant",
+      "content": "an image"
+     }
+    }
+   ],
+   "usage": {
+    "prompt_tokens": 25520,
+    "completion_tokens": 12,
+    "total_tokens": 25532,
+    "prompt_tokens_details": {
+     "cached_tokens": 0,
+     "audio_tokens": 0
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 0,
+     "audio_tokens": 0
+    }
+   }
+  }
+ },
+ "refusal_with_usage": {
+  "httpStatus": 200,
+  "body": {
+   "model": "gpt-4o-mini-2024-07-18",
+   "service_tier": "default",
+   "choices": [
+    {
+     "index": 0,
+     "finish_reason": "stop",
+     "message": {
+      "role": "assistant",
+      "content": null,
+      "refusal": "I'm sorry, I can't help with that."
+     }
+    }
+   ],
+   "usage": {
+    "prompt_tokens": 57,
+    "completion_tokens": 11,
+    "total_tokens": 68,
+    "prompt_tokens_details": {
+     "cached_tokens": 0,
+     "audio_tokens": 0
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 0,
+     "audio_tokens": 0
+    }
+   }
+  }
+ },
+ "content_filter": {
+  "httpStatus": 200,
+  "body": {
+   "model": "gpt-4o-mini-2024-07-18",
+   "service_tier": "default",
+   "choices": [
+    {
+     "index": 0,
+     "finish_reason": "content_filter",
+     "message": {
+      "role": "assistant",
+      "content": ""
+     }
+    }
+   ],
+   "usage": {
+    "prompt_tokens": 57,
+    "completion_tokens": 0,
+    "total_tokens": 57,
+    "prompt_tokens_details": {
+     "cached_tokens": 0,
+     "audio_tokens": 0
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 0,
+     "audio_tokens": 0
+    }
+   }
+  }
+ },
+ "tool_calls_unexpected": {
+  "httpStatus": 200,
+  "body": {
+   "model": "gpt-4o-mini-2024-07-18",
+   "service_tier": "default",
+   "choices": [
+    {
+     "index": 0,
+     "finish_reason": "tool_calls",
+     "message": {
+      "role": "assistant",
+      "content": null,
+      "tool_calls": [
+       {
+        "id": "call_x",
+        "type": "function",
+        "function": {
+         "name": "f",
+         "arguments": "{}"
+        }
+       }
+      ]
+     }
+    }
+   ],
+   "usage": {
+    "prompt_tokens": 80,
+    "completion_tokens": 15,
+    "total_tokens": 95,
+    "prompt_tokens_details": {
+     "cached_tokens": 0,
+     "audio_tokens": 0
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 0,
+     "audio_tokens": 0
+    }
+   }
+  }
+ },
+ "audio_output_unexpected": {
+  "httpStatus": 200,
+  "body": {
+   "model": "gpt-4o-mini-2024-07-18",
+   "service_tier": "default",
+   "choices": [
+    {
+     "index": 0,
+     "finish_reason": "stop",
+     "message": {
+      "role": "assistant",
+      "content": null,
+      "audio": {
+       "id": "audio_x",
+       "data": "",
+       "transcript": ""
+      }
+     }
+    }
+   ],
+   "usage": {
+    "prompt_tokens": 80,
+    "completion_tokens": 40,
+    "total_tokens": 120,
+    "prompt_tokens_details": {
+     "cached_tokens": 0,
+     "audio_tokens": 0
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 0,
+     "audio_tokens": 30
+    }
+   }
+  }
+ },
+ "tier_flex_nonstandard": {
+  "httpStatus": 200,
+  "body": {
+   "model": "gpt-4o-mini-2024-07-18",
+   "service_tier": "flex",
+   "choices": [
+    {
+     "index": 0,
+     "finish_reason": "stop",
+     "message": {
+      "role": "assistant",
+      "content": "x"
+     }
+    }
+   ],
+   "usage": {
+    "prompt_tokens": 100,
+    "completion_tokens": 10,
+    "total_tokens": 110,
+    "prompt_tokens_details": {
+     "cached_tokens": 0,
+     "audio_tokens": 0
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 0,
+     "audio_tokens": 0
+    }
+   }
+  }
+ },
+ "error_429_no_usage": {
+  "httpStatus": 429,
+  "body": {
+   "error": {
+    "message": "Rate limit reached",
+    "type": "requests",
+    "param": null,
+    "code": "rate_limit_exceeded"
+   }
+  }
+ },
+ "error_400_invalid_json": {
+  "httpStatus": 400,
+  "body": {
+   "error": {
+    "message": "Invalid body: failed to parse JSON value.",
+    "type": "invalid_request_error",
+    "param": null,
+    "code": "invalid_json"
+   }
+  }
+ },
+ "model_served_differs": {
+  "httpStatus": 200,
+  "body": {
+   "model": "gpt-4o-mini-2099-01-01",
+   "service_tier": "default",
+   "choices": [
+    {
+     "index": 0,
+     "finish_reason": "stop",
+     "message": {
+      "role": "assistant",
+      "content": "x"
+     }
+    }
+   ],
+   "usage": {
+    "prompt_tokens": 10,
+    "completion_tokens": 1,
+    "total_tokens": 11,
+    "prompt_tokens_details": {
+     "cached_tokens": 0,
+     "audio_tokens": 0
+    },
+    "completion_tokens_details": {
+     "reasoning_tokens": 0,
+     "audio_tokens": 0
+    }
+   }
+  }
+ },
+ "ok_completion_details_absent": {
+  "httpStatus": 200,
+  "body": {
+   "model": "gpt-4o-mini-2024-07-18",
+   "service_tier": "default",
+   "choices": [
+    {
+     "index": 0,
+     "finish_reason": "stop",
+     "message": {
+      "role": "assistant",
+      "content": "x"
+     }
+    }
+   ],
+   "usage": {
+    "prompt_tokens": 100,
+    "completion_tokens": 10,
+    "total_tokens": 110,
+    "prompt_tokens_details": {
+     "cached_tokens": 0,
+     "audio_tokens": 0
+    }
+   }
+  }
+ }
+}

@@ -1,0 +1,162 @@
+# ---- outputs / runs / snapshots (não versionar por padrão) ----
+docs/runs/
+docs/snapshots/
+
+# ---- Gate R0 scan outputs grandes (git grep gera arquivos multi-GB) ----
+docs/_ops/revalidation/
+docs/_ops/revalidation/*/01_secret_scan.txt
+docs/_ops/revalidation/*/04_secret_scan_grep.txt
+docs/_ops/revalidation/*/*.log
+docs/_ops/revalidation/R0_*/*.txt
+docs/_ops/u8/U8_KICKOFF_*/*HITS*.txt
+docs/_ops/u8/**/01_gate_r0_secrets_scan.txt
+
+# ---- secrets (NEVER commit) ----
+.env
+*.key
+*.pem
+*_KEY.txt
+*_SECRET.txt
+*_TOKEN.txt
+*Key.txt
+*Secret.txt
+*Token.txt
+*_key.txt
+*_secret.txt
+*_token.txt
+*Key_Example*
+*TestKey*
+
+# ---- dissertacao (LaTeX build artifacts only — source tracked) ----
+dissertacao/*.aux
+dissertacao/*.log
+dissertacao/*.out
+dissertacao/*.toc
+dissertacao/*.lof
+dissertacao/*.lot
+dissertacao/*.bbl
+dissertacao/*.blg
+dissertacao/*.fls
+dissertacao/*.fdb_latexmk
+dissertacao/*.synctex.gz
+dissertacao/.overleaf/
+
+# ---- local agent config (not repo state) ----
+.mcp.json
+
+# ---- arquivos externos / estudo (não parte do OTK) ----
+docs/vericode*
+docs/~$*
+scripts/gen_study_guide.mjs
+
+# ---- comuns ----
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+desktop.ini
+node_modules/
+node_modules_bad2/
+dist/
+out/
+cache/
+.cache/
+.tmp/
+tmp/
+coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ---- editor / IDE (local, não versionados) ----
+.idea/
+# NOTE: .vscode/ is TRACKED (workspace policy, CLAUDE.md §19)
+
+# ---- credenciais extras ----
+.env.*
+*.p12
+*.pfx
+*.keystore
+*.jks
+
+# ---- artefatos locais de contexto / IA (não versionados) ----
+Contexto Conversas AI/
+
+# ---- backups gerados automaticamente ----
+*.bak_*
+**/*.bak_*
+
+# ---- outputs/resultados (não versionar por padrão) ----
+phase4-results/
+reports/
+zk/build/*
+zk/ptau/
+# Exceptions: ZK test fixtures needed by OnChainPubSignalsBinding CI test
+# Note: must use zk/build/* (not zk/build/) to allow negation patterns
+!zk/build/proof.json
+!zk/build/public.json
+# Exceptions: WASM + witness JS needed for fresh-clone reproducibility (A-002)
+!zk/build/metering_v1_js/
+!zk/build/metering_v1_js/metering_v1.wasm
+!zk/build/metering_v1_js/generate_witness.js
+!zk/build/metering_v1_js/witness_calculator.js
+!zk/build/metering_v1_js/package.json
+!zk/build/metering_v2_js/
+!zk/build/metering_v2_js/metering_v2.wasm
+!zk/build/metering_v2_js/generate_witness.js
+!zk/build/metering_v2_js/witness_calculator.js
+
+# ---- hardhat artifacts/build-info (não versionar por padrão) ----
+tools/hardhat/artifacts/
+tools/hardhat/cache/
+
+
+# ---- phase4 outputs (logs/benchmarks) ----
+phase4-logs/
+phase4-logs-*/
+
+
+# ---- besu network keys/genesis (local dev — NÃO commitar) ----
+tools/besu/docker/network/
+tools/besu/docker/ibft_config/
+
+# ---- ibft (besu) ephemeral runtime data ----
+infra/ibft/node*/data/database/
+infra/ibft/node*/data/caches/
+infra/ibft/node*/data/besu.networks
+infra/ibft/node*/data/besu.ports
+infra/ibft/node*/data/*.log
+infra/ibft/node*/data/LOG*
+infra/ibft/node*/data/MANIFEST-*
+infra/ibft/node*/data/OPTIONS-*
+
+
+# IBFT runtime data (ephemeral)
+infra/ibft/node*/data/
+.claude/file-changes.log
+.claude/.audit-complete
+.claude/settings.local.json
+# ZK large artifacts (local only — already-tracked production keys are exceptions)
+zk/keys/*.ptau
+zk/keys/metering_v2_hermez_0000.zkey
+
+# Multi-agent orchestrator (ferramenta externa, NÃO parte do projeto OTK)
+# Inclui .orch_key (Anthropic API key — SECURITY) e artefatos de sessão
+.auto-claude/
+tools/multi-agent-orchestrator/
+
+# Drive artifacts / screenshots temporários
+docs/screenshots/screenshots_tmp/
+
+# Estado dos hooks por sessão (log e marcador de auditoria)
+.claude/state/
+
+# ---- repositório público da banca ----
+.env.*
+!.env.example
+saida-reproducao/
+demo-saida/
+testes-banca-saida.txt
+# o executor tem pastas chamadas cache/ que fazem parte do código (não são cache): nunca ignorar
+!scripts/h2eval/cache/
+!test/h2eval/cache/

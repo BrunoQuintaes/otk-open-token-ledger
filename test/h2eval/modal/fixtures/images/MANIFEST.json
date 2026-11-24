@@ -1,0 +1,105 @@
+{
+ "schema": "otk.h2eval.synthetic_images.v1",
+ "images": [
+  {
+   "file": "synthetic_200x200_flat.png",
+   "width": 200,
+   "height": 200,
+   "complexity": "flat",
+   "bytes": 83751,
+   "sha256": "8db90ede0308688f4e0cda69c97533b9a8078f0273431d1033cc3b13a3be37cc",
+   "generator": "scripts/h2eval/modal/tools/gen_synthetic_images.mjs",
+   "content": "synthetic gradient/pattern, no third-party content"
+  },
+  {
+   "file": "synthetic_384x384_flat.png",
+   "width": 384,
+   "height": 384,
+   "complexity": "flat",
+   "bytes": 128745,
+   "sha256": "6c72df2a73348d2b52e5c1809063e79f0ba9a4ea239ad0838795554c5365823a",
+   "generator": "scripts/h2eval/modal/tools/gen_synthetic_images.mjs",
+   "content": "synthetic gradient/pattern, no third-party content"
+  },
+  {
+   "file": "synthetic_512x512_pattern.png",
+   "width": 512,
+   "height": 512,
+   "complexity": "pattern",
+   "bytes": 120000,
+   "sha256": "03aff96121a336b960484c5b62b55f09f8f218a32104263565e806f533aaa017",
+   "generator": "scripts/h2eval/modal/tools/gen_synthetic_images.mjs",
+   "content": "synthetic gradient/pattern, no third-party content"
+  },
+  {
+   "file": "synthetic_960x540_pattern.png",
+   "width": 960,
+   "height": 540,
+   "complexity": "pattern",
+   "bytes": 151154,
+   "sha256": "20a5a355675ea58686b6bad003b26bb55372bbad9d4fd6350d015cda8f83454c",
+   "generator": "scripts/h2eval/modal/tools/gen_synthetic_images.mjs",
+   "content": "synthetic gradient/pattern, no third-party content"
+  },
+  {
+   "file": "synthetic_1000x1000_flat.png",
+   "width": 1000,
+   "height": 1000,
+   "complexity": "flat",
+   "bytes": 121586,
+   "sha256": "0728cccb367d83d8ab961466eb3548e6e3b3e952c8c8357db229042da30f00ab",
+   "generator": "scripts/h2eval/modal/tools/gen_synthetic_images.mjs",
+   "content": "synthetic gradient/pattern, no third-party content"
+  },
+  {
+   "file": "synthetic_1024x768_pattern.png",
+   "width": 1024,
+   "height": 768,
+   "complexity": "pattern",
+   "bytes": 170494,
+   "sha256": "230d96ab89e639caa14b114cbc8dce141256340e5df1bd977ac9a345555bef5a",
+   "generator": "scripts/h2eval/modal/tools/gen_synthetic_images.mjs",
+   "content": "synthetic gradient/pattern, no third-party content"
+  },
+  {
+   "file": "synthetic_1092x1092_pattern.png",
+   "width": 1092,
+   "height": 1092,
+   "complexity": "pattern",
+   "bytes": 192927,
+   "sha256": "02c53c55c93ea4410bfaf3abff02dfcf549ee6512c72fd943c38acbcb47e7f60",
+   "generator": "scripts/h2eval/modal/tools/gen_synthetic_images.mjs",
+   "content": "synthetic gradient/pattern, no third-party content"
+  },
+  {
+   "file": "synthetic_1536x1024_flat.png",
+   "width": 1536,
+   "height": 1024,
+   "complexity": "flat",
+   "bytes": 130760,
+   "sha256": "607a9b3b0dbf7c9a136c6b8f3209d87fcb00af7377ba953fb53f2592fa54c4e7",
+   "generator": "scripts/h2eval/modal/tools/gen_synthetic_images.mjs",
+   "content": "synthetic gradient/pattern, no third-party content"
+  },
+  {
+   "file": "synthetic_1920x1080_pattern.png",
+   "width": 1920,
+   "height": 1080,
+   "complexity": "pattern",
+   "bytes": 254670,
+   "sha256": "afb8eb454477ab7419395bb1be1274b0fe2cb722af0fbd249d47b8b193cb5cc4",
+   "generator": "scripts/h2eval/modal/tools/gen_synthetic_images.mjs",
+   "content": "synthetic gradient/pattern, no third-party content"
+  },
+  {
+   "file": "synthetic_2000x1500_pattern.png",
+   "width": 2000,
+   "height": 1500,
+   "complexity": "pattern",
+   "bytes": 291259,
+   "sha256": "b88a83bee7470124a768b69833f479e9d9a29995bd69943c1dfeeaf084a0bc0e",
+   "generator": "scripts/h2eval/modal/tools/gen_synthetic_images.mjs",
+   "content": "synthetic gradient/pattern, no third-party content"
+  }
+ ]
+}

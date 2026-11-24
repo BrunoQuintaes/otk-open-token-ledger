@@ -1,0 +1,27 @@
+{
+ "source": "docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_max-calls-10/pv3-openai-live-campaign-2026-10-07t04-47-10-738_calls.jsonl:1 (sha256 do arquivo 4921562a4f01591d524521570168575fe2426731a163d6ab493b7855b420b05e)",
+ "opId": "pv3-openai-live-campaign-2026-10-07t04-47-10-738-cal-pt_prose-000-v0",
+ "record": {
+  "local_input": 441,
+  "declared_input": 448,
+  "declared_output": 24,
+  "local_output": 24,
+  "cache_read": 0,
+  "reservedUsd_conservative": 0.019214400000000003,
+  "costUsd_ledger": 0.0000816,
+  "costUsd_recomputed_frozen_table_NOT_INVOICE": "0.0000816",
+  "verdict": "within_threshold",
+  "split": "validation",
+  "family": "pt_prose",
+  "sizeBucket": "l"
+ },
+ "letter_expected": {
+  "local": 441,
+  "declared": 448,
+  "output": 24
+ },
+ "match": "CONFERE (441 local, 448 declarado, 24 output)",
+ "cost_walkthrough": "448 input x 0.15 USD/MTok + 24 output x 0.60 USD/MTok = 0.0000672 + 0.0000144 = 0.0000816 USD (tabela congelada pilot-v3 c76a0fad...; ledger costUsd 0.0000816; reserva conservadora previa 0.019214400000000003 USD, liquidada em 0.0000816). Calculo, nao fatura.",
+ "calibration_walkthrough": "RAW: local 441 vs declarado 448 -> erro -7 (|7| <= 16 do limiar heuristico v0: sem alerta). CALIBRADO: round_half_up(1.000000 x 441 + 7.000000) = 448 vs 448 -> erro 0; limiar congelado abs 1, rel 0.000000: sem alerta. Split validation: a linha entra na selecao do limiar (validacao), nao no holdout.",
+ "envelope_note": "A diferenca de 7 tokens (448 - 441) e observada; a composicao desses 7 tokens de envelope NAO foi isolada nesta evidencia e nao e explicada aqui."
+}

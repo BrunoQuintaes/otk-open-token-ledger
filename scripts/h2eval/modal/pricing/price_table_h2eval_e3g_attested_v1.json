@@ -1,0 +1,53 @@
+{
+  "schema": "otk.h2eval.price_table.v1",
+  "version": "h2eval-e3g-attested-v1-2026-11-16",
+  "currency": "USD",
+  "unit": "micro-USD per 1,000,000 tokens (string integers); null = not applicable to this API (NEVER zero); a needed price that is null stops the runner",
+  "capturedUtc": "2026-11-14T04:17:33Z..2026-11-16T02:30:00Z",
+  "source": {
+    "run": "C160 BRACO-GO (executor E3G): arm Google/OpenAI for the paid calibration authorised by DR-205 (literal C160X item 2, sha256 30c5068d3b2bbbb4328cd1889226bc9cf3e4e55d4479d88450929aec54f1bd6d)",
+    "note": "Only the two arm models. Values typed from the author's attestations below (no price was inferred); the Anthropic path keeps price_table_h2eval_v3.json unchanged. Context, tier and modality outside what is listed here have NO price (refused)."
+  },
+  "models": {
+    "gemini-3.1-flash-lite": {
+      "provider": "google",
+      "api": "gemini.generate_content",
+      "availability": "ID attested by the author (DR-187); account availability verified only by a real call",
+      "standardTerms": { "serviceTier": "STANDARD (Paid Tier); no tier parameter in generateContent; served tier declared by the author (DR-194)", "modality": "text" },
+      "attestation": {
+        "attestedBy": "human:Bruno",
+        "decisionRecords": ["DR-168", "DR-187", "DR-194"],
+        "literals": [
+          { "file": "inputs/LITERAL/c160/C160H/C160H_LITERAL_20261114.txt", "line": 13, "text": "atesto os preços do gemini-3.1-flash-lite Standard e o tier pago", "sha256": "7ba8a5a74ca92b1c35a194063ab0b1de83e5fcd48838f86ccf0a29864818ddc6" },
+          { "file": "inputs/LITERAL/c160/C160T_GOOGLE_ID_ATESTADO_20261114.txt", "line": 3, "text": "atesto o ID gemini-3.1-flash-lite no catálogo", "sha256": "defa228e2da158e34ba1af911126f9f8bfbf368f2c2b2bd4d7933cbf1b025d0c" },
+          { "file": "inputs/LITERAL/c160/C160S_GO_PROGRAMA_20261114.txt", "line": 9, "text": "6) Google: declaro que o Bot só é servido no tier Standard do gemini-3.1-flash-lite (opção A, aceito o risco).", "sha256": "d519e5b5c46ef47f741935bde5f638a52d9714cebf9cb894e5b7bc9a6c71f383" }
+        ],
+        "tier": "STANDARD",
+        "note": "Same four values as the Bot attested ledger data/prices/mvp3p/ledger_20261109_openai_google.json (sha256 a057a3ab..., Bot 07113ae8), captured from https://aistudio.google.com/docs/pricing (source sha256 07ae0502...): input 0.25, output 1.50, cache read 0.025, reasoning billed as output 1.50 (USD per 1M, text)."
+      },
+      "tiers": [
+        { "id": "standard", "appliesWhen": "Standard (Paid Tier), text, any prompt length listed by the attestation", "prices": { "input": "250000", "cacheRead": "25000", "cacheWrite5m": null, "cacheWrite1h": null, "cacheWrite": null, "output": "1500000", "reasoning": "1500000", "imageTokens": null, "audioTokens": null }, "citation": "DR-168 (C160H line 13) + DR-194 tier" }
+      ],
+      "notes": ["implicit cache only: no write charge; cachedContentTokenCount absent stays UNKNOWN (bounded, never 0)", "thoughtsTokenCount is a separate addend billed as output (1.50)"]
+    },
+    "gpt-6-luna": {
+      "provider": "openai",
+      "api": "openai.chat_completions",
+      "availability": "listed on the author's OpenAI Limits page (print limits_openai.webp, DR-208); account availability verified only by a real call",
+      "standardTerms": { "serviceTier": "default (Standard), fixed in every request", "contextMaxTokens": "272000", "modality": "text" },
+      "attestation": {
+        "attestedBy": "human:Bruno",
+        "decisionRecords": ["DR-208"],
+        "literals": [
+          { "file": "inputs/LITERAL/c160/C160Z/C160Z_OPENAI_PRECO_ATESTADO_20261116.txt", "line": 3, "text": "atesto os preços do gpt-6-luna Standard (contexto até 272k, US$ por 1M tokens): entrada 0,10; saída 0,50; leitura de cache 0,01; escrita de cache 0,125; raciocínio cobrado como saída (0,50); e o tier Standard da minha chave OpenAI.", "sha256": "6ee16eeb159aa2d3960f5b15638a18034c3882872aa557d694fe6d175eddfe33" }
+        ],
+        "tier": "STANDARD",
+        "note": "One cache-write price only (0.125): the request sends no cache retention parameter; a write split by TTL is not priced here."
+      },
+      "tiers": [
+        { "id": "prompt_le_272k", "appliesWhen": "Standard (service_tier default), prompt <= 272,000 tokens; above it there is no attested price (refused)", "prices": { "input": "100000", "cacheRead": "10000", "cacheWrite5m": null, "cacheWrite1h": null, "cacheWrite": "125000", "output": "500000", "reasoning": "500000", "imageTokens": null, "audioTokens": null }, "citation": "DR-208 (C160Z line 3)" }
+      ],
+      "notes": ["reasoning_tokens is a subset of completion_tokens, billed as output (0.50)", "cached_tokens and cache_write_tokens are subsets of prompt_tokens; an absent field stays UNKNOWN (never 0)"]
+    }
+  }
+}

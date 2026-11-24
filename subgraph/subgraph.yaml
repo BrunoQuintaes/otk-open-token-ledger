@@ -1,0 +1,56 @@
+specVersion: 0.0.5
+description: OTK zk-Metering receipt indexer — indexes ReceiptSubmitted events for analytics and reconciliation
+repository: https://github.com/otk/otk-zk-metering
+
+schema:
+  file: ./schema.graphql
+
+dataSources:
+  # ReceiptRegistry v1 — ReceiptSubmitted events
+  - kind: ethereum
+    name: ReceiptRegistry
+    network: ibft-local
+    source:
+      # Address populated at deployment — set via environment or graph deploy command
+      address: "0x0000000000000000000000000000000000000000"
+      abi: ReceiptRegistry
+      # Start indexing from block 0 (or set to deployment block for efficiency)
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Receipt
+        - Tenant
+      abis:
+        - name: ReceiptRegistry
+          file: ./abis/ReceiptRegistry.json
+      eventHandlers:
+        - event: ReceiptSubmitted(indexed bytes32,indexed uint256,uint256,uint256,address)
+          handler: handleReceiptSubmitted
+      file: ./src/mapping.ts
+
+  # ReceiptRegistryV2 — ReceiptSubmittedV2 events (range proof buckets)
+  - kind: ethereum
+    name: ReceiptRegistryV2
+    network: ibft-local
+    source:
+      # Address populated at deployment
+      address: "0x0000000000000000000000000000000000000000"
+      abi: ReceiptRegistryV2
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - ReceiptV2
+        - Tenant
+      abis:
+        - name: ReceiptRegistryV2
+          file: ./abis/ReceiptRegistryV2.json
+      eventHandlers:
+        - event: ReceiptSubmittedV2(indexed bytes32,indexed uint256,uint256,uint256,uint256,uint256,address)
+          handler: handleReceiptSubmittedV2
+      file: ./src/mapping.ts

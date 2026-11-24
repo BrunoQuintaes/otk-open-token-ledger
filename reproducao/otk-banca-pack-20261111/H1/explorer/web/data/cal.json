@@ -1,0 +1,255 @@
+{
+ "branch": "origin/experiment/otk-cal-anth-01-20261014",
+ "cal02": "A CAL-ANTH-02 (15/10, 579 chamadas) existe e está descrita no relatório de verificação; NÃO é exibida aqui.",
+ "collected": "15/10/2026",
+ "commit": "b55c34298fa7e24ec936396117ce1c7e58f61805",
+ "corpus": {
+  "families": 8,
+  "holdoutGroups": 24,
+  "splits": {
+   "holdout": 72,
+   "train": 144,
+   "validation": 72
+  },
+  "texts": 288
+ },
+ "fable": {
+  "n": 40,
+  "p05": 1.101266,
+  "p95": 2.285714,
+  "ratioMedian": 1.461538,
+  "refusals": 10
+ },
+ "historicalHaiku45OnNewHoldout": {
+  "fromReport": true,
+  "metrics": {
+   "bias": 0.875,
+   "detection": {
+    "+10%": 0.194444,
+    "+25%": 0.791667,
+    "+50 tokens": 0.583333
+   },
+   "falseAlarmRate": 0.041667,
+   "falseAlarms": 3,
+   "groups": 24,
+   "mae": 16.013889,
+   "maxAbs": 58,
+   "medianAbs": 10,
+   "n": 72,
+   "p95Abs": 41,
+   "relMedian": 0.049505,
+   "relP95": 0.208333
+  },
+  "parametersUsed": {
+   "intercept": "4.101752",
+   "slope": "1.165964"
+  },
+  "reported": {
+   "bias": 0.875,
+   "detection": {
+    "+10%": 0.194444,
+    "+25%": 0.791667,
+    "+50 tokens": 0.583333
+   },
+   "falseAlarmRate": 0.041667,
+   "falseAlarms": 3,
+   "groups": 24,
+   "mae": 16.013889,
+   "maxAbs": 58,
+   "medianAbs": 10,
+   "n": 72,
+   "p95Abs": 41,
+   "relMedian": 0.049505,
+   "relP95": 0.208333
+  },
+  "thresholdUsed": {
+   "abs": 6,
+   "rel": 0.142062
+  }
+ },
+ "label": "CAL-ANTH-01 - suplementar, 15/10/2026, posterior a H1",
+ "limits": {
+  "can": "campanha posterior e suplementar à H1 (15/10 vs 07/10), pré-registrada e commitada antes do primeiro dado, análise congelada, holdout avaliado uma vez; custo CALCULADO pela tabela congelada (não é fatura); Haiku 4.5 aceito pela política v1 nesta amostra",
+  "cannot": "revogar o resultado negativo da H1 (07/10) para o Haiku 4.5 (protocolos e amostras diferentes); afirmar que o OTK verificou cobrança ou detectou inflação real (inflação só simulada); cobrir cache, multimodal, multi-turn, system ou ferramentas",
+  "source": "CAL_ANTH_VERIFICATION_REPORT.md §6"
+ },
+ "models": [
+  {
+   "fit": {
+    "intercept": "2.601779",
+    "slope": "1.164781"
+   },
+   "fitMatch": true,
+   "holdout": {
+    "bias": -0.847222,
+    "detection": {
+     "+10%": 0.361111,
+     "+25%": 0.791667,
+     "+50 tokens": 0.583333
+    },
+    "falseAlarmRate": 0.041667,
+    "falseAlarms": 3,
+    "groups": 24,
+    "mae": 16.597222,
+    "maxAbs": 56,
+    "medianAbs": 11,
+    "n": 72,
+    "p95Abs": 43,
+    "relMedian": 0.056893,
+    "relP95": 0.25
+   },
+   "model": "claude-haiku-4-5-20251001",
+   "n": {
+    "holdout": 72,
+    "holdoutGroups": 24,
+    "train": 143,
+    "validation": 72
+   },
+   "threshold": {
+    "abs": 7,
+    "rel": 0.139054
+   },
+   "thresholdMatch": true,
+   "verdict": "CALIBRATION_ACCEPTED (com ressalvas; relatório §2 item 13)"
+  },
+  {
+   "fit": {
+    "intercept": "-3.111701",
+    "slope": "1.471669"
+   },
+   "fitMatch": true,
+   "holdout": {
+    "bias": 2.5,
+    "detection": {
+     "+10%": 0.111111,
+     "+25%": 0.125,
+     "+50 tokens": 0.152778
+    },
+    "falseAlarmRate": 0.041667,
+    "falseAlarms": 3,
+    "groups": 24,
+    "mae": 40.944444,
+    "maxAbs": 165,
+    "medianAbs": 16,
+    "n": 72,
+    "p95Abs": 160,
+    "relMedian": 0.098182,
+    "relP95": 0.41206
+   },
+   "model": "claude-haiku-5-5",
+   "n": {
+    "holdout": 72,
+    "holdoutGroups": 24,
+    "train": 143,
+    "validation": 72
+   },
+   "threshold": {
+    "abs": 13,
+    "rel": 0.407625
+   },
+   "thresholdMatch": true,
+   "verdict": "NOT_ACCEPTED (detecção +25% 12,5%; item 14)"
+  },
+  {
+   "fit": {
+    "intercept": "-3.092691",
+    "slope": "1.473891"
+   },
+   "fitMatch": true,
+   "holdout": {
+    "bias": 2.680556,
+    "detection": {
+     "+10%": 0.111111,
+     "+25%": 0.125,
+     "+50 tokens": 0.152778
+    },
+    "falseAlarmRate": 0.055556,
+    "falseAlarms": 4,
+    "groups": 24,
+    "mae": 41.263889,
+    "maxAbs": 166,
+    "medianAbs": 17,
+    "n": 72,
+    "p95Abs": 159,
+    "relMedian": 0.098182,
+    "relP95": 0.414573
+   },
+   "model": "claude-sonnet-5-5",
+   "n": {
+    "holdout": 72,
+    "holdoutGroups": 24,
+    "train": 143,
+    "validation": 72
+   },
+   "threshold": {
+    "abs": 11,
+    "rel": 0.407625
+   },
+   "thresholdMatch": true,
+   "verdict": "NOT_ACCEPTED (detecção +25% 12,5%; item 14)"
+  },
+  {
+   "fit": {
+    "intercept": "-1.412222",
+    "slope": "1.470861"
+   },
+   "fitMatch": true,
+   "holdout": {
+    "bias": 2.638889,
+    "detection": {
+     "+10%": 0.111111,
+     "+25%": 0.125,
+     "+50 tokens": 0.152778
+    },
+    "falseAlarmRate": 0.041667,
+    "falseAlarms": 3,
+    "groups": 24,
+    "mae": 40.194444,
+    "maxAbs": 165,
+    "medianAbs": 16,
+    "n": 72,
+    "p95Abs": 161,
+    "relMedian": 0.075975,
+    "relP95": 0.4075
+   },
+   "model": "claude-opus-5-5",
+   "n": {
+    "holdout": 72,
+    "holdoutGroups": 24,
+    "train": 143,
+    "validation": 72
+   },
+   "threshold": {
+    "abs": 13,
+    "rel": 0.407408
+   },
+   "thresholdMatch": true,
+   "verdict": "NOT_ACCEPTED (detecção +25% 12,5%; item 14)"
+  }
+ ],
+ "sharedTokenizer": {
+  "haikuEqSonnet": "217/217",
+  "opusEqHaikuPlus2": "222/222"
+ },
+ "totals": {
+  "callsInRows": 1197,
+  "callsTotal": 1202,
+  "costRowsMicroUsd": "1375649",
+  "costTotalUsd": "1.380180",
+  "e2eCalls": 5,
+  "e2eCostMicroUsd": 4531,
+  "e2eValid": 5,
+  "firstCallAt": "2026-10-15T00:58:45.641Z",
+  "firstLedgerAt": "2026-10-15T00:58:44.326Z",
+  "http400": 4,
+  "lastCallAt": "2026-10-15T01:34:53.416Z",
+  "lastLedgerAt": "2026-10-15T01:37:54.179Z",
+  "ledgerOverruns": 0,
+  "ledgerReserveCount": 1199,
+  "ledgerSettleCount": 1199,
+  "ledgerSettleSumMicroUsd": "1380180",
+  "refusalsWithUsage": 147,
+  "uncertain": 0,
+  "valid": 1193
+ }
+}

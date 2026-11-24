@@ -1,0 +1,23 @@
+# OTK Benchmark — Linux-controlled environment
+# 1 command: docker compose -f docker/bench/docker-compose.bench.yml run --rm bench
+#
+# Mounts docs/_ops/u9 so results are preserved on host after container exits.
+
+services:
+  bench:
+    build:
+      context: ../..        # repo root (COPY paths relative to this)
+      dockerfile: docker/bench/Dockerfile.bench
+    # Fixed resource constraints for reproducibility
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+    volumes:
+      # Output CSVs land on the host
+      - ../../docs/_ops/u9:/app/docs/_ops/u9
+    environment:
+      - NODE_ENV=benchmark
+    # Optional: override CMD to skip ZK (faster)
+    # command: ["npx", "tsx", "scripts/benchmark/u9_bench_v2.ts", "--no-zk"]

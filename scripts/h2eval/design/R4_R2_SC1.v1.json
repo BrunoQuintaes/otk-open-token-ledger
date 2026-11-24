@@ -1,0 +1,180 @@
+{
+ "schema": "h2eval.design_params.v1",
+ "designId": "H2EVAL-R4-R2-SC1",
+ "source": "SC1 of R4 rev.2 (ECON-02) expressed in ONE design with `conditions` (R17-V-7): the 6 S1 prompts of the pilot run once per condition, in block order B1 OFF1024 x6, B2 ON1024 x6, B3 ON256 x6; the 15 dialogues (S2 x6, S3 x9) run once with the base arms (OFF 256). Values copied from the three ECON-02 files R4_DESIGN_R2_SC1_OFF1024.v1.json sha256 6464f42076ed4e1de9981b2d9a66152816a24c4a85eab8fda72eefc5f464d2bf, R4_DESIGN_R2_SC1_ON1024.v1.json sha256 062e7c946d54631a3f123969baca037ddbd79f47a71d0da9d74d52ea81d45ccf, R4_DESIGN_R2_SC1_ON256.v1.json sha256 61d587bc63b07d04514620ad6fd98e5f4779a13ea95c9b8587f2102a40adf998. P1 probe = first OFF1024 operation (R4 rev.2 §7.3 P1). NOT RATIFIED: valid only after R4 ratification.",
+ "perModel": {
+  "claude-haiku-5-5": {
+   "maxTokens": 256,
+   "thinking": {
+    "policy": "OFF"
+   },
+   "reasoningAllowanceTokens": 0,
+   "inputBound": {
+    "factor": 1.6,
+    "extraTokens": 64
+   },
+   "arms": {
+    "T1": {
+     "maxTokens": 1024,
+     "thinking": {
+      "policy": "OFF"
+     },
+     "reasoningAllowanceTokens": 0
+    },
+    "T2": {
+     "maxTokens": 1024,
+     "thinking": {
+      "policy": "OFF"
+     },
+     "reasoningAllowanceTokens": 0
+    },
+    "T3": {
+     "maxTokens": 1024,
+     "thinking": {
+      "policy": "OFF"
+     },
+     "reasoningAllowanceTokens": 0
+    },
+    "T4": {
+     "maxTokens": 256,
+     "thinking": {
+      "policy": "OFF"
+     },
+     "reasoningAllowanceTokens": 0
+    },
+    "T5": {
+     "maxTokens": 256,
+     "thinking": {
+      "policy": "OFF"
+     },
+     "reasoningAllowanceTokens": 0
+    }
+   },
+   "conditions": {
+    "appliesToArms": [
+     "T1",
+     "T2",
+     "T3"
+    ],
+    "list": [
+     {
+      "conditionId": "OFF1024",
+      "maxTokens": 1024,
+      "thinking": {
+       "policy": "OFF"
+      },
+      "reasoningAllowanceTokens": 0
+     },
+     {
+      "conditionId": "ON1024",
+      "maxTokens": 1024,
+      "thinking": {
+       "policy": "ADAPTIVE",
+       "effort": "low"
+      },
+      "reasoningAllowanceTokens": 1024
+     },
+     {
+      "conditionId": "ON256",
+      "maxTokens": 256,
+      "thinking": {
+       "policy": "ADAPTIVE",
+       "effort": "low"
+      },
+      "reasoningAllowanceTokens": 1024
+     }
+    ],
+    "probe": {
+     "conditionId": "OFF1024",
+     "rule": "P1"
+    }
+   }
+  },
+  "claude-haiku-4-5-20251001": {
+   "maxTokens": 256,
+   "thinking": {
+    "policy": "OFF"
+   },
+   "reasoningAllowanceTokens": 0,
+   "inputBound": {
+    "factor": 1.6,
+    "extraTokens": 64
+   },
+   "arms": {
+    "T1": {
+     "maxTokens": 256
+    },
+    "T2": {
+     "maxTokens": 512
+    },
+    "T3": {
+     "maxTokens": 512
+    },
+    "T4": {
+     "maxTokens": 256
+    },
+    "T5": {
+     "maxTokens": 256
+    }
+   }
+  },
+  "gpt-4o-mini-2024-07-18": {
+   "maxTokens": 256,
+   "thinking": {
+    "policy": "OFF"
+   },
+   "reasoningAllowanceTokens": 0,
+   "inputBound": {
+    "factor": 1.6,
+    "extraTokens": 64
+   },
+   "arms": {
+    "T1": {
+     "maxTokens": 256
+    },
+    "T2": {
+     "maxTokens": 256
+    },
+    "T3": {
+     "maxTokens": 256
+    },
+    "T4": {
+     "maxTokens": 256
+    },
+    "T5": {
+     "maxTokens": 256
+    }
+   }
+  },
+  "gemini-3.5-flash-lite": {
+   "maxTokens": 256,
+   "thinking": {
+    "policy": "MINIMAL",
+    "thinkingLevel": "minimal"
+   },
+   "reasoningAllowanceTokens": 2048,
+   "inputBound": {
+    "factor": 1.6,
+    "extraTokens": 64
+   }
+  }
+ },
+ "d7": {
+  "option": "A",
+  "eligibleCalls": [
+   2,
+   3
+  ]
+ },
+ "integrity": {
+  "stopReasonRequired": true,
+  "thinkingDisabledRejectedStops": true
+ },
+ "notes": [
+  "Derived from the executor candidate 6d2ed21304b8eccb209e414872dc5778a80a94706724048f67bb2c6d8840066e (BOT-02 transcription) and CONFIRMED by ECON-02 against R10_PREREGISTRATION_H2EVAL_R4_PROPOSAL_R2.md.",
+  "inputBound 1.6/64 on all four models: POS_HOC_DERIVADA_EXPLORATORIA (R17 U/L0 1.328-1.583 on Haiku 5.5, n=21); safety cap only, not the prediction; others unobserved (conservative, fail-closed).",
+  "NOT RATIFIED. Valid only after R4 ratification; the design sha256 enters protocolHash.",
+  "Dialogues (S2/S3, 15 calls) run ONLY in this condition.",
+  "Executor v-next reads conditions from this file; nothing about SC1 is hard-coded. B3 (ON256) is optional per R4 rev.2 N-3: removing it = removing the condition from this file (new sha256, new protocolHash)."
+ ]
+}

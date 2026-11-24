@@ -1,0 +1,113 @@
+{
+  "_synthetic": "SYNTHETIC FIXTURE (OTK Phase 10 tests, 2026-10-06): invented values built to exercise the reconciliation classifications. NOT data exported by any provider; proves nothing about a real bill.",
+  "object": "page",
+  "data": [
+    {
+      "object": "bucket",
+      "start_time": 1790812800,
+      "end_time": 1790899200,
+      "results": [
+        {
+          "object": "organization.costs.result",
+          "amount": {
+            "value": 0.00015,
+            "currency": "usd"
+          },
+          "line_item": "gpt-4o-mini-2024-07-18, input",
+          "project_id": "proj_FIXTURE"
+        },
+        {
+          "object": "organization.costs.result",
+          "amount": {
+            "value": 0.0003,
+            "currency": "usd"
+          },
+          "line_item": "gpt-4o-mini-2024-07-18, output",
+          "project_id": "proj_FIXTURE"
+        },
+        {
+          "object": "organization.costs.result",
+          "amount": {
+            "value": 0.01,
+            "currency": "usd"
+          },
+          "line_item": "assistants api | file search",
+          "project_id": "proj_FIXTURE"
+        }
+      ]
+    },
+    {
+      "object": "bucket",
+      "start_time": 1790899200,
+      "end_time": 1790985600,
+      "results": [
+        {
+          "object": "organization.costs.result",
+          "amount": {
+            "value": 0.0002,
+            "currency": "usd"
+          },
+          "line_item": "gpt-4o-mini, input",
+          "project_id": "proj_FIXTURE"
+        },
+        {
+          "object": "organization.costs.result",
+          "amount": {
+            "value": 0.0003,
+            "currency": "usd"
+          },
+          "line_item": "gpt-4o-mini, output",
+          "project_id": "proj_FIXTURE"
+        },
+        {
+          "object": "organization.costs.result",
+          "amount": {
+            "value": 0.005,
+            "currency": "usd"
+          },
+          "line_item": "mystery-model-x, input",
+          "project_id": "proj_FIXTURE"
+        }
+      ]
+    },
+    {
+      "object": "bucket",
+      "start_time": 1790985600,
+      "end_time": 1791072000,
+      "results": []
+    },
+    {
+      "object": "bucket",
+      "start_time": 1791072000,
+      "end_time": 1791158400,
+      "results": [
+        {
+          "object": "organization.costs.result",
+          "amount": {
+            "value": 1.5e-05,
+            "currency": "usd"
+          },
+          "line_item": "gpt-4o-mini, input",
+          "project_id": "proj_FIXTURE"
+        },
+        {
+          "object": "organization.costs.result",
+          "amount": {
+            "value": 6e-06,
+            "currency": "usd"
+          },
+          "line_item": "gpt-4o-mini, output",
+          "project_id": "proj_FIXTURE"
+        }
+      ]
+    },
+    {
+      "object": "bucket",
+      "start_time": 1791158400,
+      "end_time": 1791244800,
+      "results": []
+    }
+  ],
+  "has_more": false,
+  "next_page": null
+}

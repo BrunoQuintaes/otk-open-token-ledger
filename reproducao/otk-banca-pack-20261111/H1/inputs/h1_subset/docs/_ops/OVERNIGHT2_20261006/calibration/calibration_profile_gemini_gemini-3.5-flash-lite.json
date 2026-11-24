@@ -1,0 +1,184 @@
+{
+  "schema": "otk.calibration_profile.v1",
+  "profileId": "otk.calib.ovn2-20261007.gemini.gemini.generate_content.gemini-3.5-flash-lite",
+  "synthetic": false,
+  "targetKind": "provider_final_usage",
+  "provider": "gemini",
+  "apiVariant": "gemini.generate_content",
+  "model": "gemini-3.5-flash-lite",
+  "modelAliases": [],
+  "tokenizer": "cl100k_base",
+  "tokenizerVersion": {
+    "package": "js-tiktoken",
+    "packageVersion": "1.0.21",
+    "vocabularyDigest": "0x5c9c8b70fd1be2df23d9388f9aa224c92b63432a9a5dc5e2e1afb08658b1b09e",
+    "messageAssembly": {
+      "id": "otk.assembly.text_parts",
+      "version": "1"
+    }
+  },
+  "counterVersion": "otk.local_counter.b3@1",
+  "scope": {
+    "description": "single user message summarization prompts of the OVERNIGHT 2 synthetic corpus (seed 20261007), max 24 output tokens, no stream, no system, no tools",
+    "excludes": [
+      "system prompts",
+      "multi-turn",
+      "tools",
+      "images",
+      "documents",
+      "cache-probe repeats",
+      "streaming"
+    ]
+  },
+  "categoriesCovered": [
+    "input"
+  ],
+  "corpusId": "otk.calibration_corpus.synthetic.v1@seed20261007/g9/v2",
+  "corpus": {
+    "sha256": "043b2561b898a375aad62d13be0c4822ccddd2b2d2c94738fdb97462885353e6",
+    "splitRule": "sha256(otk.calibration_corpus.synthetic.v1:<group>) mod 100: <60 train, <80 validation, else holdout (fixed before data, 07_CALIBRATION_PROTOCOL.md)",
+    "documents": {
+      "train": 121,
+      "validation": 54,
+      "holdout": 37
+    },
+    "groups": {
+      "train": 41,
+      "validation": 18,
+      "holdout": 13
+    }
+  },
+  "createdAt": "2026-10-07T00:00:00.000Z",
+  "parameters": {
+    "method": "affine_least_squares",
+    "categories": {
+      "input": {
+        "slope": "1.252777",
+        "intercept": "-6.097995"
+      }
+    }
+  },
+  "errorMetrics": {
+    "train": {
+      "input": {
+        "n": 121,
+        "groups": 41,
+        "bias": -0.049587,
+        "mae": 48.099174,
+        "maxAbs": 264,
+        "relErrorQuantiles": {
+          "nRelative": 121,
+          "zeroTargets": 0,
+          "p50": 0.285714,
+          "p90": 0.442953,
+          "p95": 0.681818,
+          "p99": 0.763158
+        },
+        "alertRate": null
+      }
+    }
+  },
+  "validationMetrics": {
+    "validation": {
+      "input": {
+        "n": 54,
+        "groups": 18,
+        "bias": 10.185185,
+        "mae": 73.888889,
+        "maxAbs": 323,
+        "relErrorQuantiles": {
+          "nRelative": 54,
+          "zeroTargets": 0,
+          "p50": 0.1875,
+          "p90": 0.603896,
+          "p95": 0.626263,
+          "p99": null
+        },
+        "alertRate": 0
+      }
+    },
+    "holdout": {
+      "input": {
+        "n": 37,
+        "groups": 13,
+        "bias": -0.189189,
+        "mae": 58.135135,
+        "maxAbs": 285,
+        "relErrorQuantiles": {
+          "nRelative": 37,
+          "zeroTargets": 0,
+          "p50": 0.184524,
+          "p90": 0.412214,
+          "p95": 0.748837,
+          "p99": null
+        },
+        "alertRate": 0
+      }
+    }
+  },
+  "thresholdPolicy": {
+    "absoluteTokens": "197",
+    "relative": "0.437778",
+    "derivation": "validation split only (n=54 rows, categories pooled): grid over (absoluteTokens, relative) taken from validation residual quantiles; keep pairs whose false-alert rate on unaltered validation targets is <= 0.01; pick the pair with the highest mean detection of injected inflation (+10%, +25%, +50 tokens) on validation; ties -> larger absoluteTokens, then larger relative. Validation false-alert rate 0, mean detection 0.111111."
+  },
+  "acceptance": {
+    "policy": "otk.calibration_acceptance.v1",
+    "checks": [
+      {
+        "id": "threshold_derived_from_validation",
+        "required": "true",
+        "observed": "true",
+        "passed": true
+      },
+      {
+        "id": "input.parameters",
+        "required": "present",
+        "observed": "present",
+        "passed": true
+      },
+      {
+        "id": "input.train_n",
+        "required": ">= 60",
+        "observed": "121",
+        "passed": true
+      },
+      {
+        "id": "input.validation_n",
+        "required": ">= 30",
+        "observed": "54",
+        "passed": true
+      },
+      {
+        "id": "input.holdout_n",
+        "required": ">= 30",
+        "observed": "37",
+        "passed": true
+      },
+      {
+        "id": "input.holdout_groups",
+        "required": ">= 10",
+        "observed": "13",
+        "passed": true
+      },
+      {
+        "id": "input.holdout_alert_rate",
+        "required": "<= 0.05",
+        "observed": "0",
+        "passed": true
+      },
+      {
+        "id": "input.holdout_detection_plus25pct",
+        "required": ">= 0.5",
+        "observed": "0.081081",
+        "passed": false
+      }
+    ],
+    "passed": false
+  },
+  "calibrated": false,
+  "limitations": [
+    "real campaign of OVERNIGHT 2 (07/10/2026); one model version; protocol 07_CALIBRATION_PROTOCOL.md fixed before data; the target is the provider count itself (calibration cannot show that the provider counted right)",
+    "calibrated=false: acceptance policy otk.calibration_acceptance.v1 not met (see acceptance.checks); the conference keeps HEURISTIC_THRESHOLD_V0"
+  ],
+  "evidenceHash": "0xc398ef2767e513593fe3c6a46ca5c7a1dfeab18aa79a75b237cd572aaad2c5a9"
+}

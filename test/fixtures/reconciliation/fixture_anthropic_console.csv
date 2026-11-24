@@ -1,0 +1,4 @@
+# SYNTHETIC FIXTURE (OTK Phase 10 tests, 2026-10-06): invented values built to exercise the reconciliation classifications. NOT data exported by any provider; proves nothing about a real bill.
+date,model,token_type,cost_usd
+2026-10-01,claude-haiku-4-5,uncached_input_tokens,0.0015
+2026-10-01,claude-haiku-4-5,output_tokens,0.0015

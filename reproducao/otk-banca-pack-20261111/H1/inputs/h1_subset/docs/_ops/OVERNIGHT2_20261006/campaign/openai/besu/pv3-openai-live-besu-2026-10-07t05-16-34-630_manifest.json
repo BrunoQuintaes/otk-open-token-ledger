@@ -1,0 +1,99 @@
+{
+  "runId": "pv3-openai-live-besu-2026-10-07t05-16-34-630",
+  "provider": "openai",
+  "mode": "live",
+  "phase": "besu",
+  "commit": "b42d05cf2c88eab6325d036ad4ad7d3977c59375",
+  "tree": "28c6575b032d1e84e969f608539da91b7cd445ff",
+  "dirty": 4,
+  "model": "gpt-4o-mini",
+  "policy": "otk.money_bound_policy.v3@2026-10-03",
+  "contextWindow": "128000",
+  "maxOutput": "16384",
+  "priceTable": {
+    "file": "scripts/pilot/price_table_pilot_v3_20261003.json",
+    "version": "pilot-v3-anthropic-haiku45-openai-gpt4omini-official-2026-10-03",
+    "sha256": "c76a0fade9b7dd02d287054fc015d5cce2f3269b57933a21d32634c9f0dac81c"
+  },
+  "weightsOracle": {
+    "version": "dev-static-from-CostUnits.ts",
+    "digest": "0xf27b2c15b14173bcff5ba8c4c73516b49172d22f1a63cad636f885fe01dcbd93",
+    "profile": "development",
+    "provider": "openai",
+    "wProviderMilli": "1000",
+    "model": "gpt-4o-mini",
+    "wModelMilli": "400",
+    "developmentProfile": true,
+    "calibrated": false
+  },
+  "plannedCalls": [
+    {
+      "label": "besu",
+      "stream": false,
+      "maxTokens": 16,
+      "disconnect": false,
+      "chain": true,
+      "expect": "final",
+      "promptSha256": "68173af2cf95b179d79e082dc43d04ae29327fa601b471f47807cb69a594dc97",
+      "promptChars": 33,
+      "conservativeOtkReservePico": "19209600000"
+    }
+  ],
+  "ledger": {
+    "file": "<HOME>/otk-pilot/openai_budget_ledger.jsonl",
+    "summaryBefore": {
+      "capUsd": 3,
+      "reservations": 228,
+      "settledOk": 226,
+      "refused": 2,
+      "uncertain": 0,
+      "open": 0,
+      "confirmedUsd": 0.01147935000000001,
+      "uncertainUsd": 0,
+      "openUsd": 0,
+      "exposureUsd": 0.01147935000000001,
+      "remainingUsd": 2.98852065
+    }
+  },
+  "preflightModelsApi": {
+    "url": "https://api.openai.com/v1/models/gpt-4o-mini",
+    "status": 200,
+    "id": "gpt-4o-mini",
+    "displayName": null
+  },
+  "database": "otk_pilot_v3_pv3_openai_live_besu_2026_10_07t05_16_34_630",
+  "chain": {
+    "rpc": "http://127.0.0.1:58745",
+    "chainId": "16251",
+    "registry": "0x7D2347eBA8871B4DD81012FD361f722e94F6468f",
+    "deployment": "deploy_v3_besu.json (test deployment of this environment)"
+  },
+  "upstream": {
+    "kind": "openai API (real)",
+    "override": "none"
+  },
+  "otkBudget": {
+    "budgetId": "pilot-v3-pv3-openai-live-besu-2026-10-07t05-16-34-630",
+    "ceilingPico": "2988520000000",
+    "correlation": "same spend as the canonical ledger (not a second charge)"
+  },
+  "tenantPlan": {
+    "tenantId": "pilot-v3",
+    "tier": "STARTER",
+    "why": "campaign volume above the FREE quota of 10 000 legacy CU per epoch; spend still bounded by the canonical ledger and the OTK money budget"
+  },
+  "entrypointLogRedactedSecrets": "no secret value in the child log",
+  "ledgerAfter": {
+    "capUsd": 3,
+    "reservations": 229,
+    "settledOk": 227,
+    "refused": 2,
+    "uncertain": 0,
+    "open": 0,
+    "confirmedUsd": 0.011482950000000009,
+    "uncertainUsd": 0,
+    "openUsd": 0,
+    "exposureUsd": 0.011482950000000009,
+    "remainingUsd": 2.98851705
+  }
+}

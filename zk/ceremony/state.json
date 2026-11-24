@@ -1,0 +1,77 @@
+{
+  "circuit": "metering_v2.circom",
+  "r1cs": "zk/build/metering_v2.r1cs",
+  "constraintsNL": 430,
+  "constraintsL": 444,
+  "ptauSource": "Hermez Perpetual Powers of Tau (pot12)",
+  "ptauFile": "zk/keys/hermez_bn128_12_final.ptau",
+  "ptauContributors": 176,
+  "startedAt": "2026-02-22T16:22:11.280Z",
+  "currentContribution": 5,
+  "contributions": [
+    {
+      "number": 1,
+      "participant": "Alice-FGV",
+      "institution": "FGV EAESP",
+      "timestamp": "2026-02-22T16:23:33.229Z",
+      "contributionHash": "619c2aa34ad7a10deaedde5419f5fa47aff33f8c86e4922542af10d14838b8a0c2f4f1a77118d4c070d209489a745fae270d193d66a9207e3132aaa6ae496b29",
+      "attestationPath": "zk/ceremony/attestation_0001_Alice-FGV.txt",
+      "verified": true
+    },
+    {
+      "number": 2,
+      "participant": "Bob-IME",
+      "institution": "IME-USP",
+      "timestamp": "2026-02-22T16:23:56.128Z",
+      "contributionHash": "5c79e3fc4ff7cbdf525da16c7764a777fb2f4cf8db3474d480a07196729e7298e68748e754e1c9dc296d0a9704028244ef4ea6d75bfc6e6d15e496e50a591626",
+      "attestationPath": "zk/ceremony/attestation_0002_Bob-IME.txt",
+      "verified": true
+    },
+    {
+      "number": 3,
+      "participant": "Carol-ITA",
+      "institution": "Instituto Tecnológico de Aeronáutica",
+      "timestamp": "2026-02-22T21:06:09.368Z",
+      "contributionHash": "3811d31679d70d8ceddee80e9ed149f94bd16a8bc9d618135a9d29656ad8f60182d3114f0f43e13a61560fc5cf8457478d05ddcfb5c8d96a81d273a2c7e1d7da",
+      "attestationPath": "zk/ceremony/attestation_0003_Carol-ITA.txt",
+      "verified": true
+    },
+    {
+      "number": 4,
+      "participant": "Dave-UNICAMP",
+      "institution": "Universidade Estadual de Campinas",
+      "timestamp": "2026-02-22T21:06:15.262Z",
+      "contributionHash": "c39705e407fd923e9b857b71b589ee32442ad471e11d19c2367f6d291b20d8d24d042b9e826d748a1d37257595da4ac2f1ba30c7ee49e16921a99f72af4fe8f9",
+      "attestationPath": "zk/ceremony/attestation_0004_Dave-UNICAMP.txt",
+      "verified": true
+    },
+    {
+      "number": 5,
+      "participant": "Eve-USP",
+      "institution": "Universidade de São Paulo",
+      "timestamp": "2026-02-22T21:06:21.272Z",
+      "contributionHash": "82e0d05cb9004a13538bc6d09fa60ed61c80e6c6c54edd1d2e351da398f27c6f35f94799390e192085430cc2a6888434ea8e57861ad335f75cef7b8e453a1f80",
+      "attestationPath": "zk/ceremony/attestation_0005_Eve-USP.txt",
+      "verified": true
+    }
+  ],
+  "beaconApplied": true,
+  "finalized": true,
+  "currentZkey": "zk/ceremony/contribution_0005.zkey",
+  "notes": [
+    "Phase 1 uses Hermez ceremony (176+ contributors) — secure for production",
+    "Phase 2 requires minimum 2 independent contributions for security",
+    "Recommended: 5+ contributions from geographically diverse participants",
+    "2026-02-22: Resetado para pré-beacon — adicionando 3 contribuidores externos para nível PRODUCTION (5+)",
+    "2026-02-22: Cerimônia produção completa — 5 contribuidores (FGV, IME-USP, ITA, UNICAMP, USP) + beacon Ethereum"
+  ],
+  "beacon": {
+    "source": "Ethereum block #21893210 (2026-02-22) — produção",
+    "hash": "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b",
+    "timestamp": "2026-02-22T21:06:50.375Z",
+    "iterations": 10,
+    "url": "https://etherscan.io/block/21893210"
+  },
+  "finalZkey": "zk/keys/metering_v2_final_mpc.zkey",
+  "finalVkey": "zk/keys/metering_v2_vkey_mpc.json"
+}

@@ -1,0 +1,525 @@
+{
+ "baseline": "7606bc9be46bde8c1bc427c2eb4873bc1a474779",
+ "baselinePath": "docs/_ops/OVERNIGHT2_20261006",
+ "byModel": [
+  {
+   "completed": 219,
+   "conference": {
+    "incomplete": 214,
+    "not_produced": 5
+   },
+   "costRecomputedUsd": 0.096972,
+   "key": "anthropic/claude-haiku-4-5-20251001",
+   "ledgerUsd": 0.096972,
+   "pairs": 210
+  },
+  {
+   "completed": 220,
+   "conference": {
+    "incomplete": 216,
+    "not_produced": 4
+   },
+   "costRecomputedUsd": 0.03047822,
+   "key": "gemini/gemini-3.5-flash-lite",
+   "ledgerUsd": 0.03047822,
+   "pairs": 212
+  },
+  {
+   "completed": 219,
+   "conference": {
+    "compared": 215,
+    "not_produced": 4
+   },
+   "costRecomputedUsd": 0.01105065,
+   "key": "openai/gpt-4o-mini-2024-07-18",
+   "ledgerUsd": 0.01105065,
+   "pairs": 211
+  }
+ ],
+ "corpus": {
+  "note": "corpus SINTÉTICO (semente 20261007) enviado em chamadas REAIS; o prompt PLANEJADO é comprovado por hash (R03); o corpo exato enviado ao provedor não foi registrado no log (NOT_VERIFIED)",
+  "sha256": "043b2561b898a375aad62d13be0c4822ccddd2b2d2c94738fdb97462885353e6"
+ },
+ "costLabel": "Custo CALCULADO pela tabela pública congelada; não é fatura.",
+ "familyByProvider": [
+  {
+   "family": "code_ts",
+   "perProvider": {
+    "anthropic": 27,
+    "gemini": 28,
+    "openai": 27
+   }
+  },
+  {
+   "family": "en_prose",
+   "perProvider": {
+    "anthropic": 28,
+    "gemini": 27,
+    "openai": 27
+   }
+  },
+  {
+   "family": "json",
+   "perProvider": {
+    "anthropic": 27,
+    "gemini": 27,
+    "openai": 28
+   }
+  },
+  {
+   "family": "markdown_table",
+   "perProvider": {
+    "anthropic": 27,
+    "gemini": 27,
+    "openai": 27
+   }
+  },
+  {
+   "family": "mixed_unicode",
+   "perProvider": {
+    "anthropic": 26,
+    "gemini": 27,
+    "openai": 27
+   }
+  },
+  {
+   "family": "numeric",
+   "perProvider": {
+    "anthropic": 27,
+    "gemini": 27,
+    "openai": 27
+   }
+  },
+  {
+   "family": "pt_prose",
+   "perProvider": {
+    "anthropic": 27,
+    "gemini": 27,
+    "openai": 27
+   }
+  },
+  {
+   "family": "tiny",
+   "perProvider": {
+    "anthropic": 27,
+    "gemini": 27,
+    "openai": 27
+   }
+  }
+ ],
+ "files": [
+  {
+   "bytes": 3106,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 31,
+   "path": "docs/_ops/OVERNIGHT2_20261006/calibration/RESULTADOS_CALIBRACAO.md",
+   "sha256": "268c145722a14e97eff1d0038d1ab4bbff0a5e9cbdcf7ffaf9201ca2383ceabd"
+  },
+  {
+   "bytes": 5285,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 184,
+   "path": "docs/_ops/OVERNIGHT2_20261006/calibration/calibration_profile_anthropic_claude-haiku-4-5-20251001.json",
+   "sha256": "be0921343c1a88451ab3ca74a6af461b6633c0c21965a1e043b00c58a5222c85"
+  },
+  {
+   "bytes": 5275,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 184,
+   "path": "docs/_ops/OVERNIGHT2_20261006/calibration/calibration_profile_gemini_gemini-3.5-flash-lite.json",
+   "sha256": "84cf934d3c26d81ab6cd12fb25a2971b14f8827f4454014338755805ea742ed6"
+  },
+  {
+   "bytes": 4984,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 183,
+   "path": "docs/_ops/OVERNIGHT2_20261006/calibration/calibration_profile_openai_gpt-4o-mini-2024-07-18.json",
+   "sha256": "3ff5a97f9d37b92fd1321f50626389e6adfd15770d29e18a399590ae5fdca63b"
+  },
+  {
+   "bytes": 3392,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 121,
+   "path": "docs/_ops/OVERNIGHT2_20261006/calibration/campaign_summary.json",
+   "sha256": "5922975e5cdf8df8e0ee5ff354974ce43e6aaf5a70cc673e7c057ee5a8f99aa3"
+  },
+  {
+   "bytes": 2935,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 36,
+   "path": "docs/_ops/OVERNIGHT2_20261006/campaign/RESUMO_CAMPANHA.md",
+   "sha256": "2a69e74329ba0cc9b185664406d3b8692e613a388e7309bd4f0d979e95cbc048"
+  },
+  {
+   "bytes": 5445,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 1,
+   "path": "docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/besu/pv3-live-besu-2026-10-07t05-17-21-275_calls.jsonl",
+   "sha256": "bf806990cdbeac7e02643ddd90220e473373c3f81fb24d90accaf1086c694a21"
+  },
+  {
+   "bytes": 3104,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 99,
+   "path": "docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/besu/pv3-live-besu-2026-10-07t05-17-21-275_manifest.json",
+   "sha256": "4da7361fb851756580d184d6e59d5a60ed3416bb9b64fd810b1793d9db7ee232"
+  },
+  {
+   "bytes": 14371,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 3,
+   "path": "docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/cacheprobe/pv3-live-cacheprobe-2026-10-07t05-17-01-243_calls.jsonl",
+   "sha256": "1339ba739846b73db484c45864bedd354974ff2b8dc767be42a93dbdd173d371"
+  },
+  {
+   "bytes": 4230,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 144,
+   "path": "docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/cacheprobe/pv3-live-cacheprobe-2026-10-07t05-17-01-243_manifest.json",
+   "sha256": "1f7d926c91598033a80eb2c6b9d5da13cf997bccfe2212c75d6b4e8ec42f22cf"
+  },
+  {
+   "bytes": 133078,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 28,
+   "path": "docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign/pv3-live-campaign-2026-10-07t04-57-14-774_calls.jsonl",
+   "sha256": "bc39fe386e6c950a029aa05747ceebb41bc914b350640f55d306d8486824978a"
+  },
+  {
+   "bytes": 114245,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 3984,
+   "path": "docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign/pv3-live-campaign-2026-10-07t04-57-14-774_manifest.json",
+   "sha256": "37e26f16aa31070d4e32d4238dee069ec9de701d6d1dd08ff0f45bac1e030ac5"
+  },
+  {
+   "bytes": 916314,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 188,
+   "path": "docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign_start-index-27/pv3-live-campaign-2026-10-07t05-11-27-123_calls.jsonl",
+   "sha256": "586ccf95680902a404890a654f61312d04e5b8462b829ca9c52ceb4ff448c795"
+  },
+  {
+   "bytes": 100057,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 3488,
+   "path": "docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign_start-index-27/pv3-live-campaign-2026-10-07t05-11-27-123_manifest.json",
+   "sha256": "e90e1aba42c437b2fb0ad92b4b7a6997a678574906fc424efcd1ba0ae72ccc8f"
+  },
+  {
+   "bytes": 5940,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 1,
+   "path": "docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/besu/pv3-gemini35-live-besu-2026-10-07t05-08-03-977_calls.jsonl",
+   "sha256": "8311a2389c9ba57a315680e1e87eb5fcef63d84b96cb26afbd1d036984b2b9af"
+  },
+  {
+   "bytes": 3370,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 103,
+   "path": "docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/besu/pv3-gemini35-live-besu-2026-10-07t05-08-03-977_manifest.json",
+   "sha256": "0dab0d1c2a5f86546cfe24dac734bf7cc50910ca40209582352de2af6e0c8c49"
+  },
+  {
+   "bytes": 16120,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 3,
+   "path": "docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/cacheprobe/pv3-gemini35-live-cacheprobe-2026-10-07t05-07-38-327_calls.jsonl",
+   "sha256": "f3bf1362244a0be0c0bb1a63c1f9e54ec8007c14f5faf2f4f62a6b285780f0a5"
+  },
+  {
+   "bytes": 4497,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 148,
+   "path": "docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/cacheprobe/pv3-gemini35-live-cacheprobe-2026-10-07t05-07-38-327_manifest.json",
+   "sha256": "f3b518ad5521c75a49632bc00de82798456933ee9ecfdd31483ee14efebd75c3"
+  },
+  {
+   "bytes": 356782,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 67,
+   "path": "docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign/pv3-gemini35-live-campaign-2026-10-07t04-52-52-082_calls.jsonl",
+   "sha256": "b24dd85175fb3f9b2c39cb5c2167a349f247becefc120a29b2f8120495511c87"
+  },
+  {
+   "bytes": 114518,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 3988,
+   "path": "docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign/pv3-gemini35-live-campaign-2026-10-07t04-52-52-082_manifest.json",
+   "sha256": "5f9832f54a096055a0670daa36fe7365298a5399bf2e420ae1941fffcf162fdd"
+  },
+  {
+   "bytes": 807415,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 150,
+   "path": "docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign_start-index-66/pv3-gemini35-live-campaign-2026-10-07t05-03-44-975_calls.jsonl",
+   "sha256": "e93d467b71f5c70caef3aaee27cf4751c34312d86c9174e0711038de002f92ea"
+  },
+  {
+   "bytes": 80797,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 2805,
+   "path": "docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign_start-index-66/pv3-gemini35-live-campaign-2026-10-07t05-03-44-975_manifest.json",
+   "sha256": "149379edef9ba4c33880cd292fdd7b7e9633dd9bf15eede03f99433a5eb39ef5"
+  },
+  {
+   "bytes": 6003,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 1,
+   "path": "docs/_ops/OVERNIGHT2_20261006/campaign/openai/besu/pv3-openai-live-besu-2026-10-07t05-16-34-630_calls.jsonl",
+   "sha256": "4380688f87e9df7278ba5701f64e7ad639b655fdbc3e957b431f02f27c10ba1a"
+  },
+  {
+   "bytes": 3051,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 99,
+   "path": "docs/_ops/OVERNIGHT2_20261006/campaign/openai/besu/pv3-openai-live-besu-2026-10-07t05-16-34-630_manifest.json",
+   "sha256": "7fd3da8e92a333a70c883eefdfbc21e30b782447108ee1f041e6ba23d8ca3d5f"
+  },
+  {
+   "bytes": 16081,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 3,
+   "path": "docs/_ops/OVERNIGHT2_20261006/campaign/openai/cacheprobe/pv3-openai-live-cacheprobe-2026-10-07t05-16-12-321_calls.jsonl",
+   "sha256": "d44717825a1194bb7ed820396ca0a9d7303f56e55698baae829495f6f0386cee"
+  },
+  {
+   "bytes": 4177,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 144,
+   "path": "docs/_ops/OVERNIGHT2_20261006/campaign/openai/cacheprobe/pv3-openai-live-cacheprobe-2026-10-07t05-16-12-321_manifest.json",
+   "sha256": "4736d8944cd81230baa4559c0f7bdab14f319cd175541d29c9dff5c4c9cb52ef"
+  },
+  {
+   "bytes": 54438,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 10,
+   "path": "docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_max-calls-10/pv3-openai-live-campaign-2026-10-07t04-47-10-738_calls.jsonl",
+   "sha256": "4921562a4f01591d524521570168575fe2426731a163d6ab493b7855b420b05e"
+  },
+  {
+   "bytes": 7912,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 276,
+   "path": "docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_max-calls-10/pv3-openai-live-campaign-2026-10-07t04-47-10-738_manifest.json",
+   "sha256": "8fdd9c17d53f6a3b66eeb4a83350c6f7474cc2a3d2150114cd92bbde89eab73b"
+  },
+  {
+   "bytes": 474445,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 88,
+   "path": "docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-10/pv3-openai-live-campaign-2026-10-07t04-48-20-564_calls.jsonl",
+   "sha256": "dd0376b2d251f2bdf37a7e601b29ec8cb9cb976b9151c254bb3e64ad828ab0e4"
+  },
+  {
+   "bytes": 108863,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 3804,
+   "path": "docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-10/pv3-openai-live-campaign-2026-10-07t04-48-20-564_manifest.json",
+   "sha256": "aa29949850b1ec2404ef1619126b12e730908358554a403860f81009f866995f"
+  },
+  {
+   "bytes": 429282,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 79,
+   "path": "docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-137/pv3-openai-live-campaign-2026-10-07t05-09-06-868_calls.jsonl",
+   "sha256": "9ca3839926c8a14e4dc8b5276b6b488c3e42e7dc9c7606608db4963f677b5624"
+  },
+  {
+   "bytes": 43592,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 1524,
+   "path": "docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-137/pv3-openai-live-campaign-2026-10-07t05-09-06-868_manifest.json",
+   "sha256": "48801b24709b6b83ee557b0d4f461ece5bc7a19fa49065322fa061adfafe3825"
+  },
+  {
+   "bytes": 216510,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 40,
+   "path": "docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-97/pv3-openai-live-campaign-2026-10-07t05-01-19-314_calls.jsonl",
+   "sha256": "debc26e8224c4542fa6a716973c7e47fc65d2d1d51de15487ba8ed179f7cd694"
+  },
+  {
+   "bytes": 64674,
+   "label": "H1 baseline 7606bc9b",
+   "lines": 2243,
+   "path": "docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-97/pv3-openai-live-campaign-2026-10-07t05-01-19-314_manifest.json",
+   "sha256": "91379dfd90b6831a6c11096f8eb956f9fe48d46ea48648b97ae7b51925bfcecc"
+  },
+  {
+   "bytes": 16276,
+   "label": "CAL_ANTH_VERIFY relatório de verificação",
+   "lines": 62,
+   "path": "runs/CAL_ANTH_VERIFY/CAL_ANTH_VERIFICATION_REPORT.md",
+   "sha256": "7b73faf1d891c6a52d08ce84877dbf8b1c6e82e4319d2fb02c078e0192e7d42c"
+  },
+  {
+   "bytes": 30639,
+   "label": "CAL_ANTH_VERIFY recálculo independente",
+   "lines": 1206,
+   "path": "runs/CAL_ANTH_VERIFY/RECOMPUTE_RESULTS.json",
+   "sha256": "8e2b462443a00d16ee26fc8bf88396babd21c4f0ea3ee8ecc4822a583d040a6d"
+  },
+  {
+   "bytes": 1660381,
+   "label": "R02 (MET-02) inventário por operação",
+   "lines": 662,
+   "path": "runs/R02/inventory_662.jsonl",
+   "sha256": "6b9a0e6ac36f7618072399f27df2e12619057eb3ebf5a56998285c71cad65e26"
+  },
+  {
+   "bytes": 374098,
+   "label": "R03 prova por hash (manifesto x reconstruído)",
+   "lines": 1197,
+   "path": "runs/R03/planned_prompt_hash_check.csv",
+   "sha256": "19b9f89accd566be4f190f80f0aae7f4ee9d70d7d76d0564c786e81df0f5c5f2"
+  },
+  {
+   "bytes": 1136123,
+   "label": "R03 (E2E-01) prompts planejados",
+   "lines": 216,
+   "path": "runs/R03/prompts.jsonl",
+   "sha256": "3f64e9ddb6d5939a89116879b5dca5f44e0ecf4c2366554c55a7a3b436262161"
+  },
+  {
+   "bytes": 52220,
+   "label": "R03 prompts de cache e Besu",
+   "lines": 1,
+   "path": "runs/R03/special_prompts.json",
+   "sha256": "b6e4f751d9697aa19b5c549e4223b66033f41d06bf4744e1848d3b73d8baa2d8"
+  },
+  {
+   "bytes": 12439,
+   "label": "R04 denominadores",
+   "lines": 407,
+   "path": "runs/R04/denominators.json",
+   "sha256": "61237c7981be3a57b8ba9f7373c93268cec72e5c9e290bc701f48ae5cd74ff68"
+  },
+  {
+   "bytes": 16148,
+   "label": "R05 comparação com os perfis originais",
+   "lines": 611,
+   "path": "runs/R05/comparison.json",
+   "sha256": "158728758d3c780e177396f09d728d95000f0f9201005b00a0668386f1db6efb"
+  },
+  {
+   "bytes": 94750,
+   "label": "R05 métricas recomputadas",
+   "lines": 4970,
+   "path": "runs/R05/data/metrics_long.json",
+   "sha256": "908663b750d409952115cd6eec395e81f9ad1bf0a66e6ec3ef220cd2cc8e755f"
+  },
+  {
+   "bytes": 151299,
+   "label": "R05 pares de calibração (633)",
+   "lines": 634,
+   "path": "runs/R05/data/pairs_633.csv",
+   "sha256": "9093577033944ca762274ad955637cdded1f017948c9b58eb6fd7d2744352493"
+  },
+  {
+   "bytes": 71916,
+   "label": "R05 figura",
+   "lines": 210,
+   "path": "runs/R05/figures/fig1_error_by_model_split.png",
+   "sha256": "487070e273bfcf1c3793f8c6a0fb041cbe94789af474979d34bf2b91d43c64f7"
+  },
+  {
+   "bytes": 56041,
+   "label": "R05 figura",
+   "lines": 164,
+   "path": "runs/R05/figures/fig2_mae_by_family.png",
+   "sha256": "7398c0cbb4a4b088c230124fc38a38f70c4d2726282db94963cac703007516b8"
+  },
+  {
+   "bytes": 126843,
+   "label": "R05 figura",
+   "lines": 457,
+   "path": "runs/R05/figures/fig3_local_vs_declared.png",
+   "sha256": "42f7cbe12a8f83d4c005c61796f59e3fc573944de3b82f91bb2dfc8c055e1b1b"
+  },
+  {
+   "bytes": 48322,
+   "label": "R05 figura",
+   "lines": 169,
+   "path": "runs/R05/figures/fig4_holdout_alert_detection.png",
+   "sha256": "bdd09a23da7041f9092ec451c471fdf1678fe00f47ada093dd26d8ac9cb69b30"
+  }
+ ],
+ "opsSource": "R02 inventory_662.jsonl",
+ "r02Sha256": "6b9a0e6ac36f7618072399f27df2e12619057eb3ebf5a56998285c71cad65e26",
+ "refused": [
+  {
+   "error": "http 429: {\"ok\":false,\"error\":\"quota_exceeded\",\"quotaCU\":\"10000\",\"currentCU\":\"10156\"}",
+   "http": 429,
+   "id": "pv3-openai-live-campaign-2026-10-07t04-48-20-564-cal-json-005-v1",
+   "label": "cal-json-005-v1",
+   "provider": "openai"
+  },
+  {
+   "error": "http 400: {\"error\":{\"message\":\"Invalid body: failed to parse JSON value. Please check the value to ensure it is valid JSON. (Common errors include trailing commas, missing closing brackets, missing quotation marks, etc.)\",\"type\":\"invalid_request_error\",\"param\":null,\"code\":\"invalid_json\"}}",
+   "http": 400,
+   "id": "pv3-openai-live-campaign-2026-10-07t05-01-19-314-cal-mixed_unicode-000-v1",
+   "label": "cal-mixed_unicode-000-v1",
+   "provider": "openai"
+  },
+  {
+   "error": "http 429: {\"ok\":false,\"error\":\"quota_exceeded\",\"quotaCU\":\"10000\",\"currentCU\":\"10067\"}",
+   "http": 429,
+   "id": "pv3-live-campaign-2026-10-07t04-57-14-774-cal-en_prose-000-v0",
+   "label": "cal-en_prose-000-v0",
+   "provider": "anthropic"
+  },
+  {
+   "error": "http 429: {\"ok\":false,\"error\":\"quota_exceeded\",\"quotaCU\":\"10000\",\"currentCU\":\"10153\"}",
+   "http": 429,
+   "id": "pv3-gemini35-live-campaign-2026-10-07t04-52-52-082-cal-code_ts-004-v0",
+   "label": "cal-code_ts-004-v0",
+   "provider": "gemini"
+  }
+ ],
+ "reserveLabel": "Reserva conservadora do razão: teto de segurança, não previsão.",
+ "splitNote": "meta.split = test é o holdout (regra sha256 do grupo mod 100; R03/R04; mapeamento test→holdout do R02/H1): verificado, não é mais pendência.",
+ "summaryFromSource": {
+  "anthropic/claude-haiku-4-5-20251001": {
+   "calls": 219,
+   "consistent": 219,
+   "costUsdComputedFromLedger": 0.096972
+  },
+  "anthropic/refused_before_usage": {
+   "calls": 1,
+   "consistent": 0,
+   "costUsdComputedFromLedger": 0
+  },
+  "gemini/gemini-3.5-flash-lite": {
+   "calls": 220,
+   "consistent": 220,
+   "costUsdComputedFromLedger": 0.03047822
+  },
+  "gemini/refused_before_usage": {
+   "calls": 1,
+   "consistent": 0,
+   "costUsdComputedFromLedger": 0
+  },
+  "openai/gpt-4o-mini-2024-07-18": {
+   "calls": 219,
+   "consistent": 219,
+   "costUsdComputedFromLedger": 0.01105065
+  },
+  "openai/refused_before_usage": {
+   "calls": 2,
+   "consistent": 0,
+   "costUsdComputedFromLedger": 0
+  }
+ },
+ "syntheticExcluded": {
+  "calls": 30,
+  "note": "chamadas de gate SINTÉTICO (pastas campaign/synthetic_gate*): existem na árvore, NÃO fazem parte das 662 operações e não entram em nenhuma contagem"
+ },
+ "totals": {
+  "completed": 658,
+  "costRecomputedUsd": 0.13850087,
+  "operations": 662,
+  "pairs": 633,
+  "refused": 4
+ }
+}

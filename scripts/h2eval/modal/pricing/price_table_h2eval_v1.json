@@ -1,0 +1,97 @@
+{
+  "schema": "otk.h2eval.price_table.v1",
+  "version": "h2eval-v1-2026-11-10",
+  "currency": "USD",
+  "unit": "micro-USD per 1,000,000 tokens (string integers); null = unknown/not published (NEVER zero); a null price that a usage needs stops the runner",
+  "capturedUtc": "2026-11-10T22:06:00Z..2026-11-10T22:11:00Z",
+  "source": {
+    "run": "R08 (C141 bloco B1) - docs/_ops/coordination/academic_20261110/runs/R08/",
+    "matrix_json": { "file": "R08_COMPATIBILITY_MATRIX.json", "sha256": "4bb3fdc56909b152a72de6b1db54b9ab913907d4e28d57b4b51304ec475c05d8" },
+    "matrix_md": { "file": "R08_COMPATIBILITY_MATRIX.md", "sha256": "7dff2ec711a8d8c129b13a7e064a873448787508fd2686c783e74bc301ebde6d" },
+    "official_pages": {
+      "openai/pricing.html": "f23adcab316164c5f3525b95fa49c6d2209bd37b7c1395f5a469b2ef3a7996e2",
+      "openai/gpt-4o-mini.html": "53bb89b832c4827b6b9a9d344c107ffbc16a04cd1c50a68c981ca6ea7da81a45",
+      "anthropic/pricing.html": "96b086acd8827d84b293ab83782d21edbbd9aa6fd3622e13d2a77828a30121ec",
+      "anthropic/haiku-4-5.html": "3e8dbcc9569fef78cd984665766ce23915356b47ae0573fc36fcaae6dc2a142a",
+      "anthropic/haiku-5-5.html": "017889df8c09e31a802bd6846eb687d8e7c575a4cbba68a8d11023cf59a518a7",
+      "google/pricing.html": "cc04b4c529ae9843f27183af769134293f77fc0514a4a0082710a8cde671c1cd",
+      "google/model_gemini-3.5-flash-lite.html": "53080fc0875b9d74cd594f646e60ad4e3ffc30e329d0dcd9113e3fc1b5c522ae"
+    },
+    "note": "the official pages are archived under runs/R08/official_docs/ with sha256 in official_docs/SHA256SUMS.txt; the account availability of every model is NOT_VERIFIED (R08)"
+  },
+  "models": {
+    "gpt-4o-mini-2024-07-18": {
+      "provider": "openai",
+      "api": "openai.chat_completions",
+      "availability": "DEPRECATED, shutdown 2027-01-14 (served today) - openai/deprecations.html",
+      "standardTerms": { "service_tier": "default" },
+      "tiers": [
+        {
+          "id": "standard",
+          "appliesWhen": "service_tier default (response echoes the tier actually used)",
+          "prices": { "input": "150000", "cacheRead": "75000", "cacheWrite5m": null, "cacheWrite1h": null, "cacheWrite": null, "output": "600000", "reasoning": "600000", "imageTokens": "150000", "audioTokens": null },
+          "citation": "\"Input $0.15 / Cached input $0.075 / Output $0.60\" (openai/gpt-4o-mini.html); cache write: n/a for models before GPT-5.6 (R08 §3); image tokens at the input price (R08 §5); audio: \"Modalities ... Audio Not supported\""
+        }
+      ],
+      "notes": ["reasoning_tokens are billed as output (R08 §8)", "cached_tokens reported in multiples of 128 (R08 §4)"]
+    },
+    "claude-haiku-4-5-20251001": {
+      "provider": "anthropic",
+      "api": "anthropic.messages",
+      "availability": "Active (legacy); migrate to Haiku 5.5; no retirement date - anthropic/haiku-4-5.html",
+      "standardTerms": { "service_tier": "standard", "inference_geo": "global or not_available (US-only = 1.1x => UNKNOWN)", "speed": "standard" },
+      "tiers": [
+        {
+          "id": "standard",
+          "appliesWhen": "always (no prompt-length tiers published for this model)",
+          "prices": { "input": "1000000", "cacheRead": "100000", "cacheWrite5m": "1250000", "cacheWrite1h": "2000000", "cacheWrite": null, "output": "5000000", "reasoning": "5000000", "imageTokens": "1000000", "audioTokens": null },
+          "citation": "\"Claude Haiku 4.5 | $1 / MTok | $5 / MTok | $1.25 / MTok | $2 / MTok | $0.10 / MTok\" (anthropic/pricing.html); visual tokens at the input price (anthropic/vision.html); audio: Messages API has no audio input (R08 §6)"
+        }
+      ],
+      "notes": ["cacheWrite (total) is priced only through its 5m/1h split; a total without the split is UNKNOWN for cost (the two TTLs have different prices)"]
+    },
+    "claude-haiku-5-5": {
+      "provider": "anthropic",
+      "api": "anthropic.messages",
+      "availability": "active; retirement not sooner than 2027-10-07 - anthropic/models-overview.html",
+      "standardTerms": { "service_tier": "standard", "inference_geo": "global or not_available (US-only = 1.1x => UNKNOWN)", "speed": "standard" },
+      "promptLengthRule": "\"A request's prompt length counts all of its input tokens, including cache reads and cache writes.\" (anthropic/haiku-5-5.html): tier by inputUncached + cacheRead + cacheWrite",
+      "tiers": [
+        {
+          "id": "prompt_le_100k",
+          "appliesWhen": "prompt length <= 100000 tokens",
+          "prices": { "input": "100000", "cacheRead": "10000", "cacheWrite5m": "125000", "cacheWrite1h": "200000", "cacheWrite": null, "output": "500000", "reasoning": "500000", "imageTokens": "100000", "audioTokens": null },
+          "citation": "\"$0.10 / MTok for prompts up to 100,000 tokens\" ... \"$0.01 / MTok\" (anthropic/haiku-5-5.html, anthropic/pricing.html); multipliers \"5-minute cache write | 1.25x\", \"1-hour cache write | 2x\", \"Cache read (hit) | 0.1x\""
+        },
+        {
+          "id": "prompt_gt_100k",
+          "appliesWhen": "prompt length > 100000 tokens",
+          "prices": { "input": "500000", "cacheRead": "50000", "cacheWrite5m": "625000", "cacheWrite1h": "1000000", "cacheWrite": null, "output": "2500000", "reasoning": "2500000", "imageTokens": "500000", "audioTokens": null },
+          "citation": "\"$0.50 / MTok for prompts over 100,000 tokens\" ... \"$0.05 / MTok\" (anthropic/haiku-5-5.html)"
+        }
+      ],
+      "notes": ["new tokenizer: ~30% more tokens than Haiku 4.5 for the same text (anthropic/haiku-5-5.html): the H1 calibration does not transfer", "thinking_tokens (adaptive, effort low) billed as output"]
+    },
+    "gemini-3.5-flash-lite": {
+      "provider": "google",
+      "api": "gemini.generate_content",
+      "availability": "stable since 2026-07-21; no shutdown date announced - google/deprecations.html",
+      "standardTerms": { "serviceTier": "standard or unspecified (flex/priority/batch => UNKNOWN)" },
+      "tiers": [
+        {
+          "id": "standard",
+          "appliesWhen": "usageMetadata.serviceTier standard/unspecified/absent",
+          "prices": { "input": "300000", "cacheRead": "30000", "cacheWrite5m": null, "cacheWrite1h": null, "cacheWrite": null, "output": "2500000", "reasoning": "2500000", "imageTokens": "300000", "audioTokens": "300000" },
+          "citation": "\"Input price ... $0.30 (text / image / video / audio)\"; \"Output price (including thinking tokens) ... $2.50\"; \"Context caching price ... $0.03 / $1.00 / 1,000,000 tokens per hour (storage price)\" (google/pricing.html)"
+        },
+        {
+          "id": "batch_REFERENCE_ONLY",
+          "appliesWhen": "NOT used by the runner (Standard tier only); listed so a batch response is recognised as non-standard",
+          "prices": { "input": "150000", "cacheRead": "15000", "cacheWrite5m": null, "cacheWrite1h": null, "cacheWrite": null, "output": "1250000", "reasoning": "1250000", "imageTokens": "150000", "audioTokens": "150000" },
+          "citation": "aba \"Batch\": \"$0.15 (text / image / video / audio)\" / \"$1.25\" / \"$0.015\" (google/pricing.html)"
+        }
+      ],
+      "notes": ["explicit cache storage ($1.00 / 1M tokens / hour) is per hour, not per call: explicit caching is not used by the executor; if cachedContentTokenCount > 0 under implicit caching the read price applies", "thoughtsTokenCount is a separate addend billed as output"]
+    }
+  }
+}

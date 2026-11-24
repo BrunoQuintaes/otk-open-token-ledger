@@ -1,0 +1,65 @@
+{
+  "note": "TEST ONLY. Operator key = ethers.id(seed); fixed blinding/salt. Never use these values operationally.",
+  "seed": "otk-d1d8-a-public-test-vector-key-v1 (TEST ONLY, public seed)",
+  "operatorAddress": "0x02567b96B1811Ac1Ff8349369677881C73d3aE54",
+  "circuitId": "metering_v3@sha256:11ae0c5394ace052a71f7f633dadf3fed3284620565908c5bb873065a6a4ec32",
+  "domain": {
+    "chainId": "31337",
+    "registry": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+    "verifier": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+    "schemaVersion": "otk.registry.v3"
+  },
+  "receiptDigest": "0x05ed51b577ee86273a4711725411a9e869565bee87801944cfa7c36d1725d2a2",
+  "receiptEnvelopeSignature": "0xec953907006aa4697a8f16760cbfefed1fa20f5487340ad7ae8043265d5bbe6a6a7c1ff3aa29cc5d47f4c6947de7897ec7071789f614455a00e7a0b139750e5e1b",
+  "conferenceDigest": "0xbd7f4cf211c13e441c56407913a7373e8adacc74a2ec17fdd3a17bef431d7f4b",
+  "conferenceEnvelopeSignature": "0x5c871be1bc33651e914e0e4699b455c3081dc44c6b4711b80292ae23bab7b9d216df0eee9a3ace890eb573c5cde6eb1c6484710630c68ea2fb0675340635945b1b",
+  "commitment": "768839817162796289898895256145628355024718543385041251553242269225530363356",
+  "operationRef": "0x8f2c0d2b117aa94bd39dd91837bf1a27182ae8dd251a9124a1639b5889a97670",
+  "bucket": {
+    "min": "0",
+    "max": "999999999",
+    "policyVersion": "otk.public_bucket.fixed@1:width=1000CU:unit=microCU"
+  },
+  "authorizationFields": [
+    {
+      "name": "circuitId",
+      "value": "0x621743e56d01fa286b4c186adbcfc7c557bf960732fbc4e16125ac9938272230"
+    },
+    {
+      "name": "verifier",
+      "value": "0x5FbDB2315678afecb367f032d93F642f64180aa3"
+    },
+    {
+      "name": "commitment",
+      "value": "768839817162796289898895256145628355024718543385041251553242269225530363356"
+    },
+    {
+      "name": "epoch",
+      "value": "497443"
+    },
+    {
+      "name": "minUsage",
+      "value": "0"
+    },
+    {
+      "name": "maxUsage",
+      "value": "999999999"
+    },
+    {
+      "name": "bucketPolicy",
+      "value": "0x38edc834f635cbd2ddf59c38fe609af6934df0585a8f2c87674460f3e8b42731"
+    },
+    {
+      "name": "operationRef",
+      "value": "0x8f2c0d2b117aa94bd39dd91837bf1a27182ae8dd251a9124a1639b5889a97670"
+    }
+  ],
+  "authorizationDigest": "0xdbb8d3c9e647426aae0965b9d280e80cdd7747a8911852d78014ab43fd57a2d7",
+  "authorizationSignature": "0xc05c092f5aa721cdfec1f30df18ee56b672a35ef1137f14eb9117f7e42795acb6a93c7a92deac397ded9afe481d6128ee588382b27af322cd4ff30c7f99fb3781c",
+  "publicSignals": [
+    "768839817162796289898895256145628355024718543385041251553242269225530363356",
+    "497443",
+    "0",
+    "999999999"
+  ]
+}

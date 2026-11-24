@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OTK zk-Metering — Documentation</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --fg: #1a1a2e;
+      --accent: #0f3460;
+      --link: #16537e;
+      --card-bg: #ffffff;
+      --border: #e0e0e0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.6;
+      padding: 0;
+    }
+    header {
+      background: var(--accent);
+      color: #fff;
+      padding: 2rem 1rem;
+      text-align: center;
+    }
+    header h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+    header p { opacity: 0.85; font-size: 1.1rem; }
+    .container {
+      max-width: 960px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1.5rem;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      transition: box-shadow 0.2s;
+    }
+    .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .card h3 { margin-bottom: 0.5rem; color: var(--accent); }
+    .card p { font-size: 0.95rem; color: #555; margin-bottom: 1rem; }
+    .card a {
+      display: inline-block;
+      color: var(--link);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .card a:hover { text-decoration: underline; }
+    section { margin-top: 2.5rem; }
+    section h2 {
+      font-size: 1.4rem;
+      color: var(--accent);
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    code {
+      background: #f0f0f0;
+      padding: 0.15em 0.4em;
+      border-radius: 3px;
+      font-size: 0.9em;
+    }
+    pre {
+      background: #f0f0f0;
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 0.9rem;
+      margin: 1rem 0;
+    }
+    footer {
+      text-align: center;
+      padding: 2rem 1rem;
+      color: #888;
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>OTK zk-Metering</h1>
+  <p>Multi-provider AI metering with ZK proofs and on-chain verification</p>
+</header>
+
+<div class="container">
+
+  <div class="cards">
+    <div class="card">
+      <h3>API Reference</h3>
+      <p>Interactive API documentation powered by Redoc. Browse all endpoints, request/response schemas, and authentication requirements.</p>
+      <a href="/api-docs">Open API Docs &rarr;</a>
+    </div>
+
+    <div class="card">
+      <h3>OpenAPI Spec</h3>
+      <p>Raw OpenAPI 3.1.0 specification in JSON format. Use with any OpenAPI-compatible tooling (Postman, Insomnia, code generators).</p>
+      <a href="/openapi.json">Download Spec &rarr;</a>
+    </div>
+
+    <div class="card">
+      <h3>Getting Started</h3>
+      <p>Clone the repository, install dependencies, and run the full test suite. Covers local development setup and Docker deployment.</p>
+      <a href="https://github.com/BrunoQuintaes/otk-zk-metering#readme">View on GitHub &rarr;</a>
+    </div>
+
+    <div class="card">
+      <h3>TypeScript SDK</h3>
+      <p>Official TypeScript client for the OTK API. Typed methods for receipt submission, balance queries, and invoice generation.</p>
+      <a href="https://github.com/BrunoQuintaes/otk-zk-metering/tree/main/sdk">SDK Reference &rarr;</a>
+    </div>
+
+    <div class="card">
+      <h3>Python SDK</h3>
+      <p>Python client using only the standard library. Supports receipt submission, balance queries, and invoice generation.</p>
+      <a href="https://github.com/BrunoQuintaes/otk-zk-metering/tree/main/sdk/python">Python SDK &rarr;</a>
+    </div>
+
+    <div class="card">
+      <h3>Authentication</h3>
+      <p>Three auth modes: disabled (open), admin-key only, and full RBAC with bearer tokens. Roles: OWNER, ADMIN, OPERATOR, MEMBER, VIEWER.</p>
+      <a href="https://github.com/BrunoQuintaes/otk-zk-metering/blob/main/docs/api/AUTH_MODES.md">Auth Modes &rarr;</a>
+    </div>
+  </div>
+
+  <section>
+    <h2>Quick Start</h2>
+    <pre><code># Clone and install
+git clone https://github.com/BrunoQuintaes/otk-zk-metering.git
+cd otk-zk-metering
+npm install
+
+# Run full test suite (1068+ tests)
+npm test
+
+# Start the API server
+npx tsx src/api/server.ts
+
+# Health check
+curl http://localhost:8787/health</code></pre>
+  </section>
+
+  <section>
+    <h2>Architecture</h2>
+    <p>
+      OTK zk-Metering uses a <strong>Dual Receipt Model</strong>: full-fidelity
+      <code>RawReceipt</code> for off-chain storage and minimal <code>ZKReceipt</code>
+      for on-chain Groth16 proof verification. Cost Units (CU) normalize provider-specific
+      token counts into a deterministic, bigint-based metering unit compatible with ZK circuits.
+    </p>
+    <p>
+      The system runs on an IBFT 2.0 Besu network (4 validators), with Solidity contracts
+      for receipt registry and ZK verifier (Groth16, MPC ceremony with 5 contributors).
+    </p>
+  </section>
+
+</div>
+
+<footer>
+  OTK zk-Metering &mdash; MIT License &mdash; 2026
+</footer>
+
+</body>
+</html>

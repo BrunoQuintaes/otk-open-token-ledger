@@ -1,0 +1,24 @@
+OTK zk-Metering deployed!
+
+  Chart version: {{ .Chart.Version }}
+  App version:   {{ .Chart.AppVersion }}
+  Release:       {{ .Release.Name }}
+  Namespace:     {{ .Release.Namespace }}
+
+1. Get the API URL:
+{{- if .Values.ingress.enabled }}
+  {{- range .Values.ingress.hosts }}
+  https://{{ .host }}
+  {{- end }}
+{{- else }}
+  kubectl port-forward svc/{{ include "otk.fullname" . }} 8787:{{ .Values.service.port }} -n {{ .Release.Namespace }}
+  http://localhost:8787
+{{- end }}
+
+2. Verify health:
+  curl http://localhost:8787/healthz
+  curl http://localhost:8787/readyz
+
+3. View metrics:
+  curl -H "Authorization: Bearer $OTK_METRICS_TOKEN" http://localhost:8787/metrics
+  (deployed environments: OTK_METRICS_TOKEN or x-admin-key required; STOPGATE-01 P1.2)

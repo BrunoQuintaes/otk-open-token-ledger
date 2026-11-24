@@ -1,0 +1,183 @@
+{
+  "schema": "otk.calibration_profile.v1",
+  "profileId": "otk.calib.SYNTHETIC-TEST-ONLY.anthropic.messages.claude-haiku-4-5-20251001.v1",
+  "synthetic": true,
+  "targetKind": "synthetic_rule",
+  "provider": "anthropic",
+  "apiVariant": "anthropic.messages",
+  "model": "claude-haiku-4-5-20251001",
+  "modelAliases": [],
+  "tokenizer": "cl100k_base",
+  "tokenizerVersion": {
+    "package": "js-tiktoken",
+    "packageVersion": "1.0.21",
+    "vocabularyDigest": "0x5c9c8b70fd1be2df23d9388f9aa224c92b63432a9a5dc5e2e1afb08658b1b09e",
+    "messageAssembly": {
+      "id": "otk.assembly.text_parts",
+      "version": "1"
+    }
+  },
+  "counterVersion": "otk.local_counter.b3@1",
+  "scope": {
+    "description": "SYNTHETIC TEST PROFILE. Target = otk.synthetic_target.o200k_plus_3_per_message_plus_3@1, NOT Anthropic usage. Exists only to exercise the runtime path in tests; a runtime refuses it unless allowSynthetic is set.",
+    "excludes": [
+      "tools",
+      "images",
+      "documents",
+      "cache",
+      "thinking",
+      "any real provider behaviour"
+    ]
+  },
+  "categoriesCovered": [
+    "input"
+  ],
+  "corpusId": "otk.calibration_corpus.messages.v1 over otk.calibration_corpus.synthetic.v1 seed=20261006 groupsPerFamily=50",
+  "corpus": {
+    "sha256": "d2c541f044fc369bb90d5c25bdeb5e09533d16f2fb39fb912b36822740ad6cda",
+    "splitRule": "group split of otk.calibration_corpus.synthetic.v1: sha256(version:group) mod 100 → <60 train, <80 validation, else holdout",
+    "documents": {
+      "train": 952,
+      "validation": 324,
+      "holdout": 324
+    },
+    "groups": {
+      "train": 238,
+      "validation": 81,
+      "holdout": 81
+    }
+  },
+  "createdAt": "2026-10-06T00:00:00.000Z",
+  "parameters": {
+    "method": "affine_least_squares",
+    "categories": {
+      "input": {
+        "slope": "0.977497",
+        "intercept": "0.921001"
+      }
+    }
+  },
+  "errorMetrics": {
+    "train": {
+      "input": {
+        "n": 952,
+        "groups": 238,
+        "bias": 0.037815,
+        "mae": 18.151261,
+        "maxAbs": 241,
+        "relErrorQuantiles": {
+          "nRelative": 952,
+          "zeroTargets": 0,
+          "p50": 0.060606,
+          "p90": 0.5,
+          "p95": 0.714286,
+          "p99": 0.777778
+        },
+        "alertRate": null
+      }
+    }
+  },
+  "validationMetrics": {
+    "validation": {
+      "input": {
+        "n": 324,
+        "groups": 81,
+        "bias": 0.632716,
+        "mae": 18.762346,
+        "maxAbs": 147,
+        "relErrorQuantiles": {
+          "nRelative": 324,
+          "zeroTargets": 0,
+          "p50": 0.062016,
+          "p90": 0.625,
+          "p95": 0.714286,
+          "p99": 0.777778
+        },
+        "alertRate": 0.009259
+      }
+    },
+    "holdout": {
+      "input": {
+        "n": 324,
+        "groups": 81,
+        "bias": -1.049383,
+        "mae": 20.506173,
+        "maxAbs": 259,
+        "relErrorQuantiles": {
+          "nRelative": 324,
+          "zeroTargets": 0,
+          "p50": 0.046392,
+          "p90": 0.578947,
+          "p95": 0.714286,
+          "p99": 0.833333
+        },
+        "alertRate": 0.015432
+      }
+    }
+  },
+  "thresholdPolicy": {
+    "absoluteTokens": "54",
+    "relative": "0.194445",
+    "derivation": "validation split only (n=324 rows, categories pooled): grid over (absoluteTokens, relative) taken from validation residual quantiles; keep pairs whose false-alert rate on unaltered validation targets is <= 0.01; pick the pair with the highest mean detection of injected inflation (+10%, +25%, +50 tokens) on validation; ties -> larger absoluteTokens, then larger relative. Validation false-alert rate 0.009259, mean detection 0.270576."
+  },
+  "acceptance": {
+    "policy": "otk.calibration_acceptance.v1",
+    "checks": [
+      {
+        "id": "threshold_derived_from_validation",
+        "required": "true",
+        "observed": "true",
+        "passed": true
+      },
+      {
+        "id": "input.parameters",
+        "required": "present",
+        "observed": "present",
+        "passed": true
+      },
+      {
+        "id": "input.train_n",
+        "required": ">= 60",
+        "observed": "952",
+        "passed": true
+      },
+      {
+        "id": "input.validation_n",
+        "required": ">= 30",
+        "observed": "324",
+        "passed": true
+      },
+      {
+        "id": "input.holdout_n",
+        "required": ">= 30",
+        "observed": "324",
+        "passed": true
+      },
+      {
+        "id": "input.holdout_groups",
+        "required": ">= 10",
+        "observed": "81",
+        "passed": true
+      },
+      {
+        "id": "input.holdout_alert_rate",
+        "required": "<= 0.05",
+        "observed": "0.015432",
+        "passed": true
+      },
+      {
+        "id": "input.holdout_detection_plus25pct",
+        "required": ">= 0.5",
+        "observed": "0.555556",
+        "passed": true
+      }
+    ],
+    "passed": true
+  },
+  "calibrated": true,
+  "limitations": [
+    "SYNTHETIC: says nothing about the precision of the local counter against Anthropic or any provider.",
+    "Bootstrap (OTK_CALIBRATION_PROFILES_DIR) refuses synthetic profiles (INCOMPATIBLE synthetic_profile_not_allowed)."
+  ],
+  "evidenceHash": "0x49153f2b4b2e2fddc546440c747571f2dc1cc3cc698bf046cd502c15ea912532"
+}

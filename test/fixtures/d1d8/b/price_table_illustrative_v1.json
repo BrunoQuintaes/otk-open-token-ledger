@@ -1,0 +1,20 @@
+{
+  "schema": "otk.price_table.v1",
+  "version": "illustrative-2026-09-30.1",
+  "currency": "USD",
+  "note_not_part_of_schema": "ILUSTRATIVA para testes de aritmética de categorias. Não é tabela de preço vigente verificada; S4/C devem carregar tabela com fonte oficial datada.",
+  "entries": [
+    { "provider": "openai", "model": "gpt-4o-mini", "category": "input", "pricePerMTokMicroUsd": "150000", "effectiveFrom": "2024-07-18T00:00:00.000Z", "effectiveUntil": "2026-10-01T00:00:00.000Z", "source": "illustrative" },
+    { "provider": "openai", "model": "gpt-4o-mini", "category": "input", "pricePerMTokMicroUsd": "200000", "effectiveFrom": "2026-10-01T00:00:00.000Z", "effectiveUntil": null, "source": "illustrative (hypothetical change for the history test)" },
+    { "provider": "openai", "model": "gpt-4o-mini", "category": "input_cache_read", "pricePerMTokMicroUsd": "75000", "effectiveFrom": "2024-07-18T00:00:00.000Z", "effectiveUntil": null, "source": "illustrative" },
+    { "provider": "openai", "model": "gpt-4o-mini", "category": "output", "pricePerMTokMicroUsd": "600000", "effectiveFrom": "2024-07-18T00:00:00.000Z", "effectiveUntil": null, "source": "illustrative" },
+    { "provider": "anthropic", "model": "claude-haiku-4-5", "category": "input", "pricePerMTokMicroUsd": "1000000", "effectiveFrom": "2025-10-01T00:00:00.000Z", "effectiveUntil": null, "source": "illustrative" },
+    { "provider": "anthropic", "model": "claude-haiku-4-5", "category": "output", "pricePerMTokMicroUsd": "5000000", "effectiveFrom": "2025-10-01T00:00:00.000Z", "effectiveUntil": null, "source": "illustrative" },
+    { "provider": "anthropic", "model": "claude-haiku-4-5", "category": "input_cache_write", "pricePerMTokMicroUsd": "1250000", "effectiveFrom": "2025-10-01T00:00:00.000Z", "effectiveUntil": null, "source": "illustrative (5-minute TTL write)" },
+    { "provider": "anthropic", "model": "claude-haiku-4-5", "category": "input_cache_read", "pricePerMTokMicroUsd": "100000", "effectiveFrom": "2025-10-01T00:00:00.000Z", "effectiveUntil": null, "source": "illustrative" }
+  ],
+  "aliases": {
+    "gpt-4o-mini-2024-07-18": "gpt-4o-mini",
+    "claude-haiku-4-5-20251001": "claude-haiku-4-5"
+  }
+}

@@ -1,0 +1,276 @@
+{
+  "runId": "pv3-openai-live-campaign-2026-10-07t04-47-10-738",
+  "provider": "openai",
+  "mode": "live",
+  "phase": "campaign",
+  "commit": "5f4c357ccaff68b9ef9b6c35fadacd17e7d3daed",
+  "tree": "cb8007db80dc384cfeb6bc5e86a08becb297c696",
+  "dirty": 2,
+  "model": "gpt-4o-mini",
+  "policy": "otk.money_bound_policy.v3@2026-10-03",
+  "contextWindow": "128000",
+  "maxOutput": "16384",
+  "priceTable": {
+    "file": "scripts/pilot/price_table_pilot_v3_20261003.json",
+    "version": "pilot-v3-anthropic-haiku45-openai-gpt4omini-official-2026-10-03",
+    "sha256": "c76a0fade9b7dd02d287054fc015d5cce2f3269b57933a21d32634c9f0dac81c"
+  },
+  "weightsOracle": {
+    "version": "dev-static-from-CostUnits.ts",
+    "digest": "0xf27b2c15b14173bcff5ba8c4c73516b49172d22f1a63cad636f885fe01dcbd93",
+    "profile": "development",
+    "provider": "openai",
+    "wProviderMilli": "1000",
+    "model": "gpt-4o-mini",
+    "wModelMilli": "400",
+    "developmentProfile": true,
+    "calibrated": false
+  },
+  "campaign": {
+    "corpus": {
+      "seed": 20261007,
+      "groupsPerFamily": 9,
+      "variantsPerGroup": 2,
+      "version": "otk.calibration_corpus.synthetic.v1",
+      "sha256": "043b2561b898a375aad62d13be0c4822ccddd2b2d2c94738fdb97462885353e6"
+    },
+    "slice": {
+      "startIndex": 0,
+      "maxCalls": 10,
+      "of": 216
+    }
+  },
+  "plannedCalls": [
+    {
+      "meta": {
+        "docId": "pt_prose-000-v0",
+        "group": "pt_prose-000",
+        "split": "validation",
+        "family": "pt_prose",
+        "sizeBucket": "l"
+      },
+      "label": "cal-pt_prose-000-v0",
+      "stream": false,
+      "maxTokens": 24,
+      "disconnect": false,
+      "chain": false,
+      "expect": "final",
+      "promptSha256": "0ad87abc15c577486d67c77ff3e952f0217bc047083263053fc06c0dcfb0ccee",
+      "promptChars": 2306,
+      "conservativeOtkReservePico": "19214400000"
+    },
+    {
+      "meta": {
+        "docId": "pt_prose-000-v1",
+        "group": "pt_prose-000",
+        "split": "validation",
+        "family": "pt_prose",
+        "sizeBucket": "l"
+      },
+      "label": "cal-pt_prose-000-v1",
+      "stream": false,
+      "maxTokens": 24,
+      "disconnect": false,
+      "chain": false,
+      "expect": "final",
+      "promptSha256": "17e81dab8a24054d07e1fb18bbe26872d7819fa2d98f6b43146fc5d641a5faf8",
+      "promptChars": 2306,
+      "conservativeOtkReservePico": "19214400000"
+    },
+    {
+      "meta": {
+        "docId": "pt_prose-000-v2",
+        "group": "pt_prose-000",
+        "split": "validation",
+        "family": "pt_prose",
+        "sizeBucket": "l"
+      },
+      "label": "cal-pt_prose-000-v2",
+      "stream": false,
+      "maxTokens": 24,
+      "disconnect": false,
+      "chain": false,
+      "expect": "final",
+      "promptSha256": "6436d75d94ded73f2881ca841092c2613059646c2f2f2751669ffcd75105cd96",
+      "promptChars": 2306,
+      "conservativeOtkReservePico": "19214400000"
+    },
+    {
+      "meta": {
+        "docId": "pt_prose-001-v0",
+        "group": "pt_prose-001",
+        "split": "test",
+        "family": "pt_prose",
+        "sizeBucket": "m"
+      },
+      "label": "cal-pt_prose-001-v0",
+      "stream": false,
+      "maxTokens": 24,
+      "disconnect": false,
+      "chain": false,
+      "expect": "final",
+      "promptSha256": "5eeb449cb778e18ce60b44eff6fe2d6d4c1c7737dcd1b3195f27fc20321656ad",
+      "promptChars": 1485,
+      "conservativeOtkReservePico": "19214400000"
+    },
+    {
+      "meta": {
+        "docId": "pt_prose-001-v1",
+        "group": "pt_prose-001",
+        "split": "test",
+        "family": "pt_prose",
+        "sizeBucket": "m"
+      },
+      "label": "cal-pt_prose-001-v1",
+      "stream": false,
+      "maxTokens": 24,
+      "disconnect": false,
+      "chain": false,
+      "expect": "final",
+      "promptSha256": "e306417f6d49767e8c8600a908f5697b7358c30279af9cddeda5f82db0776fc0",
+      "promptChars": 1485,
+      "conservativeOtkReservePico": "19214400000"
+    },
+    {
+      "meta": {
+        "docId": "pt_prose-001-v2",
+        "group": "pt_prose-001",
+        "split": "test",
+        "family": "pt_prose",
+        "sizeBucket": "m"
+      },
+      "label": "cal-pt_prose-001-v2",
+      "stream": false,
+      "maxTokens": 24,
+      "disconnect": false,
+      "chain": false,
+      "expect": "final",
+      "promptSha256": "e306417f6d49767e8c8600a908f5697b7358c30279af9cddeda5f82db0776fc0",
+      "promptChars": 1485,
+      "conservativeOtkReservePico": "19214400000"
+    },
+    {
+      "meta": {
+        "docId": "pt_prose-002-v0",
+        "group": "pt_prose-002",
+        "split": "train",
+        "family": "pt_prose",
+        "sizeBucket": "m"
+      },
+      "label": "cal-pt_prose-002-v0",
+      "stream": false,
+      "maxTokens": 24,
+      "disconnect": false,
+      "chain": false,
+      "expect": "final",
+      "promptSha256": "78e507c6b885d08a2e4b8a616534357abbb4d5d337f05945fdf396b09f2f5cfb",
+      "promptChars": 1033,
+      "conservativeOtkReservePico": "19214400000"
+    },
+    {
+      "meta": {
+        "docId": "pt_prose-002-v1",
+        "group": "pt_prose-002",
+        "split": "train",
+        "family": "pt_prose",
+        "sizeBucket": "m"
+      },
+      "label": "cal-pt_prose-002-v1",
+      "stream": false,
+      "maxTokens": 24,
+      "disconnect": false,
+      "chain": false,
+      "expect": "final",
+      "promptSha256": "b9591902ee2aa4ffe7ea26d23af28df35029f700b55a8a38988fd591d9f6781b",
+      "promptChars": 1033,
+      "conservativeOtkReservePico": "19214400000"
+    },
+    {
+      "meta": {
+        "docId": "pt_prose-002-v2",
+        "group": "pt_prose-002",
+        "split": "train",
+        "family": "pt_prose",
+        "sizeBucket": "m"
+      },
+      "label": "cal-pt_prose-002-v2",
+      "stream": false,
+      "maxTokens": 24,
+      "disconnect": false,
+      "chain": false,
+      "expect": "final",
+      "promptSha256": "f3e9bae1c7c1cd4f287191dcc18c2a136bcbb69e46dc02b54bba02a90c6a67c1",
+      "promptChars": 1034,
+      "conservativeOtkReservePico": "19214400000"
+    },
+    {
+      "meta": {
+        "docId": "pt_prose-003-v0",
+        "group": "pt_prose-003",
+        "split": "train",
+        "family": "pt_prose",
+        "sizeBucket": "s"
+      },
+      "label": "cal-pt_prose-003-v0",
+      "stream": false,
+      "maxTokens": 24,
+      "disconnect": false,
+      "chain": false,
+      "expect": "final",
+      "promptSha256": "9a0550cd8931f905ea2bc613b7d6a3613ddd765a242b0dcb440064244f2c5c34",
+      "promptChars": 358,
+      "conservativeOtkReservePico": "19214400000"
+    }
+  ],
+  "ledger": {
+    "file": "<HOME>/otk-pilot/openai_budget_ledger.jsonl",
+    "summaryBefore": {
+      "capUsd": 3,
+      "reservations": 8,
+      "settledOk": 8,
+      "refused": 0,
+      "uncertain": 0,
+      "open": 0,
+      "confirmedUsd": 0.0004323,
+      "uncertainUsd": 0,
+      "openUsd": 0,
+      "exposureUsd": 0.0004323,
+      "remainingUsd": 2.9995677
+    }
+  },
+  "preflightModelsApi": {
+    "url": "https://api.openai.com/v1/models/gpt-4o-mini",
+    "status": 200,
+    "id": "gpt-4o-mini",
+    "displayName": null
+  },
+  "database": "otk_pilot_v3_pv3_openai_live_campaign_2026_10_07t04_47_10_738",
+  "upstream": {
+    "kind": "openai API (real)",
+    "override": "none"
+  },
+  "otkBudget": {
+    "budgetId": "pilot-v3-pv3-openai-live-campaign-2026-10-07t04-47-10-738",
+    "ceilingPico": "2999567000000",
+    "correlation": "same spend as the canonical ledger (not a second charge)"
+  },
+  "attributionRegistered": {
+    "projectId": "otk",
+    "applicationId": "otk-ovn2-campaign",
+    "provenance": "CLIENT_DECLARED"
+  },
+  "entrypointLogRedactedSecrets": "no secret value in the child log",
+  "ledgerAfter": {
+    "capUsd": 3,
+    "reservations": 18,
+    "settledOk": 18,
+    "refused": 0,
+    "uncertain": 0,
+    "open": 0,
+    "confirmedUsd": 0.0010201499999999998,
+    "uncertainUsd": 0,
+    "openUsd": 0,
+    "exposureUsd": 0.0010201499999999998,
+    "remainingUsd": 2.99897985
+  }
+}

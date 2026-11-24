@@ -1,0 +1,64 @@
+{
+  "schema": "h2eval.design_params.v1",
+  "designId": "R6-PILOT-MET01-R5",
+  "source": "C157 §9.2 pilots Sonnet 5.5 / Opus 5.5 (E2E-01), DESIGN FIXED BY THE COORDINATION: the MET-01 R5 package (pilot_prompts_r5.json, otk.n5.pilot_prompts.v3, PACOTE_PILOTOS_SONNET_OPUS_R5.md sha256 cfed19557321...): max_tokens PER PROMPT AND PER MODEL (Sonnet sum 5184, Opus sum 3392) travel in each operation, so adaptive reasoning cannot consume the ceiling before visible text; a 1,024-token reasoning allowance is added ONLY to the cost reservation. The model-level maxTokens here is only the LARGEST ceiling of the list (1024). thinking adaptive, effort low (Sonnet 5.5 does not accept thinking disabled; Opus 5.5 is always adaptive); tier standard; no cache; no batch. The sum-480 variant (list c9c7c232...) is DISCARDED. The four legacy models are declared exactly as in R3_2-equivalent and are NOT_RUN by this file.",
+  "perModel": {
+    "gpt-4o-mini-2024-07-18": {
+      "maxTokens": 256,
+      "thinking": {
+        "policy": "OFF"
+      },
+      "reasoningAllowanceTokens": 0
+    },
+    "claude-haiku-4-5-20251001": {
+      "maxTokens": 256,
+      "thinking": {
+        "policy": "OFF"
+      },
+      "reasoningAllowanceTokens": 0
+    },
+    "claude-haiku-5-5": {
+      "maxTokens": 256,
+      "thinking": {
+        "policy": "ADAPTIVE",
+        "effort": "low"
+      },
+      "reasoningAllowanceTokens": 1024
+    },
+    "gemini-3.5-flash-lite": {
+      "maxTokens": 256,
+      "thinking": {
+        "policy": "MINIMAL",
+        "thinkingLevel": "minimal"
+      },
+      "reasoningAllowanceTokens": 2048
+    },
+    "claude-sonnet-5-5": {
+      "maxTokens": 1024,
+      "thinking": {
+        "policy": "ADAPTIVE",
+        "effort": "low"
+      },
+      "reasoningAllowanceTokens": 1024
+    },
+    "claude-opus-5-5": {
+      "maxTokens": 1024,
+      "thinking": {
+        "policy": "ADAPTIVE",
+        "effort": "low"
+      },
+      "reasoningAllowanceTokens": 1024
+    }
+  },
+  "d7": {
+    "option": "A",
+    "eligibleCalls": [
+      2,
+      3
+    ]
+  },
+  "notes": [
+    "Pilot design only (engineering pilots, not training/validation/holdout). Acceptance of output_config.effort=low by Sonnet/Opus is NOT_VERIFIED until a real call.",
+    "The protocolHash of a plan includes the sha256 of this file."
+  ]
+}

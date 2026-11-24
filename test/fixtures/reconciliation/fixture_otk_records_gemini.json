@@ -1,0 +1,35 @@
+{
+  "_synthetic": "SYNTHETIC FIXTURE (OTK Phase 10, 2026-10-06): invented OTK records (not measured) priced with fixture-prices-v1; same records as the unit tests.",
+  "records": [
+    {
+      "operationId": "G1",
+      "tenantId": "fixture-tenant",
+      "provider": "gemini",
+      "modelRequested": "gemini-3.5-flash-lite",
+      "modelReturned": null,
+      "providerRequestId": null,
+      "observedAt": "2026-10-04T03:57:22.000Z",
+      "priceTableVersion": "fixture-prices-v1",
+      "quantities": {
+        "input": "10",
+        "output": "1"
+      },
+      "confirmedMoneyPico": "5500000"
+    },
+    {
+      "operationId": "G2",
+      "tenantId": "fixture-tenant",
+      "provider": "gemini",
+      "modelRequested": "gemini-3.5-flash-lite",
+      "modelReturned": null,
+      "providerRequestId": null,
+      "observedAt": "2026-10-04T03:58:10.000Z",
+      "priceTableVersion": "fixture-prices-v1",
+      "quantities": {
+        "input": "84",
+        "output": "25"
+      },
+      "confirmedMoneyPico": "87700000"
+    }
+  ]
+}

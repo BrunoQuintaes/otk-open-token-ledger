@@ -1,0 +1,144 @@
+{
+  "runId": "pv3-openai-live-cacheprobe-2026-10-07t05-16-12-321",
+  "provider": "openai",
+  "mode": "live",
+  "phase": "cacheprobe",
+  "commit": "b42d05cf2c88eab6325d036ad4ad7d3977c59375",
+  "tree": "28c6575b032d1e84e969f608539da91b7cd445ff",
+  "dirty": 4,
+  "model": "gpt-4o-mini",
+  "policy": "otk.money_bound_policy.v3@2026-10-03",
+  "contextWindow": "128000",
+  "maxOutput": "16384",
+  "priceTable": {
+    "file": "scripts/pilot/price_table_pilot_v3_20261003.json",
+    "version": "pilot-v3-anthropic-haiku45-openai-gpt4omini-official-2026-10-03",
+    "sha256": "c76a0fade9b7dd02d287054fc015d5cce2f3269b57933a21d32634c9f0dac81c"
+  },
+  "weightsOracle": {
+    "version": "dev-static-from-CostUnits.ts",
+    "digest": "0xf27b2c15b14173bcff5ba8c4c73516b49172d22f1a63cad636f885fe01dcbd93",
+    "profile": "development",
+    "provider": "openai",
+    "wProviderMilli": "1000",
+    "model": "gpt-4o-mini",
+    "wModelMilli": "400",
+    "developmentProfile": true,
+    "calibrated": false
+  },
+  "campaign": {
+    "corpus": {
+      "seed": 20261007,
+      "groupsPerFamily": 9,
+      "variantsPerGroup": 2,
+      "version": "otk.calibration_corpus.synthetic.v1",
+      "sha256": "043b2561b898a375aad62d13be0c4822ccddd2b2d2c94738fdb97462885353e6"
+    },
+    "slice": {
+      "startIndex": 0,
+      "maxCalls": null,
+      "of": 3
+    },
+    "skippedLabels": []
+  },
+  "plannedCalls": [
+    {
+      "meta": {
+        "cacheProbe": "1"
+      },
+      "label": "cache-1",
+      "stream": false,
+      "maxTokens": 24,
+      "disconnect": false,
+      "chain": false,
+      "expect": "final",
+      "promptSha256": "1dfaf3a30956d9acf0ab2eeaf570a9d2f7e23ff7a3864a5298fd3587b86534da",
+      "promptChars": 12099,
+      "conservativeOtkReservePico": "19214400000"
+    },
+    {
+      "meta": {
+        "cacheProbe": "2"
+      },
+      "label": "cache-2",
+      "stream": false,
+      "maxTokens": 24,
+      "disconnect": false,
+      "chain": false,
+      "expect": "final",
+      "promptSha256": "1dfaf3a30956d9acf0ab2eeaf570a9d2f7e23ff7a3864a5298fd3587b86534da",
+      "promptChars": 12099,
+      "conservativeOtkReservePico": "19214400000"
+    },
+    {
+      "meta": {
+        "cacheProbe": "3"
+      },
+      "label": "cache-3",
+      "stream": false,
+      "maxTokens": 24,
+      "disconnect": false,
+      "chain": false,
+      "expect": "final",
+      "promptSha256": "1dfaf3a30956d9acf0ab2eeaf570a9d2f7e23ff7a3864a5298fd3587b86534da",
+      "promptChars": 12099,
+      "conservativeOtkReservePico": "19214400000"
+    }
+  ],
+  "ledger": {
+    "file": "<HOME>/otk-pilot/openai_budget_ledger.jsonl",
+    "summaryBefore": {
+      "capUsd": 3,
+      "reservations": 225,
+      "settledOk": 223,
+      "refused": 2,
+      "uncertain": 0,
+      "open": 0,
+      "confirmedUsd": 0.010407150000000009,
+      "uncertainUsd": 0,
+      "openUsd": 0,
+      "exposureUsd": 0.010407150000000009,
+      "remainingUsd": 2.98959285
+    }
+  },
+  "preflightModelsApi": {
+    "url": "https://api.openai.com/v1/models/gpt-4o-mini",
+    "status": 200,
+    "id": "gpt-4o-mini",
+    "displayName": null
+  },
+  "database": "otk_pilot_v3_pv3_openai_live_cacheprobe_2026_10_07t05_16_12_321",
+  "upstream": {
+    "kind": "openai API (real)",
+    "override": "none"
+  },
+  "otkBudget": {
+    "budgetId": "pilot-v3-pv3-openai-live-cacheprobe-2026-10-07t05-16-12-321",
+    "ceilingPico": "2989592000000",
+    "correlation": "same spend as the canonical ledger (not a second charge)"
+  },
+  "tenantPlan": {
+    "tenantId": "pilot-v3",
+    "tier": "STARTER",
+    "why": "campaign volume above the FREE quota of 10 000 legacy CU per epoch; spend still bounded by the canonical ledger and the OTK money budget"
+  },
+  "attributionRegistered": {
+    "projectId": "otk",
+    "applicationId": "otk-ovn2-campaign",
+    "provenance": "CLIENT_DECLARED"
+  },
+  "entrypointLogRedactedSecrets": "no secret value in the child log",
+  "ledgerAfter": {
+    "capUsd": 3,
+    "reservations": 228,
+    "settledOk": 226,
+    "refused": 2,
+    "uncertain": 0,
+    "open": 0,
+    "confirmedUsd": 0.01147935000000001,
+    "uncertainUsd": 0,
+    "openUsd": 0,
+    "exposureUsd": 0.01147935000000001,
+    "remainingUsd": 2.98852065
+  }
+}

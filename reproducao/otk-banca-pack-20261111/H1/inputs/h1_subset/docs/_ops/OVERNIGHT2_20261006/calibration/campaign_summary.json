@@ -1,0 +1,121 @@
+{
+  "note": "CU under the CANDIDATE profile (normalization not chosen; two explicit references shown). Cost = computed from the frozen public table, not an invoice. Quantities = disjoint canonical categories summed over computed operations (once per reference; identical for both).",
+  "summary": {
+    "anthropic/claude-haiku-4-5-20251001": {
+      "calls": 219,
+      "consistent": 219,
+      "costUsdComputedFromLedger": 0.096972,
+      "legacyDevelopmentCu": "67048.96",
+      "quantities": {
+        "input_uncached": "70997",
+        "input_cache_read": "0",
+        "input_cache_write": "0",
+        "output_visible": "5195",
+        "output_reasoning": "0"
+      },
+      "cuReferenceCandidate": {
+        "ref_4omini_input": "646480.000000000",
+        "ref_abstract_1usd_per_mtok": "96972.000000000"
+      },
+      "notComputable": {}
+    },
+    "anthropic/refused_before_usage": {
+      "calls": 1,
+      "consistent": 0,
+      "costUsdComputedFromLedger": 0,
+      "legacyDevelopmentCu": "0",
+      "quantities": {},
+      "cuReferenceCandidate": {},
+      "notComputable": {
+        "usage_not_computable": 2
+      }
+    },
+    "gemini/gemini-3.5-flash-lite": {
+      "calls": 220,
+      "consistent": 220,
+      "costUsdComputedFromLedger": 0.03047822,
+      "legacyDevelopmentCu": "40944.42",
+      "quantities": {
+        "input_uncached": "67746",
+        "input_cache_read": "4064",
+        "input_cache_write": "0",
+        "output_visible": "4013",
+        "output_reasoning": "0"
+      },
+      "cuReferenceCandidate": {
+        "ref_4omini_input": "203188.133333333",
+        "ref_abstract_1usd_per_mtok": "30478.220000000"
+      },
+      "notComputable": {}
+    },
+    "gemini/refused_before_usage": {
+      "calls": 1,
+      "consistent": 0,
+      "costUsdComputedFromLedger": 0,
+      "legacyDevelopmentCu": "0",
+      "quantities": {},
+      "cuReferenceCandidate": {},
+      "notComputable": {
+        "usage_not_computable": 2
+      }
+    },
+    "openai/gpt-4o-mini-2024-07-18": {
+      "calls": 219,
+      "consistent": 219,
+      "costUsdComputedFromLedger": 0.01105065,
+      "legacyDevelopmentCu": "25074.4",
+      "quantities": {
+        "input_uncached": "51259",
+        "input_cache_read": "6656",
+        "input_cache_write": "0",
+        "output_visible": "4771",
+        "output_reasoning": "0"
+      },
+      "cuReferenceCandidate": {
+        "ref_4omini_input": "73671.000000000",
+        "ref_abstract_1usd_per_mtok": "11050.650000000"
+      },
+      "notComputable": {}
+    },
+    "openai/refused_before_usage": {
+      "calls": 2,
+      "consistent": 0,
+      "costUsdComputedFromLedger": 0,
+      "legacyDevelopmentCu": "0",
+      "quantities": {},
+      "cuReferenceCandidate": {},
+      "notComputable": {
+        "usage_not_computable": 4
+      }
+    }
+  },
+  "calibration": {
+    "anthropic/claude-haiku-4-5-20251001": {
+      "calibrated": false,
+      "n": 210,
+      "bySplit": {
+        "train": 119,
+        "validation": 54,
+        "holdout": 37
+      }
+    },
+    "gemini/gemini-3.5-flash-lite": {
+      "calibrated": false,
+      "n": 212,
+      "bySplit": {
+        "train": 121,
+        "validation": 54,
+        "holdout": 37
+      }
+    },
+    "openai/gpt-4o-mini-2024-07-18": {
+      "calibrated": true,
+      "n": 211,
+      "bySplit": {
+        "train": 120,
+        "validation": 53,
+        "holdout": 38
+      }
+    }
+  }
+}

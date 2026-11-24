@@ -1,0 +1,10 @@
+{
+ "schema": "otk.bridge.keyring_file.v1",
+ "keys": [
+  {
+   "keyId": "otk-v3-operator-a2-c160",
+   "address": "0xc455e678a8db7749769459d2eDcA9526B8367261",
+   "status": "active"
+  }
+ ]
+}

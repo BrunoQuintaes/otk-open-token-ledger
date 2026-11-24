@@ -1,0 +1,5 @@
+# Known TypeScript diagnostics accepted by scripts/ops/typecheck-gate.mjs (R28).
+# Format: <diagnostic prefix without line/column> | <owning finding and reason>
+# Remove an entry as soon as its finding is resolved; never add entries to hide new errors.
+# OVERNIGHT 20261005 (Phase 5): R15a (OIDC/SAML) resolved by src/types/optional-deps.d.ts (optional packages, SSO still
+# outside the validated scope); R03 (Stripe getStripeClient) resolved by an injected usage-record port. List empty.

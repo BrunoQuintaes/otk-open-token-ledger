@@ -1,0 +1,50 @@
+{
+  "schema": "otk.reconciliation_mapping.v1",
+  "id": "gemini_billing_export_ndjson",
+  "provider": "gemini",
+  "format": "ndjson",
+  "describes": "Rows of the Cloud Billing standard usage cost export table exported from BigQuery as newline-delimited JSON (the export format that keeps the nested credits array).",
+  "provenance": {
+    "status": "PARTIALLY_VERIFIED",
+    "sources": [
+      { "url": "https://docs.cloud.google.com/billing/docs/how-to/export-data-bigquery-tables/standard-usage", "accessedOn": "2026-10-06", "covers": "field names service.description, sku.description, usage_start_time/usage_end_time (TIMESTAMP), project.id, cost (FLOAT), currency, usage.amount, usage.unit, cost_type values, credits[] (name, amount, type)" }
+    ],
+    "unverified": [
+      "textual form of TIMESTAMP values in the NDJSON export (accepted: RFC 3339 with zone, or 'YYYY-MM-DD HH:MM:SS UTC'; anything else is rejected)",
+      "service.description of the Gemini API",
+      "SKU description wording for model and token direction",
+      "usage.unit of token SKUs",
+      "cost and credits[].amount are FLOAT64: treated as 15 significant digits"
+    ],
+    "notes": "Each credits[] element becomes its own credit line. Same scope and category rules as gemini_billing_export_csv."
+  },
+  "records": { "kind": "ndjson" },
+  "timestamps": { "format": "auto", "declaredTimezone": null, "note": "BigQuery TIMESTAMP values are UTC and are written with a zone marker." },
+  "period": { "start": "usage_start_time", "end": "usage_end_time" },
+  "model": { "fromDescription": "sku.description" },
+  "category": {
+    "rules": [
+      { "field": "sku.description", "pattern": "storage", "flags": "i", "category": "other" },
+      { "field": "sku.description", "pattern": "cach", "flags": "i", "category": "cache_read" },
+      { "field": "sku.description", "pattern": "input", "flags": "i", "category": "input" },
+      { "field": "sku.description", "pattern": "output|thinking", "flags": "i", "category": "output" }
+    ],
+    "fallback": "unknown"
+  },
+  "expand": null,
+  "subtractFromInput": [],
+  "quantity": { "field": "usage.amount", "unit": "tokens", "unitField": "usage.unit", "allowedUnits": ["count", "tokens", "token"] },
+  "amount": { "field": "cost", "divisor": "1", "binaryFloat": true, "precisionDecimals": null },
+  "currency": { "field": "currency" },
+  "requestId": null,
+  "projectOrKey": ["project.id"],
+  "kind": {
+    "rules": [
+      { "field": "cost_type", "equals": "tax", "kind": "tax" },
+      { "field": "cost_type", "pattern": "^(adjustment|rounding error)$", "kind": "adjustment" }
+    ]
+  },
+  "scope": { "field": "service.description", "allowed": ["Gemini API", "Generative Language API"] },
+  "credits": { "arrayField": "credits", "amountField": "amount", "nameField": "name", "typeField": "type" },
+  "description": ["service.description", "sku.description", "cost_type"]
+}

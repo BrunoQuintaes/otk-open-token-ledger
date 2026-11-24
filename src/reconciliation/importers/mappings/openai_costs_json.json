@@ -1,0 +1,44 @@
+{
+  "schema": "otk.reconciliation_mapping.v1",
+  "id": "openai_costs_json",
+  "provider": "openai",
+  "format": "json",
+  "describes": "OpenAI Admin API GET /v1/organization/costs response saved as JSON (bucket_width=1d, group_by=line_item and project_id). Money only: no token quantities.",
+  "provenance": {
+    "status": "PARTIALLY_VERIFIED",
+    "sources": [
+      { "url": "https://developers.openai.com/cookbook/examples/completions_usage_api", "accessedOn": "2026-10-06", "covers": "costs bucket fields object/start_time/end_time (Unix seconds, UTC)/results; result fields object 'organization.costs.result', amount.value (JSON number), amount.currency ('usd'), line_item, project_id; costs bucket_width only '1d'; group_by line_item; line_item examples 'ft-gpt-4o-2024-08-06, input', 'ft-gpt-4o-2024-08-06, output', 'evals | gpt-4o-mini-2024-07-18, input', 'assistants api | file search'" },
+      { "url": "https://platform.openai.com/docs/api-reference/usage/costs_object", "accessedOn": "2026-10-06", "covers": "official reference page of the costs object (direct fetch returned HTTP 403; fields confirmed through the cookbook above)" }
+    ],
+    "unverified": [
+      "line_item suffix vocabulary beyond ', input' and ', output' (', cached input' is ASSUMED to be cache reads)",
+      "non-token line_item names other than 'file search' (web search and code interpreter ASSUMED to be non-token costs)",
+      "amount.value precision (treated as a binary float: 15 significant digits)"
+    ],
+    "notes": "The model is the text before the last ', ' of line_item, after an optional '<product> | ' prefix. A line_item the rules do not recognize stays UNKNOWN (kept, never dropped)."
+  },
+  "records": { "kind": "json_buckets", "bucketsPath": "data", "resultsPath": "results" },
+  "timestamps": { "format": "unix_seconds", "declaredTimezone": null, "note": "Unix seconds are UTC." },
+  "period": { "start": "$bucket.start_time", "end": "$bucket.end_time" },
+  "model": { "field": "line_item", "regex": "^(?:[^|]*\\|\\s*)?([^,|]+),\\s*[^,]+$", "group": 1 },
+  "category": {
+    "rules": [
+      { "field": "line_item", "pattern": ",\\s*cached input$", "flags": "i", "category": "cache_read" },
+      { "field": "line_item", "pattern": ",\\s*input$", "flags": "i", "category": "input" },
+      { "field": "line_item", "pattern": ",\\s*output$", "flags": "i", "category": "output" },
+      { "field": "line_item", "pattern": "\\|\\s*(file search|web search|code interpreter)", "flags": "i", "category": "other" }
+    ],
+    "fallback": "unknown"
+  },
+  "expand": null,
+  "subtractFromInput": [],
+  "quantity": null,
+  "amount": { "field": "amount.value", "divisor": "1", "binaryFloat": true, "precisionDecimals": null },
+  "currency": { "field": "amount.currency" },
+  "requestId": null,
+  "projectOrKey": ["project_id"],
+  "kind": { "rules": [] },
+  "scope": null,
+  "credits": null,
+  "description": ["line_item"]
+}

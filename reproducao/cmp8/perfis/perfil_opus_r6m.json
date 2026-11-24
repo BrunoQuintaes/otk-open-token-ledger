@@ -1,0 +1,35 @@
+{
+ "schema": "h2eval.gate.validation_selected.v0",
+ "protocolHash": "038f7369e84373c9541c9bfbf13b00327b0cab7afa324caff29b59d2d15762bf",
+ "selectedUtc": "2026-11-14T17:32:40.489Z",
+ "trainFrozenSha256": "5721284b8831e4779de2df01e7feb6c352aa46263e55f22a85f9ec6654c4ddb9",
+ "validationBatches": [
+  {
+   "batchId": "campaign-validation-claude-opus-5-5-b1",
+   "datasetSha256": "c286019cef092507a8af2cce36a127799f97f5c56b11165655364912f0bb1d7e"
+  },
+  {
+   "batchId": "campaign-validation-claude-opus-5-5-b2",
+   "datasetSha256": "a546785825a9d526626c7bdbaba37d31b5e8a6cc34b354d7a4d418705ea0e4f8"
+  },
+  {
+   "batchId": "campaign-validation-claude-opus-5-5-b3",
+   "datasetSha256": "1b65d24f613097fedfb32245fa4dfd0c4f60716eb099ad489c5bc43c8504cb77"
+  }
+ ],
+ "profile": {
+  "method": "M1",
+  "profileId": "otk-r6h-M1-aa006ddc72a6",
+  "paramsSha256": "5b51a97faa72c341cedaf28c5f614d8ed5d63183c78e1fb5ee28974d2db4e2e7",
+  "trainedOn": "r6train:05ce8723ec06f19743da7db30e57926dd117f3bcd2fbac3b9f102b7b162b595d validation:8f43f18714566a487ac17cd3582093c9d32a423d7b6e232be1967a4ea4f84aca label:REAL cycle:3 protocol:ff49033bb50d6682",
+  "params": {
+   "claude-opus-5-5": {
+    "a": 30.287641,
+    "b": 1.393438,
+    "out": 323
+   }
+  }
+ },
+ "selectedBy": "human:Bruno (autor; F5 Opus R6-M C160; perfil escolhido pela regra (M1), selecao aa006ddc, profile af3265c7, paramsSha256 5b51a97f; F4a 4be87ecf COM_RESSALVAS; F4 dependeu do DR-179; nao autoriza holdout)",
+ "forecastFrozen": null
+}

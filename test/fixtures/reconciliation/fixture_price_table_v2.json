@@ -1,0 +1,30 @@
+{
+  "schema": "otk.price_table.v1",
+  "version": "fixture-prices-v2",
+  "currency": "USD",
+  "_synthetic": "SYNTHETIC FIXTURE price table (tests only); prices are hypothetical, not published prices",
+  "entries": [
+    {
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5",
+      "category": "input",
+      "pricePerMTokMicroUsd": "1200000",
+      "effectiveFrom": "2026-09-01T00:00:00.000Z",
+      "effectiveUntil": null,
+      "source": "SYNTHETIC FIXTURE price (hypothetical)"
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5",
+      "category": "output",
+      "pricePerMTokMicroUsd": "6000000",
+      "effectiveFrom": "2026-09-01T00:00:00.000Z",
+      "effectiveUntil": null,
+      "source": "SYNTHETIC FIXTURE price (hypothetical)"
+    }
+  ],
+  "aliases": {
+    "claude-haiku-4-5-20251001": "claude-haiku-4-5",
+    "gpt-4o-mini-2024-07-18": "gpt-4o-mini"
+  }
+}

@@ -1,0 +1,13 @@
+template instances: 79
+non-linear constraints: 646
+linear constraints: 522
+public inputs: 3
+public outputs: 1
+private inputs: 3
+private outputs: 0
+wires: 1168
+labels: 1699
+Written successfully: zk/v3/build\metering_v3.r1cs
+Written successfully: zk/v3/build\metering_v3.sym
+Written successfully: zk/v3/build\metering_v3_js\metering_v3.wasm
+Everything went okay, circom safe

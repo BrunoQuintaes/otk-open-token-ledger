@@ -1,0 +1,17 @@
+apiVersion: v2
+name: otk
+description: OTK zk-Metering REST API — production Helm chart
+type: application
+version: 0.2.0
+appVersion: "0.2.0"
+keywords:
+  - metering
+  - zk
+  - ai
+  - receipts
+  - kubernetes
+home: https://github.com/BrunoQuintaes/otk-zk-metering
+sources:
+  - https://github.com/BrunoQuintaes/otk-zk-metering
+maintainers:
+  - name: OTK Team

@@ -1,0 +1,48 @@
+{
+ "schema": "otk.cal_anth_01.price_snapshot.v1",
+ "fetchedAtUtc": "2026-10-15T00:32:57Z",
+ "source": {
+  "url": "https://platform.claude.com/docs/en/about-claude/pricing.md",
+  "archived": "price_sources/about-claude_pricing.md",
+  "sha256": "a62e85bd0420e44f326f7b6c6c6d9fdb879dbf0e513b93b9f671b72caae5c83b",
+  "columns": "Base input | 5m cache writes | 1h cache writes | Cache hits and refreshes | Output (per MTok)"
+ },
+ "unit": "micro-USD per million tokens; thinking tokens are billed as output; count_tokens is free (price_sources/build-with-claude_token-counting.md, Pricing and rate limits)",
+ "models": {
+  "claude-haiku-4-5-20251001": {
+   "inputPerMTokMicroUsd": "1000000",
+   "cacheWrite5mPerMTokMicroUsd": "1250000",
+   "cacheReadPerMTokMicroUsd": "100000",
+   "outputPerMTokMicroUsd": "5000000",
+   "note": "row Claude Haiku 4.5"
+  },
+  "claude-haiku-5-5": {
+   "inputPerMTokMicroUsd": "100000",
+   "cacheWrite5mPerMTokMicroUsd": "125000",
+   "cacheReadPerMTokMicroUsd": "10000",
+   "outputPerMTokMicroUsd": "500000",
+   "note": "row Claude Haiku 5.5 (prompts up to 100,000 tokens); every campaign prompt is far below 100,000"
+  },
+  "claude-sonnet-5-5": {
+   "inputPerMTokMicroUsd": "2000000",
+   "cacheWrite5mPerMTokMicroUsd": "2500000",
+   "cacheReadPerMTokMicroUsd": "100000",
+   "outputPerMTokMicroUsd": "10000000",
+   "note": "row Claude Sonnet 5.5"
+  },
+  "claude-opus-5-5": {
+   "inputPerMTokMicroUsd": "4000000",
+   "cacheWrite5mPerMTokMicroUsd": "5000000",
+   "cacheReadPerMTokMicroUsd": "200000",
+   "outputPerMTokMicroUsd": "20000000",
+   "note": "row Claude Opus 5.5"
+  },
+  "claude-fable-5-1": {
+   "inputPerMTokMicroUsd": "10000000",
+   "cacheWrite5mPerMTokMicroUsd": "12500000",
+   "cacheReadPerMTokMicroUsd": "250000",
+   "outputPerMTokMicroUsd": "50000000",
+   "note": "row Claude Fable 5.1"
+  }
+ }
+}

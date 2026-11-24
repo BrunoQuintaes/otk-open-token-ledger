@@ -1,0 +1,109 @@
+"""
+OTK Receipt Subgraph Schema — E6.7 (W5-5B03)
+
+Indexes on-chain events from ReceiptRegistry (v1) and ReceiptRegistryV2.
+Entities: Receipt (v1), ReceiptV2 (with range buckets), Tenant (aggregate).
+
+Data sources:
+  - ReceiptRegistry:    ReceiptSubmitted events
+  - ReceiptRegistryV2:  ReceiptSubmittedV2 events (includes minUsageBucket/maxUsageBucket)
+"""
+
+"""Single receipt submission (v1 contract)."""
+type Receipt @entity(immutable: true) {
+  "commitment hash (bytes32) — primary key"
+  id: ID!
+
+  "userId extracted from pubSignals[1]"
+  userId: BigInt!
+
+  "Compute units consumed"
+  costUnits: BigInt!
+
+  "Epoch number (from pubSignals[1] in metering_v1)"
+  epoch: BigInt!
+
+  "Address that submitted this receipt"
+  submitter: Bytes!
+
+  "Block this receipt was included in"
+  blockNumber: BigInt!
+
+  "Block timestamp"
+  blockTimestamp: BigInt!
+
+  "Originating transaction hash"
+  transactionHash: Bytes!
+
+  "Tenant aggregate this receipt belongs to"
+  tenant: Tenant!
+}
+
+"""Single receipt submission (v2 contract — includes range proof buckets)."""
+type ReceiptV2 @entity(immutable: true) {
+  "commitment hash (bytes32) — primary key"
+  id: ID!
+
+  "userId extracted from pubSignals[1]"
+  userId: BigInt!
+
+  "Compute units consumed"
+  costUnits: BigInt!
+
+  "Epoch number"
+  epoch: BigInt!
+
+  "Lower usage bucket bound (range proof)"
+  minUsageBucket: BigInt!
+
+  "Upper usage bucket bound (range proof)"
+  maxUsageBucket: BigInt!
+
+  "Address that submitted this receipt"
+  submitter: Bytes!
+
+  "Block this receipt was included in"
+  blockNumber: BigInt!
+
+  "Block timestamp"
+  blockTimestamp: BigInt!
+
+  "Originating transaction hash"
+  transactionHash: Bytes!
+
+  "Tenant aggregate this receipt belongs to"
+  tenant: Tenant!
+}
+
+"""Aggregate per userId — tracks cumulative usage across epochs."""
+type Tenant @entity {
+  "userId as string — primary key"
+  id: ID!
+
+  "userId (numeric)"
+  userId: BigInt!
+
+  "Total CU consumed across all receipts (v1)"
+  totalCostUnits: BigInt!
+
+  "Total CU consumed across all v2 receipts"
+  totalCostUnitsV2: BigInt!
+
+  "Total v1 receipt count"
+  receiptCount: BigInt!
+
+  "Total v2 receipt count"
+  receiptCountV2: BigInt!
+
+  "Last epoch seen"
+  lastEpoch: BigInt!
+
+  "Last update block"
+  lastUpdatedBlock: BigInt!
+
+  "v1 receipts (reverse lookup)"
+  receipts: [Receipt!]! @derivedFrom(field: "tenant")
+
+  "v2 receipts (reverse lookup)"
+  receiptsV2: [ReceiptV2!]! @derivedFrom(field: "tenant")
+}

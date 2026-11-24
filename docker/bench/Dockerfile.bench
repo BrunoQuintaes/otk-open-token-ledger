@@ -1,0 +1,33 @@
+# OTK Benchmark — Linux-controlled environment
+# Provides reproducible Node.js baseline without WSL2/Windows overhead
+#
+# Usage (1 command):
+#   docker compose -f docker/bench/docker-compose.bench.yml run --rm bench
+#
+# Output is mounted to ./docs/_ops/u9/docker_bench_<timestamp>/
+
+FROM node:24-slim
+
+# Fix CPU to avoid scheduler noise
+ENV NODE_OPTIONS="--max-old-space-size=512"
+
+WORKDIR /app
+
+# Copy package files first for layer caching
+COPY package*.json ./
+
+# Install all dependencies (including devDependencies for tsx + snarkjs)
+RUN npm ci --include=dev
+
+# Copy project source
+COPY src/ ./src/
+COPY zk/build/ ./zk/build/
+COPY scripts/benchmark/ ./scripts/benchmark/
+COPY tsconfig.json ./
+COPY .env.example ./.env.example
+
+# Create output dir
+RUN mkdir -p /app/docs/_ops/u9
+
+# Default: run benchmark v2 with ZK
+CMD ["npx", "tsx", "scripts/benchmark/u9_bench_v2.ts"]

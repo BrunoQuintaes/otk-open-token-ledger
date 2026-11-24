@@ -1,0 +1,11 @@
+{
+  "schema": "otk.keyring.public.v1",
+  "operator": "OTK A2 C160",
+  "keys": [
+    {
+      "keyId": "otk-v3-operator-a2-c160",
+      "address": "0xc455e678a8db7749769459d2eDcA9526B8367261",
+      "status": "active"
+    }
+  ]
+}

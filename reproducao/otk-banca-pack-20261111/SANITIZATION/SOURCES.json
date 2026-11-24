@@ -1,0 +1,911 @@
+{
+ "schema": "otk.banca.sources.v1",
+ "rulesVersion": "otk.banca.sanitize.v1",
+ "distinctIdsHashed": 220,
+ "note": "rawSha256 = sha256 do arquivo de origem (bruto); packSha256 = sha256 do arquivo no pacote. changedBySanitization=false => cópia byte-idêntica.",
+ "files": [
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/calibration/RESULTADOS_CALIBRACAO.md",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/calibration/RESULTADOS_CALIBRACAO.md",
+   "rawSha256": "268c145722a14e97eff1d0038d1ab4bbff0a5e9cbdcf7ffaf9201ca2383ceabd",
+   "packSha256": "268c145722a14e97eff1d0038d1ab4bbff0a5e9cbdcf7ffaf9201ca2383ceabd",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/calibration/calibration_profile_anthropic_claude-haiku-4-5-20251001.json",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/calibration/calibration_profile_anthropic_claude-haiku-4-5-20251001.json",
+   "rawSha256": "be0921343c1a88451ab3ca74a6af461b6633c0c21965a1e043b00c58a5222c85",
+   "packSha256": "be0921343c1a88451ab3ca74a6af461b6633c0c21965a1e043b00c58a5222c85",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/calibration/calibration_profile_gemini_gemini-3.5-flash-lite.json",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/calibration/calibration_profile_gemini_gemini-3.5-flash-lite.json",
+   "rawSha256": "84cf934d3c26d81ab6cd12fb25a2971b14f8827f4454014338755805ea742ed6",
+   "packSha256": "84cf934d3c26d81ab6cd12fb25a2971b14f8827f4454014338755805ea742ed6",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/calibration/calibration_profile_openai_gpt-4o-mini-2024-07-18.json",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/calibration/calibration_profile_openai_gpt-4o-mini-2024-07-18.json",
+   "rawSha256": "3ff5a97f9d37b92fd1321f50626389e6adfd15770d29e18a399590ae5fdca63b",
+   "packSha256": "3ff5a97f9d37b92fd1321f50626389e6adfd15770d29e18a399590ae5fdca63b",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/calibration/campaign_ops.jsonl",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/calibration/campaign_ops.jsonl",
+   "rawSha256": "7e76182aefa0f2bf5c7b5a57abf2d71c2b54ca32d404ad1eb1c6a29f23f8e620",
+   "packSha256": "7e76182aefa0f2bf5c7b5a57abf2d71c2b54ca32d404ad1eb1c6a29f23f8e620",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/calibration/campaign_summary.json",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/calibration/campaign_summary.json",
+   "rawSha256": "5922975e5cdf8df8e0ee5ff354974ce43e6aaf5a70cc673e7c057ee5a8f99aa3",
+   "packSha256": "5922975e5cdf8df8e0ee5ff354974ce43e6aaf5a70cc673e7c057ee5a8f99aa3",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/RESUMO_CAMPANHA.md",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/RESUMO_CAMPANHA.md",
+   "rawSha256": "2a69e74329ba0cc9b185664406d3b8692e613a388e7309bd4f0d979e95cbc048",
+   "packSha256": "2a69e74329ba0cc9b185664406d3b8692e613a388e7309bd4f0d979e95cbc048",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/besu/pv3-live-besu-2026-10-07t05-17-21-275_calls.jsonl",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/besu/pv3-live-besu-2026-10-07t05-17-21-275_calls.jsonl",
+   "rawSha256": "b815b236baa6a94506a9f87953a72eb82604ffc8fb4c63ae847c8509d83edf3e",
+   "packSha256": "bf806990cdbeac7e02643ddd90220e473373c3f81fb24d90accaf1086c694a21",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/besu/pv3-live-besu-2026-10-07t05-17-21-275_entrypoint.log.txt",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/besu/pv3-live-besu-2026-10-07t05-17-21-275_entrypoint.log.txt",
+   "rawSha256": "01dfa1e33423be3692365f7e99c294bf9f9bca3a30180ca6e1d316bc8c465a0a",
+   "packSha256": "01dfa1e33423be3692365f7e99c294bf9f9bca3a30180ca6e1d316bc8c465a0a",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/besu/pv3-live-besu-2026-10-07t05-17-21-275_manifest.json",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/besu/pv3-live-besu-2026-10-07t05-17-21-275_manifest.json",
+   "rawSha256": "88342e7c454a1380de27784d5e589cef044f8162b255b44e1d25878074f42815",
+   "packSha256": "4da7361fb851756580d184d6e59d5a60ed3416bb9b64fd810b1793d9db7ee232",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/cacheprobe/pv3-live-cacheprobe-2026-10-07t05-17-01-243_calls.jsonl",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/cacheprobe/pv3-live-cacheprobe-2026-10-07t05-17-01-243_calls.jsonl",
+   "rawSha256": "39d8a59dbbd40613b5dd3a35114e2e90133b97096b0c64c3da07687f3358a886",
+   "packSha256": "1339ba739846b73db484c45864bedd354974ff2b8dc767be42a93dbdd173d371",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/cacheprobe/pv3-live-cacheprobe-2026-10-07t05-17-01-243_entrypoint.log.txt",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/cacheprobe/pv3-live-cacheprobe-2026-10-07t05-17-01-243_entrypoint.log.txt",
+   "rawSha256": "ba3230b33cd4a52dcd7d30438ef43762c43822b22a9cf6857fbac04b59493853",
+   "packSha256": "ba3230b33cd4a52dcd7d30438ef43762c43822b22a9cf6857fbac04b59493853",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/cacheprobe/pv3-live-cacheprobe-2026-10-07t05-17-01-243_manifest.json",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/cacheprobe/pv3-live-cacheprobe-2026-10-07t05-17-01-243_manifest.json",
+   "rawSha256": "124bdbdc9bd2dac12cb01f6c83a7c6ce69c699468fede8e4dcc78e30796f994c",
+   "packSha256": "1f7d926c91598033a80eb2c6b9d5da13cf997bccfe2212c75d6b4e8ec42f22cf",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign/pv3-live-campaign-2026-10-07t04-57-14-774_calls.jsonl",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign/pv3-live-campaign-2026-10-07t04-57-14-774_calls.jsonl",
+   "rawSha256": "b7012faab31a47b1e9ca2fc34c5a548c664ac566a40ba133757b2529393e0472",
+   "packSha256": "bc39fe386e6c950a029aa05747ceebb41bc914b350640f55d306d8486824978a",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign/pv3-live-campaign-2026-10-07t04-57-14-774_entrypoint.log.txt",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign/pv3-live-campaign-2026-10-07t04-57-14-774_entrypoint.log.txt",
+   "rawSha256": "d7e2e927c59c6c4d4e18817da3cd475dce4028ed95f5c0f8539b97e47b9161cf",
+   "packSha256": "d7e2e927c59c6c4d4e18817da3cd475dce4028ed95f5c0f8539b97e47b9161cf",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign/pv3-live-campaign-2026-10-07t04-57-14-774_manifest.json",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign/pv3-live-campaign-2026-10-07t04-57-14-774_manifest.json",
+   "rawSha256": "fb5207379372b3e60fad269fca126ad79c6df791b297a70446c42a7788948222",
+   "packSha256": "37e26f16aa31070d4e32d4238dee069ec9de701d6d1dd08ff0f45bac1e030ac5",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign_start-index-27/pv3-live-campaign-2026-10-07t05-11-27-123_calls.jsonl",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign_start-index-27/pv3-live-campaign-2026-10-07t05-11-27-123_calls.jsonl",
+   "rawSha256": "7764c6d7ba44b3116744aebef5eab495733b5375737f2a2131022d226f32eab2",
+   "packSha256": "586ccf95680902a404890a654f61312d04e5b8462b829ca9c52ceb4ff448c795",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign_start-index-27/pv3-live-campaign-2026-10-07t05-11-27-123_entrypoint.log.txt",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign_start-index-27/pv3-live-campaign-2026-10-07t05-11-27-123_entrypoint.log.txt",
+   "rawSha256": "efb2dcd47e32deda2f9e9d4e1ebb68f0d81f8d5d85a968fb287de9b99be93f40",
+   "packSha256": "efb2dcd47e32deda2f9e9d4e1ebb68f0d81f8d5d85a968fb287de9b99be93f40",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign_start-index-27/pv3-live-campaign-2026-10-07t05-11-27-123_manifest.json",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign_start-index-27/pv3-live-campaign-2026-10-07t05-11-27-123_manifest.json",
+   "rawSha256": "b58023cc15c91b9742f3f42a9e6ece511965b65a70a9487cdff51ca5f7b0fc97",
+   "packSha256": "e90e1aba42c437b2fb0ad92b4b7a6997a678574906fc424efcd1ba0ae72ccc8f",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/besu/pv3-gemini35-live-besu-2026-10-07t05-08-03-977_calls.jsonl",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/besu/pv3-gemini35-live-besu-2026-10-07t05-08-03-977_calls.jsonl",
+   "rawSha256": "0bec0509379b3bb9656b98ef8be167c8547db6aed7762e7281e7c5444e7a3bf3",
+   "packSha256": "8311a2389c9ba57a315680e1e87eb5fcef63d84b96cb26afbd1d036984b2b9af",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/besu/pv3-gemini35-live-besu-2026-10-07t05-08-03-977_entrypoint.log.txt",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/besu/pv3-gemini35-live-besu-2026-10-07t05-08-03-977_entrypoint.log.txt",
+   "rawSha256": "4257dc71b7fed8ecb99463314cdc91781b514b20e311526e30f7547543e6c647",
+   "packSha256": "4257dc71b7fed8ecb99463314cdc91781b514b20e311526e30f7547543e6c647",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/besu/pv3-gemini35-live-besu-2026-10-07t05-08-03-977_manifest.json",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/besu/pv3-gemini35-live-besu-2026-10-07t05-08-03-977_manifest.json",
+   "rawSha256": "b61b2d70abdd96284883d4802a19711e62b3c9abd9068eaf35d5af4866fc53ed",
+   "packSha256": "0dab0d1c2a5f86546cfe24dac734bf7cc50910ca40209582352de2af6e0c8c49",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/cacheprobe/pv3-gemini35-live-cacheprobe-2026-10-07t05-07-38-327_calls.jsonl",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/cacheprobe/pv3-gemini35-live-cacheprobe-2026-10-07t05-07-38-327_calls.jsonl",
+   "rawSha256": "1407cddbfca830b211078952f7d81e07b770dfb7c19646234eb8b878a8334294",
+   "packSha256": "f3bf1362244a0be0c0bb1a63c1f9e54ec8007c14f5faf2f4f62a6b285780f0a5",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/cacheprobe/pv3-gemini35-live-cacheprobe-2026-10-07t05-07-38-327_entrypoint.log.txt",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/cacheprobe/pv3-gemini35-live-cacheprobe-2026-10-07t05-07-38-327_entrypoint.log.txt",
+   "rawSha256": "361e881e2e0c1edb77bf1cc38dc19342ae354946329017a9334537ff00c92d27",
+   "packSha256": "361e881e2e0c1edb77bf1cc38dc19342ae354946329017a9334537ff00c92d27",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/cacheprobe/pv3-gemini35-live-cacheprobe-2026-10-07t05-07-38-327_manifest.json",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/cacheprobe/pv3-gemini35-live-cacheprobe-2026-10-07t05-07-38-327_manifest.json",
+   "rawSha256": "6b0891597e50eeb3564cf999bc9139ee26eae2d3c8fff788d4fc7ceeb2e339bc",
+   "packSha256": "f3b518ad5521c75a49632bc00de82798456933ee9ecfdd31483ee14efebd75c3",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign/pv3-gemini35-live-campaign-2026-10-07t04-52-52-082_calls.jsonl",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign/pv3-gemini35-live-campaign-2026-10-07t04-52-52-082_calls.jsonl",
+   "rawSha256": "7f25e0326d0059993f09b9e0dd6cccd47df3fe51e70e171e7e2b7e4397c5c482",
+   "packSha256": "b24dd85175fb3f9b2c39cb5c2167a349f247becefc120a29b2f8120495511c87",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign/pv3-gemini35-live-campaign-2026-10-07t04-52-52-082_entrypoint.log.txt",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign/pv3-gemini35-live-campaign-2026-10-07t04-52-52-082_entrypoint.log.txt",
+   "rawSha256": "7f0cdb9ab939db5f2a6ec23874082a3b31dd11d3e081dbc557bedfb7fc484957",
+   "packSha256": "7f0cdb9ab939db5f2a6ec23874082a3b31dd11d3e081dbc557bedfb7fc484957",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign/pv3-gemini35-live-campaign-2026-10-07t04-52-52-082_manifest.json",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign/pv3-gemini35-live-campaign-2026-10-07t04-52-52-082_manifest.json",
+   "rawSha256": "8b089b6d07ec6ef5305f1c60faaaa363f1444fedbe009739420ea95cc335e389",
+   "packSha256": "5f9832f54a096055a0670daa36fe7365298a5399bf2e420ae1941fffcf162fdd",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign_start-index-66/pv3-gemini35-live-campaign-2026-10-07t05-03-44-975_calls.jsonl",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign_start-index-66/pv3-gemini35-live-campaign-2026-10-07t05-03-44-975_calls.jsonl",
+   "rawSha256": "e7865993290b24702d4a7ecc3c983543c4f1f2bd899697ffa9a1f35b101ef08b",
+   "packSha256": "e93d467b71f5c70caef3aaee27cf4751c34312d86c9174e0711038de002f92ea",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign_start-index-66/pv3-gemini35-live-campaign-2026-10-07t05-03-44-975_entrypoint.log.txt",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign_start-index-66/pv3-gemini35-live-campaign-2026-10-07t05-03-44-975_entrypoint.log.txt",
+   "rawSha256": "6bf1bee6280501426379b3bcf1411322eeac4e764b8a0edb8205baf2c3a73727",
+   "packSha256": "6bf1bee6280501426379b3bcf1411322eeac4e764b8a0edb8205baf2c3a73727",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign_start-index-66/pv3-gemini35-live-campaign-2026-10-07t05-03-44-975_manifest.json",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign_start-index-66/pv3-gemini35-live-campaign-2026-10-07t05-03-44-975_manifest.json",
+   "rawSha256": "e083caf1f8158281254fdbd3e0fc251502dae770c9067e0c2d75dc1981cc52a7",
+   "packSha256": "149379edef9ba4c33880cd292fdd7b7e9633dd9bf15eede03f99433a5eb39ef5",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/openai/besu/pv3-openai-live-besu-2026-10-07t05-16-34-630_calls.jsonl",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/openai/besu/pv3-openai-live-besu-2026-10-07t05-16-34-630_calls.jsonl",
+   "rawSha256": "e664a389623a12ab3c91bc5927f2633a3b0ba88ef1c85890599a8c578b4f24e1",
+   "packSha256": "4380688f87e9df7278ba5701f64e7ad639b655fdbc3e957b431f02f27c10ba1a",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/openai/besu/pv3-openai-live-besu-2026-10-07t05-16-34-630_entrypoint.log.txt",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/openai/besu/pv3-openai-live-besu-2026-10-07t05-16-34-630_entrypoint.log.txt",
+   "rawSha256": "9b154b055173f832cf9a6ae4dbb0190e4049188c50abeb2c48efbe6b5a3a3e48",
+   "packSha256": "9b154b055173f832cf9a6ae4dbb0190e4049188c50abeb2c48efbe6b5a3a3e48",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/openai/besu/pv3-openai-live-besu-2026-10-07t05-16-34-630_manifest.json",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/openai/besu/pv3-openai-live-besu-2026-10-07t05-16-34-630_manifest.json",
+   "rawSha256": "5e04f27027f01e6ba896ee308f53e6ec04652287335a4d18c570c70ead1aba5f",
+   "packSha256": "7fd3da8e92a333a70c883eefdfbc21e30b782447108ee1f041e6ba23d8ca3d5f",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/openai/cacheprobe/pv3-openai-live-cacheprobe-2026-10-07t05-16-12-321_calls.jsonl",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/openai/cacheprobe/pv3-openai-live-cacheprobe-2026-10-07t05-16-12-321_calls.jsonl",
+   "rawSha256": "e079dea2f2238027dea38426a902dbb5875500912aea1375e003014d0477dda2",
+   "packSha256": "d44717825a1194bb7ed820396ca0a9d7303f56e55698baae829495f6f0386cee",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/openai/cacheprobe/pv3-openai-live-cacheprobe-2026-10-07t05-16-12-321_entrypoint.log.txt",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/openai/cacheprobe/pv3-openai-live-cacheprobe-2026-10-07t05-16-12-321_entrypoint.log.txt",
+   "rawSha256": "16951eeebed9d391b285487e710bb1e83ddf5c1d6a4ef3d72169b75aa47b2aad",
+   "packSha256": "16951eeebed9d391b285487e710bb1e83ddf5c1d6a4ef3d72169b75aa47b2aad",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/openai/cacheprobe/pv3-openai-live-cacheprobe-2026-10-07t05-16-12-321_manifest.json",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/openai/cacheprobe/pv3-openai-live-cacheprobe-2026-10-07t05-16-12-321_manifest.json",
+   "rawSha256": "6f45d6dc574fa8bfad734a3cdc3b735876441995f409409b0894eb1ed4f6d2de",
+   "packSha256": "4736d8944cd81230baa4559c0f7bdab14f319cd175541d29c9dff5c4c9cb52ef",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_max-calls-10/pv3-openai-live-campaign-2026-10-07t04-47-10-738_calls.jsonl",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_max-calls-10/pv3-openai-live-campaign-2026-10-07t04-47-10-738_calls.jsonl",
+   "rawSha256": "864e4eeb282923600f41b29497b3e45a392dba2c47a997c919ed1725fbcb3f37",
+   "packSha256": "4921562a4f01591d524521570168575fe2426731a163d6ab493b7855b420b05e",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_max-calls-10/pv3-openai-live-campaign-2026-10-07t04-47-10-738_entrypoint.log.txt",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_max-calls-10/pv3-openai-live-campaign-2026-10-07t04-47-10-738_entrypoint.log.txt",
+   "rawSha256": "222bd0fb688103017ecfc0b42ab3230865e5372c8d28bc47133de8eb996454fd",
+   "packSha256": "222bd0fb688103017ecfc0b42ab3230865e5372c8d28bc47133de8eb996454fd",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_max-calls-10/pv3-openai-live-campaign-2026-10-07t04-47-10-738_manifest.json",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_max-calls-10/pv3-openai-live-campaign-2026-10-07t04-47-10-738_manifest.json",
+   "rawSha256": "bed108cf0ba701f2acb4ede2b59fcb065359ac5445395839f09fe758e1f8b5d3",
+   "packSha256": "8fdd9c17d53f6a3b66eeb4a83350c6f7474cc2a3d2150114cd92bbde89eab73b",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-10/pv3-openai-live-campaign-2026-10-07t04-48-20-564_calls.jsonl",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-10/pv3-openai-live-campaign-2026-10-07t04-48-20-564_calls.jsonl",
+   "rawSha256": "64f3f4f8499aedaba86c0774e69ea22b908d659722f3d589838d5a72e6893b54",
+   "packSha256": "dd0376b2d251f2bdf37a7e601b29ec8cb9cb976b9151c254bb3e64ad828ab0e4",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-10/pv3-openai-live-campaign-2026-10-07t04-48-20-564_entrypoint.log.txt",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-10/pv3-openai-live-campaign-2026-10-07t04-48-20-564_entrypoint.log.txt",
+   "rawSha256": "ae44214d475f0748dcd726b81fc8ef2e175633ada5b7f55e05ee94453c8be9de",
+   "packSha256": "ae44214d475f0748dcd726b81fc8ef2e175633ada5b7f55e05ee94453c8be9de",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-10/pv3-openai-live-campaign-2026-10-07t04-48-20-564_manifest.json",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-10/pv3-openai-live-campaign-2026-10-07t04-48-20-564_manifest.json",
+   "rawSha256": "dc4c2de50b059fbd276423582ba85d5be04362dcb6a3838c5fb021f4181d2465",
+   "packSha256": "aa29949850b1ec2404ef1619126b12e730908358554a403860f81009f866995f",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-137/pv3-openai-live-campaign-2026-10-07t05-09-06-868_calls.jsonl",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-137/pv3-openai-live-campaign-2026-10-07t05-09-06-868_calls.jsonl",
+   "rawSha256": "a514256eff3b24ac98a4f987f66ac9a9bfdf00ec149e460aa4c4f0daaad46e4a",
+   "packSha256": "9ca3839926c8a14e4dc8b5276b6b488c3e42e7dc9c7606608db4963f677b5624",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-137/pv3-openai-live-campaign-2026-10-07t05-09-06-868_entrypoint.log.txt",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-137/pv3-openai-live-campaign-2026-10-07t05-09-06-868_entrypoint.log.txt",
+   "rawSha256": "bd22907757e826c5282f3102f03294000f73ec5f22b00af40d72b30a6572ab5d",
+   "packSha256": "bd22907757e826c5282f3102f03294000f73ec5f22b00af40d72b30a6572ab5d",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-137/pv3-openai-live-campaign-2026-10-07t05-09-06-868_manifest.json",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-137/pv3-openai-live-campaign-2026-10-07t05-09-06-868_manifest.json",
+   "rawSha256": "dc2f308e874d4a5469de9419ad5c112929e6045bfaddf6e9399023b83d57dbeb",
+   "packSha256": "48801b24709b6b83ee557b0d4f461ece5bc7a19fa49065322fa061adfafe3825",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-97/pv3-openai-live-campaign-2026-10-07t05-01-19-314_calls.jsonl",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-97/pv3-openai-live-campaign-2026-10-07t05-01-19-314_calls.jsonl",
+   "rawSha256": "6a5afbc14ac84ce5d534e0defe7fe9fdae7fda6ee5d30f9845dcf32caa090296",
+   "packSha256": "debc26e8224c4542fa6a716973c7e47fc65d2d1d51de15487ba8ed179f7cd694",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-97/pv3-openai-live-campaign-2026-10-07t05-01-19-314_entrypoint.log.txt",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-97/pv3-openai-live-campaign-2026-10-07t05-01-19-314_entrypoint.log.txt",
+   "rawSha256": "0a4ac51bbe77f8e07f551bb0f06774ac654ff57801cc6cbf84cee1195d1538cd",
+   "packSha256": "0a4ac51bbe77f8e07f551bb0f06774ac654ff57801cc6cbf84cee1195d1538cd",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-97/pv3-openai-live-campaign-2026-10-07t05-01-19-314_manifest.json",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-97/pv3-openai-live-campaign-2026-10-07t05-01-19-314_manifest.json",
+   "rawSha256": "c9040bd7857a2c57681d15218911879836410181560ed2b27d635e3c6f5d6b7f",
+   "packSha256": "91379dfd90b6831a6c11096f8eb956f9fe48d46ea48648b97ae7b51925bfcecc",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/synthetic_gate/anthropic/cacheprobe/pv3-synthetic-cacheprobe-2026-10-07t04-43-14-447_calls.jsonl",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/synthetic_gate/anthropic/cacheprobe/pv3-synthetic-cacheprobe-2026-10-07t04-43-14-447_calls.jsonl",
+   "rawSha256": "afcc3a12bd4661e79671018da7a25d26475f76485f838a7a0a4d6c8f75836e0c",
+   "packSha256": "afcc3a12bd4661e79671018da7a25d26475f76485f838a7a0a4d6c8f75836e0c",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/synthetic_gate/anthropic/campaign/pv3-synthetic-campaign-2026-10-07t04-42-30-804_calls.jsonl",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/synthetic_gate/anthropic/campaign/pv3-synthetic-campaign-2026-10-07t04-42-30-804_calls.jsonl",
+   "rawSha256": "abbcc125bf9d6c17b9ca278cabd9eed599590fe708e26e914bc71760f5ead4f6",
+   "packSha256": "abbcc125bf9d6c17b9ca278cabd9eed599590fe708e26e914bc71760f5ead4f6",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/synthetic_gate/gemini35/cacheprobe/pv3-gemini35-synthetic-cacheprobe-2026-10-07t04-45-37-951_calls.jsonl",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/synthetic_gate/gemini35/cacheprobe/pv3-gemini35-synthetic-cacheprobe-2026-10-07t04-45-37-951_calls.jsonl",
+   "rawSha256": "b1abb98d091b925b7071bd042d979b4303a88038bc7f6f78d7240662e53bf824",
+   "packSha256": "b1abb98d091b925b7071bd042d979b4303a88038bc7f6f78d7240662e53bf824",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/synthetic_gate/gemini35/campaign/pv3-gemini35-synthetic-campaign-2026-10-07t04-45-12-558_calls.jsonl",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/synthetic_gate/gemini35/campaign/pv3-gemini35-synthetic-campaign-2026-10-07t04-45-12-558_calls.jsonl",
+   "rawSha256": "24f7a1abe98c57cc777a1924ba78419f448f1a71e4edd27ccb14929b15ee9ac4",
+   "packSha256": "24f7a1abe98c57cc777a1924ba78419f448f1a71e4edd27ccb14929b15ee9ac4",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/synthetic_gate/openai/cacheprobe/pv3-openai-synthetic-cacheprobe-2026-10-07t04-44-42-198_calls.jsonl",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/synthetic_gate/openai/cacheprobe/pv3-openai-synthetic-cacheprobe-2026-10-07t04-44-42-198_calls.jsonl",
+   "rawSha256": "b1c36372278314116472cbcc336e0b2f1d105ec7c765ca0d2bb39f2be5bcb7e8",
+   "packSha256": "b1c36372278314116472cbcc336e0b2f1d105ec7c765ca0d2bb39f2be5bcb7e8",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/synthetic_gate/openai/campaign/pv3-openai-synthetic-campaign-2026-10-07t04-43-54-572_calls.jsonl",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/synthetic_gate/openai/campaign/pv3-openai-synthetic-campaign-2026-10-07t04-43-54-572_calls.jsonl",
+   "rawSha256": "020413f248653e3dedebc64c5dc9678ad91339f0e750c666d6041088cf57e402",
+   "packSha256": "020413f248653e3dedebc64c5dc9678ad91339f0e750c666d6041088cf57e402",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/docs/_ops/OVERNIGHT2_20261006/campaign/synthetic_gate_plan2/pv3-openai-synthetic-campaign-2026-10-07t04-57-36-075_calls.jsonl",
+   "source": "H1 7606bc9b:docs/_ops/OVERNIGHT2_20261006/campaign/synthetic_gate_plan2/pv3-openai-synthetic-campaign-2026-10-07t04-57-36-075_calls.jsonl",
+   "rawSha256": "886b9646fed0f35b1c92c1beff77614fa13b61007afbebef72d6be3dfa35eb8a",
+   "packSha256": "886b9646fed0f35b1c92c1beff77614fa13b61007afbebef72d6be3dfa35eb8a",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/scripts/pilot/anthropic/price_table_anthropic_haiku45_20261001.json",
+   "source": "H1 7606bc9b:scripts/pilot/anthropic/price_table_anthropic_haiku45_20261001.json",
+   "rawSha256": "00d5a887f50de77a5fd8e47bccbbf78c967c5b92cbfbc67391f382a6538299f6",
+   "packSha256": "00d5a887f50de77a5fd8e47bccbbf78c967c5b92cbfbc67391f382a6538299f6",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/scripts/pilot/price_table_pilot_v3_20261003.json",
+   "source": "H1 7606bc9b:scripts/pilot/price_table_pilot_v3_20261003.json",
+   "rawSha256": "c76a0fade9b7dd02d287054fc015d5cce2f3269b57933a21d32634c9f0dac81c",
+   "packSha256": "c76a0fade9b7dd02d287054fc015d5cce2f3269b57933a21d32634c9f0dac81c",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inputs/h1_subset/scripts/pilot/price_table_pilot_v3_gemini35_20261004.json",
+   "source": "H1 7606bc9b:scripts/pilot/price_table_pilot_v3_gemini35_20261004.json",
+   "rawSha256": "ad2af5f655bab8c8479c95f86a49d57329ae37f12b117c2198ca8d4af61bc2a3",
+   "packSha256": "ad2af5f655bab8c8479c95f86a49d57329ae37f12b117c2198ca8d4af61bc2a3",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/scripts/build_inventory.mjs",
+   "source": "R02:build_inventory.mjs",
+   "rawSha256": "319847ae3a9c21d9d55fd464e009b0468276f8fd7d5905fa4cfbbf7c317e7fe9",
+   "packSha256": "319847ae3a9c21d9d55fd464e009b0468276f8fd7d5905fa4cfbbf7c317e7fe9",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/scripts/build_denominators.mjs",
+   "source": "R04:build_denominators.mjs",
+   "rawSha256": "98b90676a9d50b3c828ba9ed107f33770a94b55d64e8a433c7c926deef93d000",
+   "packSha256": "98b90676a9d50b3c828ba9ed107f33770a94b55d64e8a433c7c926deef93d000",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/scripts/recompute.mjs",
+   "source": "R05:recompute.mjs",
+   "rawSha256": "af740b65fd26f3e24ee26f59ac1a337be467bbc562c6ef23ee84582c0971af34",
+   "packSha256": "af740b65fd26f3e24ee26f59ac1a337be467bbc562c6ef23ee84582c0971af34",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/scripts/figures.py",
+   "source": "R05:figures.py",
+   "rawSha256": "8091d44f77efac0a2965bd4409f8db2ad4cec02caa8878a7c94d04e6acfba6df",
+   "packSha256": "8091d44f77efac0a2965bd4409f8db2ad4cec02caa8878a7c94d04e6acfba6df",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "CAL-ANTH/scripts/recompute_cal_anth.mjs",
+   "source": "CAL_ANTH_VERIFY:recompute_cal_anth.mjs",
+   "rawSha256": "a6911360b7c7c4be83288ca6e49c2e3c4571145f2b259cac317ca9c54167df25",
+   "packSha256": "a6911360b7c7c4be83288ca6e49c2e3c4571145f2b259cac317ca9c54167df25",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/explorer/build.mjs",
+   "source": "explorer:build.mjs",
+   "rawSha256": "61f68b54dd5210d5d5c3123271277ea125c6495c67ee9a1bc7227a48fdb78e38",
+   "packSha256": "61f68b54dd5210d5d5c3123271277ea125c6495c67ee9a1bc7227a48fdb78e38",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/generator/corpus.ts",
+   "source": "H1 7606bc9b:scripts/calibration/corpus.ts",
+   "rawSha256": "d1642cda26b479f5f421a07cf7286f41dc07a0d8123be554d694a113ac6f9c98",
+   "packSha256": "d1642cda26b479f5f421a07cf7286f41dc07a0d8123be554d694a113ac6f9c98",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inventory/inventory_662.csv",
+   "source": "R02:inventory_662.csv",
+   "rawSha256": "841e6eea845b44e3e17c83a6a90e8603440d6cc7fe9888fa19e9e6b73841ac2b",
+   "packSha256": "841e6eea845b44e3e17c83a6a90e8603440d6cc7fe9888fa19e9e6b73841ac2b",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inventory/inventory_662.jsonl",
+   "source": "R02:inventory_662.jsonl",
+   "rawSha256": "323d8b54ac5d3b2217dda54f5292c64b40e7eee345f484a4c4e0d479bd5f7ef6",
+   "packSha256": "323d8b54ac5d3b2217dda54f5292c64b40e7eee345f484a4c4e0d479bd5f7ef6",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inventory/missing_explicit.csv",
+   "source": "R02:missing_explicit.csv",
+   "rawSha256": "27a8cffc4023b3e1862427550058cf732d4743c7fded4a1d5a7253a9cf5b589f",
+   "packSha256": "27a8cffc4023b3e1862427550058cf732d4743c7fded4a1d5a7253a9cf5b589f",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inventory/reconciliation.json",
+   "source": "R02:reconciliation.json",
+   "rawSha256": "d86e5666f3ded62d05cd87151792ff0e16ee545caac32d91511399661be1ad22",
+   "packSha256": "d86e5666f3ded62d05cd87151792ff0e16ee545caac32d91511399661be1ad22",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/inventory/reconciliation.md",
+   "source": "R02:reconciliation.md",
+   "rawSha256": "f16710594c4b862fde699731fb628f79b69fe8d4c3c14808959934280db43453",
+   "packSha256": "f16710594c4b862fde699731fb628f79b69fe8d4c3c14808959934280db43453",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/denominators/denominators.json",
+   "source": "R04:denominators.json",
+   "rawSha256": "21a767d45be5c45d48c0113942c5cb24c6be5ddc83e204228f545a7975ff3097",
+   "packSha256": "21a767d45be5c45d48c0113942c5cb24c6be5ddc83e204228f545a7975ff3097",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/denominators/denominators.md",
+   "source": "R04:denominators.md",
+   "rawSha256": "688c65ffff36189b6e6a7b665ec905a8de92a919ea4247fd67fcbc23cc18797c",
+   "packSha256": "688c65ffff36189b6e6a7b665ec905a8de92a919ea4247fd67fcbc23cc18797c",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/denominators/excluded_nominal.csv",
+   "source": "R04:excluded_nominal.csv",
+   "rawSha256": "fbd1b062327f6bf9e9ceab077fddd4678f27ac6b7a12bba66e00aa2ba2fe3f14",
+   "packSha256": "fbd1b062327f6bf9e9ceab077fddd4678f27ac6b7a12bba66e00aa2ba2fe3f14",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/corpus/docs_table.csv",
+   "source": "R03:docs_table.csv",
+   "rawSha256": "5e30f25d54c9fcc3f141ad014ecb17c197003939c69bf7f15bfb5cc4f1141b61",
+   "packSha256": "5e30f25d54c9fcc3f141ad014ecb17c197003939c69bf7f15bfb5cc4f1141b61",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/corpus/docs_table.jsonl",
+   "source": "R03:docs_table.jsonl",
+   "rawSha256": "36b432179544269a91bc1bf0737e71234fe99873d2a96b7915e6b5da076f95b0",
+   "packSha256": "36b432179544269a91bc1bf0737e71234fe99873d2a96b7915e6b5da076f95b0",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/corpus/operations_link.csv",
+   "source": "R03:operations_link.csv",
+   "rawSha256": "57b6cae2e946cb151515977691e9ab66eb60eedbd67242b502801d59928f7146",
+   "packSha256": "8122fcb4e0624c4bc9625991443fb1ddc6306f3e76b1064c5d5ff0d17f7d1004",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/corpus/operations_link.jsonl",
+   "source": "R03:operations_link.jsonl",
+   "rawSha256": "e4cd4a43d29516bb5a6a877966281b8bb1b4f40dcd7dfb11a98aacd3aee8c22d",
+   "packSha256": "cb81328ea1a4e4bfd65c014ab962fbeb2747df1de80313b90606c215dac3f18f",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/corpus/operations_nonCorpus.jsonl",
+   "source": "R03:operations_nonCorpus.jsonl",
+   "rawSha256": "a961b5c8781972b9bddcd784b8646d62f8ae0600d6b4a44f815f9ea5a28f4f87",
+   "packSha256": "0ac7035c795033c96a3e7361b02cc2a3c5542cdb1272d58868ee17fed4149e02",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/corpus/planned_prompt_hash_check.csv",
+   "source": "R03:planned_prompt_hash_check.csv",
+   "rawSha256": "19b9f89accd566be4f190f80f0aae7f4ee9d70d7d76d0564c786e81df0f5c5f2",
+   "packSha256": "19b9f89accd566be4f190f80f0aae7f4ee9d70d7d76d0564c786e81df0f5c5f2",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/corpus/prompts.jsonl",
+   "source": "R03:prompts.jsonl",
+   "rawSha256": "3f64e9ddb6d5939a89116879b5dca5f44e0ecf4c2366554c55a7a3b436262161",
+   "packSha256": "3f64e9ddb6d5939a89116879b5dca5f44e0ecf4c2366554c55a7a3b436262161",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/corpus/representative_ops.json",
+   "source": "R03:representative_ops.json",
+   "rawSha256": "755db410da05a25cdfefbbd356319b1756e300b990520bbae26db781237f727a",
+   "packSha256": "ab57afd9c445572a4f8596b754e43034f8f492c9ee18d1cbedc2a712dfa07afa",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H1/corpus/special_prompts.json",
+   "source": "R03:special_prompts.json",
+   "rawSha256": "b6e4f751d9697aa19b5c549e4223b66033f41d06bf4744e1848d3b73d8baa2d8",
+   "packSha256": "b6e4f751d9697aa19b5c549e4223b66033f41d06bf4744e1848d3b73d8baa2d8",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/corpus/summary.json",
+   "source": "R03:summary.json",
+   "rawSha256": "eba5c26778fc3ee7949a612405fe82c4991d105639d54a8894c96033e76cb0a9",
+   "packSha256": "eba5c26778fc3ee7949a612405fe82c4991d105639d54a8894c96033e76cb0a9",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/corpus/corpus_seed20261007_g9_v2.jsonl",
+   "source": "R03:corpus/corpus_seed20261007_g9_v2.jsonl",
+   "rawSha256": "043b2561b898a375aad62d13be0c4822ccddd2b2d2c94738fdb97462885353e6",
+   "packSha256": "043b2561b898a375aad62d13be0c4822ccddd2b2d2c94738fdb97462885353e6",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/results/comparison.json",
+   "source": "R05:comparison.json",
+   "rawSha256": "fe46e4561f49464b54945cd858cc734ab183c8fb17cd477c331cf4cdc13dd084",
+   "packSha256": "fe46e4561f49464b54945cd858cc734ab183c8fb17cd477c331cf4cdc13dd084",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/results/data/metrics_long.csv",
+   "source": "R05:data/metrics_long.csv",
+   "rawSha256": "17f94dd73607fe1d13c8477ee47c14b0550d68661ae05e01ea532c4ce52e70d0",
+   "packSha256": "17f94dd73607fe1d13c8477ee47c14b0550d68661ae05e01ea532c4ce52e70d0",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/results/data/metrics_long.json",
+   "source": "R05:data/metrics_long.json",
+   "rawSha256": "908663b750d409952115cd6eec395e81f9ad1bf0a66e6ec3ef220cd2cc8e755f",
+   "packSha256": "908663b750d409952115cd6eec395e81f9ad1bf0a66e6ec3ef220cd2cc8e755f",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/results/data/pairs_633.csv",
+   "source": "R05:data/pairs_633.csv",
+   "rawSha256": "9093577033944ca762274ad955637cdded1f017948c9b58eb6fd7d2744352493",
+   "packSha256": "9093577033944ca762274ad955637cdded1f017948c9b58eb6fd7d2744352493",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/results/example_cal-pt_prose-000-v0_openai.json",
+   "source": "R05:example_cal-pt_prose-000-v0_openai.json",
+   "rawSha256": "f717e0c7927c3f21dc73bf133d91e6f606a95dd63e3a5548453a1e28c890e772",
+   "packSha256": "f717e0c7927c3f21dc73bf133d91e6f606a95dd63e3a5548453a1e28c890e772",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/results/tables/tables.md",
+   "source": "R05:tables/tables.md",
+   "rawSha256": "6ca80c93de1ef5fbe5605baf266604f560c09d44b43fce6a8a9709dbe5d62c74",
+   "packSha256": "6ca80c93de1ef5fbe5605baf266604f560c09d44b43fce6a8a9709dbe5d62c74",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/results/tables/tables.tex",
+   "source": "R05:tables/tables.tex",
+   "rawSha256": "d6b105c8a05edaac29c988eee0723da4a6aec4c60b98d321f4af4c8c332d32be",
+   "packSha256": "d6b105c8a05edaac29c988eee0723da4a6aec4c60b98d321f4af4c8c332d32be",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/results/figures/fig1_error_by_model_split.png",
+   "source": "R05:figures/fig1_error_by_model_split.png",
+   "rawSha256": "487070e273bfcf1c3793f8c6a0fb041cbe94789af474979d34bf2b91d43c64f7",
+   "packSha256": "487070e273bfcf1c3793f8c6a0fb041cbe94789af474979d34bf2b91d43c64f7",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/results/figures/fig1_error_by_model_split.pdf",
+   "source": "R05:figures/fig1_error_by_model_split.pdf",
+   "rawSha256": "e19cc0e107c7394c6e0471cfddb79731f0db65180033761822bb8d792b596a9e",
+   "packSha256": "e19cc0e107c7394c6e0471cfddb79731f0db65180033761822bb8d792b596a9e",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/results/figures/fig2_mae_by_family.png",
+   "source": "R05:figures/fig2_mae_by_family.png",
+   "rawSha256": "7398c0cbb4a4b088c230124fc38a38f70c4d2726282db94963cac703007516b8",
+   "packSha256": "7398c0cbb4a4b088c230124fc38a38f70c4d2726282db94963cac703007516b8",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/results/figures/fig2_mae_by_family.pdf",
+   "source": "R05:figures/fig2_mae_by_family.pdf",
+   "rawSha256": "53e85c403c1c0f66c7737f6487f5a1d7dbabd78ac5cc3eab49c524a90ca8023c",
+   "packSha256": "53e85c403c1c0f66c7737f6487f5a1d7dbabd78ac5cc3eab49c524a90ca8023c",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/results/figures/fig3_local_vs_declared.png",
+   "source": "R05:figures/fig3_local_vs_declared.png",
+   "rawSha256": "42f7cbe12a8f83d4c005c61796f59e3fc573944de3b82f91bb2dfc8c055e1b1b",
+   "packSha256": "42f7cbe12a8f83d4c005c61796f59e3fc573944de3b82f91bb2dfc8c055e1b1b",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/results/figures/fig3_local_vs_declared.pdf",
+   "source": "R05:figures/fig3_local_vs_declared.pdf",
+   "rawSha256": "34ae6d8f093019f36b82aacc8240db7b2c1682653b24b4a7f2c7aeff57d86999",
+   "packSha256": "34ae6d8f093019f36b82aacc8240db7b2c1682653b24b4a7f2c7aeff57d86999",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/results/figures/fig4_holdout_alert_detection.png",
+   "source": "R05:figures/fig4_holdout_alert_detection.png",
+   "rawSha256": "bdd09a23da7041f9092ec451c471fdf1678fe00f47ada093dd26d8ac9cb69b30",
+   "packSha256": "bdd09a23da7041f9092ec451c471fdf1678fe00f47ada093dd26d8ac9cb69b30",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/results/figures/fig4_holdout_alert_detection.pdf",
+   "source": "R05:figures/fig4_holdout_alert_detection.pdf",
+   "rawSha256": "5500b5a12d22f60e72bbc327bfb52544f2f7e5c60cbd56d39f64f1f77a66bf49",
+   "packSha256": "5500b5a12d22f60e72bbc327bfb52544f2f7e5c60cbd56d39f64f1f77a66bf49",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/explorer/web/index.html",
+   "source": "explorer:web/index.html",
+   "rawSha256": "11eba423f19b7813cc58202491de917033331051f6b156ad63894643bd5831d1",
+   "packSha256": "11eba423f19b7813cc58202491de917033331051f6b156ad63894643bd5831d1",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/explorer/web/app.js",
+   "source": "explorer:web/app.js",
+   "rawSha256": "d12c21e77d2ca8fa5c6a9debd1784c71df824920679249225a58490eb83d9594",
+   "packSha256": "d12c21e77d2ca8fa5c6a9debd1784c71df824920679249225a58490eb83d9594",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/explorer/web/style.css",
+   "source": "explorer:web/style.css",
+   "rawSha256": "71ea3c2b791b7f83331813f8031e008b617bd88fc886e412cae2f53f4eea0758",
+   "packSha256": "71ea3c2b791b7f83331813f8031e008b617bd88fc886e412cae2f53f4eea0758",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/explorer/web/fig/fig1_error_by_model_split.png",
+   "source": "explorer:web/fig/fig1_error_by_model_split.png",
+   "rawSha256": "487070e273bfcf1c3793f8c6a0fb041cbe94789af474979d34bf2b91d43c64f7",
+   "packSha256": "487070e273bfcf1c3793f8c6a0fb041cbe94789af474979d34bf2b91d43c64f7",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/explorer/web/fig/fig2_mae_by_family.png",
+   "source": "explorer:web/fig/fig2_mae_by_family.png",
+   "rawSha256": "7398c0cbb4a4b088c230124fc38a38f70c4d2726282db94963cac703007516b8",
+   "packSha256": "7398c0cbb4a4b088c230124fc38a38f70c4d2726282db94963cac703007516b8",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/explorer/web/fig/fig3_local_vs_declared.png",
+   "source": "explorer:web/fig/fig3_local_vs_declared.png",
+   "rawSha256": "42f7cbe12a8f83d4c005c61796f59e3fc573944de3b82f91bb2dfc8c055e1b1b",
+   "packSha256": "42f7cbe12a8f83d4c005c61796f59e3fc573944de3b82f91bb2dfc8c055e1b1b",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H1/explorer/web/fig/fig4_holdout_alert_detection.png",
+   "source": "explorer:web/fig/fig4_holdout_alert_detection.png",
+   "rawSha256": "bdd09a23da7041f9092ec451c471fdf1678fe00f47ada093dd26d8ac9cb69b30",
+   "packSha256": "bdd09a23da7041f9092ec451c471fdf1678fe00f47ada093dd26d8ac9cb69b30",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "CAL-ANTH/inputs/cal01/docs/_ops/experiments/OTK_CAL_ANTH_01/CALL_RESULTS_SANITIZED.jsonl",
+   "source": "H1 repo ref b55c34298fa7e24ec936396117ce1c7e58f61805:docs/_ops/experiments/OTK_CAL_ANTH_01/CALL_RESULTS_SANITIZED.jsonl",
+   "rawSha256": "66e09e5b8f64b646a5c814143b9f5527750e29d36921a371da009c2239883c3c",
+   "packSha256": "66e09e5b8f64b646a5c814143b9f5527750e29d36921a371da009c2239883c3c",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "CAL-ANTH/inputs/cal01/docs/_ops/experiments/OTK_CAL_ANTH_01/COST_LEDGER.jsonl",
+   "source": "H1 repo ref b55c34298fa7e24ec936396117ce1c7e58f61805:docs/_ops/experiments/OTK_CAL_ANTH_01/COST_LEDGER.jsonl",
+   "rawSha256": "d0e32583e944d4a6030c26a20cfe76d0c00395d6cbc121a0061024f8b404e8c2",
+   "packSha256": "d0e32583e944d4a6030c26a20cfe76d0c00395d6cbc121a0061024f8b404e8c2",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "CAL-ANTH/inputs/cal01/docs/_ops/experiments/OTK_CAL_ANTH_01/E2E_RESULTS.jsonl",
+   "source": "H1 repo ref b55c34298fa7e24ec936396117ce1c7e58f61805:docs/_ops/experiments/OTK_CAL_ANTH_01/E2E_RESULTS.jsonl",
+   "rawSha256": "4367eefca5d29bca80da2b089c5a0430410f44947aac8aa9cd505376b4285922",
+   "packSha256": "4367eefca5d29bca80da2b089c5a0430410f44947aac8aa9cd505376b4285922",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "CAL-ANTH/inputs/cal01/docs/_ops/experiments/OTK_CAL_ANTH_01/MODEL_PRICE_SNAPSHOT.json",
+   "source": "H1 repo ref b55c34298fa7e24ec936396117ce1c7e58f61805:docs/_ops/experiments/OTK_CAL_ANTH_01/MODEL_PRICE_SNAPSHOT.json",
+   "rawSha256": "5b25f75b07c5ce587d0e19cb8a7807038e5108048595160621a900991f85166d",
+   "packSha256": "5b25f75b07c5ce587d0e19cb8a7807038e5108048595160621a900991f85166d",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "CAL-ANTH/inputs/cal01/docs/_ops/experiments/OTK_CAL_ANTH_01/RESULTS_PER_MODEL.json",
+   "source": "H1 repo ref b55c34298fa7e24ec936396117ce1c7e58f61805:docs/_ops/experiments/OTK_CAL_ANTH_01/RESULTS_PER_MODEL.json",
+   "rawSha256": "f7a9585e08a6f0738d2bfd22fe61b373bc7cf700b268f0d5f6c2f0caddd54e15",
+   "packSha256": "f7a9585e08a6f0738d2bfd22fe61b373bc7cf700b268f0d5f6c2f0caddd54e15",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "CAL-ANTH/inputs/cal01/docs/_ops/experiments/OTK_CAL_ANTH_01/corpus.jsonl",
+   "source": "H1 repo ref b55c34298fa7e24ec936396117ce1c7e58f61805:docs/_ops/experiments/OTK_CAL_ANTH_01/corpus.jsonl",
+   "rawSha256": "d1704e745716c9f0815de2566bdcf03194d298bb96d6e47352a0185dda061f21",
+   "packSha256": "d1704e745716c9f0815de2566bdcf03194d298bb96d6e47352a0185dda061f21",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "CAL-ANTH/inputs/cal02/docs/_ops/experiments/OTK_CAL_ANTH_02/CALL_RESULTS_SANITIZED.jsonl",
+   "source": "H1 repo ref 4120a7571f115eb02cc2cff09270a9ffe07265ae:docs/_ops/experiments/OTK_CAL_ANTH_02/CALL_RESULTS_SANITIZED.jsonl",
+   "rawSha256": "8b6435ffce1bc45dcd06d493833206319792ca46709bd444e4909dde0a40d150",
+   "packSha256": "8b6435ffce1bc45dcd06d493833206319792ca46709bd444e4909dde0a40d150",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "CAL-ANTH/inputs/cal02/docs/_ops/experiments/OTK_CAL_ANTH_02/DEV_LABELS.jsonl",
+   "source": "H1 repo ref 4120a7571f115eb02cc2cff09270a9ffe07265ae:docs/_ops/experiments/OTK_CAL_ANTH_02/DEV_LABELS.jsonl",
+   "rawSha256": "5e1dcf298b96f229bc7327c18c4eca53a686c5c482b235b474c8c4406fafa85c",
+   "packSha256": "5e1dcf298b96f229bc7327c18c4eca53a686c5c482b235b474c8c4406fafa85c",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "CAL-ANTH/inputs/cal02/docs/_ops/experiments/OTK_CAL_ANTH_02/FROZEN_MODEL.json",
+   "source": "H1 repo ref 4120a7571f115eb02cc2cff09270a9ffe07265ae:docs/_ops/experiments/OTK_CAL_ANTH_02/FROZEN_MODEL.json",
+   "rawSha256": "19e6efc0647cc3edb013fb83b6770b59dbdf012cb78fdca18604000c56658816",
+   "packSha256": "19e6efc0647cc3edb013fb83b6770b59dbdf012cb78fdca18604000c56658816",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "CAL-ANTH/inputs/cal02/docs/_ops/experiments/OTK_CAL_ANTH_02/HOLDOUT_EVALUATION_RECORD.json",
+   "source": "H1 repo ref 4120a7571f115eb02cc2cff09270a9ffe07265ae:docs/_ops/experiments/OTK_CAL_ANTH_02/HOLDOUT_EVALUATION_RECORD.json",
+   "rawSha256": "672fee01ddb02656802b1f6df4fd3a6d09a9dfd2b4fb1ed6bc89d24e881f7b79",
+   "packSha256": "672fee01ddb02656802b1f6df4fd3a6d09a9dfd2b4fb1ed6bc89d24e881f7b79",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "CAL-ANTH/inputs/cal02/docs/_ops/experiments/OTK_CAL_ANTH_02/RESULTS_PER_MODEL.json",
+   "source": "H1 repo ref 4120a7571f115eb02cc2cff09270a9ffe07265ae:docs/_ops/experiments/OTK_CAL_ANTH_02/RESULTS_PER_MODEL.json",
+   "rawSha256": "0fe80a61155e410e3718d9a1749a2379985e9fe09e8775b7f2602f9cef45f51c",
+   "packSha256": "0fe80a61155e410e3718d9a1749a2379985e9fe09e8775b7f2602f9cef45f51c",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "CAL-ANTH/inputs/cal02/docs/_ops/experiments/OTK_CAL_ANTH_02/dev_corpus.jsonl",
+   "source": "H1 repo ref 4120a7571f115eb02cc2cff09270a9ffe07265ae:docs/_ops/experiments/OTK_CAL_ANTH_02/dev_corpus.jsonl",
+   "rawSha256": "b7cb8a32224450065e962fe74b59ebde487b411d4c15a71b157d8d7ba371763f",
+   "packSha256": "b7cb8a32224450065e962fe74b59ebde487b411d4c15a71b157d8d7ba371763f",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "CAL-ANTH/inputs/cal02/docs/_ops/experiments/OTK_CAL_ANTH_02/holdout_corpus.jsonl",
+   "source": "H1 repo ref 4120a7571f115eb02cc2cff09270a9ffe07265ae:docs/_ops/experiments/OTK_CAL_ANTH_02/holdout_corpus.jsonl",
+   "rawSha256": "33c3a55e1fad7554dbc4c9b84df3eb6760a45593a8753c13aed97eb7953595a8",
+   "packSha256": "33c3a55e1fad7554dbc4c9b84df3eb6760a45593a8753c13aed97eb7953595a8",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "CAL-ANTH/protocol/OTK_CAL_ANTH_01/PROTOCOL_PREREGISTERED.md",
+   "source": "CAL-ANTH-01 b55c342:PROTOCOL_PREREGISTERED.md",
+   "rawSha256": "a7cd4ea712568b1b2daa561eacb8d420aad1f53e4f942bdd51b8e906022b4aeb",
+   "packSha256": "33ec50d3ab845ae6df14c47f197bd66b66202c53edf70e47bd3226ac757478b0",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "CAL-ANTH/protocol/OTK_CAL_ANTH_01/PROTOCOL_AMENDMENT_1.md",
+   "source": "CAL-ANTH-01 b55c342:PROTOCOL_AMENDMENT_1.md",
+   "rawSha256": "df2468b1cd722dada2da29f844f311bf51800d67ba050fd7428f0dcf2d1243c8",
+   "packSha256": "a9a705f4359ec4c94198ad33c392906e691aa453ae70f01d20b1c4a3d20732f4",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "CAL-ANTH/protocol/OTK_CAL_ANTH_02/PROTOCOL_PREREGISTERED.md",
+   "source": "CAL-ANTH-02 4120a757:PROTOCOL_PREREGISTERED.md",
+   "rawSha256": "f0dd922b5d2c0d531ebca8f3f49a3ff1dd31abc81ad25f54b6b42a7461d9a962",
+   "packSha256": "64fdd58840aca3b8e658ee3897581864f2e409de6d846f5609d78a0b526d6e9f",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "CAL-ANTH/protocol/OTK_CAL_ANTH_02/PREREGISTRATION_CLARIFICATIONS.md",
+   "source": "CAL-ANTH-02 4120a757:PREREGISTRATION_CLARIFICATIONS.md",
+   "rawSha256": "8f6dbbf0dd29f22d447df2f7902446ade50ea73d1700a13ee7a0f29f0355657f",
+   "packSha256": "c194a79534179f5a952d0f2e0667641b2d973d9c5b395a4d77e1212c127b4947",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "CAL-ANTH/CAL_ANTH_VERIFICATION_REPORT.md",
+   "source": "CAL_ANTH_VERIFY:CAL_ANTH_VERIFICATION_REPORT.md",
+   "rawSha256": "a6960ca71bf4b580268a77ffd2ea5e94f8e26e714ec75d876a4d4577a1d174d3",
+   "packSha256": "7b73faf1d891c6a52d08ce84877dbf8b1c6e82e4319d2fb02c078e0192e7d42c",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "CAL-ANTH/expected/RECOMPUTE_RESULTS.json",
+   "source": "CAL_ANTH_VERIFY:RECOMPUTE_RESULTS.json",
+   "rawSha256": "8e2b462443a00d16ee26fc8bf88396babd21c4f0ea3ee8ecc4822a583d040a6d",
+   "packSha256": "8e2b462443a00d16ee26fc8bf88396babd21c4f0ea3ee8ecc4822a583d040a6d",
+   "changedBySanitization": false
+  },
+  {
+   "packFile": "H2/PRE-REGISTRO_H2EVAL_R2.md",
+   "source": "B1:R10_PREREGISTRATION_H2EVAL_R2.md",
+   "rawSha256": "7f5eda3f9ec1b1fd817c4164d910518a051e98aaa443dbe507a571de2764e9f6",
+   "packSha256": "6260491c76bd15bc12728a9a6605dcea497563cf458910072b5fc43ea5bde106",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H2/METODO_H2EVAL_R2.md",
+   "source": "B1:R09_METHOD_R2.md",
+   "rawSha256": "706e459ae381522285681ea8ef5dc05ded0553c8c74cde09c70ac7a6e7a7d148",
+   "packSha256": "5f0df024f59bdb75684fe5a256364e171b3284e628f22051c2d73fa5c5b27da0",
+   "changedBySanitization": true
+  },
+  {
+   "packFile": "H2/MANIFESTO_H2EVAL_R2.json",
+   "source": "B1:R10_MANIFEST_R2.json",
+   "rawSha256": "319d9c7d64ed29f6734d4e8347f07b0b3223fcc813034cd6292dfc50148ffc71",
+   "packSha256": "47e252d9e7240925930913583275e4f2af7bcb3a893bcd7d0e579b4f1abc7b17",
+   "changedBySanitization": true
+  }
+ ]
+}

@@ -1,0 +1,66 @@
+# Benchmark-specific .dockerignore (overrides root .dockerignore for Dockerfile.bench builds)
+# Keeps: src/, scripts/benchmark/, tools/bench/, zk/ (needed for ZK bench)
+# Excludes: heavy/sensitive/irrelevant items
+
+# ── Node ──────────────────────────────────────────────────────────────────────
+node_modules
+npm-debug.log*
+
+# ── Git & IDE ─────────────────────────────────────────────────────────────────
+.git
+.gitignore
+.vscode
+.editorconfig
+
+# ── Dev / temp ────────────────────────────────────────────────────────────────
+*.log
+*.tmp
+*.bak
+.env
+.env.*
+!.env.example
+
+# ── NOT excluded for bench: scripts/, tools/, src/, zk/ ──────────────────────
+
+# ── Docs (large, not needed; output mounted via volume) ───────────────────────
+docs/
+README.md
+CLAUDE.md
+*.md
+dissertacao/
+
+# ── Hardhat / Solidity (not needed for bench) ─────────────────────────────────
+tools/hardhat/
+
+# ── Ops scripts not needed inside container ───────────────────────────────────
+scripts/ops/
+scripts/migrations/
+scripts/audit/
+
+# ── ZK large binaries not needed for pipeline bench (only for zk_inprocess) ──
+# Keep: zk/keys/metering_v2_final_mpc.zkey, zk/build/witness files
+zk/build/*.r1cs
+zk/build/*.sym
+zk/build/pot*
+zk/build/*.ptau
+zk/build/demo_run_*
+zk/build/preimage*
+
+# Keep zk/keys for ZK bench
+zk/keys/metering_v2_0000.zkey
+zk/keys/metering_v2_hermez_final.zkey
+zk/keys/metering_v2_hermez_vkey.json
+zk/keys/pot10_0000.ptau
+zk/keys/hermez_bn128_12_final.ptau
+zk/keys/README.md
+
+# ── Ceremony / MCP / cloud ───────────────────────────────────────────────────
+zk/ceremony/
+.mcp.json
+.auto-claude/
+.claude/
+infra/
+subgraph/
+python/
+sdk/
+examples/

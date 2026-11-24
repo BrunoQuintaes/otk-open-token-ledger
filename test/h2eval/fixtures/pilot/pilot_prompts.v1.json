@@ -1,0 +1,128 @@
+{
+ "schema": "otk.n5.pilot_prompts.v1",
+ "estado": "PROPOSTA; nenhuma chamada feita; IDs e precos NAO confirmados",
+ "listaSha256": "c9c7c23209605de3b762789b46b37bc55f01f5dd78bae591caff2ad895dd1fab",
+ "parametros": {
+  "stream": false,
+  "tools": "nenhuma",
+  "tentativas": 1,
+  "timeoutSegundos": 60,
+  "thinking": "desligado (mode none, como nos snapshots do R5)",
+  "temperature": "omitido (padrao do modelo; registrar)",
+  "max_tokens": "por prompt (Σ 480)",
+  "cache": "sem cache_control"
+ },
+ "prompts": [
+  {
+   "id": "P01",
+   "tipo": "eco",
+   "system": "Responda apenas o que for pedido, sem explicação.",
+   "user": "Repita exatamente: OK",
+   "maxTokens": 16,
+   "promptSha256": "bf1c0c7f4422adcd7d9409fbbaa3739dcba025f7e0fd8fa5aa3e74b50eb1fa00",
+   "chars": 70,
+   "tokensEntradaConservador": 44,
+   "requestBodySha256_semModelo": "e6c663f1719924054af53e8ead4ebfdedd5cbbff102b187ac48c469f049a0798"
+  },
+  {
+   "id": "P02",
+   "tipo": "sentimento",
+   "system": "Responda apenas o que for pedido, sem explicação.",
+   "user": "Classifique o sentimento da frase \"Adorei o atendimento rápido\" como POSITIVO, NEGATIVO ou NEUTRO. Responda com uma palavra.",
+   "maxTokens": 16,
+   "promptSha256": "d7a3fe64e429c3f8f741669b7b7e243f166b50eea50d977d96d09959203cafcc",
+   "chars": 173,
+   "tokensEntradaConservador": 78,
+   "requestBodySha256_semModelo": "76fe2e5258b765cd7c25e6036456ab3ebf868d9d8f145485e3c5bbb30de2afd9"
+  },
+  {
+   "id": "P03",
+   "tipo": "aritmetica",
+   "system": "Responda apenas o que for pedido, sem explicação.",
+   "user": "Quanto é 17 + 25? Responda só o número.",
+   "maxTokens": 16,
+   "promptSha256": "d79f20c23404bb0b8db0e556a955223287ad2d440b0c8e6ddc89eba099d8696e",
+   "chars": 88,
+   "tokensEntradaConservador": 50,
+   "requestBodySha256_semModelo": "d0d0f910d2305511626a65f7b5a19e5d1fa35ff9a45840cd228aeee7ee1fb669"
+  },
+  {
+   "id": "P04",
+   "tipo": "json",
+   "system": "Responda apenas o que for pedido, sem explicação.",
+   "user": "Devolva somente este JSON: {\"ok\": true, \"n\": 1}",
+   "maxTokens": 32,
+   "promptSha256": "4227d63a4ca64ae2e4a808d5cc94cfd349d232daf783885387bb42ac741daecc",
+   "chars": 96,
+   "tokensEntradaConservador": 52,
+   "requestBodySha256_semModelo": "452ff67125d2e8242b2c9bcb75bc307aa3e1f8b5f30f8a3586f7e2f678664949"
+  },
+  {
+   "id": "P05",
+   "tipo": "codigo_curto",
+   "system": "Responda apenas o que for pedido, sem explicação.",
+   "user": "Corrija o erro e devolva só o código:\n\ndef soma(a, b):\n    return a - b",
+   "maxTokens": 64,
+   "promptSha256": "bb91bf6b17212f1419c0237d358e14df6cf3bca412df16de17741ce9fd6aac8f",
+   "chars": 120,
+   "tokensEntradaConservador": 60,
+   "requestBodySha256_semModelo": "7171dfb02215e2caf091fec4fe7ff0728640505d88dcbf63b4c118355499a80a"
+  },
+  {
+   "id": "P06",
+   "tipo": "resumo_curto",
+   "system": "Responda apenas o que for pedido, sem explicação.",
+   "user": "Resuma em uma frase:\n\nO prefixo de um prompt pode ser reaproveitado entre chamadas quando o início do texto é idêntico. A leitura do prefixo guardado custa menos do que reprocessá-lo, mas a escrita inicial costuma custar mais. Medir a diferença entre a contagem prevista e o uso declarado exige registrar os dois valores para cada chamada. Um erro sistemático pode ser corrigido por uma reta ajustada em dados de treino e conferida em dados de validação. O prefixo de um prompt pode ser reaproveitado entre chamadas quando o início do texto é idêntico. A leitura do prefixo guardado custa menos do que reprocessá-lo, mas a escrita inicial costuma custar mais.",
+   "maxTokens": 64,
+   "promptSha256": "ae92a026da5196923604f9f3aa92747d22e5913befd535c15b3a417ece837e67",
+   "chars": 708,
+   "tokensEntradaConservador": 256,
+   "requestBodySha256_semModelo": "db70cd9a488a312c03f58fa9d2b03e2e63539f364ffffff24bb189c90511deb4"
+  },
+  {
+   "id": "P07",
+   "tipo": "degrau_400",
+   "system": "Responda apenas o que for pedido, sem explicação.",
+   "user": "Resuma em uma frase:\n\nO prefixo de um prompt pode ser reaproveitado entre chamadas quando o início do texto é idêntico. A leitura do prefixo guardado custa menos do que reprocessá-lo, mas a escrita inicial costuma custar mais. Medir a diferença entre a contagem prevista e o uso declarado exige registrar os dois valores para cada chamada. Um erro sistemático pode ser corrigido por uma reta ajustada em dados de treino e conferida em dados de validação. O prefixo de um prompt pode ser reaproveitado entre chamadas quando o início do texto é idêntico. A leitura do prefixo guardado custa menos do que reprocessá-lo, mas a escrita inicial costuma custar mais. Medir a diferença entre a contagem prevista e o uso declarado exige registrar os dois valores para cada chamada. Um erro sistemático pode ser corrigido por uma reta ajustada em dados de treino e conferida em dados de validação. O prefixo de um prompt pode ser reaproveitado entre chamadas quando o início do texto é idêntico. A leitura do prefixo guardado custa menos do que reprocessá-lo, mas a escrita inicial costuma custar mais. Medir a diferença entre a contagem prevista e o uso declarado exige registrar os dois valores para cada chamada. Um erro sistemático pode ser corrigido por uma reta ajustada em dados de treino e conferida em dados de validação. O prefixo de um prompt pode ser reaproveitado entre chamadas quando o início do texto é idêntico. A leitura do prefixo guardado custa menos do que reprocessá-lo, mas a escrita inicial costuma custar mais.",
+   "maxTokens": 64,
+   "promptSha256": "16aea8f487cd37c75debcaeef14463a178a8389e95e969355291b83e7210b4c4",
+   "chars": 1574,
+   "tokensEntradaConservador": 545,
+   "requestBodySha256_semModelo": "c900fc5508abf4dbca6b03d86f9cf13519b6cdd3dc8b61bc6d51ab7fd61a45cc"
+  },
+  {
+   "id": "P08",
+   "tipo": "degrau_800",
+   "system": "Responda apenas o que for pedido, sem explicação.",
+   "user": "Resuma em uma frase:\n\nO prefixo de um prompt pode ser reaproveitado entre chamadas quando o início do texto é idêntico. A leitura do prefixo guardado custa menos do que reprocessá-lo, mas a escrita inicial costuma custar mais. Medir a diferença entre a contagem prevista e o uso declarado exige registrar os dois valores para cada chamada. Um erro sistemático pode ser corrigido por uma reta ajustada em dados de treino e conferida em dados de validação. O prefixo de um prompt pode ser reaproveitado entre chamadas quando o início do texto é idêntico. A leitura do prefixo guardado custa menos do que reprocessá-lo, mas a escrita inicial costuma custar mais. Medir a diferença entre a contagem prevista e o uso declarado exige registrar os dois valores para cada chamada. Um erro sistemático pode ser corrigido por uma reta ajustada em dados de treino e conferida em dados de validação. O prefixo de um prompt pode ser reaproveitado entre chamadas quando o início do texto é idêntico. A leitura do prefixo guardado custa menos do que reprocessá-lo, mas a escrita inicial costuma custar mais. Medir a diferença entre a contagem prevista e o uso declarado exige registrar os dois valores para cada chamada. Um erro sistemático pode ser corrigido por uma reta ajustada em dados de treino e conferida em dados de validação. O prefixo de um prompt pode ser reaproveitado entre chamadas quando o início do texto é idêntico. A leitura do prefixo guardado custa menos do que reprocessá-lo, mas a escrita inicial costuma custar mais. Medir a diferença entre a contagem prevista e o uso declarado exige registrar os dois valores para cada chamada. Um erro sistemático pode ser corrigido por uma reta ajustada em dados de treino e conferida em dados de validação. O prefixo de um prompt pode ser reaproveitado entre chamadas quando o início do texto é idêntico. A leitura do prefixo guardado custa menos do que reprocessá-lo, mas a escrita inicial costuma custar mais. Medir a diferença entre a contagem prevista e o uso declarado exige registrar os dois valores para cada chamada. Um erro sistemático pode ser corrigido por uma reta ajustada em dados de treino e conferida em dados de validação. O prefixo de um prompt pode ser reaproveitado entre chamadas quando o início do texto é idêntico. A leitura do prefixo guardado custa menos do que reprocessá-lo, mas a escrita inicial costuma custar mais. Medir a diferença entre a contagem prevista e o uso declarado exige registrar os dois valores para cada chamada. Um erro sistemático pode ser corrigido por uma reta ajustada em dados de treino e conferida em dados de validação. O prefixo de um prompt pode ser reaproveitado entre chamadas quando o início do texto é idêntico. A leitura do prefixo guardado custa menos do que reprocessá-lo, mas a escrita inicial costuma custar mais. Medir a diferença entre a contagem prevista e o uso declarado exige registrar os dois valores para cada chamada. Um erro sistemático pode ser corrigido por uma reta ajustada em dados de treino e conferida em dados de validação.",
+   "maxTokens": 64,
+   "promptSha256": "1d369b548d5908f972767f9a289e07fa8da192b7503f24b4f3dd559cce380f28",
+   "chars": 3101,
+   "tokensEntradaConservador": 1054,
+   "requestBodySha256_semModelo": "2073f54bf2e3f1d94057604646f7f3f4343544632a2f00a995844a7db47a8585"
+  },
+  {
+   "id": "P09",
+   "tipo": "extracao",
+   "system": "Responda apenas o que for pedido, sem explicação.",
+   "user": "Extraia o código do texto e responda só o código: \"Pedido XYZ-123 aprovado em 2026-01-05.\"",
+   "maxTokens": 16,
+   "promptSha256": "0cc5be7f7db3c63e918167e7f33beb67c6b52a090ab0e801b36560ff61aa84fd",
+   "chars": 139,
+   "tokensEntradaConservador": 67,
+   "requestBodySha256_semModelo": "45a217fd97a93dcb0b3a9e0b5b1d046979c2bd8179aeefbe0c689d48d00d6238"
+  },
+  {
+   "id": "P10",
+   "tipo": "teto_de_saida",
+   "system": "Responda apenas o que for pedido, sem explicação.",
+   "user": "Conte de 1 a 120 separados por vírgula.",
+   "maxTokens": 128,
+   "promptSha256": "ac94de6b5815a9905cc15d3641ee99f0fa64d7b98db9ed4c0196b8ba0cef6884",
+   "chars": 88,
+   "tokensEntradaConservador": 50,
+   "requestBodySha256_semModelo": "80a7342d1001891111da8b2cae7d39c5c83f6414821f308b612fbbbd6e0eef51"
+  }
+ ],
+ "nota": "A mesma lista fechada e proposta para cada modelo (Sonnet e Opus); o requestBodySha256 definitivo de cada modelo se calcula depois de o ID ser confirmado."
+}

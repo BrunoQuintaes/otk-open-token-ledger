@@ -1,0 +1,51 @@
+{
+  "schema": "otk.reconciliation_mapping.v1",
+  "id": "gemini_billing_export_csv",
+  "provider": "gemini",
+  "format": "csv",
+  "describes": "CSV produced by the BigQuery query in docs/_ops/OVERNIGHT_20261005_MASTER/reconciliation/02_instrucoes_para_Bruno_exportar.md over the Cloud Billing standard usage cost export table (one row per cost row, plus one row per credit with row_kind='credit'). The column names are the aliases of that query; the source fields are the documented export schema.",
+  "provenance": {
+    "status": "PARTIALLY_VERIFIED",
+    "sources": [
+      { "url": "https://docs.cloud.google.com/billing/docs/how-to/export-data-bigquery-tables/standard-usage", "accessedOn": "2026-10-06", "covers": "source fields service.description, sku.id, sku.description, usage_start_time/usage_end_time (TIMESTAMP, hourly usage window), project.id, cost (FLOAT), currency, usage.amount, usage.unit, cost_type ('regular', 'tax', 'adjustment', 'rounding error'), credits (name, amount, type, id, full_name), invoice.month (YYYYMM)" },
+      { "url": "https://docs.cloud.google.com/billing/docs/how-to/export-data-bigquery-setup", "accessedOn": "2026-10-06", "covers": "enabling the standard export; multi-region (US/EU) datasets are backfilled from the start of the previous month, single-region datasets only from the enable date" }
+    ],
+    "unverified": [
+      "service.description of the Gemini API (assumed 'Gemini API' or 'Generative Language API'; rows of other services are kept as out of scope)",
+      "SKU description wording for model and token direction (model via display-name aliases; 'input', 'output', 'cach' keywords)",
+      "usage.unit of token SKUs (assumed one of count/tokens/token; another unit keeps the amount but drops the quantity with an issue)",
+      "cost is a FLOAT64 in BigQuery: CAST to STRING keeps the shortest round-trip text, treated as 15 significant digits"
+    ],
+    "notes": "Credits are separate lines (row_kind=credit), taxes and adjustments too (cost_type). Costs may be in the billing account currency (e.g. BRL): a non-USD amount is never converted with a float rate; only tokens are compared then."
+  },
+  "records": { "kind": "csv_rows", "delimiter": "," },
+  "timestamps": { "format": "auto", "declaredTimezone": null, "note": "The query formats TIMESTAMPs as RFC 3339 with Z (UTC)." },
+  "period": { "start": "usage_start_time", "end": "usage_end_time" },
+  "model": { "fromDescription": "sku_description" },
+  "category": {
+    "rules": [
+      { "field": "sku_description", "pattern": "storage", "flags": "i", "category": "other" },
+      { "field": "sku_description", "pattern": "cach", "flags": "i", "category": "cache_read" },
+      { "field": "sku_description", "pattern": "input", "flags": "i", "category": "input" },
+      { "field": "sku_description", "pattern": "output|thinking", "flags": "i", "category": "output" }
+    ],
+    "fallback": "unknown"
+  },
+  "expand": null,
+  "subtractFromInput": [],
+  "quantity": { "field": "usage_amount", "unit": "tokens", "unitField": "usage_unit", "allowedUnits": ["count", "tokens", "token"] },
+  "amount": { "field": "cost", "divisor": "1", "binaryFloat": true, "precisionDecimals": null },
+  "currency": { "field": "currency" },
+  "requestId": null,
+  "projectOrKey": ["project_id"],
+  "kind": {
+    "rules": [
+      { "field": "row_kind", "equals": "credit", "kind": "credit" },
+      { "field": "cost_type", "equals": "tax", "kind": "tax" },
+      { "field": "cost_type", "pattern": "^(adjustment|rounding error)$", "kind": "adjustment" }
+    ]
+  },
+  "scope": { "field": "service_description", "allowed": ["Gemini API", "Generative Language API"] },
+  "credits": null,
+  "description": ["row_kind", "service_description", "sku_id", "sku_description", "cost_type", "credit_name", "credit_type", "invoice_month"]
+}

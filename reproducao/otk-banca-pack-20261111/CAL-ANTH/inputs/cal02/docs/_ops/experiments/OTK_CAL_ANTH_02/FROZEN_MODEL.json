@@ -1,0 +1,60 @@
+{
+ "schema": "otk.cal_anth_02.frozen_model.v1",
+ "estimator": "M2",
+ "detector": "D1",
+ "fittedOn": {
+  "observations": 2805,
+  "groups": 312
+ },
+ "params": {
+  "core": [
+   0.5969737782579234,
+   0.2162558114040992,
+   0.054443113297309206,
+   0.09299347263046083,
+   -0.16775727736505078,
+   0.6143707018157692,
+   0.004112608461287647,
+   -0.5622479576822775,
+   0.15757766162552111,
+   1.3655218898070458,
+   -0.2179005199454464,
+   -0.1828827406051756,
+   -0.04695661085686304,
+   10.8514234518247
+  ],
+  "offset": {
+   "claude-haiku-5-5": 0,
+   "claude-opus-5-5": 2,
+   "claude-sonnet-5-5": 0
+  }
+ },
+ "envelope": {
+  "maxCl100k": 2407.2,
+  "maxNonLatinShare": 0.7768170426065163,
+  "maxDigitShare": 0.8511049723756906
+ },
+ "detectors": {
+  "claude-haiku-5-5": {
+   "id": "D1",
+   "absoluteTokens": 12,
+   "relative": 0.14,
+   "devFalseAlertRate": 0.008556149732620321,
+   "devMeanDetection": 0.5040998217468805
+  },
+  "claude-sonnet-5-5": {
+   "id": "D1",
+   "absoluteTokens": 12,
+   "relative": 0.14,
+   "devFalseAlertRate": 0.008556149732620321,
+   "devMeanDetection": 0.5040998217468805
+  },
+  "claude-opus-5-5": {
+   "id": "D1",
+   "absoluteTokens": 12,
+   "relative": 0.14,
+   "devFalseAlertRate": 0.008556149732620321,
+   "devMeanDetection": 0.5033868092691622
+  }
+ }
+}

@@ -1,0 +1,45 @@
+{
+    "config": {
+        "chainId": 1337,
+        "ibft2": {
+            "requesttimeoutseconds": 10,
+            "blockperiodseconds": 2,
+            "epochlength": 30000
+        },
+        "londonBlock": 0,
+        "berlinBlock": 0
+    },
+    "nonce": "0x0",
+    "timestamp": "0x0",
+    "extraData": "0xf8bda00000000000000000000000000000000000000000000000000000000000000000f8939408b7c512b0b81e28cb4edde1804fe16945db4bd7941dd639fcfb85e42790135de9fb9cee5707849e8c94358341421513ff791cd4dfa4f728b3c1afa03211944019e05295a5d6aa7265c67e3a4d5a3657bb88a9946b772d1e81225ea875ca7b566f23dac13e0d60d3949f55e426640f2e3dec9b114725a25c1506edee6e94bb0d0d5329f3083d2be90def0630d78ed3ddb560808400000000c0",
+    "gasLimit": "0x5F5E100",
+    "difficulty": "0x1",
+    "mixHash": "0x63746963616c2062797a616e74696e65206661756c7420746f6c6572616e6365",
+    "coinbase": "0x0000000000000000000000000000000000000000",
+    "alloc": {
+        "3000bafbd1b9f8dfc191a3575b1055e9155741f4": {
+            "balance": "0x21e19e0c9bab2400000"
+        },
+        "08b7c512b0b81e28cb4edde1804fe16945db4bd7": {
+            "balance": "0x21e19e0c9bab2400000"
+        },
+        "1dd639fcfb85e42790135de9fb9cee5707849e8c": {
+            "balance": "0x21e19e0c9bab2400000"
+        },
+        "358341421513ff791cd4dfa4f728b3c1afa03211": {
+            "balance": "0x21e19e0c9bab2400000"
+        },
+        "4019e05295a5d6aa7265c67e3a4d5a3657bb88a9": {
+            "balance": "0x21e19e0c9bab2400000"
+        },
+        "6b772d1e81225ea875ca7b566f23dac13e0d60d3": {
+            "balance": "0x21e19e0c9bab2400000"
+        },
+        "9f55e426640f2e3dec9b114725a25c1506edee6e": {
+            "balance": "0x21e19e0c9bab2400000"
+        },
+        "bb0d0d5329f3083d2be90def0630d78ed3ddb560": {
+            "balance": "0x21e19e0c9bab2400000"
+        }
+    }
+}

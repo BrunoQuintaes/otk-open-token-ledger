@@ -1,0 +1,172 @@
+{
+  "__inputs": [],
+  "__requires": [
+    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "10.0.0" },
+    { "type": "datasource", "id": "yesoreyeram-infinity-datasource", "name": "Infinity", "version": "1.0.0" },
+    { "type": "panel", "id": "timeseries", "name": "Time series", "version": "" },
+    { "type": "panel", "id": "barchart", "name": "Bar chart", "version": "" },
+    { "type": "panel", "id": "stat", "name": "Stat", "version": "" },
+    { "type": "panel", "id": "table", "name": "Table", "version": "" }
+  ],
+  "annotations": { "list": [] },
+  "description": "OTK zk-Metering — Operational Dashboard (U10.2 MVP)",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "On-Chain Receipts",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "otk-indexer" },
+      "description": "Total receipts indexed from ReceiptSubmitted events",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 80 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+      "id": 1,
+      "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["count"], "fields": "", "values": false }, "textMode": "auto" },
+      "title": "Total Receipts Indexed",
+      "type": "stat",
+      "targets": [
+        {
+          "columns": [],
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "otk-indexer" },
+          "filters": [],
+          "format": "table",
+          "global_query_id": "",
+          "parser": "backend",
+          "refId": "A",
+          "source": "url",
+          "type": "json",
+          "url": "/data/indexer/receipts.jsonl",
+          "url_options": { "data": "", "method": "GET" }
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "otk-bench" },
+      "description": "Off-chain pipeline throughput by workload size",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 2 },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
+      "id": 2,
+      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom" } },
+      "title": "Off-Chain Pipeline Throughput (/s)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "columns": [
+            { "selector": "workload_n", "text": "N", "type": "number" },
+            { "selector": "throughput_per_s", "text": "Throughput", "type": "number" }
+          ],
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "otk-bench" },
+          "filters": [{ "field": "stage", "operator": "equals", "value": "pipeline" }],
+          "format": "table",
+          "parser": "backend",
+          "refId": "A",
+          "source": "url",
+          "type": "csv",
+          "url": "/data/bench/U9_BENCH_V2_latest/benchmark_v2_stats.csv",
+          "url_options": { "method": "GET" }
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "otk-bench" },
+      "description": "ZK proof generation latency distribution",
+      "fieldConfig": {
+        "defaults": { "unit": "ms" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 5 },
+      "id": 3,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "title": "ZK Proof Time (fullProve per run)",
+      "type": "barchart",
+      "targets": [
+        {
+          "columns": [
+            { "selector": "run", "text": "Run", "type": "number" },
+            { "selector": "fullprove_ms", "text": "fullProve (ms)", "type": "number" },
+            { "selector": "verify_ms", "text": "verify (ms)", "type": "number" }
+          ],
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "otk-bench" },
+          "filters": [],
+          "format": "table",
+          "parser": "backend",
+          "refId": "A",
+          "source": "url",
+          "type": "csv",
+          "url": "/data/bench/U9_BENCH_V2_latest/benchmark_v2_zk_only.csv",
+          "url_options": { "method": "GET" }
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 13 },
+      "id": 101,
+      "title": "Gas Economics",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "otk-bench" },
+      "description": "On-chain cost breakdown (gas per receipt by component)",
+      "fieldConfig": {
+        "defaults": { "unit": "none", "decimals": 0 },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 14 },
+      "id": 4,
+      "options": { "showHeader": true },
+      "title": "Gas Breakdown (measured U8.5.4)",
+      "type": "table",
+      "transformations": [],
+      "targets": [
+        {
+          "columns": [],
+          "datasource": { "type": "yesoreyeram-infinity-datasource", "uid": "otk-bench" },
+          "filters": [],
+          "format": "table",
+          "parser": "backend",
+          "refId": "A",
+          "source": "inline",
+          "type": "json",
+          "data": "[{\"component\":\"Groth16 verify (bn254 pairing)\",\"gas_approx\":250000},{\"component\":\"State write (commitment+nonce)\",\"gas_approx\":38000},{\"component\":\"ECDSA verify + event\",\"gas_approx\":2620},{\"component\":\"TOTAL measured\",\"gas_approx\":290620}]"
+        }
+      ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["otk", "zk-metering", "ibft"],
+  "templating": { "list": [] },
+  "time": { "from": "now-24h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "OTK zk-Metering",
+  "uid": "otk-zk-metering-v1",
+  "version": 1
+}

@@ -1,0 +1,8 @@
+# SYNTHETIC FIXTURE (OTK Phase 10 tests, 2026-10-06): invented values built to exercise the reconciliation classifications. NOT data exported by any provider; proves nothing about a real bill.
+row_kind,usage_start_time,usage_end_time,service_description,sku_id,sku_description,project_id,cost_type,cost,currency,usage_amount,usage_unit,credit_name,credit_type,invoice_month
+cost,2026-10-04T03:00:00Z,2026-10-04T04:00:00Z,Gemini API,FIXTURE-SKU-IN,Gemini 3.5 Flash-Lite Input tokens,fixture-project,regular,2.82e-05,USD,94,count,,,202610
+cost,2026-10-04T03:00:00Z,2026-10-04T04:00:00Z,Gemini API,FIXTURE-SKU-OUT,Gemini 3.5 Flash-Lite Output tokens,fixture-project,regular,6.5e-05,USD,26,count,,,202610
+credit,2026-10-04T03:00:00Z,2026-10-04T04:00:00Z,Gemini API,FIXTURE-SKU-IN,Gemini 3.5 Flash-Lite Input tokens,fixture-project,regular,-2.82e-05,USD,,,"Free tier, fixture",FREE_TIER,202610
+cost,2026-10-04T03:00:00Z,2026-10-04T04:00:00Z,Gemini API,FIXTURE-SKU-TAX,Tax,fixture-project,tax,1.23e-05,USD,,,,,202610
+cost,2026-10-04T03:00:00Z,2026-10-04T04:00:00Z,Gemini API,FIXTURE-SKU-X,Gemini 9 Ultra Input tokens,fixture-project,regular,0.001,USD,500,count,,,202610
+cost,2026-10-04T03:00:00Z,2026-10-04T04:00:00Z,Cloud Storage,FIXTURE-SKU-GCS,Standard Storage US Multi-region,fixture-project,regular,0.0001,USD,1,gibibyte month,,,202610

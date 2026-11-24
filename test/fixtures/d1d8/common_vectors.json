@@ -1,0 +1,188 @@
+{
+  "schema": "otk.d1d8.common_vectors.v1",
+  "owner": "B",
+  "run": "20260930-1625",
+  "method": "Calculados à mão, com a aritmética escrita em cada vetor; não gerados pelo código sob teste. Inteiros como string decimal. CU exato = (tIn + tOut) × Wm_milli × Wp_milli com escala 10^6 (fórmula CU_MULT_v2_micro); legado CU_MODEL_v1 = arredondamento meio para cima do mesmo valor (escala 1). Dinheiro: preço em micro-USD por 1.000.000 tokens; valor = tokens × preço, escala 10^12 (pico-USD).",
+  "weights_source": "Pesos estáticos de src/pricing/CostUnits.ts no COMMON_SHA 9a42ff2 (migrados sem alteração para otk.cu_weights.v2). Nenhum peso foi mudado para fazer teste passar.",
+  "price_source": "Tabela ILUSTRATIVA test/fixtures/d1d8/b/price_table_illustrative_v1.json. Não é tabela de preço vigente verificada; serve para aritmética de categorias.",
+  "public_rule": "B nunca publica consumo exato. A faixa pública é política de A (D2 §4, src/privacy/bucketing.ts); a coluna legacy_bucket100 abaixo só reproduz o comportamento histórico N5 para mostrar o que deixa de zerar a contabilidade.",
+  "vectors": [
+    {
+      "id": "CU-01",
+      "description": "Multiplicativa simples, pesos inteiros",
+      "provider": "openai", "model": "gpt-4o", "tIn": "1000", "tOut": "500",
+      "weights_milli": { "model": "1000", "provider": "1000" },
+      "arithmetic": "(1000 + 500) × 1000 × 1000 = 1 500 000 000 micro-CU = 1500 CU; legado round(1500) = 1500",
+      "expected": { "cu_units": "1500000000", "cu_scale": "1000000", "cu_decimal": "1500", "legacy_cu": "1500" }
+    },
+    {
+      "id": "CU-02",
+      "description": "Pesos fracionários (1,5 × 1,1)",
+      "provider": "anthropic", "model": "claude-sonnet-4", "tIn": "120", "tOut": "80",
+      "weights_milli": { "model": "1500", "provider": "1100" },
+      "arithmetic": "200 × 1500 × 1100 = 330 000 000 micro-CU = 330 CU; legado 330",
+      "expected": { "cu_units": "330000000", "cu_scale": "1000000", "cu_decimal": "330", "legacy_cu": "330" }
+    },
+    {
+      "id": "CU-03",
+      "description": "Consumo pequeno não zera na contabilidade exata (N5)",
+      "provider": "openai", "model": "gpt-4o-mini", "tIn": "1", "tOut": "0",
+      "weights_milli": { "model": "400", "provider": "1000" },
+      "arithmetic": "1 × 400 × 1000 = 400 000 micro-CU = 0,4 CU; legado round(0,4) = 0; faixa histórica de 100 → 0",
+      "expected": { "cu_units": "400000", "cu_scale": "1000000", "cu_decimal": "0.4", "legacy_cu": "0", "legacy_bucket100": "0" }
+    },
+    {
+      "id": "CU-04",
+      "description": "Caso N5 do tracker: 25/15 em gpt-4o",
+      "provider": "openai", "model": "gpt-4o", "tIn": "25", "tOut": "15",
+      "weights_milli": { "model": "1000", "provider": "1000" },
+      "arithmetic": "40 × 1000 × 1000 = 40 000 000 micro-CU = 40 CU; legado 40; faixa histórica de 100: 40 → 0",
+      "expected": { "cu_units": "40000000", "cu_scale": "1000000", "cu_decimal": "40", "legacy_cu": "40", "legacy_bucket100": "0" }
+    },
+    {
+      "id": "CU-05",
+      "description": "Caso N5 do tracker: 25/15 em gemini-pro",
+      "provider": "gemini", "model": "gemini-pro", "tIn": "25", "tOut": "15",
+      "weights_milli": { "model": "1200", "provider": "900" },
+      "arithmetic": "40 × 1200 × 900 = 43 200 000 micro-CU = 43,2 CU; legado round(43,2) = 43; faixa histórica 43 → 0",
+      "expected": { "cu_units": "43200000", "cu_scale": "1000000", "cu_decimal": "43.2", "legacy_cu": "43", "legacy_bucket100": "0" }
+    },
+    {
+      "id": "CU-06",
+      "description": "Arredondamento legado meio para cima (x,5)",
+      "provider": "mistral", "model": "mistral-small", "tIn": "30", "tOut": "20",
+      "weights_milli": { "model": "900", "provider": "900" },
+      "arithmetic": "50 × 900 × 900 = 40 500 000 micro-CU = 40,5 CU exato; legado round_half_up(40,5) = 41",
+      "expected": { "cu_units": "40500000", "cu_scale": "1000000", "cu_decimal": "40.5", "legacy_cu": "41" }
+    },
+    {
+      "id": "CU-07",
+      "description": "Latência não entra no CU: mesmo uso, latências 50 ms e 5000 ms",
+      "provider": "openai", "model": "gpt-4o", "tIn": "1000", "tOut": "500",
+      "latencies_ms": ["50", "5000"],
+      "arithmetic": "a fórmula não tem termo de latência; ambos = CU-01 = 1500 CU",
+      "expected": { "cu_units": "1500000000", "cu_scale": "1000000" }
+    },
+    {
+      "id": "CU-08",
+      "description": "Limite: tokens máximos aceitos pelo normalizador (10^9 + 0) no maior peso estático",
+      "provider": "anthropic", "model": "claude-opus-4", "tIn": "1000000000", "tOut": "0",
+      "weights_milli": { "model": "2000", "provider": "1100" },
+      "arithmetic": "10^9 × 2000 × 1100 = 2 200 000 000 000 000 micro-CU = 2,2·10^9 CU < 2^64 − 1 = 18 446 744 073 709 551 615",
+      "expected": { "cu_units": "2200000000000000", "cu_scale": "1000000", "fits_uint64": true }
+    },
+    {
+      "id": "USAGE-ANTHROPIC-01",
+      "description": "Anthropic Messages com cache e thinking (t_rule v1: cache entra em T_entrada; thinking é subconjunto de output)",
+      "api": "anthropic.messages",
+      "response": { "id": "msg_fixture", "model": "claude-haiku-4-5-20251001", "usage": { "input_tokens": 100, "output_tokens": 20, "cache_creation_input_tokens": 30, "cache_read_input_tokens": 40, "output_tokens_details": { "thinking_tokens": 10 } } },
+      "arithmetic": "tIn = 100 + 30 + 40 = 170; tOut = 20 (thinking 10 já incluído); alias claude-haiku-4-5-20251001 → claude-haiku-4-5 (800) × anthropic (1100): 190 × 800 × 1100 = 167 200 000 micro-CU = 167,2 CU. Código anterior (N8: cache fora do CU): 120 × 800 × 1100 / 10^6 = 105,6 → legado 106. Preço ilustrativo: input 100 × 1 000 000 = 100 000 000; output 20 × 5 000 000 = 100 000 000; cache_write 30 × 1 250 000 = 37 500 000; cache_read 40 × 100 000 = 4 000 000; thinking sem preço próprio fica dentro de output; total = 241 500 000 pico-USD = US$ 0,0002415",
+      "expected": { "completeness": "complete", "tIn": "170", "tOut": "20", "cu_units": "167200000", "cu_decimal": "167.2", "previous_code_legacy_cu": "106",
+        "price": { "status": "priced", "total_units": "241500000", "total_scale": "1000000000000", "lines": { "input": ["100", "100000000"], "output": ["20", "100000000"], "input_cache_write": ["30", "37500000"], "input_cache_read": ["40", "4000000"] } } }
+    },
+    {
+      "id": "USAGE-OPENAI-CHAT-01",
+      "description": "OpenAI Chat com cache e reasoning (subconjuntos: não somar de novo)",
+      "api": "openai.chat_completions",
+      "response": { "id": "chatcmpl-fixture", "model": "gpt-4o-mini-2024-07-18", "usage": { "prompt_tokens": 1000, "completion_tokens": 300, "total_tokens": 1300, "prompt_tokens_details": { "cached_tokens": 600 }, "completion_tokens_details": { "reasoning_tokens": 200 } } },
+      "arithmetic": "tIn = 1000; tOut = 300; total 1300 confere; alias → gpt-4o-mini (400) × openai (1000): 1300 × 400 × 1000 = 520 000 000 micro-CU = 520 CU. Preço ilustrativo: input não-cache (1000 − 600) = 400 × 150 000 = 60 000 000; cached 600 × 75 000 = 45 000 000; output 300 × 600 000 = 180 000 000 (reasoning sem preço próprio fica dentro); total 285 000 000 pico-USD = US$ 0,000285",
+      "expected": { "completeness": "complete", "tIn": "1000", "tOut": "300", "cu_units": "520000000", "cu_decimal": "520",
+        "price": { "status": "priced", "total_units": "285000000", "total_scale": "1000000000000", "lines": { "input": ["400", "60000000"], "input_cache_read": ["600", "45000000"], "output": ["300", "180000000"] } } }
+    },
+    {
+      "id": "USAGE-OPENAI-RESPONSES-01",
+      "description": "U2-04: Responses 100/20 não vira 0/0",
+      "api": "openai.responses",
+      "response": { "id": "resp_fixture", "model": "gpt-4o-mini", "usage": { "input_tokens": 100, "output_tokens": 20, "total_tokens": 120, "output_tokens_details": { "reasoning_tokens": 10 } } },
+      "arithmetic": "tIn = 100; tOut = 20; 120 × 400 × 1000 = 48 000 000 micro-CU = 48 CU. Extrator anterior: 0/0 → 0",
+      "expected": { "completeness": "complete", "tIn": "100", "tOut": "20", "cu_units": "48000000", "cu_decimal": "48", "previous_extractor": { "inputTokens": "0", "outputTokens": "0" } }
+    },
+    {
+      "id": "USAGE-GEMINI-01",
+      "description": "U2-05: Gemini com cache (subconjunto do prompt) e thoughts (parcela separada)",
+      "api": "gemini.generate_content",
+      "response": { "responseId": "gem_fixture", "modelVersion": "gemini-2.0-flash", "usageMetadata": { "promptTokenCount": 100, "candidatesTokenCount": 20, "thoughtsTokenCount": 10, "cachedContentTokenCount": 30, "totalTokenCount": 130 } },
+      "arithmetic": "tIn = 100 (cache 30 já incluído); tOut = 20 + 10 = 30; total 130 confere; gemini-2.0-flash (600) × gemini (900): 130 × 600 × 900 = 70 200 000 micro-CU = 70,2 CU. Código anterior (thoughts descartados): 120 × 600 × 900 / 10^6 = 64,8 → legado 65",
+      "expected": { "completeness": "complete", "tIn": "100", "tOut": "30", "cu_units": "70200000", "cu_decimal": "70.2", "previous_code_legacy_cu": "65" }
+    },
+    {
+      "id": "USAGE-ZERO-01",
+      "description": "Zero reportado é zero; ausente é null",
+      "api": "openai.chat_completions",
+      "response": { "model": "gpt-4o", "usage": { "prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0 } },
+      "arithmetic": "tIn = 0; tOut = 0; CU = 0 × 1000 × 1000 = 0 (computado, não ausente); cached_tokens ausente → null",
+      "expected": { "completeness": "complete", "tIn": "0", "tOut": "0", "cu_units": "0", "input_cache_read": null }
+    },
+    {
+      "id": "USAGE-MISSING-01",
+      "description": "Sem objeto usage: missing, CU não computável, preço missing_price (nunca US$ 0)",
+      "api": "openai.chat_completions",
+      "response": { "model": "gpt-4o" },
+      "arithmetic": "sem dados → tIn = tOut = null",
+      "expected": { "completeness": "missing", "tIn": null, "tOut": null, "cu_status": "usage_not_computable", "price_status": "missing_price", "price_total": null }
+    },
+    {
+      "id": "PRICE-MISSING-01",
+      "description": "Modelo sem preço na tabela: missing_price, total null",
+      "api": "openai.chat_completions",
+      "response": { "model": "gpt-4.1", "usage": { "prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15 } },
+      "arithmetic": "tabela ilustrativa não lista gpt-4.1",
+      "expected": { "price_status": "missing_price", "price_total": null }
+    },
+    {
+      "id": "PRICE-HISTORY-01",
+      "description": "Preço histórico: mesma tabela com duas janelas de vigência para gpt-4o-mini input",
+      "api": "openai.chat_completions",
+      "response": { "model": "gpt-4o-mini", "usage": { "prompt_tokens": 1000, "completion_tokens": 0, "total_tokens": 1000 } },
+      "pricedAt": ["2026-09-30T12:00:00.000Z", "2026-10-02T12:00:00.000Z"],
+      "arithmetic": "até 2026-10-01: 150 000 µUSD/MTok → 1000 × 150 000 = 150 000 000 pico-USD; a partir de 2026-10-01: 200 000 → 200 000 000; output 0 × 600 000 = 0",
+      "expected": { "totals_units": ["150000000", "200000000"] }
+    },
+    {
+      "id": "RESERVE-01",
+      "description": "Reserva de pior caso com modelo desconhecido até a resposta",
+      "provider": "openai", "model": "gpt-4o-mini", "estimatedInputTokens": "1000", "maxOutputTokens": "500",
+      "arithmetic": "CU = (1000 + 500) × 400 × 1000 = 600 000 000 micro-CU = 600 CU; dinheiro = 1000 × máx(lado entrada: 150 000, 75 000, 200 000) + 500 × máx(lado saída: 600 000) = 200 000 000 + 300 000 000 = 500 000 000 pico-USD (máximo entre as janelas da tabela)",
+      "expected": { "cu_units": "600000000", "cu_scale": "1000000", "money_units": "500000000", "money_scale": "1000000000000" }
+    },
+    {
+      "id": "CONF-ZERO-01",
+      "description": "U2-02 / D4-G04: provedor 0/0, local 100/20 → divergente",
+      "provider_counts": { "input": "0", "output": "0" }, "local_counts": { "input": "100", "output": "20" },
+      "threshold": { "absoluteTokens": "16", "relative": "0.100000", "calibrated": false },
+      "arithmetic": "Δinput = 0 − 100 = −100, |100| > 16, provedor 0 → divergente, relativo null; Δoutput = −20, |20| > 16 → divergente. Código anterior: percentuais 0 e flagged=false",
+      "expected": { "state": "compared", "verdict": "divergent", "input": { "absoluteDelta": "-100", "relativeDelta": null }, "output": { "absoluteDelta": "-20", "relativeDelta": null } }
+    },
+    {
+      "id": "CONF-WITHIN-01",
+      "description": "Dentro do limiar heurístico",
+      "provider_counts": { "input": "1000", "output": "100" }, "local_counts": { "input": "960", "output": "90" },
+      "threshold": { "absoluteTokens": "16", "relative": "0.100000", "calibrated": false },
+      "arithmetic": "Δinput = 40 > 16, relativo floor(40 × 10^6 / 1000) = 40 000 → 0.040000 ≤ 0.100000 → dentro; Δoutput = 10 ≤ 16 → dentro (relativo 0.100000)",
+      "expected": { "state": "compared", "verdict": "within_threshold", "input": { "absoluteDelta": "40", "relativeDelta": "0.040000" }, "output": { "absoluteDelta": "10", "relativeDelta": "0.100000" } }
+    },
+    {
+      "id": "CONF-REL-01",
+      "description": "Divergência relativa",
+      "provider_counts": { "input": "200", "output": "30" }, "local_counts": { "input": "150", "output": "30" },
+      "threshold": { "absoluteTokens": "16", "relative": "0.100000", "calibrated": false },
+      "arithmetic": "Δinput = 50 > 16, relativo 50/200 = 0.250000 > 0.100000 → divergente",
+      "expected": { "state": "compared", "verdict": "divergent", "input": { "absoluteDelta": "50", "relativeDelta": "0.250000" } }
+    },
+    {
+      "id": "TOK-01",
+      "description": "U2-01 / D4-G03: alias datado usa o encoding da família",
+      "text": "Reconciliação de consumo: informações financeiras e recuperação de serviços.",
+      "models": ["gpt-4o-mini", "gpt-4o-mini-2024-07-18"],
+      "arithmetic": "ambos o200k_base → 13 tokens (o probe histórico obteve 13 e 17; 17 é cl100k_base)",
+      "expected": { "encoding": "o200k_base", "count": "13", "historical_dated_count_cl100k": "17" }
+    },
+    {
+      "id": "TOK-02",
+      "description": "U2-03: contagem por fragmento não é aditiva; o contador incremental preserva a fronteira",
+      "text": "hello", "split": ["hel", "lo"],
+      "arithmetic": "inteiro = 1 token; fragmentos contados separadamente = 1 + 1 = 2; contador incremental = 1",
+      "expected": { "whole": "1", "naive_sum": "2", "incremental": "1" }
+    }
+  ]
+}

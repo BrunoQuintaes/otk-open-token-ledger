@@ -1,0 +1,46 @@
+{
+  "schema": "otk.price_table.v1",
+  "version": "anthropic-haiku45-official-2026-10-01",
+  "currency": "USD",
+  "entries": [
+    {
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5",
+      "category": "input",
+      "pricePerMTokMicroUsd": "1000000",
+      "effectiveFrom": "2026-10-01T00:00:00.000Z",
+      "effectiveUntil": null,
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing consulted 2026-10-01 (base input $1/MTok)"
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5",
+      "category": "output",
+      "pricePerMTokMicroUsd": "5000000",
+      "effectiveFrom": "2026-10-01T00:00:00.000Z",
+      "effectiveUntil": null,
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing consulted 2026-10-01 (output $5/MTok)"
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5",
+      "category": "input_cache_read",
+      "pricePerMTokMicroUsd": "100000",
+      "effectiveFrom": "2026-10-01T00:00:00.000Z",
+      "effectiveUntil": null,
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing consulted 2026-10-01 (cache hits $0.10/MTok)"
+    },
+    {
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5",
+      "category": "input_cache_write",
+      "pricePerMTokMicroUsd": "1250000",
+      "effectiveFrom": "2026-10-01T00:00:00.000Z",
+      "effectiveUntil": null,
+      "source": "https://platform.claude.com/docs/en/about-claude/pricing consulted 2026-10-01 (5m cache write $1.25/MTok; 1h writes are refused by the proxy because the usage does not distinguish them)"
+    }
+  ],
+  "aliases": {
+    "claude-haiku-4-5-20251001": "claude-haiku-4-5"
+  }
+}

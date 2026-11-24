@@ -1,0 +1,109 @@
+{
+ "schema": "otk.banca.scanner-negative-control.v1",
+ "categoriesTested": 20,
+ "allDetected": true,
+ "cleanFolderPasses": true,
+ "ok": true,
+ "results": [
+  {
+   "category": "caminho_usuario_windows",
+   "scannerFailed": true,
+   "categoryDetected": true
+  },
+  {
+   "category": "caminho_usuario_unix",
+   "scannerFailed": true,
+   "categoryDetected": true
+  },
+  {
+   "category": "email",
+   "scannerFailed": true,
+   "categoryDetected": true
+  },
+  {
+   "category": "telefone_internacional",
+   "scannerFailed": true,
+   "categoryDetected": true
+  },
+  {
+   "category": "telefone_br",
+   "scannerFailed": true,
+   "categoryDetected": true
+  },
+  {
+   "category": "chave_sk",
+   "scannerFailed": true,
+   "categoryDetected": true
+  },
+  {
+   "category": "chave_google",
+   "scannerFailed": true,
+   "categoryDetected": true
+  },
+  {
+   "category": "token_github",
+   "scannerFailed": true,
+   "categoryDetected": true
+  },
+  {
+   "category": "token_slack",
+   "scannerFailed": true,
+   "categoryDetected": true
+  },
+  {
+   "category": "chave_aws",
+   "scannerFailed": true,
+   "categoryDetected": true
+  },
+  {
+   "category": "bearer",
+   "scannerFailed": true,
+   "categoryDetected": true
+  },
+  {
+   "category": "chave_privada_pem",
+   "scannerFailed": true,
+   "categoryDetected": true
+  },
+  {
+   "category": "atribuicao_segredo",
+   "scannerFailed": true,
+   "categoryDetected": true
+  },
+  {
+   "category": "id_requisicao_anthropic",
+   "scannerFailed": true,
+   "categoryDetected": true
+  },
+  {
+   "category": "id_requisicao_openai",
+   "scannerFailed": true,
+   "categoryDetected": true
+  },
+  {
+   "category": "x_request_id",
+   "scannerFailed": true,
+   "categoryDetected": true
+  },
+  {
+   "category": "gemini_response_id_valor",
+   "scannerFailed": true,
+   "categoryDetected": true
+  },
+  {
+   "category": "nome_pessoa_ou_conta",
+   "scannerFailed": true,
+   "categoryDetected": true
+  },
+  {
+   "category": "arquivo_segredo",
+   "scannerFailed": true,
+   "categoryDetected": true
+  },
+  {
+   "category": "workspace_ou_org_nomeado",
+   "scannerFailed": true,
+   "categoryDetected": true
+  }
+ ]
+}

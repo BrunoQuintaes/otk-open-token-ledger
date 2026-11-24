@@ -1,0 +1,407 @@
+{
+ "generatedBy": "runs/R04/scripts/build_denominators.mjs",
+ "inventory": {
+  "path": "inventory/inventory_662.jsonl",
+  "sha256": "6b9a0e6ac36f7618072399f27df2e12619057eb3ebf5a56998285c71cad65e26",
+  "lines": 662
+ },
+ "providers": {
+  "openai": {
+   "S0_linhas_calls_jsonl": 221,
+   "S0_composicao": {
+    "calibration_sample_lines": 217,
+    "docIds_unicos_enviados": 216,
+    "docIds_do_corpus_nunca_enviados": [],
+    "cache_probe": 3,
+    "besu": 1
+   },
+   "S1_realizadas_http200": 219,
+   "S1_saem_recusas": [
+    {
+     "label": "cal-json-005-v1",
+     "httpStatus": 429,
+     "split": "train",
+     "family": "json",
+     "repetida_depois": "SIM (repeticao concluida)",
+     "source": "docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-10/pv3-openai-live-campaign-2026-10-07t04-48-20-564_calls.jsonl:88"
+    },
+    {
+     "label": "cal-mixed_unicode-000-v1",
+     "httpStatus": 400,
+     "split": "train",
+     "family": "mixed_unicode",
+     "repetida_depois": "NAO (texto perdido para este provedor)",
+     "source": "docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-97/pv3-openai-live-campaign-2026-10-07t05-01-19-314_calls.jsonl:40"
+    }
+   ],
+   "S1_coleta_denominador": {
+    "concluidas": 219,
+    "textos_unicos_concluidos": 215,
+    "cache": 3,
+    "besu": 1,
+    "nota": "denominador da COLETA (custo, tokens declarados, campaign_summary.json): todas as concluidas, inclusive cache e besu e as sem conferencia"
+   },
+   "S2_com_conferencia_capturada": 215,
+   "S2_estado_conferencia_das_realizadas": {
+    "compared/within_threshold": 215,
+    "not_produced/": 4
+   },
+   "S2_saem_sem_conferencia": [
+    {
+     "label": "cal-code_ts-000-v0",
+     "split": "holdout",
+     "family": "code_ts",
+     "conference_state": "not_produced",
+     "source": "docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-10/pv3-openai-live-campaign-2026-10-07t04-48-20-564_calls.jsonl:45"
+    },
+    {
+     "label": "cal-numeric-008-v0",
+     "split": "train",
+     "family": "numeric",
+     "conference_state": "not_produced",
+     "source": "docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-137/pv3-openai-live-campaign-2026-10-07t05-09-06-868_calls.jsonl:50"
+    },
+    {
+     "label": "cal-tiny-007-v0",
+     "split": "train",
+     "family": "tiny",
+     "conference_state": "not_produced",
+     "source": "docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-137/pv3-openai-live-campaign-2026-10-07t05-09-06-868_calls.jsonl:74"
+    },
+    {
+     "label": "cal-markdown_table-008-v2",
+     "split": "validation",
+     "family": "markdown_table",
+     "conference_state": "not_produced",
+     "source": "docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-97/pv3-openai-live-campaign-2026-10-07t05-01-19-314_calls.jsonl:38"
+    }
+   ],
+   "S3_pares_calibracao": 211,
+   "S3_saem_cache": [
+    "cache-1 (cacheProbe=1, declared_input=3396, cache_read=0)",
+    "cache-2 (cacheProbe=2, declared_input=3396, cache_read=3328)",
+    "cache-3 (cacheProbe=3, declared_input=3396, cache_read=3328)"
+   ],
+   "S3_saem_besu": [
+    "besu (declared_input=16, local=9)"
+   ],
+   "S3_nao_classificados": [],
+   "S4_splits": {
+    "validation": 53,
+    "holdout": 38,
+    "train": 120
+   },
+   "S4_split_x_familia": {
+    "train": {
+     "pt_prose": 15,
+     "en_prose": 12,
+     "code_ts": 9,
+     "json": 15,
+     "markdown_table": 18,
+     "mixed_unicode": 17,
+     "numeric": 14,
+     "tiny": 20
+    },
+    "validation": {
+     "pt_prose": 9,
+     "en_prose": 6,
+     "code_ts": 9,
+     "json": 6,
+     "markdown_table": 8,
+     "mixed_unicode": 6,
+     "numeric": 6,
+     "tiny": 3
+    },
+    "holdout": {
+     "pt_prose": 3,
+     "en_prose": 9,
+     "code_ts": 8,
+     "json": 6,
+     "markdown_table": 0,
+     "mixed_unicode": 3,
+     "numeric": 6,
+     "tiny": 3
+    }
+   },
+   "S4_grupos_holdout": 13,
+   "S4_familias": {
+    "pt_prose": 27,
+    "en_prose": 27,
+    "code_ts": 26,
+    "json": 27,
+    "mixed_unicode": 26,
+    "numeric": 26,
+    "tiny": 26,
+    "markdown_table": 26
+   },
+   "particao_ok": true,
+   "cadeia": "221 linhas -> 219 realizadas (-2 recusas) -> 215 com conferencia capturada (-4 not_produced) -> 211 pares (-3 cache, -1 besu) = 120/53/38"
+  },
+  "anthropic": {
+   "S0_linhas_calls_jsonl": 220,
+   "S0_composicao": {
+    "calibration_sample_lines": 216,
+    "docIds_unicos_enviados": 215,
+    "docIds_do_corpus_nunca_enviados": [
+     "mixed_unicode-000-v1"
+    ],
+    "cache_probe": 3,
+    "besu": 1
+   },
+   "S1_realizadas_http200": 219,
+   "S1_saem_recusas": [
+    {
+     "label": "cal-en_prose-000-v0",
+     "httpStatus": 429,
+     "split": "validation",
+     "family": "en_prose",
+     "repetida_depois": "SIM (repeticao concluida)",
+     "source": "docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign/pv3-live-campaign-2026-10-07t04-57-14-774_calls.jsonl:28"
+    }
+   ],
+   "S1_coleta_denominador": {
+    "concluidas": 219,
+    "textos_unicos_concluidos": 215,
+    "cache": 3,
+    "besu": 1,
+    "nota": "denominador da COLETA (custo, tokens declarados, campaign_summary.json): todas as concluidas, inclusive cache e besu e as sem conferencia"
+   },
+   "S2_com_conferencia_capturada": 214,
+   "S2_estado_conferencia_das_realizadas": {
+    "incomplete/not_applicable": 214,
+    "not_produced/": 5
+   },
+   "S2_saem_sem_conferencia": [
+    {
+     "label": "cal-en_prose-001-v0",
+     "split": "train",
+     "family": "en_prose",
+     "conference_state": "not_produced",
+     "source": "docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign_start-index-27/pv3-live-campaign-2026-10-07t05-11-27-123_calls.jsonl:4"
+    },
+    {
+     "label": "cal-code_ts-006-v2",
+     "split": "train",
+     "family": "code_ts",
+     "conference_state": "not_produced",
+     "source": "docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign_start-index-27/pv3-live-campaign-2026-10-07t05-11-27-123_calls.jsonl:48"
+    },
+    {
+     "label": "cal-json-000-v0",
+     "split": "holdout",
+     "family": "json",
+     "conference_state": "not_produced",
+     "source": "docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign_start-index-27/pv3-live-campaign-2026-10-07t05-11-27-123_calls.jsonl:55"
+    },
+    {
+     "label": "cal-markdown_table-002-v1",
+     "split": "train",
+     "family": "markdown_table",
+     "conference_state": "not_produced",
+     "source": "docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign_start-index-27/pv3-live-campaign-2026-10-07t05-11-27-123_calls.jsonl:89"
+    },
+    {
+     "label": "cal-numeric-005-v1",
+     "split": "holdout",
+     "family": "numeric",
+     "conference_state": "not_produced",
+     "source": "docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign_start-index-27/pv3-live-campaign-2026-10-07t05-11-27-123_calls.jsonl:151"
+    }
+   ],
+   "S3_pares_calibracao": 210,
+   "S3_saem_cache": [
+    "cache-1 (cacheProbe=1, declared_input=4521, cache_read=0)",
+    "cache-2 (cacheProbe=2, declared_input=4521, cache_read=0)",
+    "cache-3 (cacheProbe=3, declared_input=4521, cache_read=0)"
+   ],
+   "S3_saem_besu": [
+    "besu (declared_input=16, local=9)"
+   ],
+   "S3_nao_classificados": [],
+   "S4_splits": {
+    "validation": 54,
+    "train": 119,
+    "holdout": 37
+   },
+   "S4_split_x_familia": {
+    "train": {
+     "pt_prose": 15,
+     "en_prose": 11,
+     "code_ts": 8,
+     "json": 15,
+     "markdown_table": 17,
+     "mixed_unicode": 17,
+     "numeric": 15,
+     "tiny": 21
+    },
+    "validation": {
+     "pt_prose": 9,
+     "en_prose": 6,
+     "code_ts": 9,
+     "json": 6,
+     "markdown_table": 9,
+     "mixed_unicode": 6,
+     "numeric": 6,
+     "tiny": 3
+    },
+    "holdout": {
+     "pt_prose": 3,
+     "en_prose": 9,
+     "code_ts": 9,
+     "json": 5,
+     "markdown_table": 0,
+     "mixed_unicode": 3,
+     "numeric": 5,
+     "tiny": 3
+    }
+   },
+   "S4_grupos_holdout": 13,
+   "S4_familias": {
+    "en_prose": 26,
+    "code_ts": 26,
+    "json": 26,
+    "markdown_table": 26,
+    "mixed_unicode": 26,
+    "numeric": 26,
+    "tiny": 27,
+    "pt_prose": 27
+   },
+   "particao_ok": true,
+   "cadeia": "220 linhas -> 219 realizadas (-1 recusas) -> 214 com conferencia capturada (-5 not_produced) -> 210 pares (-3 cache, -1 besu) = 119/54/37"
+  },
+  "gemini": {
+   "S0_linhas_calls_jsonl": 221,
+   "S0_composicao": {
+    "calibration_sample_lines": 217,
+    "docIds_unicos_enviados": 216,
+    "docIds_do_corpus_nunca_enviados": [],
+    "cache_probe": 3,
+    "besu": 1
+   },
+   "S1_realizadas_http200": 220,
+   "S1_saem_recusas": [
+    {
+     "label": "cal-code_ts-004-v0",
+     "httpStatus": 429,
+     "split": "validation",
+     "family": "code_ts",
+     "repetida_depois": "SIM (repeticao concluida)",
+     "source": "docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign/pv3-gemini35-live-campaign-2026-10-07t04-52-52-082_calls.jsonl:67"
+    }
+   ],
+   "S1_coleta_denominador": {
+    "concluidas": 220,
+    "textos_unicos_concluidos": 216,
+    "cache": 3,
+    "besu": 1,
+    "nota": "denominador da COLETA (custo, tokens declarados, campaign_summary.json): todas as concluidas, inclusive cache e besu e as sem conferencia"
+   },
+   "S2_com_conferencia_capturada": 216,
+   "S2_estado_conferencia_das_realizadas": {
+    "incomplete/not_applicable": 216,
+    "not_produced/": 4
+   },
+   "S2_saem_sem_conferencia": [
+    {
+     "label": "cal-json-008-v2",
+     "split": "train",
+     "family": "json",
+     "conference_state": "not_produced",
+     "source": "docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign_start-index-66/pv3-gemini35-live-campaign-2026-10-07t05-03-44-975_calls.jsonl:42"
+    },
+    {
+     "label": "cal-markdown_table-005-v2",
+     "split": "train",
+     "family": "markdown_table",
+     "conference_state": "not_produced",
+     "source": "docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign_start-index-66/pv3-gemini35-live-campaign-2026-10-07t05-03-44-975_calls.jsonl:60"
+    },
+    {
+     "label": "cal-pt_prose-001-v2",
+     "split": "holdout",
+     "family": "pt_prose",
+     "conference_state": "not_produced",
+     "source": "docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign/pv3-gemini35-live-campaign-2026-10-07t04-52-52-082_calls.jsonl:6"
+    },
+    {
+     "label": "cal-code_ts-003-v1",
+     "split": "holdout",
+     "family": "code_ts",
+     "conference_state": "not_produced",
+     "source": "docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign/pv3-gemini35-live-campaign-2026-10-07t04-52-52-082_calls.jsonl:65"
+    }
+   ],
+   "S3_pares_calibracao": 212,
+   "S3_saem_cache": [
+    "cache-1 (cacheProbe=1, declared_input=4228, cache_read=)",
+    "cache-2 (cacheProbe=2, declared_input=4228, cache_read=2032)",
+    "cache-3 (cacheProbe=3, declared_input=4228, cache_read=2032)"
+   ],
+   "S3_saem_besu": [
+    "besu (declared_input=10, local=9)"
+   ],
+   "S3_nao_classificados": [],
+   "S4_splits": {
+    "validation": 54,
+    "train": 121,
+    "holdout": 37
+   },
+   "S4_split_x_familia": {
+    "train": {
+     "pt_prose": 15,
+     "en_prose": 12,
+     "code_ts": 9,
+     "json": 14,
+     "markdown_table": 17,
+     "mixed_unicode": 18,
+     "numeric": 15,
+     "tiny": 21
+    },
+    "validation": {
+     "pt_prose": 9,
+     "en_prose": 6,
+     "code_ts": 9,
+     "json": 6,
+     "markdown_table": 9,
+     "mixed_unicode": 6,
+     "numeric": 6,
+     "tiny": 3
+    },
+    "holdout": {
+     "pt_prose": 2,
+     "en_prose": 9,
+     "code_ts": 8,
+     "json": 6,
+     "markdown_table": 0,
+     "mixed_unicode": 3,
+     "numeric": 6,
+     "tiny": 3
+    }
+   },
+   "S4_grupos_holdout": 13,
+   "S4_familias": {
+    "code_ts": 26,
+    "json": 26,
+    "markdown_table": 26,
+    "mixed_unicode": 27,
+    "numeric": 27,
+    "tiny": 27,
+    "pt_prose": 26,
+    "en_prose": 27
+   },
+   "particao_ok": true,
+   "cadeia": "221 linhas -> 220 realizadas (-1 recusas) -> 216 com conferencia capturada (-4 not_produced) -> 212 pares (-3 cache, -1 besu) = 121/54/37"
+  }
+ },
+ "totais": {
+  "linhas": 662,
+  "realizadas": 658,
+  "pares": 633,
+  "excluidas_nominais": 29
+ },
+ "mixed_unicode_000_v1": {
+  "openai": "enviado, recusado http 400 invalid_json (S1), nunca repetido: texto ausente para a OpenAI",
+  "anthropic": "NUNCA enviado (ausente de todos os _calls.jsonl da Anthropic): a exclusao pre-declarada foi aplicada antes do envio (F-OVN2-08, RESULTADOS_CALIBRACAO.md); por isso a Anthropic tem 220 linhas e nao 221",
+  "gemini": "enviado e concluido (http 200): entra na coleta e nos pares da Gemini"
+ }
+}

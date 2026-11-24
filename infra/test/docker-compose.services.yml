@@ -1,0 +1,40 @@
+# Isolated PostgreSQL + Redis for local integration rehearsals (not production).
+# Own project name, host ports and named volumes: does not touch other OTK stacks.
+#   docker compose -f infra/test/docker-compose.services.yml up -d
+#   docker compose -f infra/test/docker-compose.services.yml stop      # keeps data
+# Credentials below are fixed test values for a loopback-only stack, not secrets.
+name: otk-test
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: otk
+      POSTGRES_USER: otk
+      POSTGRES_PASSWORD: ${OTK_TEST_PG_PASSWORD:-otk-test-only}
+    ports:
+      - "127.0.0.1:${OTK_TEST_PG_PORT:-55432}:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U otk -d otk"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${OTK_TEST_REDIS_PASSWORD:-otk-test-only}"]
+    ports:
+      - "127.0.0.1:${OTK_TEST_REDIS_PORT:-56379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${OTK_TEST_REDIS_PASSWORD:-otk-test-only}", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pg_data:
+  redis_data:

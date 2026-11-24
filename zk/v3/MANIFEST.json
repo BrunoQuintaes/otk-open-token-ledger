@@ -1,0 +1,82 @@
+{
+  "schema": "otk.zk_manifest.v1",
+  "circuitId": "metering_v3@sha256:11ae0c5394ace052a71f7f633dadf3fed3284620565908c5bb873065a6a4ec32",
+  "label": "setup demonstrativo local — confiança concentrada no executor A (sessão Claude Code, run 20260930-1625); não é cerimônia; sem participantes independentes",
+  "generatedAt": "2026-10-01T00:11:45.149Z",
+  "circuit": {
+    "source": "zk/circuits/metering_v3.circom",
+    "constraints": 1168,
+    "publicSignals": [
+      "commitment",
+      "epoch",
+      "minUsage",
+      "maxUsage"
+    ],
+    "privateInputs": [
+      "usage",
+      "blinding",
+      "userRef"
+    ]
+  },
+  "tools": {
+    "circom": {
+      "version": "2.1.6",
+      "sha256": "d7d96da34cdee7318ddba6b7795543c97f5bde871832827e067920ddfed5457e",
+      "flags": "--r1cs --wasm --sym --O1 -l zk/circuits"
+    },
+    "snarkjs": "0.7.6",
+    "ffjavascript": "0.2.63",
+    "circomlib": "35e54ea21da3e8762557234298dbb553c175ea8d",
+    "node": "v22.18.0"
+  },
+  "phase1": {
+    "power": 11,
+    "curve": "bn128",
+    "contributions": [
+      "otk-a-demo-local-1"
+    ],
+    "beacon": null,
+    "source": "new local accumulator (not Hermez, not the historical pot12)"
+  },
+  "phase2": {
+    "contributions": [
+      "otk-a-demo-local-1"
+    ],
+    "beacon": null
+  },
+  "registry": {
+    "contract": "tools/hardhat/contracts/v3/ReceiptRegistryV3.sol",
+    "verifierContract": "MeteringVerifierV3Demo",
+    "bucketPolicy": "otk.public_bucket.fixed@1:width=1000CU:unit=microCU",
+    "bucketWidthUnits": "1000000000"
+  },
+  "hashRule": "sha256; files with extension .circom/.sol/.js/.sym/.json/.md/.txt hashed after CRLF→LF normalization",
+  "files": {
+    "zk/circuits/metering_v3.circom": "d0a9cae212c0dbae3d323e4648c2c1220782b6c19067d85cb68840fecc767b6d",
+    "zk/v3/build/metering_v3.r1cs": "11ae0c5394ace052a71f7f633dadf3fed3284620565908c5bb873065a6a4ec32",
+    "zk/v3/build/metering_v3.sym": "5dbcfb4da80849fc30646429ec7488a41c7493712a761e72629f7b5706672016",
+    "zk/v3/build/metering_v3_js/metering_v3.wasm": "316592b55b1d8197b92ed4b341f30134a1a588b280f9e0f81a268f1e1f4c7732",
+    "zk/v3/build/metering_v3_js/witness_calculator.js": "2bf018b05cb6dc399e72f57721d0f7b236b1a4a2d438d8b1c6763e9cd38ac8a8",
+    "zk/v3/setup/pot11_demo_final.ptau": "b56d19053ce229b5ec858143526f0613ae9c6f5a9e3884517c99ef6b9b21a6ec",
+    "zk/v3/keys/metering_v3_demo_0000.zkey": "ffd2fde0c582eb5cfa0de121901b423ff2915c311db91539a7782e29d154ea4a",
+    "zk/v3/keys/metering_v3_demo_final.zkey": "5ac82ed57d9aa3c0f2ff76b88310426f775bb94251bebdc6464b83eb62c5f2a2",
+    "zk/v3/keys/metering_v3_demo_vkey.json": "7b715d44f4bb156d10836cf20fb1de76ef65b2253beab1203f7a58660aec129b",
+    "tools/hardhat/contracts/v3/MeteringVerifierV3Demo.sol": "54890ca43832afe9a954cec01fa103fa1bf2a509aa16fd864be70696cfd8edeb"
+  },
+  "intermediate": {
+    "zk/v3/setup/pot11_demo_0000.ptau": "afc41176878f03215302ab42c26ce72e41ef409d8625b42ce94b9c1b52beb12d",
+    "zk/v3/setup/pot11_demo_0001.ptau": "a019096e44e05b995e6aec02ba0ccd30892d28f937fb0090d52a619bb8599201"
+  },
+  "log": [
+    "2026-10-01T00:11:02.200Z circom zk/circuits/metering_v3.circom --r1cs --wasm --sym --O1 -l zk/circuits -o zk/v3/build",
+    "2026-10-01T00:11:06.468Z r1cs constraints=1168 outputs=1 pubInputs=3 prvInputs=3",
+    "2026-10-01T00:11:06.470Z powersOfTau.newAccumulator bn128 2^11",
+    "2026-10-01T00:11:06.905Z powersOfTau.contribute \"otk-a-demo-local-1\" (entropy: crypto.randomBytes, not recorded)",
+    "2026-10-01T00:11:09.801Z powersOfTau.preparePhase2",
+    "2026-10-01T00:11:41.532Z powersOfTau.verify final = true",
+    "2026-10-01T00:11:41.767Z zKey.newZKey r1cs ptau",
+    "2026-10-01T00:11:43.566Z zKey.contribute \"otk-a-demo-local-1\" (entropy: crypto.randomBytes, not recorded)",
+    "2026-10-01T00:11:45.096Z zKey.verifyFromR1cs final = true",
+    "2026-10-01T00:11:45.123Z exported vkey + MeteringVerifierV3Demo.sol"
+  ]
+}

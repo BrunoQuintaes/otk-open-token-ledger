@@ -1,0 +1,34 @@
+{
+ "schema": "otk.h2eval.synthetic_audio_spec.v1",
+ "format": "WAV PCM 16-bit mono",
+ "sampleRateHz": 16000,
+ "content": "pure tones 440/660/220 Hz and silence in a 4 s cycle; no voice, no third-party content",
+ "generator": "scripts/h2eval/modal/tools/gen_synthetic_audio.mjs",
+ "referenceFigureNotAnEstimator": "google/audio.html: \"32 tokens per second of audio (1 minute = 1,920 tokens)\" - reference only; all audio is UNSUPPORTED_FOR_ESTIMATION (C141 B2)",
+ "files": [
+  {
+   "file": "synthetic_tone_10s_16k_mono.wav",
+   "seconds": 10,
+   "bytes": 320044,
+   "sha256": "a7bd09ebcfe4c290ff8baef8fc1e8b277f4b0071996901eaa9c2e24da73a3787",
+   "documentedReferenceTokens_NOT_ESTIMATE": 320,
+   "mimeType": "audio/wav"
+  },
+  {
+   "file": "synthetic_tone_60s_16k_mono.wav",
+   "seconds": 60,
+   "bytes": 1920044,
+   "sha256": "2b386cf852965770dcb5cd87ba08332f33f205e723ebfdc5b2e9b074e7e2493e",
+   "documentedReferenceTokens_NOT_ESTIMATE": 1920,
+   "mimeType": "audio/wav"
+  },
+  {
+   "file": "synthetic_tone_180s_16k_mono.wav",
+   "seconds": 180,
+   "bytes": 5760044,
+   "sha256": "425959671548f458ee74d37176cfda200359c948fbe77dce77a42a29d90bb452",
+   "documentedReferenceTokens_NOT_ESTIMATE": 5760,
+   "mimeType": "audio/wav"
+  }
+ ]
+}

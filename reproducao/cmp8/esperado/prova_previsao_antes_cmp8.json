@@ -1,0 +1,92 @@
+{
+ "schema": "otk.e2e_prep.prova_previsao_antes.v1",
+ "autor": "E2E_PREP (C160)",
+ "geradoUtc": "2026-11-23T19:37:04.762Z",
+ "executor": "b0ec6f2444c9648d13378ac5990a9e8ed7093b35",
+ "raiz": "C:/otk-h2eval-runs/estudo_cmp8",
+ "provedores": {
+  "openai": {
+   "journalSha256": "ca7ddad6c236b1323fdd869d8013ea00b5ea325d8e07736d119f9cb0a900c698",
+   "cadeia": "OK",
+   "porModelo": {
+    "gpt-4o-mini-2024-07-18": {
+     "enviadas": 215,
+     "snapshotAntesDoEnvio": 215,
+     "estado_ESTIMATED": 215,
+     "L0IgualContagemLocalTentativa": 215
+    },
+    "gpt-6-luna": {
+     "enviadas": 215,
+     "snapshotAntesDoEnvio": 215,
+     "estado_UNSUPPORTED_FOR_ESTIMATION": 215
+    }
+   },
+   "exemplosFalha": []
+  },
+  "anthropic": {
+   "journalSha256": "5d25825b5634687ac707ba0f563d49f6de2a135171cfe6f32037c50be6d69fb4",
+   "cadeia": "OK",
+   "porModelo": {
+    "claude-haiku-4-5-20251001": {
+     "enviadas": 215,
+     "snapshotAntesDoEnvio": 215,
+     "estado_ESTIMATED": 215,
+     "L0IgualContagemLocalTentativa": 215
+    },
+    "claude-haiku-5-5": {
+     "enviadas": 215,
+     "snapshotAntesDoEnvio": 215,
+     "estado_ESTIMATED": 215,
+     "L0IgualContagemLocalTentativa": 215
+    },
+    "claude-sonnet-5-5": {
+     "enviadas": 215,
+     "snapshotAntesDoEnvio": 215,
+     "estado_ESTIMATED": 215,
+     "L0IgualContagemLocalTentativa": 215
+    },
+    "claude-opus-5-5": {
+     "enviadas": 215,
+     "snapshotAntesDoEnvio": 215,
+     "estado_ESTIMATED": 215,
+     "L0IgualContagemLocalTentativa": 215
+    }
+   },
+   "exemplosFalha": []
+  },
+  "google": {
+   "journalSha256": "3d92c42cdfec568b66e8d3eccaa21b08466be9c6905681dfb87ff1dde8728dc1",
+   "cadeia": "OK",
+   "porModelo": {
+    "gemini-3.5-flash-lite": {
+     "enviadas": 1,
+     "snapshotAntesDoEnvio": 1,
+     "estado_ESTIMATED": 1,
+     "L0IgualContagemLocalTentativa": 1
+    }
+   },
+   "exemplosFalha": []
+  },
+  "google_v1_3": {
+   "journalSha256": "558dd69ff9d5378cbf92bb771ab2f35b037846cb30dce6be8769e75b93d82e75",
+   "cadeia": "OK",
+   "porModelo": {
+    "gemini-3.5-flash-lite": {
+     "enviadas": 214,
+     "snapshotAntesDoEnvio": 214,
+     "estado_ESTIMATED": 214,
+     "L0IgualContagemLocalTentativa": 214
+    },
+    "gemini-3.1-flash-lite": {
+     "enviadas": 215,
+     "snapshotAntesDoEnvio": 215,
+     "estado_ESTIMATED": 215,
+     "L0IgualContagemLocalTentativa": 215
+    }
+   },
+   "exemplosFalha": []
+  }
+ },
+ "falhas": 0,
+ "veredito": "L0_GRAVADO_ANTES_DO_ENVIO_EM_TODAS_AS_OPERACOES_ENVIADAS"
+}

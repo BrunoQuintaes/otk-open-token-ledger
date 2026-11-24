@@ -1,0 +1,11 @@
+# Optional override for docker-compose.services.yml: pins the stack's default network to an explicit
+# subnet so parallel environments never share or collide on an address range (fechamento pós-S5,
+# RV2-07). Check `docker network ls` / `docker network inspect` for a free range first.
+#   OTK_TEST_PG_PORT=56032 OTK_TEST_REDIS_PORT=56979 OTK_TEST_SUBNET=172.31.230.0/24 \
+#   docker compose -p otk-d1d8-1625-fps5 -f infra/test/docker-compose.services.yml \
+#     -f infra/test/docker-compose.services.subnet.yml up -d
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${OTK_TEST_SUBNET:?set OTK_TEST_SUBNET to a free range, e.g. 172.31.230.0/24}

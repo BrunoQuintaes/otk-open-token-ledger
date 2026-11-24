@@ -1,0 +1,64 @@
+# OTK Benchmark Rig — Linux/Docker
+# ADR-0102: Benchmark Rig (Linux/Docker + netem + N>=100)
+#
+# Provides reproducible, controlled environment for OTK benchmarks.
+# Eliminates WSL2/Windows virtualization as a confounding variable.
+#
+# Build:
+#   docker build -f tools/bench/Dockerfile.bench -t otk-bench .
+#
+# Run:
+#   docker run --rm --cap-add NET_ADMIN -v $(pwd)/docs/_ops:/app/docs/_ops otk-bench
+
+FROM ubuntu:22.04
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    # Network simulation
+    iproute2 \
+    iputils-ping \
+    # Build tools
+    curl \
+    git \
+    ca-certificates \
+    # Hardware info for EVD
+    procps \
+    lshw \
+    # Cleanup
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js 24.x (matches production environment)
+RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install snarkjs globally (for ZK proof benchmarks)
+RUN npm install -g snarkjs@0.7.4
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files first (layer cache optimization)
+COPY package*.json ./
+COPY tsconfig.json ./
+
+# Install project dependencies
+RUN npm ci --prefer-offline 2>/dev/null || npm install
+
+# Copy source (full repo — needed for all benchmarks)
+COPY . .
+
+# Collect hardware specs at image build time (for EVD)
+RUN echo "=== Build-time hardware info ===" && \
+    uname -a && \
+    cat /proc/cpuinfo | grep "model name" | head -1 && \
+    cat /proc/meminfo | head -5
+
+# Default entrypoint: run benchmark harness
+ENTRYPOINT ["bash", "tools/bench/scripts/run_bench.sh"]
+
+# Default args: baseline scenario, N=100
+CMD ["--scenario=baseline", "--N=100"]

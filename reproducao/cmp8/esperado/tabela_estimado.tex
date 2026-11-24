@@ -1,0 +1,24 @@
+% Gerado por tex_estimado.mjs (CMP8_ESTIMADO, C160) a partir de tabela_estimado.json. TEXTO NOVO, NÃO APROVADO.
+\begin{table}[htbp]
+\centering
+\caption{Contagem do OTK antes de ver o declarado e entrada declarada pelos provedores, por modelo (215 textos da CMP8)}
+\label{tab:cmp8-estimado-declarado}
+\scriptsize
+\begin{tabular}{@{}llrrrrrrlrrr@{}}
+\toprule
+ & & \multicolumn{6}{c}{Contagem do OTK (sem correção)} & \multicolumn{4}{c}{Com perfil aprovado} \\
+\cmidrule(lr){3-8}\cmidrule(l){9-12}
+Modelo & Régua & Mediana OTK & Mediana declarada & Viés & Erro abs. médio & Erro rel. mediano & Fora do limite & Perfil & Viés & Erro abs. médio & Fora do limite \\
+\midrule
+gpt-4o-mini & o200k (exata) & 185 & 192 & -7 & 7 & 3{,}6\,\% & 0/215 & sim (+7) & 0 & 0 & 0/215 \\
+gpt-6-luna & sem régua (não suportado) & -- & -- & -- & -- & -- & -- & não & -- & -- & -- \\
+claude-haiku-4-5 & cl100k (aprox.) & 201 & 242 & -40{,}8 & 40{,}8 & 17{,}8\,\% & 122/215 & não & -- & -- & -- \\
+claude-haiku-5-5 & cl100k (aprox.) & 201 & 279 & -99{,}1 & 99{,}1 & 33{,}3\,\% & 158/215 & não & -- & -- & -- \\
+claude-sonnet-5-5 & cl100k (aprox.) & 201 & 281 & -101{,}1 & 101{,}1 & 34{,}3\,\% & 170/215 & sim & 25{,}6 & 50{,}1 & 155/215 \\
+claude-opus-5-5 & cl100k (aprox.) & 201 & 281 & -101{,}1 & 101{,}1 & 34{,}3\,\% & 170/215 & sim & 18{,}1 & 45{,}7 & 146/215 \\
+gemini-3.5-flash-lite & cl100k (aprox.) & 201 & 211 & -48{,}2 & 67{,}4 & 17{,}1\,\% & 134/215 & não & -- & -- & -- \\
+gemini-3.1-flash-lite & cl100k (aprox.) & 201 & 211 & -48{,}2 & 67{,}4 & 17{,}1\,\% & 134/215 & sim & -48{,}2 & 67{,}4 & 134/215 \\
+\bottomrule
+\end{tabular}
+\nota{Conferência, não previsão gravada antes: a contagem do OTK (contador otk.local\_counter.b3@1, o mesmo da coleta de 7/10) é determinística e não usa o declarado, mas foi calculada depois da coleta. Viés = média de (OTK $-$ declarado); erro relativo = |OTK $-$ declarado| / declarado; fora do limite = |diferença| $>$ 16 tokens e $>$ 10\,\% ao mesmo tempo. O contador não suporta o gpt-6-luna. O gpt-6-luna não tem régua no contador: sem contagem do OTK. Google: declarado da refeitura V1\_3 (429 chamadas) mais a 1ª chamada do gemini-3.5 da coleta inicial (pt\_prose-000-v0). Perfis: gpt-4o-mini, o de 7/10 (+7, aprovado); Sonnet e Opus 5.5, os do H2-EVAL aprovados no holdout, e gemini-3.1, o GOOGLE-R (M0: a própria contagem), aplicados fora do escopo em que foram validados (leitura exploratória); Haiku 4.5 e Gemini 3.5 têm perfis reprovados (não aplicados); Haiku 5.5 não tem perfil aprovado.}
+\end{table}

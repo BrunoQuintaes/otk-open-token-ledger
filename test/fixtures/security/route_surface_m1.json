@@ -1,0 +1,1858 @@
+{
+ "description": "RUN-S 2026-10-09 (Gate S-05): routes registered in the source (scripts/ops/extract_routes.mjs) with the access class observed with auth enabled. A route that appears or disappears without updating this file fails test/security/route_surface.test.ts. Public routes need a publicReason.",
+ "generatedFrom": "probe with auth enabled, no credential and a VIEWER of another tenant",
+ "routes": [
+  {
+   "key": "api ANY prefix:/v1/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "ANY"
+   ],
+   "kind": "prefix",
+   "path": "/v1/",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "404",
+   "publicReason": "dispatcher (prefix strip)"
+  },
+  {
+   "key": "api GET eq:/health @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/health",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "liveness, no data"
+  },
+  {
+   "key": "api GET eq:/status @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/status",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "public status page (component health, no tenant data)"
+  },
+  {
+   "key": "api GET eq:/status/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/status/",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "idem"
+  },
+  {
+   "key": "api ANY eq:/data/export @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "ANY"
+   ],
+   "kind": "eq",
+   "path": "/data/export",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api ANY prefix:/data/export/status/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "ANY"
+   ],
+   "kind": "prefix",
+   "path": "/data/export/status/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api POST eq:/data/export @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "eq",
+   "path": "/data/export",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET prefix:/data/export/status/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "prefix",
+   "path": "/data/export/status/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/pricing @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/pricing",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "public price page"
+  },
+  {
+   "key": "api GET eq:/pricing/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/pricing/",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "idem"
+  },
+  {
+   "key": "api GET eq:/analytics @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/analytics",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "HTML shell; data at /analytics/cu-trend needs a credential"
+  },
+  {
+   "key": "api GET eq:/analytics/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/analytics/",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "idem"
+  },
+  {
+   "key": "api GET eq:/analytics/cu-trend @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/analytics/cu-trend",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/demo @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/demo",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "seeded demo sandbox, synthetic data"
+  },
+  {
+   "key": "api GET eq:/demo/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/demo/",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "idem"
+  },
+  {
+   "key": "api GET eq:/changelog @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/changelog",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "release notes"
+  },
+  {
+   "key": "api GET eq:/changelog/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/changelog/",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "idem"
+  },
+  {
+   "key": "api GET eq:/changelog/json @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/changelog/json",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "release notes"
+  },
+  {
+   "key": "api GET eq:/terms @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/terms",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "legal page"
+  },
+  {
+   "key": "api GET eq:/terms/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/terms/",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "idem"
+  },
+  {
+   "key": "api GET eq:/privacy @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/privacy",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "legal page"
+  },
+  {
+   "key": "api GET eq:/privacy/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/privacy/",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "idem"
+  },
+  {
+   "key": "api GET eq:/dpa @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/dpa",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "legal page"
+  },
+  {
+   "key": "api GET eq:/dpa/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/dpa/",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "idem"
+  },
+  {
+   "key": "api GET eq:/healthz @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/healthz",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "liveness"
+  },
+  {
+   "key": "api GET eq:/readyz @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/readyz",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "readiness"
+  },
+  {
+   "key": "api GET eq:/version @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/version",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "build version"
+  },
+  {
+   "key": "api POST eq:/ping @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "eq",
+   "path": "/ping",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "echo"
+  },
+  {
+   "key": "api GET eq:/metrics @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/metrics",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "instance metrics; ?format=json adds platform-wide counters, no tenant identifier (limitation M3)"
+  },
+  {
+   "key": "api GET eq:/events/latest @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/events/latest",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/ratelimit/status @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/ratelimit/status",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "static status"
+  },
+  {
+   "key": "api GET eq:/openapi.json @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/openapi.json",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "API spec"
+  },
+  {
+   "key": "api GET eq:/api-docs @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/api-docs",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "docs viewer"
+  },
+  {
+   "key": "api GET eq:/system/status @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/system/status",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "public component status; publishes platform-wide counters (receiptCount, deadLetterPending) but no tenant identifier (RV-RUNS-08/RV2-RUNS-08, limitation M3)"
+  },
+  {
+   "key": "api POST eq:/receipts @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "eq",
+   "path": "/receipts",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET prefix:/receipts/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "prefix",
+   "path": "/receipts/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/accounting/balance @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/accounting/balance",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api POST eq:/admin/redis/reproject @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "eq",
+   "path": "/admin/redis/reproject",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api POST eq:/admin/flush-batch @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "eq",
+   "path": "/admin/flush-batch",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/admin/prover/status @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/admin/prover/status",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/admin/chain-head @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/admin/chain-head",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/admin/tal-summary @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/admin/tal-summary",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api POST eq:/admin/tenants/reload @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "eq",
+   "path": "/admin/tenants/reload",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/plans @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/plans",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "public plan catalogue"
+  },
+  {
+   "key": "api GET eq:/invoices @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/invoices",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api ANY prefix:/auth/saml/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "ANY"
+   ],
+   "kind": "prefix",
+   "path": "/auth/saml/",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "404",
+   "publicReason": "dispatcher"
+  },
+  {
+   "key": "api ANY prefix:/auth/oidc/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "ANY"
+   ],
+   "kind": "prefix",
+   "path": "/auth/oidc/",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "404",
+   "publicReason": "dispatcher"
+  },
+  {
+   "key": "api GET eq:/auth/saml/metadata @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/auth/saml/metadata",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "SP metadata"
+  },
+  {
+   "key": "api POST eq:/auth/saml/acs @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "eq",
+   "path": "/auth/saml/acs",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "501",
+   "publicReason": "SSO disabled: always 501 (RUN-S 2e3d07d)"
+  },
+  {
+   "key": "api GET eq:/auth/oidc/callback @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/auth/oidc/callback",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "501",
+   "publicReason": "SSO disabled: always 501 (RUN-S 2e3d07d)"
+  },
+  {
+   "key": "api ANY prefix:/scim/v2/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "ANY"
+   ],
+   "kind": "prefix",
+   "path": "/scim/v2/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/stream @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/stream",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401",
+   "streaming": true
+  },
+  {
+   "key": "api ANY prefix:/v1/webhooks @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "ANY"
+   ],
+   "kind": "prefix",
+   "path": "/v1/webhooks",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/webhooks @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/webhooks",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401 (at /v1/v1/webhooks)",
+   "sample": "/v1/v1/webhooks"
+  },
+  {
+   "key": "api POST eq:/webhooks @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "eq",
+   "path": "/webhooks",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401 (at /v1/v1/webhooks)",
+   "sample": "/v1/v1/webhooks"
+  },
+  {
+   "key": "api GET eq:/billing/cycles @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/billing/cycles",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api POST eq:/billing/checkout @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "eq",
+   "path": "/billing/checkout",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api POST eq:/webhooks/stripe @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "eq",
+   "path": "/webhooks/stripe",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "500",
+   "publicReason": "authenticated by Stripe signature; 500 when not configured"
+  },
+  {
+   "key": "api ANY prefix:/admin/gdpr/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "ANY"
+   ],
+   "kind": "prefix",
+   "path": "/admin/gdpr/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET prefix:/admin/gdpr/export/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "prefix",
+   "path": "/admin/gdpr/export/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api DELETE prefix:/admin/gdpr/erase/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "DELETE"
+   ],
+   "kind": "prefix",
+   "path": "/admin/gdpr/erase/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api ANY prefix:/admin/flags @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "ANY"
+   ],
+   "kind": "prefix",
+   "path": "/admin/flags",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/admin/flags @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/admin/flags",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/admin/flags/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/admin/flags/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api POST eq:/admin/flags @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "eq",
+   "path": "/admin/flags",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api POST eq:/admin/flags/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "eq",
+   "path": "/admin/flags/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/flags/evaluate @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/flags/evaluate",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api POST eq:/admin/evidence/index @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "eq",
+   "path": "/admin/evidence/index",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api POST eq:/admin/plans/assign @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "eq",
+   "path": "/admin/plans/assign",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/admin/plans/assignments @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/admin/plans/assignments",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/admin/dead-letters @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/admin/dead-letters",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET prefix:/admin/dead-letters/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "prefix",
+   "path": "/admin/dead-letters/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/v1/reconciliation/reports @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/v1/reconciliation/reports",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET prefix:/v1/reconciliation/reports/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "prefix",
+   "path": "/v1/reconciliation/reports/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api POST eq:/v1/reconciliation/run @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "eq",
+   "path": "/v1/reconciliation/run",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api POST eq:/admin/tenants @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "eq",
+   "path": "/admin/tenants",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/admin/tenants @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/admin/tenants",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET prefix:/admin/tenants/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "prefix",
+   "path": "/admin/tenants/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api PUT prefix:/admin/tenants/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "PUT"
+   ],
+   "kind": "prefix",
+   "path": "/admin/tenants/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api DELETE prefix:/admin/tenants/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "DELETE"
+   ],
+   "kind": "prefix",
+   "path": "/admin/tenants/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api POST eq:/signup @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "eq",
+   "path": "/signup",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "400",
+   "publicReason": "creates an account (PF-NEW-09: OWNER at once, documented)"
+  },
+  {
+   "key": "api POST eq:/login @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "eq",
+   "path": "/login",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "400",
+   "publicReason": "issues a JWT on valid password"
+  },
+  {
+   "key": "api POST eq:/verify-email @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "eq",
+   "path": "/verify-email",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "400",
+   "publicReason": "HMAC email token"
+  },
+  {
+   "key": "api POST eq:/keys @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "eq",
+   "path": "/keys",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/keys @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/keys",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET prefix:/keys/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "prefix",
+   "path": "/keys/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api DELETE prefix:/keys/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "DELETE"
+   ],
+   "kind": "prefix",
+   "path": "/keys/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api ANY prefix:/app @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "ANY"
+   ],
+   "kind": "prefix",
+   "path": "/app",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "404",
+   "publicReason": "dashboard dispatcher"
+  },
+  {
+   "key": "api GET eq:/app/webhooks @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/app/webhooks",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET prefix:/app/api/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "prefix",
+   "path": "/app/api/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api ANY eq:/app/api/usage @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "ANY"
+   ],
+   "kind": "eq",
+   "path": "/app/api/usage",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api ANY eq:/app/api/receipts @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "ANY"
+   ],
+   "kind": "eq",
+   "path": "/app/api/receipts",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api ANY eq:/app/api/providers/health @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "ANY"
+   ],
+   "kind": "eq",
+   "path": "/app/api/providers/health",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api POST eq:/teams @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "eq",
+   "path": "/teams",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/teams @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/teams",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/v1/reports/teams @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/v1/reports/teams",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api ANY eq:/v1/admin/prices @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "ANY"
+   ],
+   "kind": "eq",
+   "path": "/v1/admin/prices",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api ANY eq:/v1/admin/prices/refresh @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "ANY"
+   ],
+   "kind": "eq",
+   "path": "/v1/admin/prices/refresh",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/v1/admin/prices @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/v1/admin/prices",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api POST eq:/v1/admin/prices/refresh @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "eq",
+   "path": "/v1/admin/prices/refresh",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/admin/finance @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/admin/finance",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/metrics/prover @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/metrics/prover",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "prover metrics, no tenant data (limitation NF-21, M3)"
+  },
+  {
+   "key": "api POST eq:/auth/refresh @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "eq",
+   "path": "/auth/refresh",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "400",
+   "publicReason": "refresh-token rotation"
+  },
+  {
+   "key": "api POST eq:/v1/auth/refresh @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "eq",
+   "path": "/v1/auth/refresh",
+   "file": "src/api/routes.ts",
+   "access": "public",
+   "noCredentialStatus": "400",
+   "publicReason": "idem (double prefix)"
+  },
+  {
+   "key": "api GET eq:/admin/health/full @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/admin/health/full",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/v1/admin/ga-readiness @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/v1/admin/ga-readiness",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "proxy GET eq:/health @src/proxy/ProxyGateway.ts",
+   "server": "proxy",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/health",
+   "file": "src/proxy/ProxyGateway.ts",
+   "access": "see-server",
+   "noCredentialStatus": "not-probed",
+   "publicReason": "liveness"
+  },
+  {
+   "key": "proxy POST eq:/proxy @src/proxy/ProxyGateway.ts",
+   "server": "proxy",
+   "methods": [
+    "POST"
+   ],
+   "kind": "eq",
+   "path": "/proxy",
+   "file": "src/proxy/ProxyGateway.ts",
+   "access": "see-server",
+   "noCredentialStatus": "not-probed",
+   "publicReason": "proxy auth: static bearer; production A0 503 (cd43634); tested in metering_admission_matrix_rv01 and production_fail_closed"
+  },
+  {
+   "key": "prover GET eq:/health @src/prover/ProverDaemon.ts",
+   "server": "prover",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/health",
+   "file": "src/prover/ProverDaemon.ts",
+   "access": "see-server",
+   "noCredentialStatus": "not-probed",
+   "publicReason": "ProverDaemon has no authentication (NF-23, internal port 3001; limitation, M3)"
+  },
+  {
+   "key": "prover GET eq:/metrics @src/prover/ProverDaemon.ts",
+   "server": "prover",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/metrics",
+   "file": "src/prover/ProverDaemon.ts",
+   "access": "see-server",
+   "noCredentialStatus": "not-probed",
+   "publicReason": "ProverDaemon has no authentication (NF-23, internal port 3001; limitation, M3)"
+  },
+  {
+   "key": "prover POST eq:/prove @src/prover/ProverDaemon.ts",
+   "server": "prover",
+   "methods": [
+    "POST"
+   ],
+   "kind": "eq",
+   "path": "/prove",
+   "file": "src/prover/ProverDaemon.ts",
+   "access": "see-server",
+   "noCredentialStatus": "not-probed",
+   "publicReason": "ProverDaemon has no authentication (NF-23, internal port 3001; limitation, M3)"
+  },
+  {
+   "key": "api ANY prefix:/scim/v2/ @src/auth/scim/ScimRouter.ts",
+   "server": "api",
+   "methods": [
+    "ANY"
+   ],
+   "kind": "prefix",
+   "path": "/scim/v2/",
+   "file": "src/auth/scim/ScimRouter.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api ANY eq:/scim/v2/Users @src/auth/scim/ScimRouter.ts",
+   "server": "api",
+   "methods": [
+    "ANY"
+   ],
+   "kind": "eq",
+   "path": "/scim/v2/Users",
+   "file": "src/auth/scim/ScimRouter.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api ANY eq:/scim/v2/Groups @src/auth/scim/ScimRouter.ts",
+   "server": "api",
+   "methods": [
+    "ANY"
+   ],
+   "kind": "eq",
+   "path": "/scim/v2/Groups",
+   "file": "src/auth/scim/ScimRouter.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/app @src/dashboard/app.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/app",
+   "file": "src/dashboard/app.ts",
+   "access": "public",
+   "noCredentialStatus": "302",
+   "publicReason": "dashboard dispatcher"
+  },
+  {
+   "key": "api GET eq:/app/api/overview @src/dashboard/app.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/app/api/overview",
+   "file": "src/dashboard/app.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/app/api/receipts @src/dashboard/app.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/app/api/receipts",
+   "file": "src/dashboard/app.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/app/api/tenants @src/dashboard/app.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/app/api/tenants",
+   "file": "src/dashboard/app.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/app/api/usage @src/dashboard/app.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/app/api/usage",
+   "file": "src/dashboard/app.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/app/api/admin/summary @src/dashboard/app.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/app/api/admin/summary",
+   "file": "src/dashboard/app.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/app/api/dead-letters @src/dashboard/app.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/app/api/dead-letters",
+   "file": "src/dashboard/app.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/app/api/providers/health @src/dashboard/app.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/app/api/providers/health",
+   "file": "src/dashboard/app.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/app/webhooks @src/dashboard/app.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/app/webhooks",
+   "file": "src/dashboard/app.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401"
+  },
+  {
+   "key": "api GET eq:/app/login @src/dashboard/login.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/app/login",
+   "file": "src/dashboard/login.ts",
+   "access": "public",
+   "noCredentialStatus": "200",
+   "publicReason": "login page"
+  },
+  {
+   "key": "api GET eq:/app/logout @src/dashboard/login.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "eq",
+   "path": "/app/logout",
+   "file": "src/dashboard/login.ts",
+   "access": "public",
+   "noCredentialStatus": "302",
+   "publicReason": "redirect"
+  },
+  {
+   "key": "api DELETE regex:/^\\/v1\\/webhooks\\/([^/]+)$/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "DELETE"
+   ],
+   "kind": "regex",
+   "path": "/^\\/v1\\/webhooks\\/([^/]+)$/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401",
+   "sample": "/v1/v1/webhooks/probe-id",
+   "addedBy": "H1R2 C1 (S08-F01): formerly in the supplementary inventory of h1_s08_route_matrix_gaps.test.ts"
+  },
+  {
+   "key": "api GET regex:/^\\/v1\\/webhooks\\/([^/]+)\\/deliveries$/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "regex",
+   "path": "/^\\/v1\\/webhooks\\/([^/]+)\\/deliveries$/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401",
+   "sample": "/v1/v1/webhooks/probe-id/deliveries",
+   "addedBy": "H1R2 C1 (S08-F01): formerly in the supplementary inventory of h1_s08_route_matrix_gaps.test.ts"
+  },
+  {
+   "key": "api POST regex:/^\\/v1\\/webhooks\\/([^/]+)\\/deliveries\\/([^/]+)\\/replay$/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "regex",
+   "path": "/^\\/v1\\/webhooks\\/([^/]+)\\/deliveries\\/([^/]+)\\/replay$/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401",
+   "sample": "/v1/v1/webhooks/probe-id/deliveries/probe-id/replay",
+   "addedBy": "H1R2 C1 (S08-F01): formerly in the supplementary inventory of h1_s08_route_matrix_gaps.test.ts"
+  },
+  {
+   "key": "api POST regex:/^\\/v1\\/tenants\\/[^/]+\\/provider-keys$/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "regex",
+   "path": "/^\\/v1\\/tenants\\/[^/]+\\/provider-keys$/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401",
+   "sample": "/v1/v1/tenants/probe-id/provider-keys",
+   "addedBy": "H1R2 C1 (S08-F01): formerly in the supplementary inventory of h1_s08_route_matrix_gaps.test.ts"
+  },
+  {
+   "key": "api GET regex:/^\\/v1\\/tenants\\/[^/]+\\/provider-keys$/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "regex",
+   "path": "/^\\/v1\\/tenants\\/[^/]+\\/provider-keys$/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401",
+   "sample": "/v1/v1/tenants/probe-id/provider-keys",
+   "addedBy": "H1R2 C1 (S08-F01): formerly in the supplementary inventory of h1_s08_route_matrix_gaps.test.ts"
+  },
+  {
+   "key": "api DELETE regex:/^\\/v1\\/tenants\\/[^/]+\\/provider-keys\\/[^/]+$/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "DELETE"
+   ],
+   "kind": "regex",
+   "path": "/^\\/v1\\/tenants\\/[^/]+\\/provider-keys\\/[^/]+$/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401",
+   "sample": "/v1/v1/tenants/probe-id/provider-keys/openai",
+   "addedBy": "H1R2 C1 (S08-F01): formerly in the supplementary inventory of h1_s08_route_matrix_gaps.test.ts"
+  },
+  {
+   "key": "api GET prefix:/admin/flags/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "prefix",
+   "path": "/admin/flags/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401",
+   "sample": "/admin/flags/probe-id",
+   "addedBy": "H1R2 C1 (S08-F01): formerly in the supplementary inventory of h1_s08_route_matrix_gaps.test.ts"
+  },
+  {
+   "key": "api PUT regex:/^\\/admin\\/flags\\/([^/]+)\\/override\\/([^/]+)$/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "PUT"
+   ],
+   "kind": "regex",
+   "path": "/^\\/admin\\/flags\\/([^/]+)\\/override\\/([^/]+)$/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401",
+   "sample": "/admin/flags/probe-id/override/probe-id",
+   "addedBy": "H1R2 C1 (S08-F01): formerly in the supplementary inventory of h1_s08_route_matrix_gaps.test.ts"
+  },
+  {
+   "key": "api DELETE regex:/^\\/admin\\/flags\\/([^/]+)\\/override\\/([^/]+)$/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "DELETE"
+   ],
+   "kind": "regex",
+   "path": "/^\\/admin\\/flags\\/([^/]+)\\/override\\/([^/]+)$/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401",
+   "sample": "/admin/flags/probe-id/override/probe-id",
+   "addedBy": "H1R2 C1 (S08-F01): formerly in the supplementary inventory of h1_s08_route_matrix_gaps.test.ts"
+  },
+  {
+   "key": "api DELETE prefix:/admin/flags/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "DELETE"
+   ],
+   "kind": "prefix",
+   "path": "/admin/flags/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401",
+   "sample": "/admin/flags/probe-id",
+   "addedBy": "H1R2 C1 (S08-F01): formerly in the supplementary inventory of h1_s08_route_matrix_gaps.test.ts"
+  },
+  {
+   "key": "api POST regex:/^\\/admin\\/dead-letters\\/[^/]+\\/retry$/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "regex",
+   "path": "/^\\/admin\\/dead-letters\\/[^/]+\\/retry$/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401",
+   "sample": "/admin/dead-letters/probe-id/retry",
+   "addedBy": "H1R2 C1 (S08-F01): formerly in the supplementary inventory of h1_s08_route_matrix_gaps.test.ts"
+  },
+  {
+   "key": "api POST regex:/^\\/admin\\/dead-letters\\/[^/]+\\/discard$/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "regex",
+   "path": "/^\\/admin\\/dead-letters\\/[^/]+\\/discard$/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401",
+   "sample": "/admin/dead-letters/probe-id/discard",
+   "addedBy": "H1R2 C1 (S08-F01): formerly in the supplementary inventory of h1_s08_route_matrix_gaps.test.ts"
+  },
+  {
+   "key": "api POST regex:/^\\/keys\\/[^/]+\\/rotate$/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "regex",
+   "path": "/^\\/keys\\/[^/]+\\/rotate$/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401",
+   "sample": "/keys/probe-id/rotate",
+   "addedBy": "H1R2 C1 (S08-F01): formerly in the supplementary inventory of h1_s08_route_matrix_gaps.test.ts"
+  },
+  {
+   "key": "api POST regex:/^\\/teams\\/[^/]+\\/members$/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "POST"
+   ],
+   "kind": "regex",
+   "path": "/^\\/teams\\/[^/]+\\/members$/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401",
+   "sample": "/teams/probe-id/members",
+   "addedBy": "H1R2 C1 (S08-F01): formerly in the supplementary inventory of h1_s08_route_matrix_gaps.test.ts"
+  },
+  {
+   "key": "api DELETE regex:/^\\/teams\\/[^/]+\\/members\\/[^/]+$/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "DELETE"
+   ],
+   "kind": "regex",
+   "path": "/^\\/teams\\/[^/]+\\/members\\/[^/]+$/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401",
+   "sample": "/teams/probe-id/members/probe-id",
+   "addedBy": "H1R2 C1 (S08-F01): formerly in the supplementary inventory of h1_s08_route_matrix_gaps.test.ts"
+  },
+  {
+   "key": "api GET regex:/^\\/teams\\/[^/]+\\/members$/ @src/api/routes.ts",
+   "server": "api",
+   "methods": [
+    "GET"
+   ],
+   "kind": "regex",
+   "path": "/^\\/teams\\/[^/]+\\/members$/",
+   "file": "src/api/routes.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401",
+   "sample": "/teams/probe-id/members",
+   "addedBy": "H1R2 C1 (S08-F01): formerly in the supplementary inventory of h1_s08_route_matrix_gaps.test.ts"
+  },
+  {
+   "key": "proxy ANY except:/proxy,/health @src/proxy/ProxyGateway.ts",
+   "server": "proxy",
+   "methods": [
+    "ANY"
+   ],
+   "kind": "except",
+   "path": "/proxy,/health",
+   "file": "src/proxy/ProxyGateway.ts",
+   "access": "see-server",
+   "noCredentialStatus": "not-probed",
+   "publicReason": "PROXY-04 MITM forwarding of every other path to the provider; authorizeMeteringWrite admission with auth on (401 unauthorized, 403 forbidden without receipts:write, 429 too_many_auth_failures); with auth off 503 proxy_auth_not_configured unless OTK_PROXY_ALLOW_UNAUTHENTICATED=1; tested in metering_admission_matrix_rv01, h1_s24_api_contract (429 limiter)",
+   "addedBy": "H1R2 C1 (S08-F01)"
+  },
+  {
+   "key": "proxy GET|POST regex:/^\\/v1\\/operations\\/([A-Za-z0-9._:-]{1,128})(\\/cancel|\\/conference)?$/ @src/operations/routes.ts",
+   "server": "proxy",
+   "methods": [
+    "GET",
+    "POST"
+   ],
+   "kind": "regex",
+   "path": "/^\\/v1\\/operations\\/([A-Za-z0-9._:-]{1,128})(\\/cancel|\\/conference)?$/",
+   "file": "src/operations/routes.ts",
+   "access": "see-server",
+   "noCredentialStatus": "not-probed",
+   "publicReason": "D7 operation status/cancel/conference (durable profile only); authorizeOperationAccess receipts:read/write injected by the gateway; tenant from the credential",
+   "addedBy": "H1R2 C1 (S08-F01)"
+  },
+  {
+   "key": "proxy GET|POST regex:/^\\/v1\\/attribution\\/(projects|applications|summary|export)$/ @src/operations/attributionRoutes.ts",
+   "server": "proxy",
+   "methods": [
+    "GET",
+    "POST"
+   ],
+   "kind": "regex",
+   "path": "/^\\/v1\\/attribution\\/(projects|applications|summary|export)$/",
+   "file": "src/operations/attributionRoutes.ts",
+   "access": "see-server",
+   "noCredentialStatus": "not-probed",
+   "publicReason": "D1-D8 attribution (durable profile only); authorizeOperationAccess receipts:read/write injected by the gateway; tenant from the credential",
+   "addedBy": "H1R2 C1 (S08-F01)"
+  },
+  {
+   "key": "prover GET regex:/^\\/status\\/([a-zA-Z0-9\\-_]+)$/ @src/prover/ProverDaemon.ts",
+   "server": "prover",
+   "methods": [
+    "GET"
+   ],
+   "kind": "regex",
+   "path": "/^\\/status\\/([a-zA-Z0-9\\-_]+)$/",
+   "file": "src/prover/ProverDaemon.ts",
+   "access": "see-server",
+   "noCredentialStatus": "not-probed",
+   "publicReason": "ProverDaemon has no authentication (NF-23, internal port 3001; limitation, M3)",
+   "addedBy": "H1R2 C1 (S08-F01)"
+  },
+  {
+   "key": "api GET|PUT|PATCH|DELETE regex:/^\\/scim\\/v2\\/Users\\/(.+)$/ @src/auth/scim/ScimRouter.ts",
+   "server": "api",
+   "methods": [
+    "GET",
+    "PUT",
+    "PATCH",
+    "DELETE"
+   ],
+   "kind": "regex",
+   "path": "/^\\/scim\\/v2\\/Users\\/(.+)$/",
+   "file": "src/auth/scim/ScimRouter.ts",
+   "access": "authenticated",
+   "noCredentialStatus": "401",
+   "sample": "/scim/v2/Users/probe-id",
+   "addedBy": "H1R2 C1 (S08-F01): formerly in the supplementary inventory of h1_s08_route_matrix_gaps.test.ts"
+  }
+ ]
+}

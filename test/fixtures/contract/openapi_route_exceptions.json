@@ -1,0 +1,169 @@
+{
+ "description": "H1R2 C1: routes of the inventory (scripts/ops/extract_routes.mjs) that are NOT operations of docs/api/openapi.json, one entry per (method, route) with the reason. Checked by test/unit/h1r2_c1_openapi_route_coverage.test.ts: no wildcard, no stale entry, no sensitive route (admin, SCIM, keys, billing, export/GDPR, webhooks, tenants, teams, gateway) among the undocumented ones. Prefer documenting the route over adding an entry here.",
+ "dispatchers": [
+  {
+   "route": "ANY prefix:/v1/ @src/api/routes.ts",
+   "reason": "version prefix: cuts one leading /v1 and continues with the same handlers (documented in info.description)"
+  },
+  {
+   "route": "ANY eq:/data/export @src/api/routes.ts",
+   "reason": "dispatcher of the export job routes: resolves the caller (401) and hands over to POST /data/export and GET /data/export/status/{jobId}"
+  },
+  {
+   "route": "ANY prefix:/data/export/status/ @src/api/routes.ts",
+   "reason": "same dispatcher line as /data/export (status sub-route)"
+  },
+  {
+   "route": "ANY prefix:/auth/saml/ @src/api/routes.ts",
+   "reason": "SSO dispatcher: loads the SAML provider and hands over to /auth/saml/metadata and /auth/saml/acs"
+  },
+  {
+   "route": "ANY prefix:/auth/oidc/ @src/api/routes.ts",
+   "reason": "SSO dispatcher: hands over to /auth/oidc/callback"
+  },
+  {
+   "route": "ANY prefix:/scim/v2/ @src/api/routes.ts",
+   "reason": "delegation to src/auth/scim/ScimRouter.ts (its routes are documented one by one)"
+  },
+  {
+   "route": "ANY prefix:/scim/v2/ @src/auth/scim/ScimRouter.ts",
+   "reason": "SCIM bearer gate (401 for every SCIM path) before the Users/Groups handlers; documented on each SCIM operation"
+  },
+  {
+   "route": "ANY prefix:/v1/webhooks @src/api/routes.ts",
+   "reason": "webhook dispatcher: 401 without credential, then the list/create/by-id handlers (reachable at /v1/v1/webhooks..., NF-15)"
+  },
+  {
+   "route": "ANY prefix:/admin/gdpr/ @src/api/routes.ts",
+   "reason": "GDPR dispatcher: admin:gdpr RBAC (legacy admin key with auth off) before export/erase"
+  },
+  {
+   "route": "ANY prefix:/admin/flags @src/api/routes.ts",
+   "reason": "flags dispatcher: platform check (admin:flags) before the flag handlers"
+  },
+  {
+   "route": "ANY prefix:/app @src/api/routes.ts",
+   "reason": "dashboard dispatcher: delegates to src/dashboard/login.ts and src/dashboard/app.ts"
+  },
+  {
+   "route": "GET eq:/app/webhooks @src/api/routes.ts",
+   "reason": "tenant gate of the dashboard (auth on, non-platform caller): 401 without tenant, 403 platform_operation_forbidden for platform-wide pages"
+  },
+  {
+   "route": "GET prefix:/app/api/ @src/api/routes.ts",
+   "reason": "same tenant gate line as /app/webhooks (dashboard JSON API)"
+  },
+  {
+   "route": "ANY eq:/v1/admin/prices @src/api/routes.ts",
+   "reason": "price dispatcher: platform check (admin:chain-head) before GET /v1/admin/prices and POST /v1/admin/prices/refresh"
+  },
+  {
+   "route": "ANY eq:/v1/admin/prices/refresh @src/api/routes.ts",
+   "reason": "same price dispatcher line (refresh sub-route)"
+  }
+ ],
+ "unreachable": [
+ ],
+ "undocumented": [
+  {
+   "route": "GET eq:/status @src/api/routes.ts",
+   "reason": "public HTML page (status page), no tenant data; not part of the JSON API contract"
+  },
+  {
+   "route": "GET eq:/status/ @src/api/routes.ts",
+   "reason": "trailing-slash alias of GET /status (status page); public HTML page"
+  },
+  {
+   "route": "GET eq:/pricing @src/api/routes.ts",
+   "reason": "public HTML page (pricing), no tenant data; not part of the JSON API contract"
+  },
+  {
+   "route": "GET eq:/pricing/ @src/api/routes.ts",
+   "reason": "trailing-slash alias of GET /pricing (pricing); public HTML page"
+  },
+  {
+   "route": "GET eq:/analytics @src/api/routes.ts",
+   "reason": "public HTML page (analytics shell; its data comes from GET /analytics/cu-trend), no tenant data; not part of the JSON API contract"
+  },
+  {
+   "route": "GET eq:/analytics/ @src/api/routes.ts",
+   "reason": "trailing-slash alias of GET /analytics (analytics shell; its data comes from GET /analytics/cu-trend); public HTML page"
+  },
+  {
+   "route": "GET eq:/demo @src/api/routes.ts",
+   "reason": "public HTML page (demo sandbox), no tenant data; not part of the JSON API contract"
+  },
+  {
+   "route": "GET eq:/demo/ @src/api/routes.ts",
+   "reason": "trailing-slash alias of GET /demo (demo sandbox); public HTML page"
+  },
+  {
+   "route": "GET eq:/changelog @src/api/routes.ts",
+   "reason": "public HTML page (changelog), no tenant data; not part of the JSON API contract"
+  },
+  {
+   "route": "GET eq:/changelog/ @src/api/routes.ts",
+   "reason": "trailing-slash alias of GET /changelog (changelog); public HTML page"
+  },
+  {
+   "route": "GET eq:/terms @src/api/routes.ts",
+   "reason": "public HTML page (terms of service), no tenant data; not part of the JSON API contract"
+  },
+  {
+   "route": "GET eq:/terms/ @src/api/routes.ts",
+   "reason": "trailing-slash alias of GET /terms (terms of service); public HTML page"
+  },
+  {
+   "route": "GET eq:/privacy @src/api/routes.ts",
+   "reason": "public HTML page (privacy policy), no tenant data; not part of the JSON API contract"
+  },
+  {
+   "route": "GET eq:/privacy/ @src/api/routes.ts",
+   "reason": "trailing-slash alias of GET /privacy (privacy policy); public HTML page"
+  },
+  {
+   "route": "GET eq:/dpa @src/api/routes.ts",
+   "reason": "public HTML page (data processing agreement), no tenant data; not part of the JSON API contract"
+  },
+  {
+   "route": "GET eq:/dpa/ @src/api/routes.ts",
+   "reason": "trailing-slash alias of GET /dpa (data processing agreement); public HTML page"
+  },
+  {
+   "route": "GET eq:/changelog/json @src/api/routes.ts",
+   "reason": "public changelog feed rendered from CHANGELOG.md for the changelog page; not part of the metering API"
+  },
+  {
+   "route": "GET eq:/app @src/dashboard/app.ts",
+   "reason": "dashboard HTML shell (302 to /app/login without a credential when auth is on); its data comes from the documented /app/api/* operations"
+  },
+  {
+   "route": "GET eq:/app/login @src/dashboard/login.ts",
+   "reason": "dashboard login HTML page (public, no data)"
+  },
+  {
+   "route": "GET eq:/app/logout @src/dashboard/login.ts",
+   "reason": "dashboard logout: 302 redirect to /app/login (no data)"
+  },
+  {
+   "route": "GET eq:/health @src/proxy/ProxyGateway.ts",
+   "reason": "gateway liveness { ok, uptime, ts, mode }: same path as the documented API GET /health and OpenAPI path keys are unique per document; described in the Proxy tag of info.description"
+  },
+  {
+   "route": "GET eq:/health @src/prover/ProverDaemon.ts",
+   "reason": "internal ProverDaemon service (port 3001, separate process): not part of the public API contract; it has no authentication (NF-23, limitation M3) and must not be exposed"
+  },
+  {
+   "route": "GET eq:/metrics @src/prover/ProverDaemon.ts",
+   "reason": "internal ProverDaemon service (port 3001, separate process): not part of the public API contract; it has no authentication (NF-23, limitation M3) and must not be exposed"
+  },
+  {
+   "route": "POST eq:/prove @src/prover/ProverDaemon.ts",
+   "reason": "internal ProverDaemon service (port 3001, separate process): not part of the public API contract; it has no authentication (NF-23, limitation M3) and must not be exposed"
+  },
+  {
+   "route": "GET regex:/^\\/status\\/([a-zA-Z0-9\\-_]+)$/ @src/prover/ProverDaemon.ts",
+   "reason": "internal ProverDaemon service (port 3001, separate process): not part of the public API contract; it has no authentication (NF-23, limitation M3) and must not be exposed"
+  }
+ ]
+}

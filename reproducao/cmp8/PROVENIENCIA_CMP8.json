@@ -1,0 +1,170 @@
+{
+ "schema": "otk.repo_publico.proveniencia_cmp8.v1",
+ "geradoPor": "REPO_PUBLICO (C160) montar_cmp8.mjs",
+ "arquivos": [
+  {
+   "arquivo": "reproducao/cmp8/dados/openai/TENTATIVAS_CMP8.jsonl",
+   "sha256": "6643ca4ad23268c855a3dbd7f88c24c3aef8baca316e602133e8bd0910943fee",
+   "origem": "C:/otk-h2eval-runs/estudo_cmp8/openai/TENTATIVAS_CMP8.jsonl",
+   "transformacao": "nenhuma (cópia byte a byte)"
+  },
+  {
+   "arquivo": "reproducao/cmp8/dados/openai/journal_sanitizado.jsonl",
+   "sha256": "ff568da5065518a9c9d6cee1c17a28331a795b6f50914736609abbe104cd1e79",
+   "origem": "C:/otk-h2eval-runs/estudo_cmp8/openai/journal.jsonl",
+   "origemSha256": "ca7ddad6c236b1323fdd869d8013ea00b5ea325d8e07736d119f9cb0a900c698",
+   "transformacao": "providerRequestId -> \"<REDIGIDO>\" em 430 linhas (marcadas \"redigido\": true); hash/prevHash originais mantidos"
+  },
+  {
+   "arquivo": "reproducao/cmp8/dados/openai/snapshots/",
+   "arquivos": 430,
+   "sha256DaLista": "69e0d936523d7aead054fd4047e6d293c56257511944d031773983962835e789",
+   "origem": "C:/otk-h2eval-runs/estudo_cmp8/openai/snapshots/",
+   "transformacao": "nenhuma (cópia byte a byte de cada arquivo)"
+  },
+  {
+   "arquivo": "reproducao/cmp8/dados/anthropic/TENTATIVAS_CMP8.jsonl",
+   "sha256": "09f5475a48d2ccc403185a30a4e7b9827f1b506d9f6e2953153569a7a9a0cfea",
+   "origem": "C:/otk-h2eval-runs/estudo_cmp8/anthropic/TENTATIVAS_CMP8.jsonl",
+   "transformacao": "nenhuma (cópia byte a byte)"
+  },
+  {
+   "arquivo": "reproducao/cmp8/dados/anthropic/journal_sanitizado.jsonl",
+   "sha256": "ebbe44a6b120c024269c80a5883e70d8f15e2b6b642d42df91ad4c8dad83e2fa",
+   "origem": "C:/otk-h2eval-runs/estudo_cmp8/anthropic/journal.jsonl",
+   "origemSha256": "5d25825b5634687ac707ba0f563d49f6de2a135171cfe6f32037c50be6d69fb4",
+   "transformacao": "providerRequestId -> \"<REDIGIDO>\" em 860 linhas (marcadas \"redigido\": true); hash/prevHash originais mantidos"
+  },
+  {
+   "arquivo": "reproducao/cmp8/dados/anthropic/snapshots/",
+   "arquivos": 860,
+   "sha256DaLista": "15a6fbb26ccd6d8b41f693feae442571b4123365c535a6d9727437df57a3b3c6",
+   "origem": "C:/otk-h2eval-runs/estudo_cmp8/anthropic/snapshots/",
+   "transformacao": "nenhuma (cópia byte a byte de cada arquivo)"
+  },
+  {
+   "arquivo": "reproducao/cmp8/dados/google/TENTATIVAS_CMP8.jsonl",
+   "sha256": "c58cc16b8c511bc4f63ef23c49852352dff4cb18b23a42e02dec1eed0a84e08d",
+   "origem": "C:/otk-h2eval-runs/estudo_cmp8/google/TENTATIVAS_CMP8.jsonl",
+   "transformacao": "nenhuma (cópia byte a byte)"
+  },
+  {
+   "arquivo": "reproducao/cmp8/dados/google/journal_sanitizado.jsonl",
+   "sha256": "b25d002fb437fd502a6f28f18b96a6a382666277e6213abaf973c0d0e34c97f0",
+   "origem": "C:/otk-h2eval-runs/estudo_cmp8/google/journal.jsonl",
+   "origemSha256": "3d92c42cdfec568b66e8d3eccaa21b08466be9c6905681dfb87ff1dde8728dc1",
+   "transformacao": "providerRequestId -> \"<REDIGIDO>\" em 1 linhas (marcadas \"redigido\": true); hash/prevHash originais mantidos"
+  },
+  {
+   "arquivo": "reproducao/cmp8/dados/google/snapshots/",
+   "arquivos": 1,
+   "sha256DaLista": "ecf23151202e13621bc76e8416423148dca3ed964af7744c85230bfc18b09ad1",
+   "origem": "C:/otk-h2eval-runs/estudo_cmp8/google/snapshots/",
+   "transformacao": "nenhuma (cópia byte a byte de cada arquivo)"
+  },
+  {
+   "arquivo": "reproducao/cmp8/dados/google_v1_3/TENTATIVAS_CMP8.jsonl",
+   "sha256": "be7571898ea00ec3846191235443fa859976e32b855d690d8a113941278f0eb0",
+   "origem": "C:/otk-h2eval-runs/estudo_cmp8/google_v1_3/TENTATIVAS_CMP8.jsonl",
+   "transformacao": "nenhuma (cópia byte a byte)"
+  },
+  {
+   "arquivo": "reproducao/cmp8/dados/google_v1_3/journal_sanitizado.jsonl",
+   "sha256": "eff8b72354898007acad09de457cdd2eeddc11358e3b085db360f2e1a2f1ae93",
+   "origem": "C:/otk-h2eval-runs/estudo_cmp8/google_v1_3/journal.jsonl",
+   "origemSha256": "558dd69ff9d5378cbf92bb771ab2f35b037846cb30dce6be8769e75b93d82e75",
+   "transformacao": "providerRequestId -> \"<REDIGIDO>\" em 429 linhas (marcadas \"redigido\": true); hash/prevHash originais mantidos"
+  },
+  {
+   "arquivo": "reproducao/cmp8/dados/google_v1_3/snapshots/",
+   "arquivos": 429,
+   "sha256DaLista": "26269f787c0cfe07629ca31cc9fa184a78c89121170a476c491cc7de889e5c4e",
+   "origem": "C:/otk-h2eval-runs/estudo_cmp8/google_v1_3/snapshots/",
+   "transformacao": "nenhuma (cópia byte a byte de cada arquivo)"
+  },
+  {
+   "arquivo": "reproducao/cmp8/corpus/itens.jsonl",
+   "sha256": "2957c7f00528266183c747c9d155246687208564258af340e760e915a729812a",
+   "origem": "<coordenação>/runs/C160/CMP8_PREP/CORPUS/itens.jsonl",
+   "transformacao": "nenhuma: os 215 textos são sintéticos (gerados por semente)"
+  },
+  {
+   "arquivo": "reproducao/cmp8/planos/PLANO_openai.jsonl",
+   "sha256": "77001f3dc56c23af9b371422d8da5a7892973879f273af11ef35e14bed43e03f",
+   "origem": "<coordenação>/runs/C160/CMP8_PREP/PLANOS/PLANO_openai.jsonl",
+   "transformacao": "nenhuma (cópia byte a byte)"
+  },
+  {
+   "arquivo": "reproducao/cmp8/planos/PLANO_anthropic.jsonl",
+   "sha256": "7f51c0e34728997ec48061369584b1e0c4122ddbf45d536b5f9d23a25bacd6ec",
+   "origem": "<coordenação>/runs/C160/CMP8_PREP/PLANOS/PLANO_anthropic.jsonl",
+   "transformacao": "nenhuma (cópia byte a byte)"
+  },
+  {
+   "arquivo": "reproducao/cmp8/planos/PLANO_google.jsonl",
+   "sha256": "129182a9b8d2fb077f7d31cb9659e4af6771cdb7abf283c6bd8a80c5c87c448e",
+   "origem": "<coordenação>/runs/C160/CMP8_PREP/PLANOS/PLANO_google.jsonl",
+   "transformacao": "nenhuma (cópia byte a byte)"
+  },
+  {
+   "arquivo": "reproducao/cmp8/perfis/perfil_sonnet_r.json",
+   "sha256": "fe127073b54142f7a7218f8768e4af998f995d3202131e990bc714d7e5dbff27",
+   "origem": "C:/otk-h2eval-runs/estudo_sonnet_r/gates/VALIDATION_SELECTED.json",
+   "transformacao": "nenhuma (cópia byte a byte)"
+  },
+  {
+   "arquivo": "reproducao/cmp8/perfis/perfil_opus_r6m.json",
+   "sha256": "b6952b8b1d1b4ca2b1fcfc4c48982713c057832bae5d47d6d136dfb8627e401b",
+   "origem": "C:/otk-h2eval-runs/estudo_ciclo3_e3/gates/VALIDATION_SELECTED.json",
+   "transformacao": "nenhuma (cópia byte a byte)"
+  },
+  {
+   "arquivo": "reproducao/cmp8/perfis/perfil_google_r.json",
+   "sha256": "df64007b4627fe806ebdc9f81c9fdf26531268be075c04f57a81b0b168f8a8e4",
+   "origem": "C:/otk-h2eval-runs/estudo_google_r/gates/VALIDATION_SELECTED.json",
+   "transformacao": "nenhuma (cópia byte a byte)"
+  },
+  {
+   "arquivo": "reproducao/cmp8/referencia_710/h1_chamadas.csv",
+   "sha256": "3d4ff0ef1a858eee8a02d00a012e4cc7c97ca397f11b6aa3ed68330816658f18",
+   "origem": "C:/dev/Disserta-o-coord-C-20261111/docs/_ops/dissertation/OTK_CANDIDATA_H1_CAL_20261110/dados/h1_chamadas.csv",
+   "transformacao": "nenhuma: tabela das 662 operações de 7/10 usada na dissertação (sem texto, sem id do provedor)"
+  },
+  {
+   "arquivo": "reproducao/cmp8/esperado/tabela_cmp8.json",
+   "sha256": "baed13cfa673dc46435f126ba7b88fb529664e16bf6ec01d68a9b6eb1f49c164",
+   "origem": "<coordenação>/runs/C160/CMP8_RUN_V1_3/TABELA/tabela_cmp8.json",
+   "transformacao": "nenhuma (cópia byte a byte)"
+  },
+  {
+   "arquivo": "reproducao/cmp8/esperado/tabela_cmp8.tex",
+   "sha256": "5a9d6feac2f9e51c5880141f1e6225d3f836d93f97c4fd4aeb8c58f8c223785d",
+   "origem": "<coordenação>/runs/C160/CMP8_RUN_V1_3/TABELA/tabela_cmp8.tex",
+   "transformacao": "nenhuma (cópia byte a byte)"
+  },
+  {
+   "arquivo": "reproducao/cmp8/esperado/tabela_estimado.json",
+   "sha256": "685654f672dd4f3a02d52767133246f75963e7be97fba7e1a85da98acc039119",
+   "origem": "<coordenação>/runs/C160/CMP8_ESTIMADO/tabela_estimado.json",
+   "transformacao": "nenhuma (cópia byte a byte)"
+  },
+  {
+   "arquivo": "reproducao/cmp8/esperado/tabela_estimado.tex",
+   "sha256": "4e0d854729616f85778016b9612ba682050f49a8d1fb025b4ce5091c7e7085f2",
+   "origem": "<coordenação>/runs/C160/CMP8_ESTIMADO/tabela_estimado.tex",
+   "transformacao": "nenhuma (cópia byte a byte)"
+  },
+  {
+   "arquivo": "reproducao/cmp8/esperado/linhas_estimado.jsonl",
+   "sha256": "8608af93a993e1e23e3b1795e6c8335e056d8071950abd388174cb0fd10752f4",
+   "origem": "<coordenação>/runs/C160/CMP8_ESTIMADO/linhas_estimado.jsonl",
+   "transformacao": "nenhuma (cópia byte a byte)"
+  },
+  {
+   "arquivo": "reproducao/cmp8/esperado/prova_previsao_antes_cmp8.json",
+   "sha256": "e43629e7c2bafce7c8c1ef6d8bb0a40b568f24f9a471b4652135ed62c540b068",
+   "origem": "<coordenação>/runs/C160/E2E_PREP/PROVA_PREVISAO_ANTES_CMP8.json",
+   "transformacao": "nenhuma (cópia byte a byte)"
+  }
+ ]
+}

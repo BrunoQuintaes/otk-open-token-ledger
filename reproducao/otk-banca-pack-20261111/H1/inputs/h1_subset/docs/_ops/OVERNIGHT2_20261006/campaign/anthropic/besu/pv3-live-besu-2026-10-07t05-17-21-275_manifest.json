@@ -1,0 +1,99 @@
+{
+  "runId": "pv3-live-besu-2026-10-07t05-17-21-275",
+  "provider": "anthropic",
+  "mode": "live",
+  "phase": "besu",
+  "commit": "b42d05cf2c88eab6325d036ad4ad7d3977c59375",
+  "tree": "28c6575b032d1e84e969f608539da91b7cd445ff",
+  "dirty": 4,
+  "model": "claude-haiku-4-5-20251001",
+  "policy": "otk.money_bound_policy.v2@2026-10-02",
+  "contextWindow": "200000",
+  "maxOutput": "64000",
+  "priceTable": {
+    "file": "scripts/pilot/anthropic/price_table_anthropic_haiku45_20261001.json",
+    "version": "anthropic-haiku45-official-2026-10-01",
+    "sha256": "00d5a887f50de77a5fd8e47bccbbf78c967c5b92cbfbc67391f382a6538299f6"
+  },
+  "weightsOracle": {
+    "version": "dev-static-from-CostUnits.ts",
+    "digest": "0xf27b2c15b14173bcff5ba8c4c73516b49172d22f1a63cad636f885fe01dcbd93",
+    "profile": "development",
+    "provider": "anthropic",
+    "wProviderMilli": "1100",
+    "model": "claude-haiku-4-5",
+    "wModelMilli": "800",
+    "developmentProfile": true,
+    "calibrated": false
+  },
+  "plannedCalls": [
+    {
+      "label": "besu",
+      "stream": false,
+      "maxTokens": 16,
+      "disconnect": false,
+      "chain": true,
+      "expect": "final",
+      "promptSha256": "68173af2cf95b179d79e082dc43d04ae29327fa601b471f47807cb69a594dc97",
+      "promptChars": 33,
+      "conservativeOtkReservePico": "250080000000"
+    }
+  ],
+  "ledger": {
+    "file": "<HOME>/otk-pilot/anthropic_budget_ledger.jsonl",
+    "summaryBefore": {
+      "capUsd": 3,
+      "reservations": 227,
+      "settledOk": 226,
+      "refused": 1,
+      "uncertain": 0,
+      "open": 0,
+      "confirmedUsd": 0.10235600000000011,
+      "uncertainUsd": 0,
+      "openUsd": 0,
+      "exposureUsd": 0.10235600000000011,
+      "remainingUsd": 2.8976439999999997
+    }
+  },
+  "preflightModelsApi": {
+    "url": "https://api.anthropic.com/v1/models/claude-haiku-4-5-20251001",
+    "status": 200,
+    "id": "claude-haiku-4-5-20251001",
+    "displayName": "Claude Haiku 4.5"
+  },
+  "database": "otk_pilot_v3_pv3_live_besu_2026_10_07t05_17_21_275",
+  "chain": {
+    "rpc": "http://127.0.0.1:58745",
+    "chainId": "16251",
+    "registry": "0x7D2347eBA8871B4DD81012FD361f722e94F6468f",
+    "deployment": "deploy_v3_besu.json (test deployment of this environment)"
+  },
+  "upstream": {
+    "kind": "anthropic API (real)",
+    "override": "none"
+  },
+  "otkBudget": {
+    "budgetId": "pilot-v3-pv3-live-besu-2026-10-07t05-17-21-275",
+    "ceilingPico": "2897643000000",
+    "correlation": "same spend as the canonical ledger (not a second charge)"
+  },
+  "tenantPlan": {
+    "tenantId": "pilot-v3",
+    "tier": "STARTER",
+    "why": "campaign volume above the FREE quota of 10 000 legacy CU per epoch; spend still bounded by the canonical ledger and the OTK money budget"
+  },
+  "entrypointLogRedactedSecrets": "no secret value in the child log",
+  "ledgerAfter": {
+    "capUsd": 3,
+    "reservations": 228,
+    "settledOk": 227,
+    "refused": 1,
+    "uncertain": 0,
+    "open": 0,
+    "confirmedUsd": 0.10239200000000011,
+    "uncertainUsd": 0,
+    "openUsd": 0,
+    "exposureUsd": 0.10239200000000011,
+    "remainingUsd": 2.897608
+  }
+}

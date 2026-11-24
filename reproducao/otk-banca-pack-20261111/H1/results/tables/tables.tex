@@ -1,0 +1,67 @@
+% R05 - tabelas LaTeX (booktabs). Geradas por scripts/recompute.mjs; parametros/limiares congelados dos perfis H1 7606bc9b.
+% \usepackage{booktabs}
+
+\begin{table}[htbp]\centering\small
+\caption{Erro do contador local por modelo e split: RAW (local cru, limiar heur\'istico v0) e CALIBRADO (afim e limiar congelados do perfil H1). Alvo: tokens de entrada declarados pelo provedor. RMSE \'e m\'etrica adicional desta recomputa\c{c}\~ao.}
+\label{tab:r05-split}
+\begin{tabular}{llrrrrrrrrrr}
+\toprule
+modelo & split & est. & $n$ & vi\'es & MAE & RMSE & m\'ax & p50 rel & p95 rel & falso alerta & det.\ +25\% \\
+\midrule
+gpt-4o-mini-2024-07-18 & train & RAW & 120 & -7 & 7 & 7 & 7 & 0.040 & 0.368 & 0.0\% & 80.8\% \\
+gpt-4o-mini-2024-07-18 & train & CAL & 120 & 0 & 0 & 0 & 0 & 0 & 0 & 0.0\% & 100.0\% \\
+gpt-4o-mini-2024-07-18 & validation & RAW & 53 & -7 & 7 & 7 & 7 & 0.035 & 0.368 & 0.0\% & 94.3\% \\
+gpt-4o-mini-2024-07-18 & validation & CAL & 53 & 0 & 0 & 0 & 0 & 0 & 0 & 0.0\% & 100.0\% \\
+gpt-4o-mini-2024-07-18 & holdout & RAW & 38 & -7 & 7 & 7 & 7 & 0.028 & 0.350 & 0.0\% & 92.1\% \\
+gpt-4o-mini-2024-07-18 & holdout & CAL & 38 & 0 & 0 & 0 & 0 & 0 & 0 & 0.0\% & 100.0\% \\
+claude-haiku-4-5-20251001 & train & RAW & 119 & -39.40 & 39.40 & 52.39 & 128 & 0.188 & 0.458 & 55.5\% & 96.6\% \\
+claude-haiku-4-5-20251001 & train & CAL & 119 & 0.03 & 13.10 & 18.06 & 46 & 0.064 & 0.208 & 2.5\% & 84.9\% \\
+claude-haiku-4-5-20251001 & validation & RAW & 54 & -46.63 & 46.63 & 57.15 & 113 & 0.178 & 0.458 & 66.7\% & 100.0\% \\
+claude-haiku-4-5-20251001 & validation & CAL & 54 & -1.91 & 14.17 & 18.56 & 51 & 0.053 & 0.208 & 0.0\% & 77.8\% \\
+claude-haiku-4-5-20251001 & holdout & RAW & 37 & -36.76 & 36.76 & 47.41 & 113 & 0.142 & 0.423 & 45.9\% & 97.3\% \\
+claude-haiku-4-5-20251001 & holdout & CAL & 37 & 6.03 & 13.81 & 18.34 & 54 & 0.052 & 0.167 & 5.4\% & 78.4\% \\
+gemini-3.5-flash-lite & train & RAW & 121 & -47.02 & 62.27 & 101.07 & 326 & 0.175 & 0.492 & 61.2\% & 58.7\% \\
+gemini-3.5-flash-lite & train & CAL & 121 & -0.05 & 48.10 & 77.68 & 264 & 0.286 & 0.682 & 2.5\% & 9.9\% \\
+gemini-3.5-flash-lite & validation & RAW & 54 & -45.70 & 75.07 & 122.33 & 405 & 0.169 & 0.537 & 61.1\% & 72.2\% \\
+gemini-3.5-flash-lite & validation & CAL & 54 & 10.19 & 73.89 & 115.43 & 323 & 0.188 & 0.626 & 0.0\% & 11.1\% \\
+gemini-3.5-flash-lite & holdout & RAW & 37 & -55.38 & 74.19 & 125.65 & 371 & 0.171 & 0.503 & 67.6\% & 86.5\% \\
+gemini-3.5-flash-lite & holdout & CAL & 37 & -0.19 & 58.14 & 100.25 & 285 & 0.185 & 0.749 & 0.0\% & 8.1\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]\centering\small
+\caption{Erro do estimador calibrado por fam\'ilia de conte\'udo (todos os pares; par\^ametros e limiares congelados).}
+\label{tab:r05-family}
+\begin{tabular}{llrrrrrrr}
+\toprule
+modelo & fam\'ilia & $n$ & vi\'es & MAE & RMSE & m\'ax & p50 rel & falso alerta \\
+\midrule
+gpt-4o-mini-2024-07-18 & pt\_prose & 27 & 0 & 0 & 0 & 0 & 0 & 0.0\% \\
+gpt-4o-mini-2024-07-18 & en\_prose & 27 & 0 & 0 & 0 & 0 & 0 & 0.0\% \\
+gpt-4o-mini-2024-07-18 & code\_ts & 26 & 0 & 0 & 0 & 0 & 0 & 0.0\% \\
+gpt-4o-mini-2024-07-18 & json & 27 & 0 & 0 & 0 & 0 & 0 & 0.0\% \\
+gpt-4o-mini-2024-07-18 & markdown\_table & 26 & 0 & 0 & 0 & 0 & 0 & 0.0\% \\
+gpt-4o-mini-2024-07-18 & mixed\_unicode & 26 & 0 & 0 & 0 & 0 & 0 & 0.0\% \\
+gpt-4o-mini-2024-07-18 & numeric & 26 & 0 & 0 & 0 & 0 & 0 & 0.0\% \\
+gpt-4o-mini-2024-07-18 & tiny & 26 & 0 & 0 & 0 & 0 & 0 & 0.0\% \\
+claude-haiku-4-5-20251001 & pt\_prose & 27 & -13.07 & 13.07 & 14.87 & 25 & 0.034 & 0.0\% \\
+claude-haiku-4-5-20251001 & en\_prose & 26 & 20.12 & 20.12 & 22.01 & 35 & 0.088 & 0.0\% \\
+claude-haiku-4-5-20251001 & code\_ts & 26 & -8.42 & 8.42 & 9.19 & 15 & 0.035 & 0.0\% \\
+claude-haiku-4-5-20251001 & json & 26 & 4.88 & 4.88 & 7.59 & 20 & 0.006 & 0.0\% \\
+claude-haiku-4-5-20251001 & markdown\_table & 26 & -16.65 & 16.96 & 23.02 & 46 & 0.048 & 0.0\% \\
+claude-haiku-4-5-20251001 & mixed\_unicode & 26 & -4.88 & 11.65 & 13.61 & 24 & 0.060 & 11.5\% \\
+claude-haiku-4-5-20251001 & numeric & 26 & 28.35 & 28.35 & 33.04 & 54 & 0.131 & 7.7\% \\
+claude-haiku-4-5-20251001 & tiny & 27 & -4.89 & 4.89 & 4.93 & 6 & 0.208 & 0.0\% \\
+gemini-3.5-flash-lite & pt\_prose & 26 & 114.69 & 114.69 & 126.98 & 197 & 0.390 & 0.0\% \\
+gemini-3.5-flash-lite & en\_prose & 27 & 43.48 & 43.48 & 46.61 & 68 & 0.190 & 0.0\% \\
+gemini-3.5-flash-lite & code\_ts & 26 & 1.54 & 3.38 & 4.31 & 9 & 0.019 & 0.0\% \\
+gemini-3.5-flash-lite & json & 26 & -9.23 & 12.46 & 13.32 & 22 & 0.021 & 0.0\% \\
+gemini-3.5-flash-lite & markdown\_table & 26 & -15.38 & 17.85 & 24.70 & 48 & 0.063 & 0.0\% \\
+gemini-3.5-flash-lite & mixed\_unicode & 27 & 72.19 & 72.63 & 87.83 & 161 & 0.662 & 0.0\% \\
+gemini-3.5-flash-lite & numeric & 27 & -179.89 & 179.89 & 203.11 & 323 & 0.387 & 11.1\% \\
+gemini-3.5-flash-lite & tiny & 27 & -4.11 & 4.11 & 4.14 & 5 & 0.286 & 0.0\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+

@@ -1,0 +1,14 @@
+[
+  {
+    "type": "event",
+    "name": "ReceiptSubmitted",
+    "inputs": [
+      { "name": "commitment", "type": "bytes32", "indexed": true },
+      { "name": "userId",     "type": "uint256", "indexed": true },
+      { "name": "costUnits",  "type": "uint256", "indexed": false },
+      { "name": "epoch",      "type": "uint256", "indexed": false },
+      { "name": "submitter",  "type": "address", "indexed": false }
+    ],
+    "anonymous": false
+  }
+]

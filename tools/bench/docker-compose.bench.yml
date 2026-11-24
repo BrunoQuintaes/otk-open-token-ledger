@@ -1,0 +1,50 @@
+version: '3.8'
+
+# OTK Benchmark Rig — Docker Compose
+# ADR-0102: Benchmark Rig (Linux/Docker + netem + N>=100)
+#
+# Usage:
+#   # Baseline (loopback, N=100)
+#   docker compose -f tools/bench/docker-compose.bench.yml run bench --scenario=baseline --N=100
+#
+#   # WAN light (50ms delay, N=100)
+#   docker compose -f tools/bench/docker-compose.bench.yml run bench --scenario=wan_light --N=100
+#
+#   # ZK in-process (N=100, warmup=5)
+#   docker compose -f tools/bench/docker-compose.bench.yml run bench --scenario=zk_inprocess --N=100
+#
+#   # Economic drift (N=100000)
+#   docker compose -f tools/bench/docker-compose.bench.yml run bench --scenario=drift --N=100000
+
+services:
+  bench:
+    build:
+      context: ../..
+      dockerfile: tools/bench/Dockerfile.bench
+    image: otk-bench:latest
+    # NET_ADMIN: required for tc-netem WAN latency simulation
+    cap_add:
+      - NET_ADMIN
+    # Resource limits: fixed CPU + RAM for reproducible benchmarks
+    # Mirrors a typical enterprise cloud VM (4 vCPU, 8GB RAM)
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+    # Mount EVD output directory for persistence outside container
+    volumes:
+      - ../../docs/_ops:/app/docs/_ops
+      # Mount ZK artifacts if present (for ZK benchmarks)
+      - ../../zk/build:/app/zk/build:ro
+    environment:
+      # Benchmark configuration
+      - BENCH_SCENARIO=${BENCH_SCENARIO:-baseline}
+      - BENCH_N=${BENCH_N:-100}
+      - BENCH_SEED=${BENCH_SEED:-42}
+      - BENCH_WARMUP=${BENCH_WARMUP:-5}
+      # netem configuration (used by setup_netem.sh)
+      - NETEM_DELAY_MS=${NETEM_DELAY_MS:-0}
+      - NETEM_JITTER_MS=${NETEM_JITTER_MS:-0}
+      # Node.js tuning
+      - NODE_OPTIONS=--max-old-space-size=4096

@@ -1,0 +1,44 @@
+{
+  "schema": "otk.reconciliation_mapping.v1",
+  "id": "openai_dashboard_csv",
+  "provider": "openai",
+  "format": "csv",
+  "describes": "TEMPLATE for the CSV of the OpenAI platform Usage page, Export > Cost data, grouped by line item, 1 day interval. The column names below are ASSUMED.",
+  "provenance": {
+    "status": "UNVERIFIED_ASSUMPTION",
+    "sources": [
+      { "url": "https://help.openai.com/en/articles/20001072-how-do-i-export-monthly-usage-details-from-the-api-usage-dashboard", "accessedOn": "2026-10-06", "covers": "export steps (Usage page > Export > Cost data, group by line item, CSV, 1 day interval) and 'dates/times are shown in UTC', read through a search engine excerpt (direct fetch returned HTTP 403); NOT the column names" }
+    ],
+    "unverified": [
+      "every column name (date, line_item, project_id, cost_usd)",
+      "date format",
+      "UTC statement read only in a search excerpt",
+      "line_item vocabulary"
+    ],
+    "notes": "When the real CSV arrives, the importer refuses it listing the real header (MISSING_COLUMNS). Copy this file, rename the fields to the real header and pass the copy with --mapping. If the date column has no timezone and the export is confirmed UTC, pass --declared-timezone UTC."
+  },
+  "records": { "kind": "csv_rows", "delimiter": "," },
+  "timestamps": { "format": "auto", "declaredTimezone": null, "note": "Dates without timezone are rejected unless declared; the help article excerpt says UTC (unverified)." },
+  "period": { "day": "date" },
+  "model": { "field": "line_item", "regex": "^(?:[^|]*\\|\\s*)?([^,|]+),\\s*[^,]+$", "group": 1 },
+  "category": {
+    "rules": [
+      { "field": "line_item", "pattern": ",\\s*cached input$", "flags": "i", "category": "cache_read" },
+      { "field": "line_item", "pattern": ",\\s*input$", "flags": "i", "category": "input" },
+      { "field": "line_item", "pattern": ",\\s*output$", "flags": "i", "category": "output" },
+      { "field": "line_item", "pattern": "\\|\\s*(file search|web search|code interpreter)", "flags": "i", "category": "other" }
+    ],
+    "fallback": "unknown"
+  },
+  "expand": null,
+  "subtractFromInput": [],
+  "quantity": null,
+  "amount": { "field": "cost_usd", "divisor": "1", "binaryFloat": false, "precisionDecimals": null },
+  "currency": { "constant": "USD" },
+  "requestId": null,
+  "projectOrKey": ["project_id"],
+  "kind": { "rules": [] },
+  "scope": null,
+  "credits": null,
+  "description": ["line_item"]
+}

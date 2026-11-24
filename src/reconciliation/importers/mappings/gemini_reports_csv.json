@@ -1,0 +1,45 @@
+{
+  "schema": "otk.reconciliation_mapping.v1",
+  "id": "gemini_reports_csv",
+  "provider": "gemini",
+  "format": "csv",
+  "describes": "TEMPLATE for a daily CSV downloaded from Cloud Billing > Reports (grouped by SKU, daily). Column names, date format and the timezone of the days are ASSUMED.",
+  "provenance": {
+    "status": "UNVERIFIED_ASSUMPTION",
+    "sources": [],
+    "unverified": [
+      "every column name (date, service_description, sku_description, usage_amount, usage_unit, cost, currency)",
+      "timezone of the report days (NOT assumed: naive dates are rejected until --declared-timezone is given)",
+      "SKU description wording and usage unit"
+    ],
+    "notes": "Prefer gemini_billing_export_csv (documented schema). Use this template only if the BigQuery export is unavailable; adapt the column names to the real header and pass --declared-timezone with the timezone shown by the Reports page."
+  },
+  "records": { "kind": "csv_rows", "delimiter": "," },
+  "timestamps": { "format": "auto", "declaredTimezone": null, "note": "Day timezone unknown: must be declared by the caller." },
+  "period": { "day": "date" },
+  "model": { "fromDescription": "sku_description" },
+  "category": {
+    "rules": [
+      { "field": "sku_description", "pattern": "storage", "flags": "i", "category": "other" },
+      { "field": "sku_description", "pattern": "cach", "flags": "i", "category": "cache_read" },
+      { "field": "sku_description", "pattern": "input", "flags": "i", "category": "input" },
+      { "field": "sku_description", "pattern": "output|thinking", "flags": "i", "category": "output" }
+    ],
+    "fallback": "unknown"
+  },
+  "expand": null,
+  "subtractFromInput": [],
+  "quantity": { "field": "usage_amount", "unit": "tokens", "unitField": "usage_unit", "allowedUnits": ["count", "tokens", "token"] },
+  "amount": { "field": "cost", "divisor": "1", "binaryFloat": false, "precisionDecimals": null },
+  "currency": { "field": "currency" },
+  "requestId": null,
+  "projectOrKey": [],
+  "kind": {
+    "rules": [
+      { "field": "sku_description", "pattern": "^tax", "flags": "i", "kind": "tax" }
+    ]
+  },
+  "scope": { "field": "service_description", "allowed": ["Gemini API", "Generative Language API"] },
+  "credits": null,
+  "description": ["service_description", "sku_description"]
+}

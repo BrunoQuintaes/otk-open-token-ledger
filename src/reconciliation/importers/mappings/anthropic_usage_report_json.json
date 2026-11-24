@@ -1,0 +1,37 @@
+{
+  "schema": "otk.reconciliation_mapping.v1",
+  "id": "anthropic_usage_report_json",
+  "provider": "anthropic",
+  "format": "json",
+  "describes": "Anthropic Admin API GET /v1/organizations/usage_report/messages response saved as JSON (bucket_width=1d or 1h, group_by[]=model). Token quantities only: no money.",
+  "provenance": {
+    "status": "VERIFIED_OFFICIAL_DOC",
+    "sources": [
+      { "url": "https://platform.claude.com/docs/en/api/admin-api/usage-cost/get-messages-usage-report", "accessedOn": "2026-10-06", "covers": "data[].starting_at/ending_at (RFC 3339), results[].uncached_input_tokens, cache_read_input_tokens, cache_creation.ephemeral_5m_input_tokens, cache_creation.ephemeral_1h_input_tokens, output_tokens, model (null unless group_by model), api_key_id, workspace_id, service_tier; bucket_width 1d|1h|1m" }
+    ],
+    "unverified": [],
+    "notes": "uncached_input_tokens excludes cache reads and cache writes, which are reported separately: the same convention as the OTK ledger (input = uncached input). Use group_by[]=model, otherwise model is null and every line is UNKNOWN."
+  },
+  "records": { "kind": "json_buckets", "bucketsPath": "data", "resultsPath": "results" },
+  "timestamps": { "format": "auto", "declaredTimezone": null, "note": "RFC 3339 values carry their offset (Z); no declaration needed." },
+  "period": { "start": "$bucket.starting_at", "end": "$bucket.ending_at" },
+  "model": { "field": "model" },
+  "category": null,
+  "expand": [
+    { "category": "input", "quantityField": "uncached_input_tokens" },
+    { "category": "output", "quantityField": "output_tokens" },
+    { "category": "cache_read", "quantityField": "cache_read_input_tokens" },
+    { "category": "cache_write", "quantityField": "cache_creation.ephemeral_5m_input_tokens" },
+    { "category": "cache_write", "quantityField": "cache_creation.ephemeral_1h_input_tokens" }
+  ],
+  "subtractFromInput": [],
+  "quantity": null,
+  "amount": null,
+  "currency": null,
+  "requestId": null,
+  "projectOrKey": ["workspace_id", "api_key_id"],
+  "kind": { "rules": [] },
+  "scope": null,
+  "credits": null,
+  "description": ["model", "service_tier"]
+}

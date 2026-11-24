@@ -1,0 +1,195 @@
+{
+ "schema": "h2eval.design_params.v1",
+ "designId": "H2EVAL-R4-R2-CAMPAIGN",
+ "source": "R4 rev.2 PROPOSTA_NAO_RATIFICADA: campaign design, reasoning policy per arm (T1/T2/T4/T5 OFF; T3 ADAPTIVE low 1024 + allowance 1024); post-pilot, before any confirmatory R4 data",
+ "perModel": {
+  "claude-haiku-5-5": {
+   "maxTokens": 256,
+   "thinking": {
+    "policy": "OFF"
+   },
+   "reasoningAllowanceTokens": 0,
+   "inputBound": {
+    "factor": 1.6,
+    "extraTokens": 64
+   },
+   "arms": {
+    "T1": {
+     "maxTokens": 512,
+     "thinking": {
+      "policy": "OFF"
+     },
+     "reasoningAllowanceTokens": 0
+    },
+    "T2": {
+     "maxTokens": 1024,
+     "thinking": {
+      "policy": "OFF"
+     },
+     "reasoningAllowanceTokens": 0
+    },
+    "T3": {
+     "maxTokens": 1024,
+     "thinking": {
+      "policy": "ADAPTIVE",
+      "effort": "low"
+     },
+     "reasoningAllowanceTokens": 1024
+    },
+    "T4": {
+     "maxTokens": 256,
+     "thinking": {
+      "policy": "OFF"
+     },
+     "reasoningAllowanceTokens": 0
+    },
+    "T5": {
+     "maxTokens": 256,
+     "thinking": {
+      "policy": "OFF"
+     },
+     "reasoningAllowanceTokens": 0
+    }
+   }
+  },
+  "claude-haiku-4-5-20251001": {
+   "maxTokens": 256,
+   "thinking": {
+    "policy": "OFF"
+   },
+   "reasoningAllowanceTokens": 0,
+   "inputBound": {
+    "factor": 1.6,
+    "extraTokens": 64
+   },
+   "arms": {
+    "T1": {
+     "maxTokens": 256
+    },
+    "T2": {
+     "maxTokens": 512
+    },
+    "T3": {
+     "maxTokens": 512
+    },
+    "T4": {
+     "maxTokens": 256
+    },
+    "T5": {
+     "maxTokens": 256
+    }
+   }
+  },
+  "gpt-4o-mini-2024-07-18": {
+   "maxTokens": 256,
+   "thinking": {
+    "policy": "OFF"
+   },
+   "reasoningAllowanceTokens": 0,
+   "inputBound": {
+    "factor": 1.6,
+    "extraTokens": 64
+   },
+   "arms": {
+    "T1": {
+     "maxTokens": 256
+    },
+    "T2": {
+     "maxTokens": 256
+    },
+    "T3": {
+     "maxTokens": 256
+    },
+    "T4": {
+     "maxTokens": 256
+    },
+    "T5": {
+     "maxTokens": 256
+    }
+   }
+  },
+  "gemini-3.5-flash-lite": {
+   "maxTokens": 256,
+   "thinking": {
+    "policy": "MINIMAL",
+    "thinkingLevel": "minimal"
+   },
+   "reasoningAllowanceTokens": 2048,
+   "inputBound": {
+    "factor": 1.6,
+    "extraTokens": 64
+   }
+  }
+ },
+ "d7": {
+  "option": "A",
+  "eligibleCalls": [
+   2,
+   3
+  ]
+ },
+ "integrity": {
+  "stopReasonRequired": true,
+  "thinkingDisabledRejectedStops": true
+ },
+ "expectedOpsPerSplit": {
+  "claude-haiku-4-5-20251001": {
+   "T1": {
+    "comparative": 12
+   },
+   "T2": {
+    "train": 52,
+    "validation": 29,
+    "holdout": 27
+   },
+   "T3": {
+    "train": 26,
+    "validation": 14,
+    "holdout": 14
+   },
+   "T4": {
+    "train": 27,
+    "validation": 9,
+    "holdout": 9
+   },
+   "T5": {
+    "train": 54,
+    "validation": 18,
+    "holdout": 18
+   }
+  },
+  "claude-haiku-5-5": {
+   "T1": {
+    "train": 27,
+    "validation": 14,
+    "holdout": 13
+   },
+   "T2": {
+    "train": 52,
+    "validation": 29,
+    "holdout": 27
+   },
+   "T3": {
+    "train": 26,
+    "validation": 14,
+    "holdout": 14
+   },
+   "T4": {
+    "train": 27,
+    "validation": 9,
+    "holdout": 9
+   },
+   "T5": {
+    "train": 54,
+    "validation": 18,
+    "holdout": 18
+   }
+  }
+ },
+ "notes": [
+  "Derived from the executor candidate 6d2ed21304b8eccb209e414872dc5778a80a94706724048f67bb2c6d8840066e (BOT-02 transcription) and CONFIRMED by ECON-02 against R10_PREREGISTRATION_H2EVAL_R4_PROPOSAL_R2.md.",
+  "inputBound 1.6/64 on all four models: POS_HOC_DERIVADA_EXPLORATORIA (R17 U/L0 1.328-1.583 on Haiku 5.5, n=21); safety cap only, not the prediction; others unobserved (conservative, fail-closed).",
+  "NOT RATIFIED. Valid only after R4 ratification; the design sha256 enters protocolHash.",
+  "The paired T3-OFF stratum is NOT in this file (see H2EVAL-R4-R2-T3-OFF-PAIR)."
+ ]
+}

@@ -1,0 +1,528 @@
+{
+ "generatedBy": "runs/R02/scripts/build_inventory.mjs",
+ "baselineCommit": "7606bc9be46bde8c1bc427c2eb4873bc1a474779",
+ "sourceFiles": {
+  "docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/besu/pv3-live-besu-2026-10-07t05-17-21-275_calls.jsonl": "bf806990cdbeac7e02643ddd90220e473373c3f81fb24d90accaf1086c694a21",
+  "docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/cacheprobe/pv3-live-cacheprobe-2026-10-07t05-17-01-243_calls.jsonl": "1339ba739846b73db484c45864bedd354974ff2b8dc767be42a93dbdd173d371",
+  "docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign/pv3-live-campaign-2026-10-07t04-57-14-774_calls.jsonl": "bc39fe386e6c950a029aa05747ceebb41bc914b350640f55d306d8486824978a",
+  "docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign_start-index-27/pv3-live-campaign-2026-10-07t05-11-27-123_calls.jsonl": "586ccf95680902a404890a654f61312d04e5b8462b829ca9c52ceb4ff448c795",
+  "docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/besu/pv3-gemini35-live-besu-2026-10-07t05-08-03-977_calls.jsonl": "8311a2389c9ba57a315680e1e87eb5fcef63d84b96cb26afbd1d036984b2b9af",
+  "docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/cacheprobe/pv3-gemini35-live-cacheprobe-2026-10-07t05-07-38-327_calls.jsonl": "f3bf1362244a0be0c0bb1a63c1f9e54ec8007c14f5faf2f4f62a6b285780f0a5",
+  "docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign/pv3-gemini35-live-campaign-2026-10-07t04-52-52-082_calls.jsonl": "b24dd85175fb3f9b2c39cb5c2167a349f247becefc120a29b2f8120495511c87",
+  "docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign_start-index-66/pv3-gemini35-live-campaign-2026-10-07t05-03-44-975_calls.jsonl": "e93d467b71f5c70caef3aaee27cf4751c34312d86c9174e0711038de002f92ea",
+  "docs/_ops/OVERNIGHT2_20261006/campaign/openai/besu/pv3-openai-live-besu-2026-10-07t05-16-34-630_calls.jsonl": "4380688f87e9df7278ba5701f64e7ad639b655fdbc3e957b431f02f27c10ba1a",
+  "docs/_ops/OVERNIGHT2_20261006/campaign/openai/cacheprobe/pv3-openai-live-cacheprobe-2026-10-07t05-16-12-321_calls.jsonl": "d44717825a1194bb7ed820396ca0a9d7303f56e55698baae829495f6f0386cee",
+  "docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_max-calls-10/pv3-openai-live-campaign-2026-10-07t04-47-10-738_calls.jsonl": "4921562a4f01591d524521570168575fe2426731a163d6ab493b7855b420b05e",
+  "docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-10/pv3-openai-live-campaign-2026-10-07t04-48-20-564_calls.jsonl": "dd0376b2d251f2bdf37a7e601b29ec8cb9cb976b9151c254bb3e64ad828ab0e4",
+  "docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-137/pv3-openai-live-campaign-2026-10-07t05-09-06-868_calls.jsonl": "9ca3839926c8a14e4dc8b5276b6b488c3e42e7dc9c7606608db4963f677b5624",
+  "docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-97/pv3-openai-live-campaign-2026-10-07t05-01-19-314_calls.jsonl": "debc26e8224c4542fa6a716973c7e47fc65d2d1d51de15487ba8ed179f7cd694"
+ },
+ "priceTables": {
+  "pilot-v3-anthropic-haiku45-openai-gpt4omini-official-2026-10-03": {
+   "file": "scripts/pilot/price_table_pilot_v3_20261003.json",
+   "sha256": "c76a0fade9b7dd02d287054fc015d5cce2f3269b57933a21d32634c9f0dac81c"
+  },
+  "anthropic-haiku45-official-2026-10-01": {
+   "file": "scripts/pilot/anthropic/price_table_anthropic_haiku45_20261001.json",
+   "sha256": "00d5a887f50de77a5fd8e47bccbbf78c967c5b92cbfbc67391f382a6538299f6"
+  },
+  "pilot-v3-anthropic-haiku45-openai-gpt4omini-gemini25fl-gemini35fl-official-2026-10-04": {
+   "file": "scripts/pilot/price_table_pilot_v3_gemini35_20261004.json",
+   "sha256": "ad2af5f655bab8c8479c95f86a49d57329ae37f12b117c2198ca8d4af61bc2a3"
+  }
+ },
+ "campaign_ops_sha256": "7e76182aefa0f2bf5c7b5a57abf2d71c2b54ca32d404ad1eb1c6a29f23f8e620",
+ "providers": {
+  "openai": {
+   "lines_in_calls_jsonl": 221,
+   "completed_http200": 219,
+   "refused": [
+    {
+     "label": "cal-json-005-v1",
+     "httpStatus": 429,
+     "docId": "json-005-v1",
+     "split_norm": "train",
+     "src": "docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-10/pv3-openai-live-campaign-2026-10-07t04-48-20-564_calls.jsonl:88"
+    },
+    {
+     "label": "cal-mixed_unicode-000-v1",
+     "httpStatus": 400,
+     "docId": "mixed_unicode-000-v1",
+     "split_norm": "train",
+     "src": "docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-97/pv3-openai-live-campaign-2026-10-07t05-01-19-314_calls.jsonl:40"
+    }
+   ],
+   "consistent_true": 219,
+   "byTaskType_completed": {
+    "null(besu)": 1,
+    "cache-probe": 3,
+    "calibration-sample": 215
+   },
+   "expected_per_letter": {
+    "texts": 216,
+    "cache": 3,
+    "besu": 1
+   },
+   "observed": {
+    "unique_texts_completed": 215,
+    "calibration_sample_lines_completed": 215,
+    "cache": 3,
+    "besu": 1
+   },
+   "texts_missing_vs_216": [
+    {
+     "docId": "mixed_unicode-000-v1",
+     "attempts": 1,
+     "outcomes": [
+      "docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-97/pv3-openai-live-campaign-2026-10-07t05-01-19-314_calls.jsonl:40 http 400"
+     ],
+     "reason": "recusa(s) sem repeticao bem-sucedida"
+    }
+   ],
+   "labels_with_more_than_one_line": [
+    {
+     "label": "cal-json-005-v1",
+     "lines": 2,
+     "outcomes": [
+      "docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-10/pv3-openai-live-campaign-2026-10-07t04-48-20-564_calls.jsonl:88 http 429",
+      "docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-97/pv3-openai-live-campaign-2026-10-07t05-01-19-314_calls.jsonl:1 http 200"
+     ]
+    }
+   ],
+   "docs_completed_by_family": {
+    "pt_prose": 27,
+    "en_prose": 27,
+    "code_ts": 27,
+    "json": 27,
+    "mixed_unicode": 26,
+    "numeric": 27,
+    "tiny": 27,
+    "markdown_table": 27
+   },
+   "docs_completed_by_split_norm": {
+    "validation": 54,
+    "holdout": 39,
+    "train": 122
+   },
+   "calibration_pairs": {
+    "n": 211,
+    "bySplit": {
+     "validation": 53,
+     "holdout": 38,
+     "train": 120
+    },
+    "byFamily": {
+     "pt_prose": 27,
+     "en_prose": 27,
+     "code_ts": 26,
+     "json": 27,
+     "mixed_unicode": 26,
+     "numeric": 26,
+     "tiny": 26,
+     "markdown_table": 26
+    }
+   },
+   "calibration_sample_without_pair_not_produced": [
+    {
+     "label": "cal-code_ts-000-v0",
+     "docId": "code_ts-000-v0",
+     "split_norm": "holdout",
+     "family": "code_ts",
+     "conference_state": "not_produced",
+     "src": "docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-10/pv3-openai-live-campaign-2026-10-07t04-48-20-564_calls.jsonl:45"
+    },
+    {
+     "label": "cal-numeric-008-v0",
+     "docId": "numeric-008-v0",
+     "split_norm": "train",
+     "family": "numeric",
+     "conference_state": "not_produced",
+     "src": "docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-137/pv3-openai-live-campaign-2026-10-07t05-09-06-868_calls.jsonl:50"
+    },
+    {
+     "label": "cal-tiny-007-v0",
+     "docId": "tiny-007-v0",
+     "split_norm": "train",
+     "family": "tiny",
+     "conference_state": "not_produced",
+     "src": "docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-137/pv3-openai-live-campaign-2026-10-07t05-09-06-868_calls.jsonl:74"
+    },
+    {
+     "label": "cal-markdown_table-008-v2",
+     "docId": "markdown_table-008-v2",
+     "split_norm": "validation",
+     "family": "markdown_table",
+     "conference_state": "not_produced",
+     "src": "docs/_ops/OVERNIGHT2_20261006/campaign/openai/campaign_start-index-97/pv3-openai-live-campaign-2026-10-07t05-01-19-314_calls.jsonl:38"
+    }
+   ],
+   "conference_states_completed": {
+    "compared": 215,
+    "not_produced": 4
+   },
+   "conference_verdicts_completed": {
+    "within_threshold": 215,
+    "": 4
+   },
+   "cost_usd": {
+    "sum_ledger_record": 0.01105065,
+    "sum_recomputed_frozen_table_NOT_INVOICE": 0.01105065,
+    "campaign_summary_costUsdComputedFromLedger": 0.01105065,
+    "rows_recompute_differs": 0,
+    "rows_recompute_differs_list": []
+   },
+   "declared_token_sums_completed": {
+    "input": 57915,
+    "input_cache_read": 6656,
+    "output": 4771
+   },
+   "campaign_summary_quantities": {
+    "input_uncached": "51259",
+    "input_cache_read": "6656",
+    "input_cache_write": "0",
+    "output_visible": "4771",
+    "output_reasoning": "0"
+   },
+   "campaign_summary_calibration": {
+    "calibrated": true,
+    "n": 211,
+    "bySplit": {
+     "train": 120,
+     "validation": 53,
+     "holdout": 38
+    }
+   },
+   "ts_log_coverage": {
+    "completed_with_ts": 219,
+    "refused_with_ts": 0
+   }
+  },
+  "anthropic": {
+   "lines_in_calls_jsonl": 220,
+   "completed_http200": 219,
+   "refused": [
+    {
+     "label": "cal-en_prose-000-v0",
+     "httpStatus": 429,
+     "docId": "en_prose-000-v0",
+     "split_norm": "validation",
+     "src": "docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign/pv3-live-campaign-2026-10-07t04-57-14-774_calls.jsonl:28"
+    }
+   ],
+   "consistent_true": 219,
+   "byTaskType_completed": {
+    "null(besu)": 1,
+    "cache-probe": 3,
+    "calibration-sample": 215
+   },
+   "expected_per_letter": {
+    "texts": 216,
+    "cache": 3,
+    "besu": 1
+   },
+   "observed": {
+    "unique_texts_completed": 215,
+    "calibration_sample_lines_completed": 215,
+    "cache": 3,
+    "besu": 1
+   },
+   "texts_missing_vs_216": [
+    {
+     "docId": "mixed_unicode-000-v1",
+     "attempts": 0,
+     "outcomes": [],
+     "reason": "nunca enviado a este provedor (ausente de todos os _calls.jsonl)"
+    }
+   ],
+   "labels_with_more_than_one_line": [
+    {
+     "label": "cal-en_prose-000-v0",
+     "lines": 2,
+     "outcomes": [
+      "docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign_start-index-27/pv3-live-campaign-2026-10-07t05-11-27-123_calls.jsonl:1 http 200",
+      "docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign/pv3-live-campaign-2026-10-07t04-57-14-774_calls.jsonl:28 http 429"
+     ]
+    }
+   ],
+   "docs_completed_by_family": {
+    "en_prose": 27,
+    "code_ts": 27,
+    "json": 27,
+    "markdown_table": 27,
+    "mixed_unicode": 26,
+    "numeric": 27,
+    "tiny": 27,
+    "pt_prose": 27
+   },
+   "docs_completed_by_split_norm": {
+    "validation": 54,
+    "train": 122,
+    "holdout": 39
+   },
+   "calibration_pairs": {
+    "n": 210,
+    "bySplit": {
+     "validation": 54,
+     "train": 119,
+     "holdout": 37
+    },
+    "byFamily": {
+     "en_prose": 26,
+     "code_ts": 26,
+     "json": 26,
+     "markdown_table": 26,
+     "mixed_unicode": 26,
+     "numeric": 26,
+     "tiny": 27,
+     "pt_prose": 27
+    }
+   },
+   "calibration_sample_without_pair_not_produced": [
+    {
+     "label": "cal-en_prose-001-v0",
+     "docId": "en_prose-001-v0",
+     "split_norm": "train",
+     "family": "en_prose",
+     "conference_state": "not_produced",
+     "src": "docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign_start-index-27/pv3-live-campaign-2026-10-07t05-11-27-123_calls.jsonl:4"
+    },
+    {
+     "label": "cal-code_ts-006-v2",
+     "docId": "code_ts-006-v2",
+     "split_norm": "train",
+     "family": "code_ts",
+     "conference_state": "not_produced",
+     "src": "docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign_start-index-27/pv3-live-campaign-2026-10-07t05-11-27-123_calls.jsonl:48"
+    },
+    {
+     "label": "cal-json-000-v0",
+     "docId": "json-000-v0",
+     "split_norm": "holdout",
+     "family": "json",
+     "conference_state": "not_produced",
+     "src": "docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign_start-index-27/pv3-live-campaign-2026-10-07t05-11-27-123_calls.jsonl:55"
+    },
+    {
+     "label": "cal-markdown_table-002-v1",
+     "docId": "markdown_table-002-v1",
+     "split_norm": "train",
+     "family": "markdown_table",
+     "conference_state": "not_produced",
+     "src": "docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign_start-index-27/pv3-live-campaign-2026-10-07t05-11-27-123_calls.jsonl:89"
+    },
+    {
+     "label": "cal-numeric-005-v1",
+     "docId": "numeric-005-v1",
+     "split_norm": "holdout",
+     "family": "numeric",
+     "conference_state": "not_produced",
+     "src": "docs/_ops/OVERNIGHT2_20261006/campaign/anthropic/campaign_start-index-27/pv3-live-campaign-2026-10-07t05-11-27-123_calls.jsonl:151"
+    }
+   ],
+   "conference_states_completed": {
+    "incomplete": 214,
+    "not_produced": 5
+   },
+   "conference_verdicts_completed": {
+    "not_applicable": 214,
+    "": 5
+   },
+   "cost_usd": {
+    "sum_ledger_record": 0.096972,
+    "sum_recomputed_frozen_table_NOT_INVOICE": 0.096972,
+    "campaign_summary_costUsdComputedFromLedger": 0.096972,
+    "rows_recompute_differs": 0,
+    "rows_recompute_differs_list": []
+   },
+   "declared_token_sums_completed": {
+    "input": 70997,
+    "input_cache_read": 0,
+    "output": 5195
+   },
+   "campaign_summary_quantities": {
+    "input_uncached": "70997",
+    "input_cache_read": "0",
+    "input_cache_write": "0",
+    "output_visible": "5195",
+    "output_reasoning": "0"
+   },
+   "campaign_summary_calibration": {
+    "calibrated": false,
+    "n": 210,
+    "bySplit": {
+     "train": 119,
+     "validation": 54,
+     "holdout": 37
+    }
+   },
+   "ts_log_coverage": {
+    "completed_with_ts": 219,
+    "refused_with_ts": 0
+   }
+  },
+  "gemini": {
+   "lines_in_calls_jsonl": 221,
+   "completed_http200": 220,
+   "refused": [
+    {
+     "label": "cal-code_ts-004-v0",
+     "httpStatus": 429,
+     "docId": "code_ts-004-v0",
+     "split_norm": "validation",
+     "src": "docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign/pv3-gemini35-live-campaign-2026-10-07t04-52-52-082_calls.jsonl:67"
+    }
+   ],
+   "consistent_true": 220,
+   "byTaskType_completed": {
+    "null(besu)": 1,
+    "cache-probe": 3,
+    "calibration-sample": 216
+   },
+   "expected_per_letter": {
+    "texts": 216,
+    "cache": 3,
+    "besu": 1
+   },
+   "observed": {
+    "unique_texts_completed": 216,
+    "calibration_sample_lines_completed": 216,
+    "cache": 3,
+    "besu": 1
+   },
+   "texts_missing_vs_216": [],
+   "labels_with_more_than_one_line": [
+    {
+     "label": "cal-code_ts-004-v0",
+     "lines": 2,
+     "outcomes": [
+      "docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign_start-index-66/pv3-gemini35-live-campaign-2026-10-07t05-03-44-975_calls.jsonl:1 http 200",
+      "docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign/pv3-gemini35-live-campaign-2026-10-07t04-52-52-082_calls.jsonl:67 http 429"
+     ]
+    }
+   ],
+   "docs_completed_by_family": {
+    "code_ts": 27,
+    "json": 27,
+    "markdown_table": 27,
+    "mixed_unicode": 27,
+    "numeric": 27,
+    "tiny": 27,
+    "pt_prose": 27,
+    "en_prose": 27
+   },
+   "docs_completed_by_split_norm": {
+    "validation": 54,
+    "train": 123,
+    "holdout": 39
+   },
+   "calibration_pairs": {
+    "n": 212,
+    "bySplit": {
+     "validation": 54,
+     "train": 121,
+     "holdout": 37
+    },
+    "byFamily": {
+     "code_ts": 26,
+     "json": 26,
+     "markdown_table": 26,
+     "mixed_unicode": 27,
+     "numeric": 27,
+     "tiny": 27,
+     "pt_prose": 26,
+     "en_prose": 27
+    }
+   },
+   "calibration_sample_without_pair_not_produced": [
+    {
+     "label": "cal-json-008-v2",
+     "docId": "json-008-v2",
+     "split_norm": "train",
+     "family": "json",
+     "conference_state": "not_produced",
+     "src": "docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign_start-index-66/pv3-gemini35-live-campaign-2026-10-07t05-03-44-975_calls.jsonl:42"
+    },
+    {
+     "label": "cal-markdown_table-005-v2",
+     "docId": "markdown_table-005-v2",
+     "split_norm": "train",
+     "family": "markdown_table",
+     "conference_state": "not_produced",
+     "src": "docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign_start-index-66/pv3-gemini35-live-campaign-2026-10-07t05-03-44-975_calls.jsonl:60"
+    },
+    {
+     "label": "cal-pt_prose-001-v2",
+     "docId": "pt_prose-001-v2",
+     "split_norm": "holdout",
+     "family": "pt_prose",
+     "conference_state": "not_produced",
+     "src": "docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign/pv3-gemini35-live-campaign-2026-10-07t04-52-52-082_calls.jsonl:6"
+    },
+    {
+     "label": "cal-code_ts-003-v1",
+     "docId": "code_ts-003-v1",
+     "split_norm": "holdout",
+     "family": "code_ts",
+     "conference_state": "not_produced",
+     "src": "docs/_ops/OVERNIGHT2_20261006/campaign/gemini35/campaign/pv3-gemini35-live-campaign-2026-10-07t04-52-52-082_calls.jsonl:65"
+    }
+   ],
+   "conference_states_completed": {
+    "incomplete": 216,
+    "not_produced": 4
+   },
+   "conference_verdicts_completed": {
+    "not_applicable": 216,
+    "": 4
+   },
+   "cost_usd": {
+    "sum_ledger_record": 0.03047822,
+    "sum_recomputed_frozen_table_NOT_INVOICE": 0.03047822,
+    "campaign_summary_costUsdComputedFromLedger": 0.03047822,
+    "rows_recompute_differs": 0,
+    "rows_recompute_differs_list": []
+   },
+   "declared_token_sums_completed": {
+    "input": 71810,
+    "input_cache_read": 4064,
+    "output": 4013
+   },
+   "campaign_summary_quantities": {
+    "input_uncached": "67746",
+    "input_cache_read": "4064",
+    "input_cache_write": "0",
+    "output_visible": "4013",
+    "output_reasoning": "0"
+   },
+   "campaign_summary_calibration": {
+    "calibrated": false,
+    "n": 212,
+    "bySplit": {
+     "train": 121,
+     "validation": 54,
+     "holdout": 37
+    }
+   },
+   "ts_log_coverage": {
+    "completed_with_ts": 220,
+    "refused_with_ts": 0
+   }
+  }
+ },
+ "totals": {
+  "lines": 662,
+  "completed": 658,
+  "refused": 4,
+  "calibration_pairs": 633,
+  "cost_usd_sum_ledger": 0.13850087,
+  "cost_usd_sum_recomputed_NOT_INVOICE": 0.13850087
+ },
+ "cross_check_campaign_ops": {
+  "campaign_ops_lines": 662,
+  "inventory_opIds_not_in_ops": [],
+  "ops_opIds_not_in_inventory": [],
+  "cost_mismatch": [],
+  "local_mismatch": [],
+  "split_mismatch": []
+ }
+}

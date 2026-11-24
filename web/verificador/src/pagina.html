@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Verificador de recibos OTK</title>
+<style>
+:root {
+  --fundo: #f7f7f5; --superficie: #ffffff; --texto: #1b1b1b; --suave: #4a4a4a; --borda: #c9c9c4; --foco: #0b57d0;
+  --verde-fundo: #e6f4ea; --verde-texto: #0f5323; --verde-borda: #1e7b3a;
+  --amarelo-fundo: #fff4d6; --amarelo-texto: #5c3d00; --amarelo-borda: #a06b00;
+  --vermelho-fundo: #fde7e7; --vermelho-texto: #8a1111; --vermelho-borda: #b3261e;
+  --link: #0b4fb3; --sombra: 0 1px 2px rgba(0,0,0,.08);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --fundo: #141414; --superficie: #1f1f1f; --texto: #ececec; --suave: #bdbdbd; --borda: #4a4a4a; --foco: #8ab4f8;
+    --verde-fundo: #12301c; --verde-texto: #b6f0c6; --verde-borda: #4cc06f;
+    --amarelo-fundo: #3a2c06; --amarelo-texto: #ffe08a; --amarelo-borda: #e0a92b;
+    --vermelho-fundo: #3d1414; --vermelho-texto: #ffc4c0; --vermelho-borda: #f2766b;
+    --link: #9cc3ff; --sombra: none; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --fundo: #141414; --superficie: #1f1f1f; --texto: #ececec; --suave: #bdbdbd; --borda: #4a4a4a; --foco: #8ab4f8;
+  --verde-fundo: #12301c; --verde-texto: #b6f0c6; --verde-borda: #4cc06f;
+  --amarelo-fundo: #3a2c06; --amarelo-texto: #ffe08a; --amarelo-borda: #e0a92b;
+  --vermelho-fundo: #3d1414; --vermelho-texto: #ffc4c0; --vermelho-borda: #f2766b;
+  --link: #9cc3ff; --sombra: none; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--fundo); color: var(--texto); font: 17px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+.pagina { max-width: 1100px; margin: 0 auto; padding: 20px 16px 48px; }
+header.topo { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; justify-content: space-between; }
+h1 { font-size: 1.7rem; line-height: 1.2; margin: 0 0 6px; }
+h2 { font-size: 1.25rem; margin: 0 0 8px; }
+h3 { font-size: 1.05rem; margin: 0 0 6px; }
+p { margin: 0 0 10px; }
+.suave { color: var(--suave); }
+code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: .9em; overflow-wrap: anywhere; word-break: break-all; }
+button, .botao { font: inherit; font-weight: 600; min-height: 44px; padding: 8px 16px; border-radius: 8px; border: 2px solid var(--texto); background: var(--superficie); color: var(--texto); cursor: pointer; }
+button.primario { background: var(--texto); color: var(--fundo); }
+button:disabled { opacity: .55; cursor: not-allowed; }
+button.link { border: none; background: none; color: var(--link); text-decoration: underline; padding: 4px 0; min-height: 32px; font-weight: 600; }
+:focus-visible { outline: 3px solid var(--foco); outline-offset: 2px; }
+.aviso-simulado { background: var(--vermelho-fundo); color: var(--vermelho-texto); border: 2px solid var(--vermelho-borda); padding: 10px 14px; border-radius: 8px; font-weight: 700; margin: 12px 0; }
+.offline { background: var(--superficie); border: 1px solid var(--borda); border-radius: 8px; padding: 10px 14px; margin: 14px 0 20px; }
+.passo { background: var(--superficie); border: 1px solid var(--borda); border-radius: 12px; padding: 16px; margin: 0 0 16px; box-shadow: var(--sombra); }
+.passo-num { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: var(--texto); color: var(--fundo); font-weight: 700; margin-right: 8px; }
+.zona { border: 3px dashed var(--borda); border-radius: 12px; padding: 18px; text-align: center; margin: 10px 0; }
+.zona.sobre { border-color: var(--foco); background: color-mix(in srgb, var(--foco) 10%, transparent); }
+.zona.feito { border-style: solid; border-color: var(--verde-borda); }
+.zona .botoes { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 10px; }
+.status { font-weight: 600; margin-top: 8px; }
+label { font-weight: 600; display: block; margin: 12px 0 4px; }
+input[type=text], input[type=date] { font: inherit; width: 100%; max-width: 560px; min-height: 44px; padding: 8px 10px; border: 2px solid var(--borda); border-radius: 8px; background: var(--fundo); color: var(--texto); }
+.escondido { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.cartoes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 12px 0; }
+.cartao { border: 3px solid; border-radius: 12px; padding: 14px; }
+.cartao-topo { font-weight: 700; font-size: 1.1rem; }
+.cartao-num { font-size: 2.6rem; font-weight: 800; line-height: 1.1; }
+.verde { --c-f: var(--verde-fundo); --c-t: var(--verde-texto); --c-b: var(--verde-borda); }
+.amarelo { --c-f: var(--amarelo-fundo); --c-t: var(--amarelo-texto); --c-b: var(--amarelo-borda); }
+.vermelho { --c-f: var(--vermelho-fundo); --c-t: var(--vermelho-texto); --c-b: var(--vermelho-borda); }
+.cartao, .selo, .banner { background: var(--c-f); color: var(--c-t); border-color: var(--c-b); }
+.selo { display: inline-block; border: 2px solid var(--c-b); border-radius: 999px; padding: 2px 10px; font-weight: 700; white-space: nowrap; }
+.banner { border: 2px solid var(--c-b); border-radius: 8px; padding: 10px 14px; font-weight: 600; margin: 8px 0; }
+.sha { background: var(--superficie); border: 1px solid var(--borda); border-radius: 8px; padding: 10px 14px; margin: 12px 0; }
+.acoes { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
+.filtro { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.filtro label { margin: 0 0 4px; }
+.filtro input { width: auto; }
+table { width: 100%; border-collapse: collapse; margin-top: 12px; background: var(--superficie); }
+th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--borda); vertical-align: top; }
+th { font-size: .9rem; color: var(--suave); }
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: color-mix(in srgb, var(--foco) 6%, transparent); }
+.antes { background: var(--superficie); border: 2px solid var(--texto); border-radius: 12px; padding: 12px 16px; margin: 0 0 16px; }
+.antes summary { font-size: 1.1rem; }
+.antes section { margin-top: 12px; }
+a { color: var(--link); font-weight: 600; }
+.limites { background: var(--superficie); border: 2px solid var(--texto); border-radius: 12px; padding: 16px; margin-top: 24px; }
+.limites ul { padding-left: 20px; margin: 0; }
+.limites li { margin-bottom: 8px; }
+dialog { max-width: 760px; width: calc(100% - 24px); border: 2px solid var(--texto); border-radius: 12px; padding: 0; background: var(--superficie); color: var(--texto); }
+dialog::backdrop { background: rgba(0,0,0,.55); }
+.det-corpo { padding: 18px; }
+.bloco { border-left: 6px solid var(--borda); padding: 6px 12px; margin: 12px 0; }
+.bloco.nao { border-left-color: var(--texto); }
+dl.tecnico { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; font-size: .92rem; }
+dl.tecnico dt { font-weight: 600; } dl.tecnico dd { margin: 0; }
+details summary { cursor: pointer; font-weight: 600; min-height: 32px; }
+footer { margin-top: 24px; font-size: .95rem; }
+@media (max-width: 720px) {
+  body { font-size: 16px; }
+  .cartoes { grid-template-columns: 1fr; }
+  .cartao { display: flex; align-items: center; gap: 12px; } .cartao-num { font-size: 2rem; }
+  table, thead, tbody, tr, td { display: block; }
+  thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  tbody tr { border: 2px solid var(--borda); border-radius: 10px; margin-bottom: 10px; padding: 6px 10px; }
+  td { border: none; padding: 4px 0; display: grid; grid-template-columns: 7.5em 1fr; gap: 8px; }
+  td::before { content: attr(data-rotulo); font-weight: 700; color: var(--suave); }
+  dl.tecnico { grid-template-columns: 1fr; }
+}
+@media print {
+  :root { --fundo: #fff; --superficie: #fff; --texto: #000; --suave: #333; --borda: #888; color-scheme: light; }
+  body { font-size: 11pt; background: #fff; }
+  .nao-imprimir, .passo, header .botao, #bt-tema, dialog, .acoes, .filtro { display: none !important; }
+  .pagina { max-width: none; padding: 0; }
+  .cartao, .selo, .banner { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  table { font-size: 9.5pt; } tr { break-inside: avoid; }
+  td.motivo button { display: none; }
+  .limites { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+<div class="pagina">
+<header class="topo">
+  <div>
+    <h1>Verificador de recibos OTK</h1>
+    <p class="suave">Confira, no seu computador e sem internet, se os recibos de uso de IA foram alterados.</p>
+  </div>
+  <button type="button" id="bt-tema" aria-pressed="false">Tema</button>
+</header>
+<div id="aviso-simulado" class="aviso-simulado" role="alert" hidden>VERSÃO DE TESTE DA INTERFACE: esta página usa um núcleo simulado e NÃO confere assinatura nenhuma. Não use para conferir recibos.</div>
+<p class="offline">&#128274; Esta página não envia nada para a internet: ela está proibida de fazer conexões (veja “Como sei que nada sai daqui?” no fim). Pode desligar o Wi-Fi antes de usar.</p>
+
+<details class="antes nao-imprimir" id="antes">
+  <summary>Antes de começar: o que você precisa</summary>
+  <section id="onde-recibos" aria-labelledby="t-onde-recibos">
+    <h3 id="t-onde-recibos">1. Os recibos do OTK: o que são e onde acho</h3>
+    <p>São os <strong>recibos do OTK</strong>: um por chamada de IA, assinado pelo próprio OTK no momento da chamada (formato <code>otk.receipt.v3</code>).</p>
+    <p><strong>Não são</strong> as faturas nem os relatórios de uso que se baixam nas páginas da OpenAI, Anthropic ou Google. Esses servem para conferir os totais com o provedor (a conciliação), que é outra coisa e fica para uma próxima versão desta página.</p>
+    <p><strong>Onde ficam:</strong> o OTK guarda os recibos no banco de dados dele (PostgreSQL), não numa pasta. Para ter a pasta, quem opera o OTK exporta:</p>
+    <p><code>otk receipts export --since AAAA-MM-DD --until AAAA-MM-DD --out &lt;pasta&gt; --pg-env &lt;NOME_DA_VARIAVEL&gt; [--tenant &lt;cliente&gt;]</code></p>
+    <p>A pasta de destino é a que a pessoa escolher em <code>--out</code> (por exemplo, <code>recibos_novembro</code>). Dentro dela ficam <code>recibos_&lt;início&gt;_&lt;fim&gt;.jsonl</code> e um <code>MANIFEST_….json</code> com a contagem e o sha256 do arquivo (o manifesto não é recibo; a página o reconhece). Em <code>--pg-env</code> vai só o <strong>nome</strong> da variável que guarda o endereço do banco, nunca o endereço. Sem esse comando, cada recibo pode ser baixado um a um pela rota <code>GET /v1/operations/{id}/conference</code> (permissão <code>receipts:read</code>), que gera um <code>.json</code> por operação.</p>
+    <p>Se você recebeu os arquivos do operador (um <code>.jsonl</code>, como <code>recibos_2026-11-01_2026-11-30.jsonl</code>, ou vários <code>.json</code>), é só arrastar a pasta inteira na área “Recibos” do passo 1.</p>
+  </section>
+  <section id="onde-chaveiro" aria-labelledby="t-onde-chaveiro">
+    <h3 id="t-onde-chaveiro">2. O chaveiro público: o que é e como consigo</h3>
+    <p>É a lista das chaves de assinatura de quem opera o OTK. Para cada chave: um identificador, o endereço público e se ela está ativa, aposentada (com data) ou revogada. <strong>Não tem nada secreto</strong> e serve só para conferir quem assinou.</p>
+    <p><strong>Como conseguir:</strong> quem opera gera com <code>otk keyring export --history historico_chaves.json --out chaveiro.json</code>, que também mostra a impressão digital (sha256) do arquivo. Chaves antigas (aposentadas ou revogadas) entram no mesmo arquivo, a partir do histórico de chaves que o operador mantém (o <code>historico_chaves.json</code> do <code>--history</code>). Se faltar uma chave antiga, os recibos dela aparecem em amarelo (“chave que não está no chaveiro”), não em vermelho.</p>
+    <p><strong>Anel do bot:</strong> a página também aceita o anel público do bot (por exemplo <code>otk_keyring_b5f.json</code>), com as mesmas chaves. Ela o lê por conversão, sem perder nenhuma chave. A impressão digital é sempre a do arquivo que você carregou: a do anel do bot não é a mesma do chaveiro convertido com <code>otk keyring convert</code>.</p>
+    <p><strong>Impressão digital:</strong> é o “número de conferência” do chaveiro. O operador deve publicar esse número num lugar que ele não consiga trocar depois junto com o arquivo (contrato, site, e-mail assinado). Colando aqui, a página confere que o chaveiro é o mesmo; sem ela, o melhor veredito é amarelo (“chaveiro não confirmado”).</p>
+  </section>
+</details>
+
+<main>
+<section class="passo nao-imprimir" aria-labelledby="t-passo1">
+  <h2 id="t-passo1"><span class="passo-num" aria-hidden="true">1</span>Traga os recibos</h2>
+  <p>Arraste a pasta ou os arquivos com os <strong>recibos do OTK</strong> (um por chamada, assinados pelo OTK), por exemplo a pasta <code>recibos_novembro</code> ou o arquivo <code>recibos_2026-11-01_2026-11-30.jsonl</code>. Não são as faturas da OpenAI, Anthropic ou Google. <a href="#onde-recibos" class="abre-antes">Onde consigo esses arquivos?</a></p>
+  <div class="zona" id="zona-recibos">
+    <p><strong>Recibos</strong>: solte a pasta ou os arquivos aqui</p>
+    <div class="botoes">
+      <button type="button" id="bt-pasta">Escolher pasta</button>
+      <button type="button" id="bt-arquivos">Escolher arquivos</button>
+    </div>
+    <input class="escondido" type="file" id="in-pasta" webkitdirectory directory multiple tabindex="-1" aria-hidden="true">
+    <input class="escondido" type="file" id="in-arquivos" multiple accept=".jsonl,.ndjson,.json,application/json" tabindex="-1" aria-hidden="true">
+    <p class="status" id="st-recibos" role="status" aria-live="polite"></p>
+  </div>
+</section>
+
+<section class="passo nao-imprimir" aria-labelledby="t-passo2">
+  <h2 id="t-passo2"><span class="passo-num" aria-hidden="true">2</span>Traga o chaveiro público</h2>
+  <p>O chaveiro público (por exemplo <code>chaveiro.json</code>) é a lista das chaves de assinatura de quem opera o OTK, com o estado de cada uma. Não tem nada secreto. Se o operador publicou a <strong>impressão digital</strong> do chaveiro (o “número de conferência”, no contrato, no site ou num e-mail assinado), cole abaixo. <a href="#onde-chaveiro" class="abre-antes">Onde consigo?</a></p>
+  <div class="zona" id="zona-chaveiro">
+    <p><strong>Chaveiro</strong>: solte o arquivo <code>chaveiro.json</code> aqui</p>
+    <div class="botoes"><button type="button" id="bt-chaveiro">Escolher chaveiro</button></div>
+    <input class="escondido" type="file" id="in-chaveiro" accept=".json,application/json" tabindex="-1" aria-hidden="true">
+    <p class="status" id="st-chaveiro" role="status" aria-live="polite"></p>
+  </div>
+  <label for="in-impressao">Impressão digital do chaveiro (opcional)</label>
+  <input type="text" id="in-impressao" autocomplete="off" spellcheck="false" inputmode="text" aria-describedby="ajuda-impressao" placeholder="ex.: 3f2a…">
+  <p id="ajuda-impressao" class="suave">Cole como veio (com ou sem 0x). Sem ela, o melhor resultado possível é amarelo: “chaveiro não confirmado”.</p>
+  <p><button type="button" class="primario" id="bt-conferir" disabled>Conferir recibos</button> <span id="st-conferir" role="status" aria-live="polite"></span></p>
+</section>
+
+<section id="resultado" aria-labelledby="titulo-resultado" hidden>
+  <h2 id="titulo-resultado" tabindex="-1"><span class="passo-num nao-imprimir" aria-hidden="true">3</span>Resultado</h2>
+  <div id="banner-ancora" class="banner amarelo" role="note" hidden></div>
+  <p id="st-convertido" class="suave" hidden></p>
+  <div class="cartoes" id="cartoes"></div>
+  <p id="st-somas"></p>
+  <div class="sha">
+    <strong>Código de conferência do relatório (sha256):</strong><br><code id="sha-relatorio"></code>
+    <p class="suave" style="margin:6px 0 0">Quem rodar o comando <code>otk verify --json</code> com os mesmos arquivos deve obter exatamente este código. Se der igual, vocês viram o mesmo relatório.</p>
+  </div>
+  <div class="acoes">
+    <button type="button" id="bt-json">Baixar relatório (JSON)</button>
+    <button type="button" id="bt-csv">Baixar planilha (CSV)</button>
+    <button type="button" id="bt-imprimir">Imprimir ou salvar em PDF</button>
+  </div>
+  <fieldset class="filtro" style="border:1px solid var(--borda);border-radius:8px;padding:10px 12px">
+    <legend>Filtrar por período</legend>
+    <div><label for="f-de">De (dd/mm/aaaa)</label><input type="text" id="f-de" inputmode="numeric" autocomplete="off" placeholder="dd/mm/aaaa" maxlength="10"></div>
+    <div><label for="f-ate">Até (dd/mm/aaaa)</label><input type="text" id="f-ate" inputmode="numeric" autocomplete="off" placeholder="dd/mm/aaaa" maxlength="10"></div>
+    <div><button type="button" id="bt-limpar">Mostrar tudo</button></div>
+  </fieldset>
+  <p class="suave">O filtro muda só o que aparece na tela. O relatório e a planilha baixados trazem todos os recibos.</p>
+  <p id="st-filtro" role="status" aria-live="polite"></p>
+  <table>
+    <caption class="escondido">Um recibo por linha. Clique na linha ou em “Ver detalhe” para a explicação.</caption>
+    <thead><tr><th scope="col">Data</th><th scope="col">Provedor</th><th scope="col">Modelo</th><th scope="col">Tokens</th><th scope="col">CU</th><th scope="col">Veredito</th><th scope="col">Motivo</th></tr></thead>
+    <tbody id="tabela-corpo"></tbody>
+  </table>
+</section>
+</main>
+
+<section class="limites" aria-labelledby="t-limites">
+  <h2 id="t-limites">O que este verificador NÃO garante</h2>
+  <ul id="limites-lista"></ul>
+</section>
+
+<footer>
+  <details>
+    <summary>Como sei que nada sai daqui?</summary>
+    <p>A página traz uma regra de segurança do navegador (Content-Security-Policy) que proíbe qualquer conexão: <code>connect-src 'none'</code> e <code>default-src 'none'</code>. Você pode conferir abrindo as ferramentas do navegador (tecla F12), aba “Rede”: nada aparece durante a conferência. Também pode desligar a internet antes de abrir a página; ela funciona igual.</p>
+    <p>Confira também se o arquivo desta página é o publicado: o código sha256 dele está no <code>LEIA_ME_PAGINA.md</code> que veio junto.</p>
+  </details>
+</footer>
+
+<dialog id="detalhe" aria-labelledby="det-titulo">
+  <div class="det-corpo">
+    <h2 id="det-titulo"></h2>
+    <div class="bloco"><h3>O que aconteceu</h3><p id="det-aconteceu"></p></div>
+    <div class="bloco"><h3>O que isso significa</h3><p id="det-significa"></p></div>
+    <div class="bloco nao"><h3>O que isso NÃO garante</h3><p id="det-nao-garante"></p></div>
+    <div id="det-avisos-bloco" hidden><h3>Avisos</h3><ul id="det-avisos"></ul></div>
+    <details><summary>Dados técnicos (para auditor)</summary><dl class="tecnico" id="det-tecnico"></dl></details>
+    <p style="margin-top:14px"><button type="button" id="bt-fechar" class="primario">Fechar</button></p>
+  </div>
+</dialog>
+</div>
+<script>/*__BUNDLE__*/</script>
+</body>
+</html>

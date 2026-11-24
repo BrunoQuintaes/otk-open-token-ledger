@@ -1,0 +1,43 @@
+{
+ "schema": "h2eval.gate.validation_selected.v0",
+ "protocolHash": "cd98928a5147ef8315bae7d4df89b29d86a4a68591fe9f8ad6d6692f2854cabb",
+ "selectedUtc": "2026-11-16T11:04:59.132Z",
+ "trainFrozenSha256": "e9abf5927526205c834895434a866de4ed86f2f1ac2479fe201179cd25ca555b",
+ "validationBatches": [
+  {
+   "batchId": "campaign-validation-claude-sonnet-5-5-b1",
+   "datasetSha256": "73f812f007c9e0396321989715d021f713b67b2b7bf949c529e85daf341d495f"
+  },
+  {
+   "batchId": "campaign-validation-claude-sonnet-5-5-b2",
+   "datasetSha256": "9c13bb400cf417d308b1c7a36b0c9e9f5e0d207940316b38722dc5b6281d31bb"
+  },
+  {
+   "batchId": "campaign-validation-claude-sonnet-5-5-b3",
+   "datasetSha256": "083aa36189f7916ccfd2a9da9cfa07c73f1d05b49eb634b9df5a03dd5fc68e8c"
+  },
+  {
+   "batchId": "campaign-validation-claude-sonnet-5-5-b4",
+   "datasetSha256": "dff6b6c06b0268ca2aa5542265ea42d5eeb26607b05639b1596614de9055a0ed"
+  },
+  {
+   "batchId": "campaign-validation-claude-sonnet-5-5-b5",
+   "datasetSha256": "c51dda1dd86cb64dd0328945bd613072e4857792c69085e1753b38b48613d9fd"
+  }
+ ],
+ "profile": {
+  "method": "M1",
+  "profileId": "otk-sonnetr-M1-bcd0d3f8e027",
+  "paramsSha256": "717cdc004f04d88b6059fc936d16d8741eefbde00de436910f90ddedbcf163eb",
+  "trainedOn": "r6train:70447b2dba70a5b8b72ac98c1eb6236da4f793f5af8385082dd352f75711aca2 validation:2966fa5371efb6bf6e5bb46454ee28a1c4e729897a0e435494bb2e0085b43073 label:REAL cycle:SONNET-R protocol:d246cd406c504080",
+  "params": {
+   "claude-sonnet-5-5": {
+    "a": 37.844389,
+    "b": 1.392824,
+    "out": 460
+   }
+  }
+ },
+ "selectedBy": "human:coordenadora (por delegacao de Bruno, GO C160S)",
+ "forecastFrozen": null
+}
