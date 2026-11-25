@@ -11,10 +11,13 @@ Este ramo é a mesma lógica da versão avaliada na dissertação, com comentár
 
 - **Versão avaliada:** a tag `versao-avaliada`, commit `9cad91f`. O `src/` dela é idêntico byte a byte ao commit `7606bc9b` citado na dissertação (ver `PROVENIENCIA.json`).
 - **Este ramo:** a mesma lógica, só com comentários. A prova está abaixo e, completa, em [PROVA_SO_COMENTARIOS.json](PROVA_SO_COMENTARIOS.json).
-- **Comentários antigos:** foram mantidos, com o mesmo sentido. Mudaram só três coisas no texto deles:
+- **Comentários antigos:** foram mantidos, com o mesmo sentido. O texto deles mudou nestes casos:
   - o `@module` passou a ser o caminho do arquivo;
   - comentários de uma linha viraram blocos, com o mesmo texto e os `@param`/`@returns` que faltavam;
+  - marcas antigas (`@param`, `@returns`, `@throws`, `@updated`) foram reescritas no formato TSDoc, às vezes com mais detalhe ou com a unidade da grandeza;
   - o nome próprio do autor virou "o autor".
+
+  Nenhuma dessas mudanças altera o código (ver a prova).
 
   Esses comentários trazem códigos do processo de desenvolvimento (por exemplo, H1, S08, D1–D8). O que cada um quer dizer está em [GLOSSARIO_DE_CODIGOS.md](GLOSSARIO_DE_CODIGOS.md).
 
@@ -84,10 +87,13 @@ This branch has the same logic as the version evaluated in the dissertation, plu
 
 - **Evaluated version:** the `versao-avaliada` tag, commit `9cad91f`. Its `src/` is byte-identical to commit `7606bc9b` cited in the dissertation (see `PROVENIENCIA.json`).
 - **This branch:** the same logic, with comments only. The proof is in the table above and, in full, in [PROVA_SO_COMENTARIOS.json](PROVA_SO_COMENTARIOS.json).
-- **Older comments:** kept, with the same meaning. Only three kinds of change were made to their text:
+- **Older comments:** kept, with the same meaning. Their text changed in these cases:
   - `@module` now holds the file path;
   - one-line comments became blocks, with the same text plus the missing `@param`/`@returns`;
+  - older tags (`@param`, `@returns`, `@throws`, `@updated`) were rewritten in TSDoc form, sometimes with more detail or with the unit of the quantity;
   - the author's first name became "the author".
+
+  None of these changes alters the code (see the proof).
 
   These comments contain codes from the development process (for example H1, S08, D1–D8). Their meanings are in [GLOSSARIO_DE_CODIGOS.md](GLOSSARIO_DE_CODIGOS.md).
 
