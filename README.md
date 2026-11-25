@@ -12,7 +12,7 @@ Na coleta de 7 de outubro de 2026, o próprio OTK conferiu na hora a assinatura 
 
 O repositório traz:
 
-- o **código do OTK na versão avaliada** na dissertação (versão `7606bc9b`), com os testes, e o programa que fez as coletas de novembro (`scripts/h2eval/`, versão `b0ec6f24`);
+- o **código do OTK**, com os testes, e o programa que fez as coletas de novembro (`scripts/h2eval/`, versão `b0ec6f24`). A versão avaliada na dissertação é a tag `versao-avaliada` (commit `9cad91f`, com o `src/` idêntico ao `7606bc9b`), já o `main` tem a mesma lógica, com comentários no código, e a prova de que só os comentários mudaram está em [docs/DOCUMENTACAO_DO_CODIGO.md](docs/DOCUMENTACAO_DO_CODIGO.md);
 - os **dados das coletas** citadas na dissertação, já sanitizados, sem texto de conversa, sem identificador de resposta do provedor e sem caminho pessoal;
 - **um comando que refaz, sem internet, os números da coleta de 7 de outubro e parte dos números da coleta de 23 de novembro** (seção 6), e que diz OK ou FALHOU para cada item;
 - o **verificador de recibos**, como comando e como página que abre no navegador;
@@ -41,6 +41,7 @@ Os detalhes de cada passo, o que deve aparecer e o que fazer se der erro estão 
 | ver tudo numa página do navegador, sem chave | seção 6, modo ao vivo |
 | saber o que o OTK prova e o que não prova | o resumo abaixo e a seção 11 |
 | acrescentar um modelo ou provedor (é preciso programar) | seção 12 |
+| sou programador e quero entender o código | [docs/DOCUMENTACAO_DO_CODIGO.md](docs/DOCUMENTACAO_DO_CODIGO.md) |
 
 ### Em poucas linhas: o que isto prova e o que não prova
 
@@ -230,7 +231,7 @@ Esse comando copia o repositório inteiro do GitHub para a pasta `C:\otk` (no Ma
 git -c core.autocrlf=false clone https://github.com/BrunoQuintaes/otk-open-token-ledger.git C:\otk
 ```
 
-No Windows, o Git troca o *fim de linha* (o caractere invisível que encerra cada linha) de cerca de mil arquivos de texto, e com isso o sha256 deles fica diferente do registrado em `PROVENIENCIA.json`. Essa troca **não afeta as seções 6 a 8**, pois os arquivos que o comando e o verificador conferem estão protegidos contra ela, e por conta disso só quem quiser conferir o `PROVENIENCIA.json` arquivo por arquivo precisa baixar com este comando, no lugar do anterior. Esse comando não tem imagem, já que a saída é a mesma do download normal, mostrada acima.
+No Windows, o Git troca o *fim de linha* (o caractere invisível que encerra cada linha) de cerca de mil arquivos de texto, e com isso o sha256 deles fica diferente do registrado em `PROVENIENCIA.json`. Essa troca **não afeta as seções 6 a 8**, pois os arquivos que o comando e o verificador conferem estão protegidos contra ela, e por conta disso só quem quiser conferir o `PROVENIENCIA.json` arquivo por arquivo precisa baixar com este comando, no lugar do anterior. Os arquivos que ganharam comentários trazem ali também o sha256 da versão avaliada (campo `sha256VersaoAvaliada`), que se confere na tag `versao-avaliada`. Esse comando não tem imagem, já que a saída é a mesma do download normal, mostrada acima.
 
 #### Para baixar numa pasta funda (opcional)
 
@@ -269,6 +270,18 @@ Esse comando faz o terminal entrar na pasta do repositório, pois todos os coman
 **Se aparecer** `Cannot find path 'C:\otk'`, o repositório não foi baixado em `C:\otk`, e por isso repita a seção 4.
 
 **Se o começo da linha não tiver `PS`** (por exemplo `H:\>` ou `C:\Users\...>`), você abriu o Prompt de Comando, e não o PowerShell. Nesse caso, feche e abra o PowerShell (seção 2), ou, se quiser ficar no Prompt de Comando, use `cd /d C:\otk`, pois nele o `cd` sem o `/d` não troca de unidade.
+
+#### Para usar a versão exata avaliada na dissertação (opcional)
+
+**Onde rodar:** no **PowerShell**, dentro de `C:\otk`, com a linha começando em `PS C:\otk>` (se acabou de abrir o PowerShell de novo, rode antes `cd C:\otk`). No Mac, no Terminal, dentro de `~/otk`, com a linha em `otk %` (senão, `cd ~/otk`).
+
+```
+git checkout versao-avaliada
+```
+
+Esse comando troca os arquivos da pasta pelos da tag `versao-avaliada` (commit `9cad91f`), a versão avaliada na dissertação, com o `src/` idêntico ao `7606bc9b`, já que o `main` tem a mesma lógica, mas com comentários no código (seção 14). Para voltar ao `main`, use `git checkout main`.
+
+Esse comando não tem imagem, pois a tag só existe depois da publicação do repositório.
 
 ## 5. Instalar as dependências
 
@@ -1005,7 +1018,7 @@ Para copiar a saída do terminal no Windows, selecione o texto com o mouse (arra
 
 | Pasta / arquivo | O que é |
 |---|---|
-| `src/`, `scripts/`, `test/`, `tools/`, `zk/`, `config/`, `sdk/`, `infra/` ... | o OTK. A pasta `src/` é **idêntica** à da versão avaliada (`7606bc9b`), exceto a pasta nova `src/verifier/`. O histórico do repositório interno, inclusive o próprio commit `7606bc9b`, não é publicado aqui. O `PROVENIENCIA.json` lista o sha256 de cada arquivo e de onde ele veio, e com ele dá para conferir que os arquivos são os listados pelo autor, mas que a lista corresponde ao `7606bc9b`, só o autor pode confirmar, porque esse commit não é público. Já `scripts/h2eval/` é o programa que fez as coletas de novembro, guardado sem mudanças (versão `b0ec6f24`), e usa o mesmo código de `src/`. |
+| `src/`, `scripts/`, `test/`, `tools/`, `zk/`, `config/`, `sdk/`, `infra/` ... | o OTK. A versão avaliada na dissertação é a tag `versao-avaliada` (commit `9cad91f`), cuja pasta `src/` é **idêntica** à do `7606bc9b`, exceto a pasta nova `src/verifier/` (seção 4, *Para usar a versão exata avaliada na dissertação*). O `main` tem a mesma lógica, com comentários no código, e a prova de que só os comentários mudaram está em [docs/DOCUMENTACAO_DO_CODIGO.md](docs/DOCUMENTACAO_DO_CODIGO.md) e em `docs/PROVA_SO_COMENTARIOS.json`. O histórico do repositório interno, inclusive o próprio commit `7606bc9b`, não é publicado aqui. O `PROVENIENCIA.json` lista o sha256 de cada arquivo no `main` e de onde ele veio, e, nos arquivos que ganharam comentários, lista também o sha256 da versão avaliada (campo `sha256VersaoAvaliada`), que confere com a tag `versao-avaliada`. Com ela dá para conferir que os arquivos são os listados pelo autor, mas que a lista corresponde ao `7606bc9b`, só o autor pode confirmar, porque esse commit não é público. Já `scripts/h2eval/` é o programa que fez as coletas de novembro (versão `b0ec6f24`, sem mudanças na tag e com comentários no `main`), e usa o mesmo código de `src/`. |
 | `src/verifier/`, `scripts/verify/`, `test/verifier/`, `web/verificador/` | o verificador de recibos (feito depois da versão avaliada; versão `535ac19c`) |
 | `chaveiro/chaveiro_operador_otk.json` | o chaveiro público do operador (impressão digital `c9dcbb90…`, publicada na dissertação) |
 | `reproducao/otk-banca-pack-20261111.zip` e a pasta `otk-banca-pack-20261111/` | o pacote da banca da coleta de 7 de outubro (descrito no Apêndice C; sha256 do ZIP `3943637b…`, conferido pelo comando da seção 6) |
@@ -1013,7 +1026,10 @@ Para copiar a saída do terminal no Windows, selecione o texto com o mouse (arra
 | `reproducao/reproduzir_tudo.mjs`, `reproducao/testes_banca.mjs`, `reproducao/ferramentas/sem_rede.mjs` | os comandos das seções 6 e 7 e a trava de rede |
 | `demo/demo_banca.mts` | o comando da seção 9 |
 | `reproducao/ao_vivo/` e `test/reproducao_ao_vivo/` | o modo ao vivo da seção 6 (`npm run reproduzir-ao-vivo`) e os testes dele (`npm run test:ao-vivo`), que não entram no `npm run testes-banca` |
-| `docs/` | só os documentos públicos do produto que os testes leem (contrato da API, guias) e as imagens deste README |
+| `docs/` | os documentos públicos do produto que os testes leem (contrato da API, guias), as imagens deste README e os três documentos do código das linhas abaixo |
+| `docs/DOCUMENTACAO_DO_CODIGO.md` | como ler os comentários do código e como conferir, com os comandos dele, a prova de que só os comentários mudaram em relação à tag `versao-avaliada` (a prova completa está em `docs/PROVA_SO_COMENTARIOS.json`) |
+| `docs/GLOSSARIO_DE_CODIGOS.md` | o que querem dizer os códigos internos citados nos comentários, como H1 ou D1–D8 |
+| `eslint.docs.config.mjs` | a configuração do lint que confere só os comentários, e que por enquanto roda só no computador de quem o usa, e não no GitHub |
 | `PROVENIENCIA.json` | de onde veio cada arquivo (commit e sha256) e o que foi mudado em relação à origem, sem listar a si mesmo nem `zk/ceremony/LEIA-ME.md`, que é novo deste repositório |
 
 **De propósito, não estão aqui** a pasta interna de coordenação (`docs/_ops`, com cartas, terminais e decisões), os dados brutos das coletas (com as respostas dos provedores), os segredos e arquivos `.env` e o texto da dissertação. Além disso, os caminhos de pastas pessoais que apareciam em comentários e valores padrão de alguns scripts operacionais foram trocados por `<HOME>` (lista em `PROVENIENCIA.json`).

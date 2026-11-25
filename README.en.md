@@ -14,7 +14,7 @@ In the October 7, 2026 collection, the OTK itself checked the receipt signature 
 
 The repository contains:
 
-- the **OTK code in the version evaluated** in the dissertation (version `7606bc9b`), with its tests, and the program that made the November collections (`scripts/h2eval/`, version `b0ec6f24`);
+- the **OTK code**, with its tests, and the program that made the November collections (`scripts/h2eval/`, version `b0ec6f24`). The version evaluated in the dissertation is the `versao-avaliada` tag (commit `9cad91f`, whose `src/` is identical to `7606bc9b`), while `main` has the same logic with code comments, and the proof that only comments changed is in [docs/DOCUMENTACAO_DO_CODIGO.md](docs/DOCUMENTACAO_DO_CODIGO.md);
 - the **data of the collections** cited in the dissertation, already sanitized, with no conversation text, no provider response identifier and no personal path;
 - **a command that recomputes, offline, the numbers of the October 7 collection and part of the numbers of the November 23 collection** (section 6), and says OK or FALHOU (failed) for each item;
 - the **receipt verifier**, as a command and as a page that opens in the browser;
@@ -43,6 +43,7 @@ The details of each step, what you should see and what to do if there is an erro
 | see everything on one browser page, with no key | section 6, live mode |
 | know what the OTK proves and what it does not | the summary below and section 11 |
 | add a model or provider (requires programming) | section 12 |
+| I am a programmer and want to understand the code | [docs/DOCUMENTACAO_DO_CODIGO.md](docs/DOCUMENTACAO_DO_CODIGO.md) |
 
 ### In a few lines: what this proves and what it does not
 
@@ -232,7 +233,7 @@ This command copies the whole repository from GitHub into the folder `C:\otk` (o
 git -c core.autocrlf=false clone https://github.com/BrunoQuintaes/otk-open-token-ledger.git C:\otk
 ```
 
-On Windows, Git changes the *line ending* (the invisible character that ends each line) of about a thousand text files, and so their sha256 differs from the one recorded in `PROVENIENCIA.json`. This change **does not affect sections 6 to 8**, because the files the command and the verifier check are protected against it, so only those who want to check `PROVENIENCIA.json` file by file need to download with this command, instead of the previous one. This command has no image, because its output is the same as the normal download shown above.
+On Windows, Git changes the *line ending* (the invisible character that ends each line) of about a thousand text files, and so their sha256 differs from the one recorded in `PROVENIENCIA.json`. This change **does not affect sections 6 to 8**, because the files the command and the verifier check are protected against it, so only those who want to check `PROVENIENCIA.json` file by file need to download with this command, instead of the previous one. The files that got comments also carry there the sha256 of the evaluated version (field `sha256VersaoAvaliada`), which is checked on the `versao-avaliada` tag. This command has no image, because its output is the same as the normal download shown above.
 
 #### To download into a deep folder (optional)
 
@@ -271,6 +272,18 @@ This command makes the terminal enter the repository folder, because all the fol
 **If you see** `Cannot find path 'C:\otk'`, the repository was not downloaded into `C:\otk`, so repeat section 4.
 
 **If the start of the line has no `PS`** (for example `H:\>` or `C:\Users\...>`), you opened the Command Prompt, not PowerShell. In that case, close it and open PowerShell (section 2), or, if you want to stay in the Command Prompt, use `cd /d C:\otk`, because there `cd` without `/d` does not change drive.
+
+#### To use the exact version evaluated in the dissertation (optional)
+
+**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if you just opened PowerShell again, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
+
+```
+git checkout versao-avaliada
+```
+
+This command switches the files in the folder to those of the `versao-avaliada` tag (commit `9cad91f`), the version evaluated in the dissertation, whose `src/` is identical to `7606bc9b`, since `main` has the same logic, but with code comments (section 14). To go back to `main`, use `git checkout main`.
+
+This command has no image, because the tag only exists after the repository is published.
 
 ## 5. Install the dependencies
 
@@ -1007,7 +1020,7 @@ To copy the terminal output on Windows, select the text with the mouse (drag fro
 
 | Folder / file | What it is |
 |---|---|
-| `src/`, `scripts/`, `test/`, `tools/`, `zk/`, `config/`, `sdk/`, `infra/` ... | the OTK. The folder `src/` is **identical** to the one of the evaluated version (`7606bc9b`), except the new folder `src/verifier/`. The history of the internal repository, including the commit `7606bc9b` itself, is not published here. `PROVENIENCIA.json` lists the sha256 of each file and where it came from, and with it you can check that the files are the ones listed by the author, but that the list corresponds to `7606bc9b` only the author can confirm, because that commit is not public. `scripts/h2eval/` is the program that made the November collections, kept unchanged (version `b0ec6f24`), and it uses the same code as `src/`. |
+| `src/`, `scripts/`, `test/`, `tools/`, `zk/`, `config/`, `sdk/`, `infra/` ... | the OTK. The version evaluated in the dissertation is the `versao-avaliada` tag (commit `9cad91f`), whose `src/` folder is **identical** to that of `7606bc9b`, except the new folder `src/verifier/` (section 4, *To use the exact version evaluated in the dissertation*). `main` has the same logic, with code comments, and the proof that only comments changed is in [docs/DOCUMENTACAO_DO_CODIGO.md](docs/DOCUMENTACAO_DO_CODIGO.md) and in `docs/PROVA_SO_COMENTARIOS.json`. The history of the internal repository, including the commit `7606bc9b` itself, is not published here. `PROVENIENCIA.json` lists the sha256 of each file on `main` and where it came from, and, for the files that got comments, it also lists the sha256 of the evaluated version (field `sha256VersaoAvaliada`), which matches the `versao-avaliada` tag. With it you can check that the files are the ones listed by the author, but that the list corresponds to `7606bc9b` only the author can confirm, because that commit is not public. `scripts/h2eval/` is the program that made the November collections (version `b0ec6f24`, unchanged on the tag and with comments on `main`), and it uses the same code as `src/`. |
 | `src/verifier/`, `scripts/verify/`, `test/verifier/`, `web/verificador/` | the receipt verifier (made after the evaluated version; version `535ac19c`) |
 | `chaveiro/chaveiro_operador_otk.json` | the operator's public keyring (fingerprint `c9dcbb90…`, published in the dissertation) |
 | `reproducao/otk-banca-pack-20261111.zip` and the folder `otk-banca-pack-20261111/` | the committee package of the October 7 collection (described in Appendix C; sha256 of the ZIP `3943637b…`, checked by the command of section 6) |
@@ -1015,7 +1028,10 @@ To copy the terminal output on Windows, select the text with the mouse (drag fro
 | `reproducao/reproduzir_tudo.mjs`, `reproducao/testes_banca.mjs`, `reproducao/ferramentas/sem_rede.mjs` | the commands of sections 6 and 7 and the network lock |
 | `demo/demo_banca.mts` | the command of section 9 |
 | `reproducao/ao_vivo/` and `test/reproducao_ao_vivo/` | the live mode of section 6 (`npm run reproduzir-ao-vivo`) and its tests (`npm run test:ao-vivo`), which are not counted in `npm run testes-banca` |
-| `docs/` | only the public product documents the tests read (API contract, guides) and the images of this README |
+| `docs/` | the public product documents the tests read (API contract, guides), the images of this README and the three code documents in the rows below |
+| `docs/DOCUMENTACAO_DO_CODIGO.md` | how to read the code comments and how to check, with its commands, the proof that only comments changed relative to the `versao-avaliada` tag (the full proof is in `docs/PROVA_SO_COMENTARIOS.json`) |
+| `docs/GLOSSARIO_DE_CODIGOS.md` | what the internal codes cited in the comments mean, such as H1 or D1–D8 |
+| `eslint.docs.config.mjs` | the lint configuration that checks only the comments, which for now runs only on the computer of whoever uses it, not on GitHub |
 | `PROVENIENCIA.json` | where each file came from (commit and sha256) and what was changed relative to the origin, without listing itself or `zk/ceremony/LEIA-ME.md`, which is new in this repository |
 
 **Not here, on purpose:** the internal coordination folder (`docs/_ops`, with letters, terminals and decisions), the raw data of the collections (with the providers' responses), secrets and `.env` files, and the text of the dissertation. Moreover, the personal folder paths that appeared in comments and default values of some operational scripts were replaced by `<HOME>` (list in `PROVENIENCIA.json`).
