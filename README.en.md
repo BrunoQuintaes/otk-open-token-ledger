@@ -104,6 +104,8 @@ The terminal is a window where you paste text commands.
 
 **Mac:** press **Command + Space**, type `Terminal` and press **Enter**.
 
+All the commands in this guide are for **PowerShell**. The Command Prompt (`cmd`), the window with `C:\...>` without `PS` in front, does not work.
+
 Each command comes in a grey block, below a subheading that says what it is for, and the other grey blocks show what you should see. Paste one command at a time, in order, and for each one:
 
 1. click the copy button in the corner of the grey block (or select the text and use **Ctrl + C** on Windows, **Command + C** on a Mac);
@@ -118,6 +120,8 @@ From section 5 on, the start of the line should show `PS C:\otk>` (on a Mac, `ot
 This section checks, one by one, the three programs of section 1, because none of the following steps works without them. Each command only shows the installed version and changes nothing on the computer.
 
 #### To check Node.js
+
+**Where to run:** in **PowerShell** (on Windows, not the Command Prompt) or in the Terminal (on a Mac), from any folder or drive.
 
 ```
 node -v
@@ -137,6 +141,8 @@ This command asks Node.js for its version, which tells you whether it was instal
 
 #### To check npm
 
+**Where to run:** in **PowerShell** (on Windows, not the Command Prompt) or in the Terminal (on a Mac), from any folder or drive.
+
 ```
 npm -v
 ```
@@ -153,6 +159,8 @@ This command shows the version of npm, the program that comes with Node.js and d
 
 #### To allow npm in PowerShell (only if the error above appears)
 
+**Where to run:** in **PowerShell**, from any folder, and there is no need to open it as administrator, because the change applies only to your user.
+
 ```
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
@@ -160,6 +168,8 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 This command lets your user run scripts that are already on the computer, such as npm's, while scripts downloaded from the internet still need a signature. Since the change applies only to your user (`-Scope CurrentUser`), nothing changes for the other users of the computer. It has no image, because it changes a system setting and was not run in the rehearsal.
 
 #### To check Git
+
+**Where to run:** in **PowerShell** (on Windows, not the Command Prompt) or in the Terminal (on a Mac), from any folder or drive.
 
 ```
 git --version
@@ -182,6 +192,8 @@ The examples use the folder **`C:\otk`** on Windows and **`otk`** inside your ho
 > **On Windows, use a folder with a short name, such as `C:\otk`.** The longest path inside the committee package has 198 characters, and Windows refuses paths longer than 260, counting the folder where the repository was downloaded, so that folder cannot exceed about 60 characters. In a deep folder (for example a temporary folder, or `Documentos\GitHub\...` with a long user name), Git shows `Filename too long`, the download is incomplete and section 6 shows `FALHOU`.
 
 #### To download the repository
+
+**Where to run:** in **PowerShell** (on Windows, not the Command Prompt) or in the Terminal (on a Mac), from any folder or drive. The command always downloads into `C:\otk`, even when run from another drive, such as the Google Drive `H:`.
 
 **Windows:**
 
@@ -213,6 +225,8 @@ This command copies the whole repository from GitHub into the folder `C:\otk` (o
 
 #### To download without the line-ending change (optional)
 
+**Where to run:** in **PowerShell** (on Windows, not the Command Prompt) or in the Terminal (on a Mac), from any folder or drive.
+
 ```
 git -c core.autocrlf=false clone https://github.com/BrunoQuintaes/otk-open-token-ledger.git C:\otk
 ```
@@ -221,6 +235,8 @@ On Windows, Git changes the *line ending* (the invisible character that ends eac
 
 #### To download into a deep folder (optional)
 
+**Where to run:** in **PowerShell** (on Windows, not the Command Prompt) or in the Terminal (on a Mac), from any folder or drive.
+
 ```
 git -c core.longpaths=true clone https://github.com/BrunoQuintaes/otk-open-token-ledger.git C:\caminho\da\sua\pasta
 ```
@@ -228,6 +244,8 @@ git -c core.longpaths=true clone https://github.com/BrunoQuintaes/otk-open-token
 This command allows Git to use long paths, and in it `C:\caminho\da\sua\pasta` must be replaced with the folder you want. This command has no image, because its output is the same as the normal download shown above, only with your folder instead of `C:\otk`.
 
 #### To enter the folder
+
+**Where to run:** in **PowerShell** (on a Mac, in the Terminal), from any folder or drive.
 
 **Windows:**
 
@@ -241,7 +259,7 @@ cd C:\otk
 cd ~/otk
 ```
 
-This command makes the terminal enter the repository folder, because all the following commands are pasted **inside it**.
+This command makes the terminal enter the repository folder, because all the following commands are pasted **inside it**. It works from any folder or drive (even from the Google Drive `H:`), because the path is complete and PowerShell changes drive by itself.
 
 ![PowerShell after entering the folder, with the start of the line at PS C:\otk>](docs/imagens/04b_cd.png)
 
@@ -249,11 +267,17 @@ This command makes the terminal enter the repository folder, because all the fol
 
 **What you should see:** the start of the line changes to `PS C:\otk>` (on a Mac, `otk %`).
 
+**If you see** `Cannot find path 'C:\otk'`, the repository was not downloaded into `C:\otk`, so repeat section 4.
+
+**If the start of the line has no `PS`** (for example `H:\>` or `C:\Users\...>`), you opened the Command Prompt, not PowerShell. In that case, close it and open PowerShell (section 2), or, if you want to stay in the Command Prompt, use `cd /d C:\otk`, because there `cd` without `/d` does not change drive.
+
 ## 5. Install the dependencies
 
 This step downloads the libraries the OTK uses, in the exact versions stored in the file `package-lock.json`, and **uses the internet** once, only for the public npm registry.
 
 #### To install the dependencies
+
+**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if it does not, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
 
 ```
 npm ci
@@ -299,6 +323,8 @@ One command checks the files and **recomputes, offline and with no API key**, th
 > **What this command does not redo.** From the November 23 collection, it redoes the **first version** of the *estimated × declared* table, which applies only the correction lines of claude-sonnet-5-5, claude-opus-5-5 and gemini-3.1-flash-lite (for Sonnet and Gemini 3.1, the line from the side study, which was later not confirmed; see 12.3). Applying a line to these 215 texts only describes what happened, and so it neither approves nor rejects the correction. The Chapter 4 table adds the corrections of the two Haiku models, the recount of gpt-6-luna and the 95% intervals, which this command does not redo, and the rest of what is left out is in section 11.
 
 #### To recompute the numbers
+
+**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if it does not, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
 
 ```
 npm run reproduzir-tudo
@@ -360,6 +386,8 @@ These files were written during the work and so still carry internal project lab
 The suite has about 3,600 automated tests, which also run **offline**.
 
 #### To run the tests
+
+**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if it does not, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
 
 ```
 npm run testes-banca
@@ -429,6 +457,8 @@ If the fingerprint is not pasted, no receipt turns green, and the best result be
 
 #### To check the example receipts from the terminal
 
+**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if it does not, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
+
 ```
 npm run otk -- verify test/verifier/vetores/recibos --keyring test/verifier/vetores/chaveiro.json --fingerprint ef9d1aeb4f6ef0b412fad87dfba256cfcc7aa49c6b00f1dc27674d6351bbba24
 ```
@@ -460,6 +490,8 @@ c9dcbb90ec0b9fd79a1da4764821e11f5a46f9073a3c991f00c1daa000f72fdc
 ```
 
 #### To check the fingerprint of the operator keyring
+
+**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if it does not, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
 
 **Windows (PowerShell, inside `C:\otk`):**
 
@@ -501,6 +533,8 @@ If it asks for a login or an account, click **Skip**, because no account is need
 In this mode, the AI provider is **synthetic**, a program on your own machine that answers like `gpt-4o-mini` and declares 20 input tokens and 5 output tokens, and so no call leaves your computer.
 
 #### To run the demonstration
+
+**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if it does not, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
 
 ```
 npm run demo-banca
@@ -563,6 +597,8 @@ If port 55432 (the number through which the OTK talks to the database inside the
 
 #### To use another port (only if the port-busy error appears)
 
+**Where to run:** in **PowerShell**, inside `C:\otk`, and both commands in the **same window**, because the variable only applies in that PowerShell window.
+
 ```
 $env:OTK_DEMO_PG_PORT="15432"
 ```
@@ -576,6 +612,8 @@ These commands tell the demonstration to use port 15432 for the test database in
 **If the command stops with `PAROU:` after item [1]**, the test PostgreSQL may have been left running, and to stop and delete it, use the command in the next block, inside the folder `C:\otk`.
 
 #### To stop and delete the test PostgreSQL
+
+**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if it does not, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
 
 ```
 docker compose -p otk-banca-demo -f infra/test/docker-compose.services.yml down -v
@@ -601,6 +639,8 @@ First, create the key on the provider's site (OpenAI: https://platform.openai.co
 
 #### To create the .env file
 
+**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>`, because the `.env` file has to be at the root of the repository.
+
 ```
 notepad .env
 ```
@@ -623,6 +663,8 @@ The `.env` file **never goes to Git**, because this repository's `.gitignore` ex
 
 #### To check the configuration without spending
 
+**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if it does not, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
+
 ```
 npm run demo-banca -- --real openai --so-conferir
 ```
@@ -638,6 +680,8 @@ This command checks, before spending and without making any call, whether the ke
 *What appears without the `.env`, in a real run made without a key.*
 
 #### To make the real call
+
+**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if it does not, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
 
 Choose one of the three commands below, with the same provider you used in the check:
 
@@ -763,6 +807,8 @@ What this means in practice:
 - **No verdict for Anthropic and Google, today.** No correction for these providers is in the proxy format, and so each call to them comes out without a verdict (`incomplete` / `not_applicable`), but with the declared usage, the cost and the signed receipt.
 
 #### To see what the OTK knows about a model
+
+**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if it does not, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
 
 ```
 npx tsx -e 'import(`./src/providers/catalog/modelCatalog.ts`).then(m => { const [p, a, id] = process.argv.slice(-3); const s = m.resolveModelSupport(p, a, id); console.log(id, s.support, s.tokenizer ? s.tokenizer.encoding : `sem régua`) })' anthropic anthropic.messages claude-opus-5-5

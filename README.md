@@ -102,6 +102,8 @@ O terminal é uma janela onde você cola comandos de texto.
 
 **Mac:** aperte **Command + Espaço**, digite `Terminal` e aperte **Enter**.
 
+Todos os comandos deste guia são para o **PowerShell**. O Prompt de Comando (`cmd`), a janela com `C:\...>` sem o `PS` na frente, não serve.
+
 Cada comando vem num bloco cinza, abaixo de um subtítulo que diz para que ele serve, e os outros blocos cinza mostram o que deve aparecer. Cole um comando por vez, na ordem, e para cada um:
 
 1. clique no botão de copiar no canto do bloco cinza (ou selecione o texto e use **Ctrl + C** no Windows, **Command + C** no Mac);
@@ -116,6 +118,8 @@ A partir da seção 5, o começo da linha deve mostrar `PS C:\otk>` (no Mac, `ot
 Esta seção confere, um por um, os três programas da seção 1, pois sem eles nenhum dos passos seguintes funciona. Cada comando só mostra a versão instalada e não muda nada no computador.
 
 #### Para verificar o Node.js
+
+**Onde rodar:** no **PowerShell** (no Windows, e não o Prompt de Comando) ou no Terminal (no Mac), de qualquer pasta ou unidade.
 
 ```
 node -v
@@ -135,6 +139,8 @@ Esse comando pede ao Node.js que diga a sua versão, o que serve para saber se e
 
 #### Para verificar o npm
 
+**Onde rodar:** no **PowerShell** (no Windows, e não o Prompt de Comando) ou no Terminal (no Mac), de qualquer pasta ou unidade.
+
 ```
 npm -v
 ```
@@ -151,6 +157,8 @@ Esse comando mostra a versão do npm, o programa que vem junto com o Node.js e q
 
 #### Para liberar o npm no PowerShell (só se aparecer o erro acima)
 
+**Onde rodar:** no **PowerShell**, de qualquer pasta, e não é preciso abri-lo como administrador, pois a mudança vale só para o seu usuário.
+
 ```
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
@@ -158,6 +166,8 @@ Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 Esse comando permite que o seu usuário rode scripts que já estão no computador, como o do npm, enquanto scripts baixados da internet ainda precisam de assinatura. Como a mudança vale só para o seu usuário (`-Scope CurrentUser`), nada muda para os outros usuários do computador. Ele não tem imagem, pois muda uma configuração do sistema e não foi rodado no ensaio.
 
 #### Para verificar o Git
+
+**Onde rodar:** no **PowerShell** (no Windows, e não o Prompt de Comando) ou no Terminal (no Mac), de qualquer pasta ou unidade.
 
 ```
 git --version
@@ -180,6 +190,8 @@ Os exemplos usam a pasta **`C:\otk`** no Windows e **`otk`** dentro da sua pasta
 > **No Windows, use uma pasta de nome curto, como `C:\otk`.** O caminho mais longo dentro do pacote da banca tem 198 caracteres, e o Windows recusa caminhos com mais de 260, contando a pasta onde o repositório foi baixado, de modo que essa pasta não pode passar de uns 60 caracteres. Numa pasta funda (por exemplo uma pasta temporária, ou `Documentos\GitHub\...` com nome de usuário comprido), o Git mostra `Filename too long`, o download fica incompleto e a seção 6 dá `FALHOU`.
 
 #### Para baixar o repositório
+
+**Onde rodar:** no **PowerShell** (no Windows, e não o Prompt de Comando) ou no Terminal (no Mac), de qualquer pasta ou unidade. O comando baixa sempre em `C:\otk`, mesmo rodado em outra unidade, como o `H:` do Google Drive.
 
 **Windows:**
 
@@ -211,13 +223,17 @@ Esse comando copia o repositório inteiro do GitHub para a pasta `C:\otk` (no Ma
 
 #### Para baixar sem a troca do fim de linha (opcional)
 
+**Onde rodar:** no **PowerShell** (no Windows, e não o Prompt de Comando) ou no Terminal (no Mac), de qualquer pasta ou unidade.
+
 ```
 git -c core.autocrlf=false clone https://github.com/BrunoQuintaes/otk-open-token-ledger.git C:\otk
 ```
 
-No Windows, o Git troca o *fim de linha* (o caractere invisível que encerra cada linha) de cerca de mil arquivos de texto, e com isso o sha256 deles fica diferente do registrado em `PROVENIENCIA.json`. Essa troca **não afeta as seções 6 a 8**, pois os arquivos que o comando e o verificador conferem estão protegidos contra ela, e por conta disso só quem quiser conferir o `PROVENIENCIA.json` arquivo por arquivo precisa baixar com este comando, no lugar do anterior. Esse comando não tem imagem, pois a saída é a mesma do download normal, mostrada acima.
+No Windows, o Git troca o *fim de linha* (o caractere invisível que encerra cada linha) de cerca de mil arquivos de texto, e com isso o sha256 deles fica diferente do registrado em `PROVENIENCIA.json`. Essa troca **não afeta as seções 6 a 8**, pois os arquivos que o comando e o verificador conferem estão protegidos contra ela, e por conta disso só quem quiser conferir o `PROVENIENCIA.json` arquivo por arquivo precisa baixar com este comando, no lugar do anterior. Esse comando não tem imagem, já que a saída é a mesma do download normal, mostrada acima.
 
 #### Para baixar numa pasta funda (opcional)
+
+**Onde rodar:** no **PowerShell** (no Windows, e não o Prompt de Comando) ou no Terminal (no Mac), de qualquer pasta ou unidade.
 
 ```
 git -c core.longpaths=true clone https://github.com/BrunoQuintaes/otk-open-token-ledger.git C:\caminho\da\sua\pasta
@@ -226,6 +242,8 @@ git -c core.longpaths=true clone https://github.com/BrunoQuintaes/otk-open-token
 Esse comando autoriza o Git a usar caminhos longos, e nele `C:\caminho\da\sua\pasta` deve ser trocado pela pasta que você quer. Esse comando não tem imagem, pois a saída é a mesma do download normal, mostrada acima, só com a sua pasta no lugar de `C:\otk`.
 
 #### Para entrar na pasta
+
+**Onde rodar:** no **PowerShell** (no Mac, no Terminal), de qualquer pasta ou unidade.
 
 **Windows:**
 
@@ -239,7 +257,7 @@ cd C:\otk
 cd ~/otk
 ```
 
-Esse comando faz o terminal entrar na pasta do repositório, pois todos os comandos seguintes são colados **dentro dela**.
+Esse comando faz o terminal entrar na pasta do repositório, pois todos os comandos seguintes são colados **dentro dela**. Ele funciona de qualquer pasta ou unidade (até do `H:` do Google Drive), porque o caminho é completo e o PowerShell troca de unidade sozinho.
 
 ![O PowerShell depois de entrar na pasta, com o começo da linha em PS C:\otk>](docs/imagens/04b_cd.png)
 
@@ -247,11 +265,17 @@ Esse comando faz o terminal entrar na pasta do repositório, pois todos os coman
 
 **O que deve aparecer:** o começo da linha muda para `PS C:\otk>` (no Mac, `otk %`).
 
+**Se aparecer** `Cannot find path 'C:\otk'`, o repositório não foi baixado em `C:\otk`, e por isso repita a seção 4.
+
+**Se o começo da linha não tiver `PS`** (por exemplo `H:\>` ou `C:\Users\...>`), você abriu o Prompt de Comando, e não o PowerShell. Nesse caso, feche e abra o PowerShell (seção 2), ou, se quiser ficar no Prompt de Comando, use `cd /d C:\otk`, pois nele o `cd` sem o `/d` não troca de unidade.
+
 ## 5. Instalar as dependências
 
 Este passo baixa as bibliotecas que o OTK usa, nas versões exatas guardadas no arquivo `package-lock.json`, e **usa a internet** uma vez, só para o registro público do npm.
 
 #### Para instalar as dependências
+
+**Onde rodar:** no **PowerShell**, dentro de `C:\otk`, com a linha começando em `PS C:\otk>` (se não começar, rode antes `cd C:\otk`). No Mac, no Terminal, dentro de `~/otk`, com a linha em `otk %` (senão, `cd ~/otk`).
 
 ```
 npm ci
@@ -297,6 +321,8 @@ Um comando confere os arquivos e **recalcula, sem internet e sem chave de API**,
 > **O que este comando não refaz.** Da coleta de 23 de novembro, ele refaz a **primeira versão** da tabela *estimado × declarado*, que aplica só as retas de correção de claude-sonnet-5-5, claude-opus-5-5 e gemini-3.1-flash-lite (para o Sonnet e o Gemini 3.1, a reta do estudo à parte, que depois não se confirmou; ver 12.3). Aplicar uma reta a esses 215 textos só descreve o que aconteceu, e por isso não aprova nem reprova a correção. Já a tabela do Capítulo 4 acrescenta as correções dos dois Haiku, a recontagem do gpt-6-luna e os intervalos de 95 %, que este comando não refaz, e o resto do que fica de fora está na seção 11.
 
 #### Para refazer os números
+
+**Onde rodar:** no **PowerShell**, dentro de `C:\otk`, com a linha começando em `PS C:\otk>` (se não começar, rode antes `cd C:\otk`). No Mac, no Terminal, dentro de `~/otk`, com a linha em `otk %` (senão, `cd ~/otk`).
 
 ```
 npm run reproduzir-tudo
@@ -358,6 +384,8 @@ Esses arquivos foram gravados durante o trabalho e por isso ainda guardam rótul
 A bateria tem cerca de 3.600 testes automáticos, que também rodam **sem internet**.
 
 #### Para rodar os testes
+
+**Onde rodar:** no **PowerShell**, dentro de `C:\otk`, com a linha começando em `PS C:\otk>` (se não começar, rode antes `cd C:\otk`). No Mac, no Terminal, dentro de `~/otk`, com a linha em `otk %` (senão, `cd ~/otk`).
 
 ```
 npm run testes-banca
@@ -427,6 +455,8 @@ Caso a impressão digital não seja colada, nenhum recibo fica verde, e o melhor
 
 #### Para conferir os recibos de exemplo pelo terminal
 
+**Onde rodar:** no **PowerShell**, dentro de `C:\otk`, com a linha começando em `PS C:\otk>` (se não começar, rode antes `cd C:\otk`). No Mac, no Terminal, dentro de `~/otk`, com a linha em `otk %` (senão, `cd ~/otk`).
+
 ```
 npm run otk -- verify test/verifier/vetores/recibos --keyring test/verifier/vetores/chaveiro.json --fingerprint ef9d1aeb4f6ef0b412fad87dfba256cfcc7aa49c6b00f1dc27674d6351bbba24
 ```
@@ -458,6 +488,8 @@ c9dcbb90ec0b9fd79a1da4764821e11f5a46f9073a3c991f00c1daa000f72fdc
 ```
 
 #### Para conferir a impressão digital do chaveiro do operador
+
+**Onde rodar:** no **PowerShell**, dentro de `C:\otk`, com a linha começando em `PS C:\otk>` (se não começar, rode antes `cd C:\otk`). No Mac, no Terminal, dentro de `~/otk`, com a linha em `otk %` (senão, `cd ~/otk`).
 
 **Windows (PowerShell, dentro de `C:\otk`):**
 
@@ -499,6 +531,8 @@ Caso ele peça login ou conta, clique em **Skip**/Pular, pois não é preciso co
 Neste modo, o provedor de IA é **sintético**, um programa na sua própria máquina que responde como o `gpt-4o-mini` e declara 20 tokens de entrada e 5 de saída, e por isso nenhuma chamada sai do seu computador.
 
 #### Para rodar a demonstração
+
+**Onde rodar:** no **PowerShell**, dentro de `C:\otk`, com a linha começando em `PS C:\otk>` (se não começar, rode antes `cd C:\otk`). No Mac, no Terminal, dentro de `~/otk`, com a linha em `otk %` (senão, `cd ~/otk`).
 
 ```
 npm run demo-banca
@@ -561,6 +595,8 @@ Se a porta 55432 (o número pelo qual o OTK fala com o banco dentro do computado
 
 #### Para usar outra porta (só se aparecer o erro de porta ocupada)
 
+**Onde rodar:** no **PowerShell**, dentro de `C:\otk`, e os dois comandos na **mesma janela**, pois a variável só vale naquela janela do PowerShell.
+
 ```
 $env:OTK_DEMO_PG_PORT="15432"
 ```
@@ -574,6 +610,8 @@ Esses comandos mandam a demonstração usar a porta 15432 para o banco de teste,
 **Se o comando parar com `PAROU:` depois do item [1]**, o PostgreSQL de teste pode ter ficado ligado, e para desligá-lo e apagá-lo, use o comando do bloco seguinte, dentro da pasta `C:\otk`.
 
 #### Para desligar e apagar o PostgreSQL de teste
+
+**Onde rodar:** no **PowerShell**, dentro de `C:\otk`, com a linha começando em `PS C:\otk>` (se não começar, rode antes `cd C:\otk`). No Mac, no Terminal, dentro de `~/otk`, com a linha em `otk %` (senão, `cd ~/otk`).
 
 ```
 docker compose -p otk-banca-demo -f infra/test/docker-compose.services.yml down -v
@@ -599,6 +637,8 @@ Primeiro, crie a chave no site do provedor (OpenAI: https://platform.openai.com/
 
 #### Para criar o arquivo .env
 
+**Onde rodar:** no **PowerShell**, dentro de `C:\otk`, com a linha começando em `PS C:\otk>`, pois o arquivo `.env` tem de ficar na raiz do repositório.
+
 ```
 notepad .env
 ```
@@ -621,6 +661,8 @@ O arquivo `.env` **nunca vai para o Git**, pois o `.gitignore` deste repositóri
 
 #### Para conferir a configuração sem gastar
 
+**Onde rodar:** no **PowerShell**, dentro de `C:\otk`, com a linha começando em `PS C:\otk>` (se não começar, rode antes `cd C:\otk`). No Mac, no Terminal, dentro de `~/otk`, com a linha em `otk %` (senão, `cd ~/otk`).
+
 ```
 npm run demo-banca -- --real openai --so-conferir
 ```
@@ -636,6 +678,8 @@ Esse comando confere, antes de gastar e sem fazer nenhuma chamada, se a chave es
 *O que aparece sem o `.env`, numa rodada real feita sem chave.*
 
 #### Para fazer a chamada real
+
+**Onde rodar:** no **PowerShell**, dentro de `C:\otk`, com a linha começando em `PS C:\otk>` (se não começar, rode antes `cd C:\otk`). No Mac, no Terminal, dentro de `~/otk`, com a linha em `otk %` (senão, `cd ~/otk`).
 
 Escolha um dos três comandos abaixo, com o mesmo provedor que você usou na conferência:
 
@@ -761,6 +805,8 @@ O que isso quer dizer na prática:
 - **Sem veredito para Anthropic e Google, hoje.** Nenhuma correção desses provedores está no formato do proxy, e por isso cada chamada a eles sai sem veredito (`incomplete` / `not_applicable`), mas com o uso declarado, o custo e o recibo assinado.
 
 #### Para ver o que o OTK sabe de um modelo
+
+**Onde rodar:** no **PowerShell**, dentro de `C:\otk`, com a linha começando em `PS C:\otk>` (se não começar, rode antes `cd C:\otk`). No Mac, no Terminal, dentro de `~/otk`, com a linha em `otk %` (senão, `cd ~/otk`).
 
 ```
 npx tsx -e 'import(`./src/providers/catalog/modelCatalog.ts`).then(m => { const [p, a, id] = process.argv.slice(-3); const s = m.resolveModelSupport(p, a, id); console.log(id, s.support, s.tokenizer ? s.tokenizer.encoding : `sem régua`) })' anthropic anthropic.messages claude-opus-5-5
