@@ -105,7 +105,7 @@ export function startLiveServer({ pageHtml, daysJson, verifierPageBytes = null, 
   const pageCsp = buildPageCsp(pageHtml);
 
   const isAllowedHost = (hostHeader) => hostHeader === `${LOOPBACK_HOST}:${port}` || hostHeader === `localhost:${port}`;
-  const plain = (res, status, text, extra = {}) => res.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8', ...extra }).end(text);
+  const plain = (res, status, text, extra = {}) => res.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', ...extra }).end(text);
   const sendEvent = (res, event) => res.write(`id: ${event.id}\nevent: ${event.type}\ndata: ${JSON.stringify(event.data)}\n\n`);
 
   const handleEvents = (req, res) => {
@@ -153,7 +153,7 @@ export function startLiveServer({ pageHtml, daysJson, verifierPageBytes = null, 
       }).end(verifierPageBytes);
     }
     // Browsers ask for a favicon on their own; 204 keeps the console free of a 404 error.
-    if (pathname === '/favicon.ico') return res.writeHead(204).end();
+    if (pathname === '/favicon.ico') return res.writeHead(204, { 'Cache-Control': 'no-store' }).end();
     return plain(res, 404, 'Não encontrado.\n');
   });
 

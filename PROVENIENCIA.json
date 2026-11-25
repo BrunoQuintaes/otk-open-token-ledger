@@ -18,8 +18,8 @@
    "src/verifier/types.ts"
   ]
  },
- "totalArquivos": 3278,
- "totalBytes": 69537721,
+ "totalArquivos": 3280,
+ "totalBytes": 69565510,
  "porOrigem": {
   "H1 7606bc9b (= b0ec6f24)": 1052,
   "b0ec6f24 com mudança": 17,
@@ -33,7 +33,7 @@
   "pacote da banca 20261111 (ZIP sha256 3943637b…)": 166,
   "executor b0ec6f24": 188,
   "verificador 535ac19c (feat/verificador-f4-20261123)": 59,
-  "novo (README bilíngue e imagens, 25/11/2026)": 33,
+  "novo (README bilíngue e imagens, 25/11/2026)": 35,
   "H1 7606bc9b com mudança (só o link do repositório)": 1
  },
  "arquivos": [
@@ -601,8 +601,8 @@
   },
   {
    "arquivo": "reproducao/ao_vivo/LEIA-ME.md",
-   "bytes": 4083,
-   "sha256": "0b7fd62ca48473241b5801d141372d34c65fc6654cc919fb8141d1e889ed42a6",
+   "bytes": 5416,
+   "sha256": "7d089cec8714252c292bdecf9e9baab4d542c941e9405f8f3b4f0f8eb072afa0",
    "origem": "novo (README bilíngue e imagens, 25/11/2026)"
   },
   {
@@ -619,20 +619,20 @@
   },
   {
    "arquivo": "reproducao/ao_vivo/pagina.html",
-   "bytes": 37006,
-   "sha256": "917d3d5d9d6a9fcaa3f64d7425791548fe268872ddaea08d2fbeaad5b7176dce",
+   "bytes": 49525,
+   "sha256": "58952c8ae5118d14541f7aa22f93b35f21e3f224e7b6c5287fff420178bee875",
    "origem": "novo (README bilíngue e imagens, 25/11/2026)"
   },
   {
    "arquivo": "reproducao/ao_vivo/reproduzir_ao_vivo.mjs",
-   "bytes": 15751,
-   "sha256": "611c7ecda58a6ef9626460dddb2a75c916a046e3ba91b78148cf276a8942bbac",
+   "bytes": 16846,
+   "sha256": "d35035c5f0e475122062a5b2e138094b36adbefe569a534b488571d80b43eef8",
    "origem": "novo (README bilíngue e imagens, 25/11/2026)"
   },
   {
    "arquivo": "reproducao/ao_vivo/servidor.mjs",
-   "bytes": 9782,
-   "sha256": "ae5b9ff8852c7067bea5c5a418e4a954f28922a97840563ade85de359801d9fa",
+   "bytes": 9844,
+   "sha256": "9d37f317474c841001a4eb9d4543bdd61e1c071ea6f36a59b1ce794ccb8fad28",
    "origem": "novo (README bilíngue e imagens, 25/11/2026)"
   },
   {
@@ -18627,9 +18627,21 @@
    "origem": "novo (README bilíngue e imagens, 25/11/2026)"
   },
   {
+   "arquivo": "test/reproducao_ao_vivo/estados.test.mjs",
+   "bytes": 11001,
+   "sha256": "269858f56dd86a4d3d614bdeaa746d6418f02ecb5a878dc284eb01bceb520b78",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
    "arquivo": "test/reproducao_ao_vivo/fixtures/reproducao_falha.mjs",
    "bytes": 718,
    "sha256": "272c5020fd168ec65cb1d633594803e34a3f6fd12bd5e30393abacb84c1d698d",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
+   "arquivo": "test/reproducao_ao_vivo/fixtures/reproducao_lenta.mjs",
+   "bytes": 1516,
+   "sha256": "c609f6c7ef79c8db059d4417c98b61df619a5899cf0c0bde8183395da0a42172",
    "origem": "novo (README bilíngue e imagens, 25/11/2026)"
   },
   {
@@ -18646,8 +18658,8 @@
   },
   {
    "arquivo": "test/reproducao_ao_vivo/pagina.test.mjs",
-   "bytes": 6716,
-   "sha256": "7996dbf7c0b84c79a46c6871b992822c507a048b5d6cb16cc0c3da616184f77b",
+   "bytes": 6979,
+   "sha256": "f64db6506519cff94705555a6ad51f7ab18d804ec2f0bab3cbbe2c06a8a177ed",
    "origem": "novo (README bilíngue e imagens, 25/11/2026)"
   },
   {

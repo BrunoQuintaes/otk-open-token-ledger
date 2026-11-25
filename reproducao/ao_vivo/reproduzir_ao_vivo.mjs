@@ -26,6 +26,8 @@
  * - `--manter-segundos N`   seconds to keep serving the page after the end (0 exits at once, unless tests run).
  * - `--reproducao <arq>`    script to run instead of `reproducao/reproduzir_tudo.mjs` (failure test only).
  * - `--testes-script <arq>` script to run instead of `reproducao/testes_banca.mjs` (quick tests only).
+ * - `--esperar-pagina N`    with `--sem-navegador`, wait up to N seconds for a page to open before starting, so
+ *                           the page sees every step from "para rodar" (used to record the page).
  * - any other argument (e.g. `--out <pasta>`) is passed to the reproduction script unchanged.
  *
  * Exit codes: the reproduction's exit code; 70 when this command itself fails before the reproduction ends.
@@ -50,6 +52,8 @@ const DEFAULT_REPRODUCTION = path.join(REPO_ROOT, 'reproducao', 'reproduzir_tudo
 const DEFAULT_KEEP_SECONDS = 120;
 /** How long to wait for the browser to connect before starting the reproduction anyway, in milliseconds. */
 const WAIT_FOR_BROWSER_MS = 5_000;
+/** How long an open page shows every step as "para rodar" before the reproduction starts, in milliseconds. */
+const SHOW_PENDING_MS = 1_500;
 /** Pause before closing, so the last SSE frames leave the socket, in milliseconds. */
 const FLUSH_BEFORE_CLOSE_MS = 200;
 /** Exit code when this command fails before the reproduction ends (EX_SOFTWARE from sysexits). */
@@ -75,12 +79,12 @@ function say(message) {
  * Splits this command's own options from the arguments that go to the reproduction script.
  *
  * @param argv - `process.argv.slice(2)`.
- * @returns `{ openBrowser, runTestsAtOnce, keepSeconds, reproductionScript, testSuiteScript, childArgs }`.
+ * @returns `{ openBrowser, runTestsAtOnce, keepSeconds, waitForPageSeconds, reproductionScript, testSuiteScript, childArgs }`.
  * @throws {Error} When `--manter-segundos` is not a non-negative integer or a script option has no value.
  */
 function parseArguments(argv) {
   const options = {
-    openBrowser: true, runTestsAtOnce: false, keepSeconds: DEFAULT_KEEP_SECONDS,
+    openBrowser: true, runTestsAtOnce: false, keepSeconds: DEFAULT_KEEP_SECONDS, waitForPageSeconds: 0,
     reproductionScript: DEFAULT_REPRODUCTION, testSuiteScript: path.join(REPO_ROOT, DEFAULT_TEST_SUITE), childArgs: [],
   };
   const valueAfter = (i, name) => {
@@ -96,7 +100,11 @@ function parseArguments(argv) {
       if (!/^\d+$/.test(value)) throw new Error('PAROU: --manter-segundos precisa de um número inteiro de segundos (0 ou mais).');
       options.keepSeconds = Number(value);
     } else if (arg === '--reproducao') options.reproductionScript = path.resolve(valueAfter(i++, arg));
-    else if (arg === '--testes-script') options.testSuiteScript = path.resolve(valueAfter(i++, arg));
+    else if (arg === '--esperar-pagina') {
+      const value = valueAfter(i++, arg);
+      if (!/^\d+$/.test(value)) throw new Error('PAROU: --esperar-pagina precisa de um número inteiro de segundos.');
+      options.waitForPageSeconds = Number(value);
+    } else if (arg === '--testes-script') options.testSuiteScript = path.resolve(valueAfter(i++, arg));
     else options.childArgs.push(arg);
   }
   return options;
@@ -264,9 +272,16 @@ async function main() {
     await waitUntil(() => connected > 0, WAIT_FOR_BROWSER_MS);
   } else {
     say(`--sem-navegador: abra este endereço no navegador, se quiser: ${server.url}`);
+    if (options.waitForPageSeconds > 0) {
+      say(`--esperar-pagina: a reprodução começa quando a página abrir (no máximo ${options.waitForPageSeconds} s).`);
+      await waitUntil(() => connected > 0, options.waitForPageSeconds * 1000);
+    }
   }
+  // When a page is open, it first shows every step as "para rodar" for a moment before the run starts.
+  if (connected > 0) await delay(SHOW_PENDING_MS);
 
   const startedMs = Date.now();
+  publish('reproducao-inicio', {});
   const { exitCode } = await runLockedNode(REPO_ROOT, [options.reproductionScript, ...options.childArgs], {
     stdoutTarget: process.stdout,
     stderrTarget: process.stderr,

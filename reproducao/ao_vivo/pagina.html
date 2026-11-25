@@ -5,6 +5,8 @@
   this machine. Data comes from the same local server: /api/dias (summaries of the stored records of the two
   collection days) and /eventos (Server-Sent Events with the progress of each step). The tests action is a
   POST /api/testes without parameters. Every value is inserted with textContent, never as HTML.
+  Every step starts as "para rodar" and changes only with the events of the current run; nothing is cached
+  or kept in browser storage.
 -->
 <html lang="pt-BR">
 <head>
@@ -95,45 +97,66 @@ iframe.verificador { width: 100%; height: 640px; border: 1px solid var(--borda);
 pre.registro { background: #1e1e1e; color: #e6e6e6; padding: 8px 10px; border-radius: 6px; max-height: 260px; overflow: auto; font-size: 12.5px; white-space: pre-wrap; margin: 6px 0; }
 details > summary { cursor: pointer; color: var(--azul-texto); }
 ol.passos { margin: 4px 0; padding-left: 22px; }
+/* Step states, shared by the items, the part badges and the index pills: pending, running, checked, failed. */
+.cabeca { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: space-between; }
+.cabeca h2 { margin: 0 0 6px; font-size: 21px; }
+[data-estado] { --estado-fundo: #f6e9e9; --estado-texto: #7a2e2e; --estado-borda: #d9a9a9; }
+[data-estado="rodando"] { --estado-fundo: var(--amarelo-fundo); --estado-texto: var(--amarelo-texto); --estado-borda: var(--amarelo-borda); }
+[data-estado="ok"] { --estado-fundo: var(--verde-fundo); --estado-texto: var(--verde-texto); --estado-borda: var(--verde-borda); }
+[data-estado="falhou"], [data-estado="nao-rodou"] { --estado-fundo: var(--vermelho-fundo); --estado-texto: var(--vermelho-texto); --estado-borda: var(--vermelho-borda); }
+.estado-parte, .selo-estado { display: inline-flex; align-items: center; gap: 5px; font-weight: 700; border-radius: 4px; padding: 1px 8px; border: 1px solid var(--estado-borda); background: var(--estado-fundo); color: var(--estado-texto); font-size: 13px; white-space: nowrap; }
+.estado-parte { font-size: 14px; padding: 3px 10px; border-radius: 999px; }
+.selo-estado { min-width: 74px; justify-content: center; }
+nav.indice a[data-estado] { background: var(--estado-fundo); border-color: var(--estado-borda); color: var(--estado-texto); }
+[data-estado="rodando"] > .gira, .gira.ativo { display: inline-block; width: 10px; height: 10px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: girar .8s linear infinite; }
+.gira { display: none; }
+@keyframes girar { to { transform: rotate(360deg); } }
+ol.itens li[data-estado="pendente"] .rotulo, ol.itens li[data-estado="rodando"] .rotulo { color: var(--suave); }
+.veredito[data-estado] { background: var(--estado-fundo); color: var(--estado-texto); border-color: var(--estado-borda); }
+.foco-ao-vivo { outline: 3px solid var(--azul-borda); outline-offset: 2px; border-radius: 6px; }
+body { overflow-anchor: none; }
+button.ao-vivo { position: fixed; right: 16px; bottom: 16px; z-index: 20; background: var(--azul-borda); color: #fff; border-color: var(--azul-borda); font-weight: 700; padding: 8px 16px; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+button.ao-vivo[hidden] { display: none; }
 @media (max-width: 900px) { .blocos, .dupla { grid-template-columns: 1fr; } }
 </style>
 </head>
-<body>
+<body data-seguindo="true">
 <nav class="indice" aria-label="Índice">
   <div class="faixa">
     <strong>OTK ao vivo</strong>
-    <a href="#refazendo">1. Refazendo agora</a>
-    <a href="#dia07">2. 7 de outubro</a>
-    <a href="#dia23">3. 23 de novembro</a>
-    <a href="#recibos">4. Conferindo os recibos</a>
-    <a href="#testes">5. Testes automáticos</a>
+    <a href="#refazendo" data-parte="1" data-estado="pendente" data-testid="nav-1"><span class="gira"></span> 1. Refazendo agora</a>
+    <a href="#dia07" data-parte="2" data-estado="pendente" data-testid="nav-2"><span class="gira"></span> 2. 7 de outubro</a>
+    <a href="#dia23" data-parte="3" data-estado="pendente" data-testid="nav-3"><span class="gira"></span> 3. 23 de novembro</a>
+    <a href="#recibos" data-parte="4" data-estado="pendente" data-testid="nav-4"><span class="gira"></span> 4. Conferindo os recibos</a>
+    <a href="#testes" data-parte="5" data-estado="pendente" data-testid="nav-5"><span class="gira"></span> 5. Testes automáticos</a>
   </div>
 </nav>
 <main>
+  <button type="button" class="ao-vivo" id="ao-vivo-botao" data-testid="ao-vivo" hidden>Voltar ao vivo</button>
   <p class="aviso-topo" data-testid="aviso-topo">Replay dos registros gravados nas coletas: nenhuma chamada nova é feita e nada sai do seu computador</p>
 
   <!-- Part 1 -->
   <section class="parte" id="refazendo" aria-labelledby="t-refazendo">
-    <h2 id="t-refazendo">1. Refazendo agora</h2>
-    <p class="suave">O mesmo comando de <span class="mono">npm run reproduzir-tudo</span>, rodando agora no seu computador, sem internet. Cada item aparece quando termina.</p>
+    <div class="cabeca"><h2 id="t-refazendo">1. Refazendo agora</h2><span class="estado-parte" id="estado-1" data-estado="pendente" data-testid="estado-1"><span class="gira"></span><span class="txt">para rodar</span></span></div>
+    <p class="suave">O mesmo comando de <span class="mono">npm run reproduzir-tudo</span>, rodando agora no seu computador, sem internet. Os 13 itens começam como "para rodar"; cada um fica "rodando" e depois "conferido" ou "falhou" na hora em que o passo termina.</p>
     <div class="estado">
-      <span class="veredito espera" id="rep-veredito" data-testid="rep-veredito" role="status" aria-live="polite">Rodando…</span>
-      <span class="suave">Tempo decorrido: <b id="rep-tempo">0 s</b></span>
+      <span class="veredito" id="rep-veredito" data-testid="rep-veredito" data-estado="pendente" role="status" aria-live="polite">PARA RODAR</span>
+      <span class="suave">Tempo decorrido: <b id="rep-tempo">–</b></span>
       <span class="suave" id="rep-codigo"></span>
     </div>
     <div class="blocos">
-      <div class="bloco"><h3>A. Coleta de 7 de outubro (H1) e calibração Anthropic</h3><ol class="itens" id="parte-A"><li><span class="vazio">aguardando…</span></li></ol></div>
-      <div class="bloco"><h3>B. Tabela dos 8 modelos (23 de novembro)</h3><ol class="itens" id="parte-B"><li><span class="vazio">aguardando…</span></li></ol></div>
-      <div class="bloco"><h3>C. Estimado pelo OTK × declarado, e registro gravado antes</h3><ol class="itens" id="parte-C"><li><span class="vazio">aguardando…</span></li></ol></div>
-      <div class="bloco"><h3>D. Verificador, chaveiro e página</h3><ol class="itens" id="parte-D"><li><span class="vazio">aguardando…</span></li></ol></div>
+      <div class="bloco"><h3>A. Coleta de 7 de outubro (H1) e calibração Anthropic</h3><ol class="itens" id="parte-A"></ol></div>
+      <div class="bloco"><h3>B. Tabela dos 8 modelos (23 de novembro)</h3><ol class="itens" id="parte-B"></ol></div>
+      <div class="bloco"><h3>C. Estimado pelo OTK × declarado, e registro gravado antes</h3><ol class="itens" id="parte-C"></ol></div>
+      <div class="bloco"><h3>D. Verificador, chaveiro e página</h3><ol class="itens" id="parte-D"></ol></div>
     </div>
     <details><summary>Ver a saída completa do terminal</summary><pre class="registro" id="rep-log" data-testid="rep-log"></pre></details>
   </section>
 
   <!-- Part 2 -->
   <section class="parte" id="dia07" aria-labelledby="t-dia07">
-    <h2 id="t-dia07">2. O caminho do OTK em 7 de outubro de 2026</h2>
-    <p class="suave">Cada chamada real da coleta, refeita a partir do registro gravado. Sem texto de conversa e sem identificador do provedor.</p>
+    <div class="cabeca"><h2 id="t-dia07">2. O caminho do OTK em 7 de outubro de 2026</h2><span class="estado-parte" id="estado-2" data-estado="pendente" data-testid="estado-2"><span class="gira"></span><span class="txt">para rodar</span></span></div>
+    <p class="suave">Cada chamada real da coleta, refeita a partir do registro gravado. O replay começa sozinho quando a parte 1 termina, e os contadores sobem a partir de 0. Sem texto de conversa e sem identificador do provedor.</p>
     <div class="diagrama" id="d07-diagrama" aria-label="Caminho de uma chamada">
       <div class="etapa" data-etapa="texto"><b>Texto</b>o pedido do cliente</div><span class="seta">→</span>
       <div class="etapa" data-etapa="conta"><b>OTK conta os tokens</b>antes do envio</div><span class="seta">→</span>
@@ -148,9 +171,8 @@ ol.passos { margin: 4px 0; padding-left: 22px; }
       <button type="button" data-acao="pausar" data-testid="d07-pausar">Pausar</button>
       <label>Velocidade <select data-acao="velocidade" data-testid="d07-velocidade"><option value="5">1×</option><option value="20" selected>4×</option><option value="80">16×</option></select></label>
       <button type="button" data-acao="fim" data-testid="d07-fim">Pular para o fim</button>
-      <button type="button" data-acao="reiniciar">Recomeçar</button>
-      <div class="progresso" aria-hidden="true"><div id="d07-barra"></div></div>
-      <span id="d07-posicao" class="suave" data-testid="d07-posicao">0 de 0</span>
+            <div class="progresso" aria-hidden="true"><div id="d07-barra"></div></div>
+      <span id="d07-posicao" class="suave" data-testid="d07-posicao">0 chamadas refeitas</span>
     </div>
     <div class="dupla">
       <div class="cartao-chamada"><h3>Chamada atual</h3><dl id="d07-atual"></dl></div>
@@ -165,9 +187,9 @@ ol.passos { margin: 4px 0; padding-left: 22px; }
 
   <!-- Part 3 -->
   <section class="parte" id="dia23" aria-labelledby="t-dia23">
-    <h2 id="t-dia23">3. O caminho do OTK em 23 de novembro de 2026</h2>
+    <div class="cabeca"><h2 id="t-dia23">3. O caminho do OTK em 23 de novembro de 2026</h2><span class="estado-parte" id="estado-3" data-estado="pendente" data-testid="estado-3"><span class="gira"></span><span class="txt">para rodar</span></span></div>
     <p class="fatos forte" data-testid="d23-aviso">Nesta coleta, o programa de coleta não passou pelo proxy e não gerou recibo.</p>
-    <p class="suave">Cada envio refeito a partir do diário encadeado (cada registro leva o hash do anterior) do programa de coleta à parte (<span class="mono">scripts/h2eval/</span>). Sem texto de conversa e sem identificador do provedor.</p>
+    <p class="suave">Cada envio refeito a partir do diário encadeado (cada registro leva o hash do anterior) do programa de coleta à parte (<span class="mono">scripts/h2eval/</span>). O replay começa sozinho quando a parte 1 termina, e os contadores sobem a partir de 0. Sem texto de conversa e sem identificador do provedor.</p>
     <div class="diagrama" id="d23-diagrama" aria-label="Etapas do registro de um envio">
       <div class="etapa" data-etapa="planejado"><b>Planejado</b>&nbsp;</div><span class="seta">→</span>
       <div class="etapa" data-etapa="registro"><b>Registro gravado antes do envio</b><span id="d23-registro-sub">com ou sem contagem</span></div><span class="seta">→</span>
@@ -181,9 +203,8 @@ ol.passos { margin: 4px 0; padding-left: 22px; }
       <button type="button" data-acao="pausar" data-testid="d23-pausar">Pausar</button>
       <label>Velocidade <select data-acao="velocidade" data-testid="d23-velocidade"><option value="10">1×</option><option value="40" selected>4×</option><option value="160">16×</option></select></label>
       <button type="button" data-acao="fim" data-testid="d23-fim">Pular para o fim</button>
-      <button type="button" data-acao="reiniciar">Recomeçar</button>
-      <div class="progresso" aria-hidden="true"><div id="d23-barra"></div></div>
-      <span id="d23-posicao" class="suave" data-testid="d23-posicao">0 de 0</span>
+            <div class="progresso" aria-hidden="true"><div id="d23-barra"></div></div>
+      <span id="d23-posicao" class="suave" data-testid="d23-posicao">0 envios refeitos</span>
     </div>
     <div class="dupla">
       <div class="cartao-chamada"><h3>Envio atual</h3><dl id="d23-atual"></dl></div>
@@ -199,10 +220,10 @@ ol.passos { margin: 4px 0; padding-left: 22px; }
 
   <!-- Part 4 -->
   <section class="parte" id="recibos" aria-labelledby="t-recibos">
-    <h2 id="t-recibos">4. Conferindo os recibos</h2>
+    <div class="cabeca"><h2 id="t-recibos">4. Conferindo os recibos</h2><span class="estado-parte" id="estado-4" data-estado="pendente" data-testid="estado-4"><span class="gira"></span><span class="txt">para rodar</span></span></div>
     <p class="suave">Depois da reprodução, o comando roda o verificador pelo terminal, sem internet, sobre os recibos de exemplo, com o chaveiro de teste e a impressão digital dele:</p>
-    <p class="mono" id="rec-comando">aguardando o fim da reprodução…</p>
-    <div class="estado"><span class="veredito espera" id="rec-estado" data-testid="rec-estado" role="status" aria-live="polite">Aguardando…</span></div>
+    <p class="mono" id="rec-comando">npm run otk -- verify test/verifier/vetores/recibos --keyring test/verifier/vetores/chaveiro.json --fingerprint (a impressão digital de test/verifier/vetores/esperado.json) --json</p>
+    <div class="estado"><span class="veredito" id="rec-estado" data-testid="rec-estado" data-estado="pendente" role="status" aria-live="polite">PARA RODAR</span></div>
     <div class="cartoes" data-testid="rec-cartoes">
       <div class="cartao verde"><span class="n" id="rec-verde" data-testid="rec-verde">–</span>OK (verde)</div>
       <div class="cartao amarelo"><span class="n" id="rec-amarelo" data-testid="rec-amarelo">–</span>Atenção (amarelo)</div>
@@ -227,11 +248,11 @@ ol.passos { margin: 4px 0; padding-left: 22px; }
 
   <!-- Part 5 -->
   <section class="parte" id="testes" aria-labelledby="t-testes">
-    <h2 id="t-testes">5. Testes automáticos (opcional)</h2>
+    <div class="cabeca"><h2 id="t-testes">5. Testes automáticos (opcional)</h2><span class="estado-parte" id="estado-5" data-estado="pendente" data-testid="estado-5"><span class="gira"></span><span class="txt">para rodar</span></span></div>
     <p>Os testes conferem o programa, peça por peça. São opcionais para quem só quer os números: a parte 1 já refaz os números da dissertação.</p>
     <div class="controles">
       <button type="button" class="principal" id="tes-botao" data-testid="tes-botao">Rodar os testes (2 a 5 minutos)</button>
-      <span class="veredito espera" id="tes-estado" data-testid="tes-estado" role="status" aria-live="polite" hidden></span>
+      <span class="veredito" id="tes-estado" data-testid="tes-estado" data-estado="pendente" role="status" aria-live="polite">PARA RODAR</span>
       <span class="suave" id="tes-tempo"></span>
     </div>
     <p class="mono" id="tes-resultado" data-testid="tes-resultado"></p>
@@ -240,7 +261,8 @@ ol.passos { margin: 4px 0; padding-left: 22px; }
 </main>
 <script>
 'use strict';
-/* Small DOM helpers: every value from the server goes in through textContent. */
+/* Small DOM helpers: every value from the server goes in through textContent. Nothing is kept in
+   browser storage or cookies: every load starts from "para rodar" and shows only this run. */
 const $ = (id) => document.getElementById(id);
 const el = (tag, attrs = {}, ...children) => {
   const node = document.createElement(tag);
@@ -253,26 +275,155 @@ const fmtDiff = (n) => (n === null || n === undefined ? '–' : (n > 0 ? '+' : '
 const fmtUsd = (n) => (n === null || n === undefined ? 'não informado' : 'US$ ' + Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 7, maximumFractionDigits: 7 }));
 const fmtSeconds = (ms) => (ms / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' s';
 
-/* ---------- Part 1: live reproduction ---------- */
-const reproduction = { startedAt: Date.now(), finished: false, clearedParts: new Set() };
-setInterval(() => { if (!reproduction.finished) $('rep-tempo').textContent = fmtSeconds(Date.now() - reproduction.startedAt); }, 250);
+/* ---------- Follow mode: the page scrolls by itself to the step that is running or just changed ---------- */
+/* Same idea as a comments column that "follows the newest": it moves only forward, never scrolls when the target
+   is already in view, pauses as soon as the person scrolls by hand (wheel, touch, keyboard or scrollbar) and
+   offers a fixed "voltar ao vivo" button to resume. With prefers-reduced-motion it jumps instead of gliding. */
+const follow = { active: true, target: null };
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+const navHeight = () => document.querySelector('nav.indice').getBoundingClientRect().height;
+function isInView(node) {
+  const r = node.getBoundingClientRect();
+  return r.top >= navHeight() && r.bottom <= window.innerHeight;
+}
+function followTo(node, allowBackward) {
+  if (!node) return;
+  if (follow.target && follow.target !== node) follow.target.classList.remove('foco-ao-vivo');
+  follow.target = node;
+  node.classList.add('foco-ao-vivo');
+  if (!follow.active || isInView(node)) return;
+  const top = Math.max(0, Math.round(window.scrollY + node.getBoundingClientRect().top - navHeight() - 12));
+  if (top <= window.scrollY && !allowBackward) return;
+  window.scrollTo({ top, behavior: reduceMotion.matches ? 'auto' : 'smooth' });
+}
+function pauseFollow() {
+  if (!follow.active) return;
+  follow.active = false;
+  document.body.setAttribute('data-seguindo', 'false');
+  $('ao-vivo-botao').hidden = false;
+}
+function resumeFollow() {
+  follow.active = true;
+  document.body.setAttribute('data-seguindo', 'true');
+  $('ao-vivo-botao').hidden = true;
+  if (follow.target) {
+    const node = follow.target;
+    follow.target = null;
+    followTo(node, true);
+  }
+}
+const SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ']);
+window.addEventListener('wheel', pauseFollow, { passive: true });
+window.addEventListener('touchstart', pauseFollow, { passive: true });
+window.addEventListener('keydown', (ev) => {
+  if (!SCROLL_KEYS.has(ev.key)) return;
+  if (ev.key === ' ' && ev.target.closest && ev.target.closest('button, select, input, textarea, a')) return;
+  pauseFollow();
+});
+// A press on the page scrollbar (to the right of the content area) also counts as scrolling by hand.
+window.addEventListener('pointerdown', (ev) => { if (ev.clientX >= document.documentElement.clientWidth) pauseFollow(); });
+$('ao-vivo-botao').addEventListener('click', resumeFollow);
 
-function addItem({ ok, part, text, elapsedMs }) {
-  const list = $('parte-' + part);
-  if (!list) return;
-  if (!reproduction.clearedParts.has(part)) { list.textContent = ''; reproduction.clearedParts.add(part); }
-  list.append(el('li', { 'data-testid': 'item', 'data-ok': String(ok) },
-    el('span', { class: 'selo ' + (ok ? 'ok' : 'falhou') }, ok ? 'OK' : 'FALHOU'),
-    el('span', {}, text),
-    el('span', { class: 'tempo' }, fmtSeconds(elapsedMs))));
+/* The order the page follows: part 1 items, then part 2, part 3, part 4 and, when the tests run, part 5. */
+const flow = { daysDone: false, receipts: false, testsRunning: false };
+function followAfterDays() {
+  flow.daysDone = true;
+  if (flow.receipts) followTo($('recibos'));
+  if (flow.testsRunning) followTo($('testes'));
+}
+
+/* ---------- States: pendente ("para rodar"), rodando, ok ("conferido"), falhou, nao-rodou ---------- */
+const STATE_TEXT = { pendente: 'para rodar', rodando: 'rodando', ok: 'conferido', falhou: 'falhou', 'nao-rodou': 'não rodou' };
+/** Sets the state of a part: its badge and its pill in the index use the same colors. */
+function setPartState(part, state, text) {
+  const badge = $('estado-' + part);
+  badge.setAttribute('data-estado', state);
+  badge.querySelector('.txt').textContent = text || STATE_TEXT[state];
+  document.querySelector('nav.indice a[data-parte="' + part + '"]').setAttribute('data-estado', state);
+}
+
+/* ---------- Part 1: the 13 items of reproducao/reproduzir_tudo.mjs, in its order ---------- */
+/* Short labels, one per line that reproduzir_tudo.mjs prints (A: 2, B: 2, C: 4, D: 5). A line is matched to the
+   next unfinished item of its part; a line that does not fit is shown as an extra item, never hidden. */
+const ITEMS = [
+  ['A', 'ZIP do pacote da banca: sha256 esperado'],
+  ['A', 'Pacote: hashes, sanitização, H1 de 7/10 e CAL-ANTH'],
+  ['B', 'Tabela dos 8 modelos: .tex idêntico ao auditado'],
+  ['B', 'Tabela dos 8 modelos: JSON igual ao auditado'],
+  ['C', 'Estimado × declarado: linhas texto × modelo'],
+  ['C', 'Estimado × declarado: .tex idêntico ao auditado'],
+  ['C', 'Estimado × declarado: JSON igual ao auditado'],
+  ['C', 'Registro da contagem gravado antes de cada envio'],
+  ['D', 'Recibos de exemplo iguais aos que o código gera'],
+  ['D', 'Relatório dos recibos com a impressão digital'],
+  ['D', 'Relatório dos recibos sem a impressão digital'],
+  ['D', 'Chaveiro do operador: impressão digital'],
+  ['D', 'Página do verificador: sha256'],
+];
+const reproduction = { startedAt: null, finished: false, slots: [] };
+setInterval(() => { if (reproduction.startedAt && !reproduction.finished) $('rep-tempo').textContent = fmtSeconds(Date.now() - reproduction.startedAt); }, 250);
+
+function setSlotState(slot, state, text, elapsedMs) {
+  slot.state = state;
+  slot.node.setAttribute('data-estado', state);
+  slot.node.setAttribute('data-historico', slot.node.getAttribute('data-historico') + ',' + state);
+  if (state === 'ok' || state === 'falhou') slot.node.setAttribute('data-ok', String(state === 'ok'));
+  slot.badge.querySelector('.txt').textContent = STATE_TEXT[state];
+  if (text !== undefined) slot.text.textContent = text;
+  if (elapsedMs !== undefined) slot.time.textContent = fmtSeconds(elapsedMs);
+}
+function makeItemNode(part, label, extra) {
+  const badge = el('span', { class: 'selo-estado' }, el('span', { class: 'gira' }), el('span', { class: 'txt' }, STATE_TEXT.pendente));
+  const text = el('span', { class: 'rotulo' }, label);
+  const time = el('span', { class: 'tempo' }, '–');
+  const node = el('li', { 'data-testid': 'item', 'data-parte': part, 'data-estado': 'pendente', 'data-historico': 'pendente', ...(extra ? { 'data-extra': 'true' } : {}) }, badge, text, time);
+  $('parte-' + part).append(node);
+  return { part, node, badge, text, time, state: 'pendente' };
+}
+function buildItems() { reproduction.slots = ITEMS.map(([part, label]) => makeItemNode(part, label, false)); }
+const isDone = (slot) => slot.state === 'ok' || slot.state === 'falhou' || slot.state === 'nao-rodou';
+/** Exactly one unfinished item is "rodando": the first one in the fixed order. */
+function moveRunningMarker() {
+  if (reproduction.finished) return;
+  const next = reproduction.slots.find((s) => !isDone(s));
+  for (const s of reproduction.slots) if (s.state === 'rodando' && s !== next) setSlotState(s, 'pendente');
+  if (next && next.state !== 'rodando') setSlotState(next, 'rodando');
+  if (next) followTo(next.node);
+}
+function reproductionStarted() {
+  reproduction.startedAt = Date.now();
+  const box = $('rep-veredito');
+  box.setAttribute('data-estado', 'rodando');
+  box.textContent = 'RODANDO…';
+  setPartState(1, 'rodando');
+  moveRunningMarker();
+}
+function itemFinished({ ok, part, text, elapsedMs }) {
+  let slot = reproduction.slots.find((s) => s.part === part && !isDone(s));
+  if (!slot && $('parte-' + part)) { slot = makeItemNode(part, '', true); reproduction.slots.push(slot); }
+  if (!slot) return;
+  setSlotState(slot, ok ? 'ok' : 'falhou', text, elapsedMs);
+  moveRunningMarker();
 }
 function showFinal({ ok, passed, total }) {
   const box = $('rep-veredito');
-  box.className = 'veredito ' + (ok ? 'ok' : 'falhou');
-  box.textContent = (ok ? 'TUDO OK' : 'ALGO FALHOU') + ': ' + passed + ' de ' + total;
+  box.setAttribute('data-estado', ok ? 'ok' : 'falhou');
+  box.textContent = (ok ? 'TUDO OK' : 'FALHOU') + ': ' + passed + ' de ' + total;
+}
+function reproductionFinished(d) {
+  reproduction.finished = true;
+  for (const s of reproduction.slots) if (!isDone(s)) setSlotState(s, 'nao-rodou', s.text.textContent + ' (sem resultado: a reprodução terminou antes)');
+  $('rep-tempo').textContent = fmtSeconds(d.elapsedMs);
+  $('rep-codigo').textContent = 'Código de saída: ' + d.exitCode;
+  const box = $('rep-veredito');
+  if (box.getAttribute('data-estado') === 'rodando') { box.setAttribute('data-estado', 'falhou'); box.textContent = 'FALHOU (código de saída ' + d.exitCode + ')'; }
+  else if (d.exitCode !== 0 && box.getAttribute('data-estado') === 'ok') { box.setAttribute('data-estado', 'falhou'); box.textContent += ' — mas o código de saída foi ' + d.exitCode; }
+  const allOk = d.exitCode === 0 && reproduction.slots.every((s) => s.state === 'ok');
+  setPartState(1, allOk ? 'ok' : 'falhou');
+  days.then((loaded) => { replays.d07.start(); followTo($('dia07')); return loaded; });
 }
 
-/* ---------- Parts 2 and 3: replays ---------- */
+/* ---------- Parts 2 and 3: replays, started only after the reproduction ends ---------- */
 const VERDICTS_07 = {
   within_threshold: ['dentro do limite', 'ok'],
   over_threshold: ['acima do limite', 'falhou'],
@@ -282,12 +433,17 @@ const VERDICTS_07 = {
 };
 const verdict07 = (v) => VERDICTS_07[v] || [String(v), 'cinza'];
 const signatureText = (s) => (s === true ? 'conferida: sim' : s === false ? 'conferida: não' : 'sem checagem');
+const replays = {};
 
-function makeReplay(key, records, opts) {
-  const state = { index: 0, rate: Number(document.querySelector('[data-replay="' + key + '"] [data-acao="velocidade"]').value), paused: false, carry: 0, counters: new Map(), total: {} };
+/**
+ * Builds a replay that waits for start(). Counters begin at 0 and rise only as the replay moves; the totals
+ * from the files are compared at the end (part state "conferido" when they match, "falhou" otherwise).
+ */
+function makeReplay(key, part, records, opts) {
   const controls = document.querySelector('[data-replay="' + key + '"]');
+  const buttons = [...controls.querySelectorAll('button, select')];
   const pauseButton = controls.querySelector('[data-acao="pausar"]');
-  const reset = () => { state.index = 0; state.counters = new Map(); state.total = {}; $(key + '-ultimas').textContent = ''; render(null); };
+  const state = { index: 0, rate: Number(controls.querySelector('[data-acao="velocidade"]').value), paused: false, running: false, carry: 0, counters: new Map(), total: {}, done: false };
   const step = (record) => {
     const group = opts.groupOf(record);
     if (!state.counters.has(group)) state.counters.set(group, {});
@@ -302,27 +458,35 @@ function makeReplay(key, records, opts) {
     body.append(el('tr', { class: 'total', 'data-testid': key + '-total' }, el('td', {}, 'Total'), ...opts.counterNames.map((n) => el('td', { class: 'num', 'data-contador': n }, fmtInt(state.total[n] || 0)))));
   };
   const render = (record) => {
-    $(key + '-posicao').textContent = fmtInt(state.index) + ' de ' + fmtInt(records.length);
-    $(key + '-barra').style.width = (records.length ? (100 * state.index) / records.length : 0) + '%';
+    $(key + '-posicao').textContent = fmtInt(state.index) + ' ' + opts.unit + (state.done ? ' (fim)' : '');
+    $(key + '-barra').style.width = (state.running && records.length ? (100 * state.index) / records.length : 0) + '%';
     renderCounters();
     const card = $(key + '-atual');
     card.textContent = '';
     if (record) for (const [label, value] of opts.cardOf(record, state.index)) card.append(el('dt', {}, label), el('dd', {}, value));
     opts.lightDiagram(record);
-    pauseButton.textContent = state.index >= records.length ? 'Terminado' : state.paused ? 'Continuar' : 'Pausar';
+    pauseButton.textContent = state.done ? 'Terminado' : state.paused ? 'Continuar' : 'Pausar';
   };
-  const pushRecent = (record) => {
-    const body = $(key + '-ultimas');
-    body.prepend(opts.rowOf(record));
-    while (body.children.length > 8) body.lastChild.remove();
+  const finish = () => {
+    state.done = true;
+    const matches = opts.counterNames.every((n) => (state.total[n] || 0) === (opts.expectedTotal[n] || 0));
+    setPartState(part, matches ? 'ok' : 'falhou', matches ? 'conferido' : 'falhou: contadores diferentes dos arquivos');
+    opts.onFinish();
   };
   const advance = (n) => {
+    if (!state.running || state.done) return;
     let last = null;
     for (let i = 0; i < n && state.index < records.length; i++) { last = records[state.index++]; step(last); }
-    if (last) { pushRecent(last); render(last); }
+    if (last) {
+      const body = $(key + '-ultimas');
+      body.prepend(opts.rowOf(last));
+      while (body.children.length > 8) body.lastChild.remove();
+    }
+    if (state.index >= records.length) finish();
+    render(last);
   };
   setInterval(() => {
-    if (state.paused || state.index >= records.length) return;
+    if (!state.running || state.paused || state.done) return;
     state.carry += state.rate / 10;
     const n = Math.floor(state.carry);
     state.carry -= n;
@@ -330,12 +494,21 @@ function makeReplay(key, records, opts) {
   }, 100);
   controls.addEventListener('click', (ev) => {
     const action = ev.target.getAttribute('data-acao');
-    if (action === 'pausar') { state.paused = !state.paused; render(records[state.index - 1] || null); }
+    if (action === 'pausar' && !state.done) { state.paused = !state.paused; render(records[state.index - 1] || null); }
     if (action === 'fim') advance(records.length);
-    if (action === 'reiniciar') { reset(); state.paused = false; }
   });
   controls.querySelector('[data-acao="velocidade"]').addEventListener('change', (ev) => { state.rate = Number(ev.target.value); });
-  reset();
+  for (const b of buttons) b.disabled = true;
+  render(null);
+  return {
+    start() {
+      if (state.running) return;
+      state.running = true;
+      for (const b of buttons) b.disabled = false;
+      setPartState(part, 'rodando');
+      render(null);
+    },
+  };
 }
 
 function lightStages(diagramId, lit) {
@@ -345,16 +518,17 @@ function lightStages(diagramId, lit) {
   }
 }
 
-function startDay07(day) {
-  const names = ['calls', 'signatureYes', 'signatureNo', 'withoutCheck'];
+function setupDay07(day) {
   const statuses = Object.entries(day.refusedHttpStatuses).map(([s, n]) => n + ' com HTTP ' + s).join(', ');
-  $('d07-nota').textContent = 'Total nos registros: ' + fmtInt(day.counters.total.calls) + ' chamadas reais (' + day.sources.length + ' arquivos; as pastas de ensaio sintético ficam de fora). As chamadas sem a checagem foram recusadas pelo provedor (' + statuses + '), e por isso não têm recibo.';
-  makeReplay('d07', day.calls, {
-    counterNames: names,
+  replays.d07 = makeReplay('d07', 2, day.calls, {
+    unit: 'chamadas refeitas',
+    expectedTotal: day.counters.total,
+    counterNames: ['calls', 'signatureYes', 'signatureNo', 'withoutCheck'],
+    onFinish: () => { replays.d23.start(); followTo($('dia23')); $('d07-nota').textContent = 'Total nos registros: ' + fmtInt(day.counters.total.calls) + ' chamadas reais (' + day.sources.length + ' arquivos; as pastas de ensaio sintético ficam de fora). As chamadas sem a checagem foram recusadas pelo provedor (' + statuses + '), e por isso não têm recibo.'; },
     groupOf: (c) => c.provider + ' · ' + (c.model || 'sem modelo devolvido'),
     countersOf: (c) => ({ calls: 1, signatureYes: c.signatureVerified === true ? 1 : 0, signatureNo: c.signatureVerified === false ? 1 : 0, withoutCheck: c.signatureVerified === null ? 1 : 0 }),
     cardOf: (c, n) => [
-      ['Chamada', fmtInt(n) + ' de ' + fmtInt(day.calls.length)],
+      ['Chamada', fmtInt(n)],
       ['Provedor e modelo', c.provider + ' · ' + (c.model || 'sem modelo devolvido')],
       ['Resposta HTTP', String(c.httpStatus ?? 'não informado')],
       ['Contagem do OTK', c.otkInput === null ? 'não informado' : fmtInt(c.otkInput) + ' de entrada, ' + fmtInt(c.otkOutput) + ' de saída'],
@@ -378,17 +552,18 @@ function startDay07(day) {
   });
 }
 
-function startDay23(day) {
-  const names = ['sent', 'recordedBefore', 'withOtkCount', 'withoutOtkCount', 'withDeclared'];
+function setupDay23(day) {
   const linked = Object.values(day.chainLinked).every(Boolean);
-  $('d23-nota').textContent = 'Total nos registros: ' + fmtInt(day.counters.total.sent) + ' envios de ' + day.counters.groups.length + ' modelos, em ' + Object.keys(day.chainLinked).length + ' diários (corrente prevHash → hash ' + (linked ? 'ligada do começo ao fim' : 'COM QUEBRA') + '; o hash de cada linha é recalculado no item C da parte 1). Sem contagem quer dizer que o contador da versão avaliada não sabe contar aquele modelo (UNSUPPORTED_FOR_ESTIMATION).';
   const closingClass = (op) => (op.closing === 'fechado' ? 'ok' : 'amarelo');
-  makeReplay('d23', day.operations, {
-    counterNames: names,
+  replays.d23 = makeReplay('d23', 3, day.operations, {
+    unit: 'envios refeitos',
+    expectedTotal: day.counters.total,
+    counterNames: ['sent', 'recordedBefore', 'withOtkCount', 'withoutOtkCount', 'withDeclared'],
+    onFinish: () => { followAfterDays(); $('d23-nota').textContent = 'Total nos registros: ' + fmtInt(day.counters.total.sent) + ' envios de ' + day.counters.groups.length + ' modelos, em ' + Object.keys(day.chainLinked).length + ' diários (corrente prevHash → hash ' + (linked ? 'ligada do começo ao fim' : 'COM QUEBRA') + '; o hash de cada linha é recalculado no item C da parte 1). Sem contagem quer dizer que o contador da versão avaliada não sabe contar aquele modelo (UNSUPPORTED_FOR_ESTIMATION).'; },
     groupOf: (op) => op.model || 'modelo desconhecido',
     countersOf: (op) => { const b = op.recordedBeforeSend ? 1 : 0; return { sent: 1, recordedBefore: b, withOtkCount: b && op.estimateStatus === 'ESTIMATED' ? 1 : 0, withoutOtkCount: b && op.estimateStatus !== 'ESTIMATED' ? 1 : 0, withDeclared: op.declaredInput !== null ? 1 : 0 }; },
     cardOf: (op, n) => [
-      ['Envio', fmtInt(n) + ' de ' + fmtInt(day.operations.length)],
+      ['Envio', fmtInt(n)],
       ['Provedor e modelo', (op.provider || '?') + ' · ' + (op.model || '?')],
       ['Registro antes do envio', op.recordedBeforeSend ? 'sim, ' + (op.estimateStatus === 'ESTIMATED' ? 'com a contagem do OTK' : 'sem contagem (' + op.estimateStatus + ')') : 'não'],
       ['Contagem do OTK', fmtInt(op.otkCount)],
@@ -414,6 +589,12 @@ function startDay23(day) {
 
 /* ---------- Part 4: receipts ---------- */
 const RECEIPT_LABELS = { verde: 'OK', amarelo: 'Atenção', vermelho: 'Falhou' };
+function receiptsStarted() {
+  setPartState(4, 'rodando', 'rodando o verificador');
+  const status = $('rec-estado');
+  status.setAttribute('data-estado', 'rodando');
+  status.textContent = 'RODANDO O VERIFICADOR…';
+}
 function showReceipts(r) {
   $('rec-comando').textContent = r.command;
   $('rec-impressao').textContent = r.fingerprint;
@@ -424,11 +605,14 @@ function showReceipts(r) {
   $('rec-amarelo').textContent = t.amarelo ?? '?';
   $('rec-vermelho').textContent = t.vermelho ?? '?';
   $('rec-sha').textContent = r.reportSha256;
-  const same = r.reportSha256 === r.expectedReportSha256 && r.exitCode === r.expectedExitCode;
+  const same = r.reportSha256 === r.expectedReportSha256 && r.exitCode === r.expectedExitCode && !r.error;
   $('rec-sha-igual').textContent = same ? '(igual ao esperado, código de saída ' + r.exitCode + ')' : '(DIFERENTE do esperado ' + r.expectedReportSha256 + ')';
   const status = $('rec-estado');
-  status.className = 'veredito ' + (same && !r.error ? 'ok' : 'falhou');
-  status.textContent = r.error ? 'Erro: ' + r.error : same ? 'Conferido: o relatório é o esperado' : 'O relatório não é o esperado';
+  status.setAttribute('data-estado', same ? 'ok' : 'falhou');
+  status.textContent = r.error ? 'FALHOU: ' + r.error : same ? 'CONFERIDO: o relatório é o esperado' : 'FALHOU: o relatório não é o esperado';
+  setPartState(4, same ? 'ok' : 'falhou');
+  flow.receipts = true;
+  if (flow.daysDone) followTo($('recibos'));
   const body = $('rec-linhas');
   body.textContent = '';
   for (const item of r.items) body.append(el('tr', {}, el('td', {}, el('span', { class: 'selo ' + item.verdict }, RECEIPT_LABELS[item.verdict] || item.verdict)), el('td', { class: 'mono' }, item.id), el('td', { class: 'mono' }, (item.file || '?') + ':' + (item.line ?? '?')), el('td', {}, item.reasonPt || item.code)));
@@ -436,12 +620,15 @@ function showReceipts(r) {
 
 /* ---------- Part 5: tests ---------- */
 const tests = { startedAt: null, timer: null };
-function testsStatus(text, cls) { const s = $('tes-estado'); s.hidden = false; s.className = 'veredito ' + cls; s.textContent = text; }
+function testsStatus(text, state) { const s = $('tes-estado'); s.setAttribute('data-estado', state); s.textContent = text; }
 function testsStarted() {
   $('tes-botao').disabled = true;
   $('tes-log').hidden = false;
   tests.startedAt = Date.now();
-  testsStatus('Rodando…', 'espera');
+  testsStatus('RODANDO…', 'rodando');
+  setPartState(5, 'rodando');
+  flow.testsRunning = true;
+  if (flow.daysDone) followTo($('testes'));
   clearInterval(tests.timer);
   tests.timer = setInterval(() => { $('tes-tempo').textContent = fmtSeconds(Date.now() - tests.startedAt); }, 500);
 }
@@ -456,43 +643,37 @@ function testsFinished(r) {
   $('tes-tempo').textContent = fmtSeconds(r.elapsedMs);
   $('tes-resultado').textContent = r.resultLine || 'A linha "Resultado:" não apareceu na saída.';
   testsStatus(r.ok ? 'TESTES OK' : 'HOUVE FALHA', r.ok ? 'ok' : 'falhou');
+  setPartState(5, r.ok ? 'ok' : 'falhou');
 }
 $('tes-botao').addEventListener('click', async () => {
   $('tes-botao').disabled = true;
   try {
-    const res = await fetch('/api/testes', { method: 'POST' });
+    const res = await fetch('/api/testes', { method: 'POST', cache: 'no-store' });
     if (res.status === 403) {
       $('tes-botao').disabled = false;
       testsStatus('Recusado: abra a página pelo endereço http://127.0.0.1:' + location.port + '/ que o terminal mostrou.', 'falhou');
       return;
     }
     const body = await res.json();
-    if (!body.started) { testsStatus(body.message, 'espera'); }
+    if (!body.started) testsStatus(body.message, 'pendente');
   } catch (err) {
     $('tes-botao').disabled = false;
     testsStatus('O comando já terminou; rode de novo com --com-testes ou clique enquanto ele estiver no ar.', 'falhou');
   }
 });
 
-/* ---------- Event stream ---------- */
+/* ---------- Event stream (history of this run only: each run has a new server and a new port) ---------- */
 function connectEvents() {
   const source = new EventSource('/eventos');
   const on = (type, fn) => source.addEventListener(type, (ev) => fn(JSON.parse(ev.data)));
+  on('reproducao-inicio', reproductionStarted);
   on('linha', (d) => {
-    const log = $('rep-log');
-    log.textContent += d.text + '\n';
-    if (d.kind === 'item') addItem(d);
+    $('rep-log').textContent += d.text + '\n';
+    if (d.kind === 'item') itemFinished(d);
     if (d.kind === 'final') showFinal(d);
   });
-  on('fim', (d) => {
-    reproduction.finished = true;
-    $('rep-tempo').textContent = fmtSeconds(d.elapsedMs);
-    $('rep-codigo').textContent = 'Código de saída: ' + d.exitCode;
-    const box = $('rep-veredito');
-    if (box.classList.contains('espera')) { box.className = 'veredito falhou'; box.textContent = 'FALHOU (código de saída ' + d.exitCode + ')'; }
-    else if (d.exitCode !== 0 && box.classList.contains('ok')) { box.className = 'veredito falhou'; box.textContent += ' — mas o código de saída foi ' + d.exitCode; }
-  });
-  on('recibos-inicio', () => { $('rec-estado').textContent = 'Rodando o verificador…'; });
+  on('fim', reproductionFinished);
+  on('recibos-inicio', receiptsStarted);
   on('recibos', showReceipts);
   on('testes-inicio', testsStarted);
   on('testes-linha', (d) => testsLine(d.text));
@@ -503,8 +684,9 @@ function connectEvents() {
   });
 }
 
-fetch('/api/dias').then((r) => r.json()).then((days) => { startDay07(days.oct07); startDay23(days.nov23); });
-connectEvents();
+buildItems();
+const days = fetch('/api/dias', { cache: 'no-store' }).then((r) => r.json()).then((loaded) => { setupDay07(loaded.oct07); setupDay23(loaded.nov23); return loaded; });
+days.then(connectEvents);
 </script>
 </body>
 </html>

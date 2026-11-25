@@ -71,6 +71,7 @@ test('page: 13 OK items, the right day counters, the receipt check and the tests
     await page.getByTestId('d07-fim').click();
     const total07 = page.getByTestId('d07-total');
     assert.deepEqual(await total07.locator('td.num').allTextContents(), ['662', '658', '0', '4']);
+    assert.equal(await page.getByTestId('estado-2').getAttribute('data-estado'), 'ok');
     await page.getByTestId('d23-fim').click();
     const total23 = page.getByTestId('d23-total');
     assert.deepEqual(await total23.locator('td.num').allTextContents(), ['1.720', '1.720', '1.505', '215', '1.719']);
@@ -80,9 +81,11 @@ test('page: 13 OK items, the right day counters, the receipt check and the tests
       assert.equal(await page.locator(`#d23-contadores tr[data-grupo="${gemini}"] td.num`).last().textContent(), '215');
     }
     assert.match(await page.getByTestId('d23-fonte-declarado').textContent(), /TENTATIVAS_CMP8.jsonl/);
+    assert.equal(await page.getByTestId('estado-3').getAttribute('data-estado'), 'ok');
+    assert.equal(await page.locator('[data-testid="item"][data-estado="ok"]').count(), 13);
     assert.match(await page.getByTestId('d23-aviso').textContent(), /não passou pelo proxy e não gerou recibo/);
 
-    await page.getByTestId('rec-estado').filter({ hasText: 'Conferido' }).waitFor({ timeout: 120_000 });
+    await page.getByTestId('rec-estado').filter({ hasText: 'CONFERIDO' }).waitFor({ timeout: 120_000 });
     assert.equal(await page.getByTestId('rec-verde').textContent(), '9');
     assert.equal(await page.getByTestId('rec-amarelo').textContent(), '11');
     assert.equal(await page.getByTestId('rec-vermelho').textContent(), '33');
@@ -110,9 +113,9 @@ test('page: when the reproduction fails, the page shows FALHOU', { timeout: 180_
   try {
     const url = await live.url;
     const { page, requests, consoleErrors } = await openWatched(browser, url);
-    await page.getByTestId('rep-veredito').filter({ hasText: 'ALGO FALHOU' }).waitFor({ timeout: 60_000 });
+    await page.getByTestId('rep-veredito').filter({ hasText: 'FALHOU' }).waitFor({ timeout: 60_000 });
     assert.equal(await page.locator('[data-testid="item"][data-ok="false"]').count(), 1);
-    assert.match(await page.locator('[data-testid="item"][data-ok="false"]').textContent(), /FALHOU/);
+    assert.match(await page.locator('[data-testid="item"][data-ok="false"]').textContent(), /falhou/);
     assert.match(await page.locator('#rep-codigo').textContent(), /Código de saída: 1/);
     assert.deepEqual(outsideLoopback(requests), []);
     assert.deepEqual(consoleErrors, []);
