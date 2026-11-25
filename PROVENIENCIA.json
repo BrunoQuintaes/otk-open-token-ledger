@@ -19,7 +19,7 @@
   ]
  },
  "totalArquivos": 3288,
- "totalBytes": 71009141,
+ "totalBytes": 71010443,
  "porOrigem": {
   "H1 7606bc9b (= b0ec6f24)": 1052,
   "b0ec6f24 com mudança": 17,
@@ -96,14 +96,14 @@
   },
   {
    "arquivo": "README.en.md",
-   "bytes": 107897,
-   "sha256": "c25ad81193a81c73f274bb6fac5af9c7a502194ff263c39379e44c40086db2cf",
+   "bytes": 108001,
+   "sha256": "7ef200005e6118d1f4cb52428ce4cca7f2b1db684855031b6edb459eb2ad67bc",
    "origem": "novo (README bilíngue e imagens, 25/11/2026)"
   },
   {
    "arquivo": "README.md",
-   "bytes": 105903,
-   "sha256": "2015df7a87d06f96b13cf0791ab10cc8e4af2eddddba50a3049209d24285ba3c",
+   "bytes": 106014,
+   "sha256": "9a77924608dfe063c2c8b4eb0fbd0b5879b0c1bc4fe5ebb8502c241b95affb3b",
    "origem": "novo (REPO_PUBLICO, C160)",
    "mudanca": "substitui o README.md do repositório interno"
   },
@@ -13894,8 +13894,8 @@
   },
   {
    "arquivo": "reproducao/testes_banca.mjs",
-   "bytes": 10816,
-   "sha256": "2205ca172dba99455d2296d800272d86d295c7590dd2a2a6efb9b81a3f108e78",
+   "bytes": 11276,
+   "sha256": "e6b8565e97aad19e1af36eb014945853903bb05c49e6061b67d8a94105d2a473",
    "origem": "novo (REPO_PUBLICO, C160)"
   },
   {
@@ -19346,8 +19346,8 @@
   },
   {
    "arquivo": "test/reproducao_ao_vivo/testes_banca.test.mjs",
-   "bytes": 5023,
-   "sha256": "f3db622ade3ce7b57aa31c350fa26937fc503781bb926578ae7dd015f87c8902",
+   "bytes": 5650,
+   "sha256": "3e1d7e1b340175968b96f14371bd1a26b5a5d7d73721a9a630117d345562613b",
    "origem": "novo (README bilíngue e imagens, 25/11/2026)"
   },
   {

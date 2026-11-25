@@ -62,6 +62,8 @@ export function listFailures(output) {
     const start = output.indexOf(`✖ ${failure.name}`);
     // node:test prints the assertion message as "AssertionError [ERR_ASSERTION]: 8439 ms".
     const measured = /AssertionError[^\n]*?: (\d+) ms\b/.exec(output.slice(start, start + 4000));
+    // timeMeasured: the failure was the time assertion itself ("N ms"), not a wrong result inside a speed test.
+    failure.timeMeasured = Boolean(measured);
     if (measured) failure.seconds = Number(measured[1]) / 1000;
   }
   return [...found.values()];
@@ -81,7 +83,10 @@ export function decideVerdict({ counts, mainStatus, speedStatus, output }) {
   const allPassed = counts.falharam === 0 && counts.cancelados === 0 && mainStatus === 0 && speedStatus === 0;
   if (allPassed) return { exitCode: 0, lines: ['TESTES OK'] };
   const speedNames = new Map(SPEED_TESTS.map((t) => [t.name, t]));
-  const onlySpeed = counts.cancelados === 0 && failures.length > 0 && failures.length === counts.falharam && failures.every((f) => speedNames.has(f.name));
+  // A speed test only earns the warning when it failed on its time assertion, above its limit; a wrong result inside
+  // the same test (for example 999 green receipts instead of 1,000) is a real failure.
+  const onlySpeed = counts.cancelados === 0 && failures.length > 0 && failures.length === counts.falharam
+    && failures.every((f) => speedNames.has(f.name) && f.timeMeasured && f.seconds !== null && f.seconds > speedNames.get(f.name).limitSeconds);
   if (!onlySpeed) return { exitCode: 1, lines: ['HOUVE FALHA (veja testes-banca-saida.txt)'] };
   const fmt = (s) => (s === null ? '?' : s.toLocaleString('pt-BR', { maximumFractionDigits: 1 }));
   return {

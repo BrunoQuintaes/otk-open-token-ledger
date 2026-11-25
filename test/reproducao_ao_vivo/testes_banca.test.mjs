@@ -74,6 +74,15 @@ test('the speed test plus another failure: HOUVE FALHA and exit code 1, and the 
   assert.ok(output.split('\n').some((l) => /^✖ conta os tokens do pedido/.test(l.trim())));
 });
 
+test('the speed test failing on a wrong result (999 green receipts) is a real failure: HOUVE FALHA and exit code 1', () => {
+  const wrongResult = runTinyTests(`import test from 'node:test'; import assert from 'node:assert/strict';
+test(${JSON.stringify(SPEED_NAME)}, () => { assert.equal(999, 1000); });`);
+  assert.notEqual(wrongResult.status, 0);
+  const verdict = decideVerdict({ counts: { falharam: 1, cancelados: 0 }, mainStatus: 0, speedStatus: wrongResult.status, output: wrongResult.output });
+  assert.equal(verdict.exitCode, 1);
+  assert.deepEqual(verdict.lines, ['HOUVE FALHA (veja testes-banca-saida.txt)']);
+});
+
 test('another failure alone: HOUVE FALHA; nothing failing: TESTES OK; a cancelled test: HOUVE FALHA', () => {
   const other = runTinyTests(OTHER_FAILS);
   assert.equal(decideVerdict({ counts: { falharam: 1, cancelados: 0 }, mainStatus: other.status, speedStatus: 0, output: other.output }).exitCode, 1);
