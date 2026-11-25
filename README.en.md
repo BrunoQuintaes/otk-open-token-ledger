@@ -277,7 +277,7 @@ This step downloads the libraries the OTK uses, in the exact versions stored in 
 
 #### To install the dependencies
 
-**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if it does not, for example because you closed and reopened PowerShell, which opens in your personal folder, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
+**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if you just opened PowerShell again, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
 
 ```
 npm ci
@@ -324,7 +324,7 @@ One command checks the files and **recomputes, offline and with no API key**, th
 
 #### To recompute the numbers
 
-**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if it does not, for example because you closed and reopened PowerShell, which opens in your personal folder, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
+**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if you just opened PowerShell again, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
 
 ```
 npm run reproduzir-tudo
@@ -387,7 +387,7 @@ The suite has about 3,600 automated tests, which also run **offline**.
 
 #### To run the tests
 
-**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if it does not, for example because you closed and reopened PowerShell, which opens in your personal folder, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
+**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if you just opened PowerShell again, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
 
 ```
 npm run testes-banca
@@ -457,7 +457,7 @@ If the fingerprint is not pasted, no receipt turns green, and the best result be
 
 #### To check the example receipts from the terminal
 
-**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if it does not, for example because you closed and reopened PowerShell, which opens in your personal folder, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
+**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if you just opened PowerShell again, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
 
 ```
 npm run otk -- verify test/verifier/vetores/recibos --keyring test/verifier/vetores/chaveiro.json --fingerprint ef9d1aeb4f6ef0b412fad87dfba256cfcc7aa49c6b00f1dc27674d6351bbba24
@@ -491,7 +491,7 @@ c9dcbb90ec0b9fd79a1da4764821e11f5a46f9073a3c991f00c1daa000f72fdc
 
 #### To check the fingerprint of the operator keyring
 
-**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if it does not, for example because you closed and reopened PowerShell, which opens in your personal folder, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
+**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if you just opened PowerShell again, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
 
 **Windows (PowerShell, inside `C:\otk`):**
 
@@ -534,7 +534,7 @@ In this mode, the AI provider is **synthetic**, a program on your own machine th
 
 #### To run the demonstration
 
-**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if it does not, for example because you closed and reopened PowerShell, which opens in your personal folder, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
+**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if you just opened PowerShell again, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
 
 ```
 npm run demo-banca
@@ -613,7 +613,7 @@ These commands tell the demonstration to use port 15432 for the test database in
 
 #### To stop and delete the test PostgreSQL
 
-**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if it does not, for example because you closed and reopened PowerShell, which opens in your personal folder, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
+**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if you just opened PowerShell again, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
 
 ```
 docker compose -p otk-banca-demo -f infra/test/docker-compose.services.yml down -v
@@ -663,7 +663,7 @@ The `.env` file **never goes to Git**, because this repository's `.gitignore` ex
 
 #### To check the configuration without spending
 
-**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if it does not, for example because you closed and reopened PowerShell, which opens in your personal folder, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
+**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if you just opened PowerShell again, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
 
 ```
 npm run demo-banca -- --real openai --so-conferir
@@ -681,7 +681,7 @@ This command checks, before spending and without making any call, whether the ke
 
 #### To make the real call
 
-**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if it does not, for example because you closed and reopened PowerShell, which opens in your personal folder, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
+**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if you just opened PowerShell again, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
 
 Choose one of the three commands below, with the same provider you used in the check:
 
@@ -808,7 +808,7 @@ What this means in practice:
 
 #### To see what the OTK knows about a model
 
-**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if it does not, for example because you closed and reopened PowerShell, which opens in your personal folder, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
+**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if you just opened PowerShell again, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
 
 ```
 npx tsx -e 'import(`./src/providers/catalog/modelCatalog.ts`).then(m => { const [p, a, id] = process.argv.slice(-3); const s = m.resolveModelSupport(p, a, id); console.log(id, s.support, s.tokenizer ? s.tokenizer.encoding : `sem régua`) })' anthropic anthropic.messages claude-opus-5-5
