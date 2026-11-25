@@ -19,7 +19,7 @@
   ]
  },
  "totalArquivos": 3285,
- "totalBytes": 71102467,
+ "totalBytes": 71108983,
  "porOrigem": {
   "H1 7606bc9b (= b0ec6f24)": 1052,
   "b0ec6f24 com mudança": 17,
@@ -96,14 +96,14 @@
   },
   {
    "arquivo": "README.en.md",
-   "bytes": 105361,
-   "sha256": "860ef0d3600a514d9bd64eff59f322598948e6358e9ba93f94f29a31d002ba01",
+   "bytes": 107897,
+   "sha256": "c25ad81193a81c73f274bb6fac5af9c7a502194ff263c39379e44c40086db2cf",
    "origem": "novo (README bilíngue e imagens, 25/11/2026)"
   },
   {
    "arquivo": "README.md",
-   "bytes": 103559,
-   "sha256": "22d59dc8cedbe7e05366bd18f425dac4bd9ad5e113d3494b8cca325da7ab2ac4",
+   "bytes": 105903,
+   "sha256": "2015df7a87d06f96b13cf0791ab10cc8e4af2eddddba50a3049209d24285ba3c",
    "origem": "novo (REPO_PUBLICO, C160)",
    "mudanca": "substitui o README.md do repositório interno"
   },
@@ -175,8 +175,8 @@
   },
   {
    "arquivo": "docs/DOCUMENTACAO_DO_CODIGO.md",
-   "bytes": 7173,
-   "sha256": "c9cbd074188f81c2548c3f5059d1a437c33877ca4b64d68e2f61dc11ea6ba55f",
+   "bytes": 8809,
+   "sha256": "e14990cc84ccf3d43731ecc6e2352c9495d18fc478736a6b19133e79806716ce",
    "origem": "novo (documentação do código, 25/11/2026)"
   },
   {

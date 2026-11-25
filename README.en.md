@@ -10,11 +10,11 @@ This repository accompanies the dissertation about the **OTK**, a meter that sit
 
 *The path of a call: the count is made before sending and recorded, with the declared usage, when the answer arrives.*
 
-In the October 7, 2026 collection, the OTK itself checked the receipt signature on the spot in 658 of the 662 real calls, and all of them checked out, while the other 4 were refused by the provider (3 for usage limits, 1 by OpenAI) and produced no receipt. The collection program, however, kept only the result of that check, call by call, in the call records of the committee package (`*_calls.jsonl`, field `receipt_signature_verifies`), and not the whole receipt. The November 23 collection was made by a separate program (`scripts/h2eval/`), which uses the same OTK counter but does not go through the proxy and therefore produces no receipt, so the receipts you can check here are the example ones and the ones the demonstration (section 9) creates.
+In the October 7, 2026 collection, the OTK itself checked the receipt signature on the spot in 658 of the 662 real calls, and all of them checked out, while the other 4 did not finish, 3 stopped by the OTK's own quota and 1 refused by OpenAI, and so they produced no receipt. The collection program, however, kept only the result of that check, call by call, in the call records of the committee package (`*_calls.jsonl`, field `receipt_signature_verifies`), and not the whole receipt. The November 23 collection was made by a separate program (`scripts/h2eval/`), which uses the same OTK counter but does not go through the proxy and therefore produces no receipt, so the receipts you can check here are the example ones and the ones the demonstration (section 9) creates.
 
 The repository contains:
 
-- the **OTK code**, with its tests, and the program that made the November collections (`scripts/h2eval/`, version `b0ec6f24`). The version evaluated in the dissertation is the `versao-avaliada` tag (commit `9cad91f`, whose `src/` is identical to `7606bc9b`), while `main` has the same logic with code comments, and the proof that only comments changed is in [docs/DOCUMENTACAO_DO_CODIGO.md](docs/DOCUMENTACAO_DO_CODIGO.md);
+- the **OTK code**, with its tests, and the program that made the November collections (`scripts/h2eval/`, version `b0ec6f24`). The version evaluated in the dissertation is the `versao-avaliada` tag (commit `9cad91f`, whose `src/` is identical to `7606bc9b`, apart from the new `src/verifier/` folder), while `main` has the same logic with code comments, and the proof that only comments changed is in [docs/DOCUMENTACAO_DO_CODIGO.md](docs/DOCUMENTACAO_DO_CODIGO.md);
 - the **data of the collections** cited in the dissertation, already sanitized, with no conversation text, no provider response identifier and no personal path;
 - **a command that recomputes, offline, the numbers of the October 7 collection and part of the numbers of the November 23 collection** (section 6), and says OK or FALHOU (failed) for each item;
 - the **receipt verifier**, as a command and as a page that opens in the browser;
@@ -106,7 +106,7 @@ The terminal is a window where you paste text commands.
 
 **Mac:** press **Command + Space**, type `Terminal` and press **Enter**.
 
-All the commands in this guide are for **PowerShell**. The Command Prompt (`cmd`), the window with `C:\...>` without `PS` in front, does not work.
+On Windows, all the commands in this guide are for **PowerShell**, and the Command Prompt (`cmd`), the window with `C:\...>` without `PS` in front, does not work. On a Mac, use the Terminal.
 
 Each command comes in a grey block, below a subheading that says what it is for, and the other grey blocks show what you should see. Paste one command at a time, in order, and for each one:
 
@@ -271,7 +271,7 @@ This command makes the terminal enter the repository folder, because all the fol
 
 **If you see** `Cannot find path 'C:\otk'`, the repository was not downloaded into `C:\otk`, so repeat section 4.
 
-**If the start of the line has no `PS`** (for example `H:\>` or `C:\Users\...>`), you opened the Command Prompt, not PowerShell. In that case, close it and open PowerShell (section 2), or, if you want to stay in the Command Prompt, use `cd /d C:\otk`, because there `cd` without `/d` does not change drive.
+**If the start of the line has no `PS`** (for example `H:\>` or `C:\Users\...>`), you opened the Command Prompt, not PowerShell. In that case, close that window and open PowerShell (section 2).
 
 #### To use the exact version evaluated in the dissertation (optional)
 
@@ -281,9 +281,11 @@ This command makes the terminal enter the repository folder, because all the fol
 git checkout versao-avaliada
 ```
 
-This command switches the files in the folder to those of the `versao-avaliada` tag (commit `9cad91f`), the version evaluated in the dissertation, whose `src/` is identical to `7606bc9b`, since `main` has the same logic, but with code comments (section 14). To go back to `main`, use `git checkout main`.
+This command switches the files in the folder to those of the `versao-avaliada` tag (commit `9cad91f`), the version evaluated in the dissertation, whose `src/` is identical to `7606bc9b`, apart from the new `src/verifier/` folder, since `main` has the same logic, but with code comments (section 14). To go back to `main`, use `git checkout main`.
 
-This command has no image, because the tag only exists after the repository is published.
+The tag, however, does not have the live mode yet (`npm run reproduzir-ao-vivo`, section 6) nor this guide's *How to read the output* parts, which are only on `main`, while the other commands work the same on both.
+
+This command has no image, because its output is only Git's notice that the folder switched to the tag's version.
 
 ## 5. Install the dependencies
 
@@ -387,9 +389,9 @@ Then come the 13 items, from top to bottom, each with the part (A to D), what wa
 | `OK      B. Tabela dos 8 modelos (CMP8): .tex...` | redoes the 8-model table from `reproducao/cmp8/dados` and compares the `.tex` file with the stored one | the table comes from the published data, letter by letter | Appendix D, table of declared input tokens by model and kind of text | the detail is in `B_tabela_cmp8.log.txt`; use section 13 |
 | `OK      B. Tabela dos 8 modelos (CMP8): JSON...` | the numbers of the same table, in the JSON file, apart from the generation date and the paths | the numbers match the audited ones | Appendix D, the same table | same |
 | `OK      C. Estimado × declarado: as 1.720 linhas...` | recomputes, text by text and model by model, the OTK count and the declared number | the 1,720 lines (215 texts × 8 models) are the audited ones | Appendix C, table of the items (part C) | the detail is in `C_estimado.log.txt` |
-| `OK      C. Estimado × declarado: .tex...` | the first version of the *estimated × declared* table | the table comes from those lines, letter by letter | Chapter 4, per-model table of the November 23 collection, in the parts listed in *Where to compare* | same |
-| `OK      C. Estimado × declarado: JSON...` | the numbers of the same table, apart from the date and the paths | the numbers match the audited ones | Chapter 4, the same table | same |
-| `OK      C. Registro da contagem gravado ANTES...` | the *journal* chain and how many sends have the entry written before | 1720 of 1720 sends have the prior entry, and 1505 of them carry the OTK count | Chapter 4, text of the November 23 collection, and Appendix C | the detail is in `C_prova_previsao_antes.log.txt` |
+| `OK      C. Estimado × declarado: .tex...` | the first version of the *estimated × declared* table | the table comes from those lines, letter by letter | Chapter 4, per-model table of the November 23 collection, in the parts listed in *Where to compare* | the detail is in `C_estimado_tex.log.txt` |
+| `OK      C. Estimado × declarado: JSON...` | the numbers of the same table, apart from the date and the paths | the numbers match the audited ones | Chapter 4, the same table | the detail is in `C_estimado.log.txt` |
+| `OK      C. Registro da contagem gravado ANTES...` | the *journal* chain and how many sends have the entry written before | 1720 of 1720 sends have the prior entry, and 1505 of them carry the OTK count | Chapter 3, table of the collection conditions, and Appendix C, table of the items (part C), in which the dissertation speaks of 1,720 of 1,720 with the count, while the data give 1,505, because gpt-6-luna had no count | the detail is in `C_prova_previsao_antes.log.txt` |
 | `OK      D. Verificador: os recibos de exemplo no disco...` | regenerates the 19 example files and compares them with the ones on disk | the verifier examples are the ones the code generates | Appendix C, table of the items (part D) | the detail is in `D_vetores_check.log.txt` |
 | `OK      D. Verificador: relatório ... com a impressão digital...` | runs the verifier on the examples with the fingerprint and compares the sha256 of the report and the exit code | the verifier gives exactly the expected verdict; code 20 means there is red, which is right for the examples | Appendix C, same table | the detail is in `D_verify_comImpressaoDigital.log.txt` |
 | `OK      D. Verificador: relatório ... sem a impressão digital...` | the same, without the fingerprint | same, with the verdicts of someone who did not confirm the keyring | Appendix C, same table | the detail is in `D_verify_semImpressaoDigital.log.txt` |
@@ -431,9 +433,11 @@ These files were written during the work and so still carry internal project lab
 npm run reproduzir-ao-vivo
 ```
 
-This command does the same reproduction as `npm run reproduzir-tudo` and, besides, opens by itself, in the default browser, a local page at `127.0.0.1`, offline, with everything in a single tab. That page has five parts: what is being redone right now, the OTK path on October 7, the path on November 23, the receipt check and the automated tests, which run with a button.
+This command does the same reproduction as `npm run reproduzir-tudo` and, besides, opens by itself, in the default browser, a local page at `127.0.0.1`, offline, with everything in a single tab. That page has five parts: what is being redone right now, the OTK path on October 7, the path of each send on November 23, the receipt check and the automated tests, which run with a button.
 
-The October 7 and November 23 parts are a replay of the records written during the collections, call by call, so no new call is made to any provider. Besides, for those who cannot open the browser, the terminal shows everything the page shows, in the lines that start with `[ao vivo]`.
+The October 7 and November 23 parts are a replay of the records written during the collections, call by call, so no new call is made to any provider. Besides, for those who cannot open the browser, the terminal shows the result of each part in the lines that start with `[ao vivo]`, which are the 13 items, the counters of the two days, the receipt check and, if they run, the tests, but not the call-by-call replay, which is only on the page.
+
+From the command until `PS C:\otk>` comes back, it takes about 2 to 3 minutes (166 seconds in one measurement), because after the line *terminado (código de saída 0)* (finished, exit code 0) the terminal stays still for 2 more minutes, on purpose, so that the page stays up. To end earlier, press **Ctrl + C**.
 
 To not open the browser and only print the address, use `npm run reproduzir-ao-vivo -- --sem-navegador`.
 
@@ -459,29 +463,29 @@ To run the automated tests right after the receipts, without the button, use `np
 
 *Part 5, the automated tests run by the button, ending in TESTES OK.*
 
-**What you should see:** in the terminal, first the line `[ao vivo] página da reprodução: http://127.0.0.1:...` (reproduction page), in which the port number changes each time, and the counters of the two days; then, the same lines as the reproduction of section 6, ending in `TUDO OK: 13 de 13 itens`, and the receipt check. In the browser, the page shows the 13 items in green, the counters of October 7 (662 calls, 658 signatures checked) and of November 23 (1,720 sends, 1,505 with the OTK count) and the receipt cards 9, 11 and 33.
+**What you should see:** in the terminal, first the line `[ao vivo] página da reprodução: http://127.0.0.1:...` (reproduction page), in which the port number changes each time, and the counters of the two days; then, the same lines as the reproduction of section 6, ending in `TUDO OK: 13 de 13 itens`, and the receipt check. In the browser, the page shows the 13 items in green, the counters of October 7 (662 calls, 658 signatures checked) and of November 23 (1,720 sends, 1,505 with the OTK count) and the receipt cards 9, 11 and 33. On the page, everything starts as *para rodar* (to run, grey), and each item becomes *rodando* (running, yellow) and then *conferido* (checked, green) or *falhou* (failed, red), while part 5, the tests, stays *para rodar* until the button is clicked, which is not a failure.
 
 **How to read the page, part by part.**
 
-1. **Refazendo agora** (redoing now). Items A to D appear as they finish, with OK in green or FALHOU in red and the time of each, and at the end the verdict and the exit code appear. Each line is the same as in the output of section 6, so the table *How to read the output, line by line* also applies here.
-2. **October 7.** The page redoes, from the records of the committee package, each of the 662 real calls, in the order of the OTK path (count before sending, answer, declared usage, comparison, cost and receipt). For each call it shows the OTK count, the declared value, the difference, the verdict and whether the signature was checked, and the counters add up 658 checked signatures and 4 calls refused by the provider (1 with HTTP 400 and 3 with HTTP 429), which for that reason had no check.
-3. **November 23.** The same, for the 1,720 sends of the separate collection program (`scripts/h2eval/`), which did not go through the proxy and therefore produced no receipt, as the page itself warns. The per-model counters show the entry written before each send (1,720), the OTK count (1,505, in every model except gpt-6-luna) and the declared usage (1,719, because one gpt-6-luna send had none).
-4. **Conferindo os recibos** (checking the receipts). The verifier runs on the example receipts, and so the page shows the cards, the sha256 of the report and the per-receipt table, with the reason. Besides, right below, the original verifier page, identical byte for byte, lets you repeat the check by hand, as in section 8.1.
-5. **Testes automáticos** (automated tests). The *Rodar os testes* (run the tests) button runs the same suite as section 7 and shows the line *Resultado* and the verdict, and these tests remain optional, as section 7 explains.
+1. **Refazendo agora** (redoing now). The 13 items (A to D) appear from the start as *para rodar*, and each becomes *rodando* and, when its step ends, *conferido* or *falhou*, with the time elapsed since the start, and at the end the verdict and the exit code appear. Each line is the same as in the output of section 6, so the table *How to read the output, line by line* also applies here.
+2. **October 7.** The page redoes, from the records of the committee package, each of the 662 real calls, in the order of the OTK path (count before sending, answer, declared usage, comparison, cost and receipt). For each call it shows the OTK count, the declared value, the difference, the verdict and whether the signature was checked, and the counters, right below the controls, add up 658 checked signatures and 4 calls without the check, 3 stopped by the OTK's own quota of 10,000 CU (HTTP 429), without reaching the provider, and 1 refused by OpenAI (HTTP 400), which for that reason produced no receipt.
+3. **November 23.** On the page, this part is called *O caminho de cada envio em 23 de novembro de 2026 (programa de coleta, sem o proxy)* (the path of each send on November 23, 2026, collection program, without the proxy), because it shows the 1,720 sends of the separate collection program (`scripts/h2eval/`), which did not go through the proxy and therefore produced no receipt. So the per-model counters show the entry written before each send (1,720), the OTK count (1,505, in every model except gpt-6-luna) and the declared usage (1,719, because one gpt-6-luna send had none).
+4. **Conferindo os recibos** (checking the receipts). The verifier runs on the example receipts, and so the page shows the cards, the sha256 of the report and the per-receipt table, with the reason. Besides, right below, the original verifier page, identical byte for byte, lets you repeat the check by hand, as in section 8.1. This part runs right after part 1, together with the start of the replays, so it may turn green before parts 2 and 3.
+5. **Testes automáticos** (automated tests). The *Rodar os testes* (run the tests) button is enabled only after the receipt check and disabled after the command ends, and it runs the same suite as section 7 and shows the line *Resultado* and the verdict, and these tests remain optional, as section 7 explains.
 
-In parts 2 and 3, the buttons *Velocidade* (speed), *Pular para o fim* (skip to the end) and *Recomeçar* (restart) control the replay.
+In parts 2 and 3, the buttons *Pausar* (pause; it becomes *Continuar*, resume, and *Terminado*, finished, at the end), *Velocidade* (speed) and *Pular para o fim* (skip to the end) control the replay. Besides, the page scrolls by itself to the item that is running, and if you scroll with the mouse, it stops following and shows the *Voltar ao vivo* (back to live) button, which resumes.
 
 **If the browser does not open by itself**, the terminal writes `abra este endereço no navegador:` (open this address in the browser) with the address, and it is enough to copy it and paste it into the browser's address bar.
 
-**If the page stops responding**, that is on purpose, because it stays up only for 2 minutes after the end (or while the tests run), and to see it again just run the command again.
+**If the page stops responding**, that is on purpose, because the command stays up only for 2 minutes after checking the receipts (or while the tests run), and to see it again, or to use the tests button, just run the command again.
 
-**If the tests button gives 403**, the page was opened at an address different from the one the terminal showed, so open it at the address with `127.0.0.1` shown in the terminal.
+**If the page or the tests button answers 403**, the page was opened at an address different from the one the terminal showed, so open it at the exact address from the terminal, with `127.0.0.1` and the port.
 
 ## 7. Run the automated tests
 
 For those who only want to check the dissertation numbers, the tests in this section are **optional**, because that is the role of section 6. Even so, the two sections check different things, since section 6 checks the **results**, in 13 checks showing that the tables come from the published data, while this section checks the **program**, piece by piece, in 3,587 tests.
 
-For example, there are tests that the token counter gives the same count with the whole text or with the text cut into pieces (`test/unit/d1d8_b_counter.test.ts`), that an altered receipt comes out red in the verifier (`test/verifier/verificador.test.ts`) and that a request for several answers in one call is refused before it leaves (`test/services/d1d8_c_review_fixes.test.ts`). Besides, the tests cover cases the collections never tested, such as tampering, provider errors and loss of network, and so a dropped connection to the provider leaves the operation as uncertain, without resending it (`test/services/d1d8_c_proxy_durable.test.ts`).
+For example, there are tests that the token counter gives the same count with the whole text or with the text cut into pieces (`test/unit/d1d8_b_counter.test.ts`) and that an altered receipt comes out red in the verifier (`test/verifier/verificador.test.ts`). Besides, the tests cover cases the collections never tested, such as tampering, provider errors and loss of network, so a provider failure in the middle of a call leaves the operation as uncertain, not as zero (`test/unit/d1d8_c_core.test.ts`).
 
 The suite has about 3,600 automated tests, which also run **offline**.
 
@@ -505,20 +509,20 @@ It takes 2 to 6 minutes. **What you should see** at the end:
 Resultado: 3587 testes — 3579 passaram, 0 falharam, 0 cancelados, 5 pulados, 3 "todo".
 ```
 
-followed by the list of tests left out on purpose and by `TESTES OK`. The total number of tests may be slightly different on your computer, and what matters is `0 falharam` (0 failed) and the last line `TESTES OK`.
+followed by the list of tests left out on purpose and by `TESTES OK` (or by `TESTES OK, com aviso: ...`, explained below). So, even with a slightly different total on your computer, what matters is that the last line starts with `TESTES OK`.
 
 #### How to read the output
 
 The line *Resultado* adds up the 3587 tests that ran and splits them into five groups, in which *passaram* (passed, 3579) went right and *falharam* (failed, 0) went wrong, and that is the only number that must be zero, while *cancelados* (cancelled, 0) stopped midway, for example because time ran out. Besides, the *pulados* (skipped, 5) and the ones marked `todo` (3) are explained below, and added up, 3579 + 0 + 0 + 5 + 3 give exactly the 3587.
 
-After the line *Resultado*, the command lists the tests left out, each with the reason, and ends in `TESTES OK` when nothing failed, or in `HOUVE FALHA` (there was a failure) when some test failed. In that case, the detail of each failure is in the lines that start with `✖`, at the end of the screen or in the file `testes-banca-saida.txt`, inside `C:\otk`.
+After the line *Resultado*, the command lists the tests left out, each with the reason, and ends in `TESTES OK` when nothing failed, in `TESTES OK, com aviso: ...` (tests OK, with a warning) when the only failure was the timing test `desempenho: 1.000 recibos verificados em menos de 5 s`, exiting with code 0, or in `HOUVE FALHA` (there was a failure) when any other test failed. In that case, the detail of each failure is in the lines that start with `✖`, at the end of the screen or in the file `testes-banca-saida.txt`, inside `C:\otk`.
 
 - The **skipped (5)** ("pulados") render the production configuration with Helm and need the Docker image `alpine/helm:3.16.4` already downloaded, which this command does not do, so the test skips itself and warns `alpine/helm:3.16.4 not present locally`, and this warning is not a defect. On a computer without Docker, another 6 tests (of `docker compose`) also skip themselves, with the warning `docker CLI not available`, and the number of skipped tests goes up to 11. The groups that warn `SKIPPED — set OTK_TEST_PG_URL`, which need a test PostgreSQL running, are also left out, but Node does not add them to the skipped count.
 - The **todo (3)** are tests marked as *to be decided* since the evaluated version (in the dissertation, the *3 pendentes*, 3 pending), which are open product decisions, not defects, and they appear with `⚠` in the full output.
 - The **left out**, which are not counted, are 9 test groups and 1 file that read internal files that are **not** in this repository (the coordination folder `docs/_ops`, governance documents and the owner rules of each file), and the command lists each one with the reason.
 - In the evaluated version, with the internal files present, there were 3,563 tests, of which 3,560 passed and 3 were to be decided, a number from the author's internal record that cannot be redone here. The difference from today's total comes from the verifier tests, which did not exist yet, and from the groups left out.
 
-**If you see** `HOUVE FALHA` (there was a failure), look at which lines start with `✖`, at the end of the screen or in the file `testes-banca-saida.txt`, in the folder `C:\otk`, which opens in Notepad with a double click and lets you search with Ctrl+F. If the **only** line with `✖` is `desempenho: 1.000 recibos verificados em menos de 5 s` (performance: 1,000 receipts verified in under 5 s), the computer was just slow at that moment, so it is enough to close the other programs and run `npm run testes-banca` again, and if only that one persists, it is not an OTK defect.
+**If you see** `HOUVE FALHA` (there was a failure), look at which lines start with `✖`, at the end of the screen or in the file `testes-banca-saida.txt`, in the folder `C:\otk`, which opens in Notepad with a double click and lets you search with Ctrl+F. When the only failure is the timing test `desempenho: 1.000 recibos verificados em menos de 5 s` (performance: 1,000 receipts verified in under 5 s), the command does not end in `HOUVE FALHA`, but in `TESTES OK, com aviso: ...`, with code 0, because that test only measures whether the computer was free at that moment, which is not an OTK defect. To see it pass, close the other programs and run `npm run testes-banca` again.
 
 Likewise, if the only lines with `✖` are `H1-S23 GDPR erasure: receipt integrity and audit trail` and `OWNER of A erases A ...` (`test/security/h1_s23_privacy_retention.test.ts:181`), run `npm run testes-banca` again, because that test, with a defect that already existed in the evaluated version, rarely fails by chance, since it looks for the text 1001 in a line that has a random sha256 digest and a random identifier.
 
@@ -587,7 +591,7 @@ sha256 do relatório JSON: bbcfeed1d0cfb3beb9685eb8157331ca3bd21d8186985f22676a0
 
 #### How to read the output
 
-The output starts with the two `>` lines of npm and, right after, with the line *Chaveiro* (keyring), which says whether the pasted fingerprint matches the loaded keyring.
+The output starts with the two `>` lines of npm, the line *Verificador de recibos OTK 0.1.0* (OTK receipt verifier) and, right after, the line *Chaveiro* (keyring), which says whether the pasted fingerprint matches the loaded keyring.
 
 Then comes one block per receipt, in the order of the files, and the first line of each block has the verdict in brackets (`[OK]`, `[ATENÇÃO]` or `[FALHOU]`), the operation, the file and the line the receipt came from (for example `recibos/b_alterados.jsonl:1`) and the reason in Portuguese. The lines below it, when there are any, start with *Significa* (means), with the explanation of that verdict, or with `+`, with an extra check of the same receipt.
 
@@ -1020,7 +1024,7 @@ To copy the terminal output on Windows, select the text with the mouse (drag fro
 
 | Folder / file | What it is |
 |---|---|
-| `src/`, `scripts/`, `test/`, `tools/`, `zk/`, `config/`, `sdk/`, `infra/` ... | the OTK. The version evaluated in the dissertation is the `versao-avaliada` tag (commit `9cad91f`), whose `src/` folder is **identical** to that of `7606bc9b`, except the new folder `src/verifier/` (section 4, *To use the exact version evaluated in the dissertation*). `main` has the same logic, with code comments, and the proof that only comments changed is in [docs/DOCUMENTACAO_DO_CODIGO.md](docs/DOCUMENTACAO_DO_CODIGO.md) and in `docs/PROVA_SO_COMENTARIOS.json`. The history of the internal repository, including the commit `7606bc9b` itself, is not published here. `PROVENIENCIA.json` lists the sha256 of each file on `main` and where it came from, and, for the files that got comments, it also lists the sha256 of the evaluated version (field `sha256VersaoAvaliada`), which matches the `versao-avaliada` tag. With it you can check that the files are the ones listed by the author, but that the list corresponds to `7606bc9b` only the author can confirm, because that commit is not public. `scripts/h2eval/` is the program that made the November collections (version `b0ec6f24`, unchanged on the tag and with comments on `main`), and it uses the same code as `src/`. |
+| `src/`, `scripts/`, `test/`, `tools/`, `zk/`, `config/`, `sdk/`, `infra/` ... | the OTK. The version evaluated in the dissertation is the `versao-avaliada` tag (commit `9cad91f`), whose `src/` folder is **identical** to that of `7606bc9b`, except the new folder `src/verifier/` (section 4, *To use the exact version evaluated in the dissertation*), and which does not have the live mode of section 6 yet. `main` has the same logic, with code comments, and the proof that only comments changed is in [docs/DOCUMENTACAO_DO_CODIGO.md](docs/DOCUMENTACAO_DO_CODIGO.md) and in `docs/PROVA_SO_COMENTARIOS.json`. The history of the internal repository, including the commit `7606bc9b` itself, is not published here. `PROVENIENCIA.json` lists the sha256 of each file on `main` and where it came from, and, for the files that got comments, it also lists the sha256 of the evaluated version (field `sha256VersaoAvaliada`), which matches the `versao-avaliada` tag. With it you can check that the files are the ones listed by the author, but that the list corresponds to `7606bc9b` only the author can confirm, because that commit is not public. `scripts/h2eval/` is the program that made the November collections (version `b0ec6f24`, unchanged on the tag and with comments on `main`), and it uses the same code as `src/`. |
 | `src/verifier/`, `scripts/verify/`, `test/verifier/`, `web/verificador/` | the receipt verifier (made after the evaluated version; version `535ac19c`) |
 | `chaveiro/chaveiro_operador_otk.json` | the operator's public keyring (fingerprint `c9dcbb90…`, published in the dissertation) |
 | `reproducao/otk-banca-pack-20261111.zip` and the folder `otk-banca-pack-20261111/` | the committee package of the October 7 collection (described in Appendix C; sha256 of the ZIP `3943637b…`, checked by the command of section 6) |
@@ -1028,7 +1032,7 @@ To copy the terminal output on Windows, select the text with the mouse (drag fro
 | `reproducao/reproduzir_tudo.mjs`, `reproducao/testes_banca.mjs`, `reproducao/ferramentas/sem_rede.mjs` | the commands of sections 6 and 7 and the network lock |
 | `demo/demo_banca.mts` | the command of section 9 |
 | `reproducao/ao_vivo/` and `test/reproducao_ao_vivo/` | the live mode of section 6 (`npm run reproduzir-ao-vivo`) and its tests (`npm run test:ao-vivo`), which are not counted in `npm run testes-banca` |
-| `docs/` | the public product documents the tests read (API contract, guides), the images of this README and the three code documents in the rows below |
+| `docs/` | the public product documents the tests read (API contract, guides), the images of this README and the code documents (`DOCUMENTACAO_DO_CODIGO.md`, `GLOSSARIO_DE_CODIGOS.md` and `PROVA_SO_COMENTARIOS.json`) |
 | `docs/DOCUMENTACAO_DO_CODIGO.md` | how to read the code comments and how to check, with its commands, the proof that only comments changed relative to the `versao-avaliada` tag (the full proof is in `docs/PROVA_SO_COMENTARIOS.json`) |
 | `docs/GLOSSARIO_DE_CODIGOS.md` | what the internal codes cited in the comments mean, such as H1 or D1–D8 |
 | `eslint.docs.config.mjs` | the lint configuration that checks only the comments, which for now runs only on the computer of whoever uses it, not on GitHub |

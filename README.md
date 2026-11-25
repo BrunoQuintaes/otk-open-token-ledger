@@ -8,11 +8,11 @@ Este repositório acompanha a dissertação sobre o **OTK**, um medidor que fica
 
 *O caminho de uma chamada: a contagem é feita antes do envio e gravada, com o uso declarado, quando a resposta chega.*
 
-Na coleta de 7 de outubro de 2026, o próprio OTK conferiu na hora a assinatura do recibo em 658 das 662 chamadas reais, e todas conferiram, já as outras 4 foram recusadas pelo provedor (3 por limite de uso, 1 pela OpenAI) e não geraram recibo. O programa de coleta, porém, guardou só o resultado dessa checagem chamada a chamada, nos registros do pacote da banca (`*_calls.jsonl`, campo `receipt_signature_verifies`), e não o recibo inteiro. Já a coleta de 23 de novembro foi feita por um programa à parte (`scripts/h2eval/`), que usa o mesmo contador do OTK, mas não passa pelo proxy e por isso não gera recibo, de modo que os recibos que podem ser conferidos aqui são os de exemplo e os da demonstração (seção 9).
+Na coleta de 7 de outubro de 2026, o próprio OTK conferiu na hora a assinatura do recibo em 658 das 662 chamadas reais, e todas conferiram, já as outras 4 não chegaram ao fim, 3 barradas pela cota do próprio OTK e 1 recusada pela OpenAI, e por isso não geraram recibo. O programa de coleta, porém, guardou só o resultado dessa checagem chamada a chamada, nos registros do pacote da banca (`*_calls.jsonl`, campo `receipt_signature_verifies`), e não o recibo inteiro. Já a coleta de 23 de novembro foi feita por um programa à parte (`scripts/h2eval/`), que usa o mesmo contador do OTK, mas não passa pelo proxy e por isso não gera recibo, de modo que os recibos que podem ser conferidos aqui são os de exemplo e os da demonstração (seção 9).
 
 O repositório traz:
 
-- o **código do OTK**, com os testes, e o programa que fez as coletas de novembro (`scripts/h2eval/`, versão `b0ec6f24`). A versão avaliada na dissertação é a tag `versao-avaliada` (commit `9cad91f`, com o `src/` idêntico ao `7606bc9b`), já o `main` tem a mesma lógica, com comentários no código, e a prova de que só os comentários mudaram está em [docs/DOCUMENTACAO_DO_CODIGO.md](docs/DOCUMENTACAO_DO_CODIGO.md);
+- o **código do OTK**, com os testes, e o programa que fez as coletas de novembro (`scripts/h2eval/`, versão `b0ec6f24`). A versão avaliada na dissertação é a tag `versao-avaliada` (commit `9cad91f`, com o `src/` idêntico ao `7606bc9b`, fora a pasta nova `src/verifier/`), já o `main` tem a mesma lógica, com comentários no código, e a prova de que só os comentários mudaram está em [docs/DOCUMENTACAO_DO_CODIGO.md](docs/DOCUMENTACAO_DO_CODIGO.md);
 - os **dados das coletas** citadas na dissertação, já sanitizados, sem texto de conversa, sem identificador de resposta do provedor e sem caminho pessoal;
 - **um comando que refaz, sem internet, os números da coleta de 7 de outubro e parte dos números da coleta de 23 de novembro** (seção 6), e que diz OK ou FALHOU para cada item;
 - o **verificador de recibos**, como comando e como página que abre no navegador;
@@ -104,7 +104,7 @@ O terminal é uma janela onde você cola comandos de texto.
 
 **Mac:** aperte **Command + Espaço**, digite `Terminal` e aperte **Enter**.
 
-Todos os comandos deste guia são para o **PowerShell**. O Prompt de Comando (`cmd`), a janela com `C:\...>` sem o `PS` na frente, não serve.
+No Windows, todos os comandos deste guia são para o **PowerShell**, e o Prompt de Comando (`cmd`), a janela com `C:\...>` sem o `PS` na frente, não serve. No Mac, use o Terminal.
 
 Cada comando vem num bloco cinza, abaixo de um subtítulo que diz para que ele serve, e os outros blocos cinza mostram o que deve aparecer. Cole um comando por vez, na ordem, e para cada um:
 
@@ -269,7 +269,7 @@ Esse comando faz o terminal entrar na pasta do repositório, pois todos os coman
 
 **Se aparecer** `Cannot find path 'C:\otk'`, o repositório não foi baixado em `C:\otk`, e por isso repita a seção 4.
 
-**Se o começo da linha não tiver `PS`** (por exemplo `H:\>` ou `C:\Users\...>`), você abriu o Prompt de Comando, e não o PowerShell. Nesse caso, feche e abra o PowerShell (seção 2), ou, se quiser ficar no Prompt de Comando, use `cd /d C:\otk`, pois nele o `cd` sem o `/d` não troca de unidade.
+**Se o começo da linha não tiver `PS`** (por exemplo `H:\>` ou `C:\Users\...>`), você abriu o Prompt de Comando, e não o PowerShell. Nesse caso, feche essa janela e abra o PowerShell (seção 2).
 
 #### Para usar a versão exata avaliada na dissertação (opcional)
 
@@ -279,9 +279,11 @@ Esse comando faz o terminal entrar na pasta do repositório, pois todos os coman
 git checkout versao-avaliada
 ```
 
-Esse comando troca os arquivos da pasta pelos da tag `versao-avaliada` (commit `9cad91f`), a versão avaliada na dissertação, com o `src/` idêntico ao `7606bc9b`, já que o `main` tem a mesma lógica, mas com comentários no código (seção 14). Para voltar ao `main`, use `git checkout main`.
+Esse comando troca os arquivos da pasta pelos da tag `versao-avaliada` (commit `9cad91f`), a versão avaliada na dissertação, com o `src/` idêntico ao `7606bc9b`, fora a pasta nova `src/verifier/`, já que o `main` tem a mesma lógica, mas com comentários no código (seção 14). Para voltar ao `main`, use `git checkout main`.
 
-Esse comando não tem imagem, pois a tag só existe depois da publicação do repositório.
+Na tag, porém, ainda não existem o modo ao vivo (`npm run reproduzir-ao-vivo`, seção 6) nem os trechos *Como ler a saída* deste guia, que só estão no `main`, enquanto os outros comandos funcionam igual nas duas.
+
+Esse comando não tem imagem, pois a saída é só o aviso do Git de que a pasta passou para a versão da tag.
 
 ## 5. Instalar as dependências
 
@@ -385,9 +387,9 @@ Em seguida vêm os 13 itens, de cima para baixo, cada um com a parte (A a D), o 
 | `OK      B. Tabela dos 8 modelos (CMP8): .tex...` | refaz a tabela dos 8 modelos a partir de `reproducao/cmp8/dados` e compara o arquivo `.tex` com o guardado | a tabela sai dos dados publicados, letra por letra | Apêndice D, tabela dos tokens de entrada declarados por modelo e tipo de texto | o detalhe está em `B_tabela_cmp8.log.txt`; use a seção 13 |
 | `OK      B. Tabela dos 8 modelos (CMP8): JSON...` | os números da mesma tabela, no arquivo JSON, fora a data de geração e os caminhos | os números batem com os auditados | Apêndice D, a mesma tabela | idem |
 | `OK      C. Estimado × declarado: as 1.720 linhas...` | recalcula, texto a texto e modelo a modelo, a contagem do OTK e o número declarado | as 1.720 linhas (215 textos × 8 modelos) são as auditadas | Apêndice C, quadro dos itens (parte C) | o detalhe está em `C_estimado.log.txt` |
-| `OK      C. Estimado × declarado: .tex...` | a primeira versão da tabela *estimado × declarado* | a tabela sai dessas linhas, letra por letra | Capítulo 4, tabela por modelo da coleta de 23 de novembro, nas partes ditas em *Onde comparar* | idem |
-| `OK      C. Estimado × declarado: JSON...` | os números da mesma tabela, fora a data e os caminhos | os números batem com os auditados | Capítulo 4, a mesma tabela | idem |
-| `OK      C. Registro da contagem gravado ANTES...` | a corrente do *journal* e quantos envios têm o registro gravado antes | 1720 de 1720 envios têm o registro prévio, e 1505 deles trazem a contagem do OTK | Capítulo 4, texto da coleta de 23 de novembro, e Apêndice C | o detalhe está em `C_prova_previsao_antes.log.txt` |
+| `OK      C. Estimado × declarado: .tex...` | a primeira versão da tabela *estimado × declarado* | a tabela sai dessas linhas, letra por letra | Capítulo 4, tabela por modelo da coleta de 23 de novembro, nas partes ditas em *Onde comparar* | o detalhe está em `C_estimado_tex.log.txt` |
+| `OK      C. Estimado × declarado: JSON...` | os números da mesma tabela, fora a data e os caminhos | os números batem com os auditados | Capítulo 4, a mesma tabela | o detalhe está em `C_estimado.log.txt` |
+| `OK      C. Registro da contagem gravado ANTES...` | a corrente do *journal* e quantos envios têm o registro gravado antes | 1720 de 1720 envios têm o registro prévio, e 1505 deles trazem a contagem do OTK | Capítulo 3, tabela das condições das coletas, e Apêndice C, quadro dos itens (parte C), em que a dissertação fala em 1.720 de 1.720 com a contagem, já os dados dão 1.505, pois o gpt-6-luna ficou sem contagem | o detalhe está em `C_prova_previsao_antes.log.txt` |
 | `OK      D. Verificador: os recibos de exemplo no disco...` | regenera os 19 arquivos de exemplo e compara com os do disco | os exemplos do verificador são os que o código gera | Apêndice C, quadro dos itens (parte D) | o detalhe está em `D_vetores_check.log.txt` |
 | `OK      D. Verificador: relatório ... com a impressão digital...` | roda o verificador nos exemplos com a impressão digital e compara o sha256 do relatório e o código de saída | o verificador dá exatamente o veredito esperado; o código 20 quer dizer que há vermelho, o que nos exemplos é o certo | Apêndice C, mesmo quadro | o detalhe está em `D_verify_comImpressaoDigital.log.txt` |
 | `OK      D. Verificador: relatório ... sem a impressão digital...` | o mesmo, sem a impressão digital | idem, com os vereditos de quem não confirmou o chaveiro | Apêndice C, mesmo quadro | o detalhe está em `D_verify_semImpressaoDigital.log.txt` |
@@ -429,9 +431,11 @@ Esses arquivos foram gravados durante o trabalho e por isso ainda guardam rótul
 npm run reproduzir-ao-vivo
 ```
 
-Esse comando faz a mesma reprodução do `npm run reproduzir-tudo` e, além disso, abre sozinho, no navegador padrão, uma página local em `127.0.0.1`, sem internet, com tudo numa aba só. Essa página se divide em cinco partes, que são o que está sendo refeito agora, o caminho do OTK em 7 de outubro, o caminho em 23 de novembro, a conferência dos recibos e os testes automáticos, que rodam com um botão.
+Esse comando faz a mesma reprodução do `npm run reproduzir-tudo` e, além disso, abre sozinho, no navegador padrão, uma página local em `127.0.0.1`, sem internet, com tudo numa aba só. Essa página se divide em cinco partes, que são o que está sendo refeito agora, o caminho do OTK em 7 de outubro, o caminho de cada envio em 23 de novembro, a conferência dos recibos e os testes automáticos, que rodam com um botão.
 
-As partes de 7 de outubro e de 23 de novembro são um replay dos registros gravados nas coletas, chamada por chamada, e por isso nenhuma chamada nova é feita a nenhum provedor. Além disso, para quem não puder abrir o navegador, o terminal mostra tudo o que a página mostra, nas linhas que começam por `[ao vivo]`.
+As partes de 7 de outubro e de 23 de novembro são um replay dos registros gravados nas coletas, chamada por chamada, e por isso nenhuma chamada nova é feita a nenhum provedor. Além disso, para quem não puder abrir o navegador, o terminal mostra o resultado de cada parte nas linhas que começam por `[ao vivo]`, que são os 13 itens, os contadores dos dois dias, a conferência dos recibos e, se rodarem, os testes, mas não o replay chamada a chamada, que fica só na página.
+
+Do comando até voltar o `PS C:\otk>`, leva cerca de 2 a 3 minutos (166 segundos numa medição), pois depois da linha *terminado (código de saída 0)* o terminal fica parado por mais 2 minutos, de propósito, para a página continuar no ar. Para encerrar antes, aperte **Ctrl + C**.
 
 Para não abrir o navegador e só escrever o endereço, use `npm run reproduzir-ao-vivo -- --sem-navegador`.
 
@@ -457,29 +461,29 @@ Para rodar os testes automáticos logo depois dos recibos, sem precisar do botã
 
 *Parte 5, os testes automáticos rodados pelo botão, terminando em TESTES OK.*
 
-**O que deve aparecer:** no terminal, primeiro a linha `[ao vivo] página da reprodução: http://127.0.0.1:...`, em que o número da porta muda a cada vez, e os contadores dos dois dias; depois, as mesmas linhas da reprodução da seção 6, terminando em `TUDO OK: 13 de 13 itens`, e a conferência dos recibos. Já no navegador aparece a página com os 13 itens em verde, os contadores de 7 de outubro (662 chamadas, 658 assinaturas conferidas) e de 23 de novembro (1.720 envios, 1.505 com a contagem do OTK) e os cartões 9, 11 e 33 dos recibos.
+**O que deve aparecer:** no terminal, primeiro a linha `[ao vivo] página da reprodução: http://127.0.0.1:...`, em que o número da porta muda a cada vez, e os contadores dos dois dias; depois, as mesmas linhas da reprodução da seção 6, terminando em `TUDO OK: 13 de 13 itens`, e a conferência dos recibos. Já no navegador aparece a página com os 13 itens em verde, os contadores de 7 de outubro (662 chamadas, 658 assinaturas conferidas) e de 23 de novembro (1.720 envios, 1.505 com a contagem do OTK) e os cartões 9, 11 e 33 dos recibos. Na página, tudo começa como *para rodar* (cinza), e cada item passa a *rodando* (amarelo) e depois a *conferido* (verde) ou *falhou* (vermelho), enquanto a parte 5, dos testes, continua *para rodar* até o botão ser clicado, o que não é falha.
 
 **Como ler a página, parte por parte.**
 
-1. **Refazendo agora.** Os itens A a D aparecem à medida que terminam, com OK em verde ou FALHOU em vermelho e o tempo de cada um, e no fim aparecem o veredito e o código de saída. Cada linha é a mesma da saída da seção 6, e por isso o quadro *Como ler a saída, linha por linha* vale também aqui.
-2. **7 de outubro.** A página refaz, a partir dos registros do pacote da banca, cada uma das 662 chamadas reais, na ordem do caminho do OTK (contagem antes do envio, resposta, uso declarado, comparação, custo e recibo). Para cada chamada aparecem a contagem do OTK, o declarado, a diferença, o veredito e se a assinatura foi conferida, e os contadores somam 658 assinaturas conferidas e 4 chamadas recusadas pelo provedor (1 com HTTP 400 e 3 com HTTP 429), que por conta disso ficaram sem a checagem.
-3. **23 de novembro.** A mesma coisa, para os 1.720 envios do programa de coleta à parte (`scripts/h2eval/`), que não passou pelo proxy e por isso não gerou recibo, como a própria página avisa. Os contadores por modelo mostram o registro gravado antes de cada envio (1.720), a contagem do OTK (1.505, em todos os modelos menos o gpt-6-luna) e o uso declarado (1.719, pois um envio do gpt-6-luna ficou sem ele).
-4. **Conferindo os recibos.** O verificador roda nos recibos de exemplo, e com isso a página mostra os cartões, o sha256 do relatório e a tabela por recibo, com o motivo. Além disso, logo abaixo, a página original do verificador, idêntica byte a byte, permite repetir a conferência à mão, como na seção 8.1.
-5. **Testes automáticos.** O botão *Rodar os testes* roda a mesma bateria da seção 7 e mostra a linha *Resultado* e o veredito, e esses testes continuam opcionais, como explica a seção 7.
+1. **Refazendo agora.** Os 13 itens (A a D) aparecem desde o começo como *para rodar*, e cada um passa a *rodando* e, quando o passo termina, a *conferido* ou *falhou*, com o tempo decorrido desde o começo, e no fim aparecem o veredito e o código de saída. Cada linha é a mesma da saída da seção 6, e por isso o quadro *Como ler a saída, linha por linha* vale também aqui.
+2. **7 de outubro.** A página refaz, a partir dos registros do pacote da banca, cada uma das 662 chamadas reais, na ordem do caminho do OTK (contagem antes do envio, resposta, uso declarado, comparação, custo e recibo). Para cada chamada aparecem a contagem do OTK, o declarado, a diferença, o veredito e se a assinatura foi conferida, e os contadores, logo abaixo dos controles, somam 658 assinaturas conferidas e 4 chamadas sem a checagem, 3 barradas pela cota do próprio OTK, de 10.000 CU (HTTP 429), sem chegar ao provedor, e 1 recusada pela OpenAI (HTTP 400), que por conta disso não geraram recibo.
+3. **23 de novembro.** Na página, essa parte se chama *O caminho de cada envio em 23 de novembro de 2026 (programa de coleta, sem o proxy)*, pois mostra os 1.720 envios do programa de coleta à parte (`scripts/h2eval/`), que não passou pelo proxy e por isso não gerou recibo. Com isso, os contadores por modelo mostram o registro gravado antes de cada envio (1.720), a contagem do OTK (1.505, em todos os modelos menos o gpt-6-luna) e o uso declarado (1.719, pois um envio do gpt-6-luna ficou sem ele).
+4. **Conferindo os recibos.** O verificador roda nos recibos de exemplo, e com isso a página mostra os cartões, o sha256 do relatório e a tabela por recibo, com o motivo. Além disso, logo abaixo, a página original do verificador, idêntica byte a byte, permite repetir a conferência à mão, como na seção 8.1. Essa parte roda logo depois da parte 1, junto com o começo dos replays, e por isso pode ficar verde antes das partes 2 e 3.
+5. **Testes automáticos.** O botão *Rodar os testes* fica liberado só depois da conferência dos recibos e desabilitado depois que o comando termina, e ele roda a mesma bateria da seção 7 e mostra a linha *Resultado* e o veredito, e esses testes continuam opcionais, como explica a seção 7.
 
-Nas partes 2 e 3, os botões *Velocidade*, *Pular para o fim* e *Recomeçar* controlam o replay.
+Nas partes 2 e 3, os botões *Pausar* (que vira *Continuar* e, no fim, *Terminado*), *Velocidade* e *Pular para o fim* controlam o replay. Além disso, a página rola sozinha para o item que está rodando, e se você rolar com o mouse, ela para de seguir e mostra o botão *Voltar ao vivo*, que retoma.
 
 **Se o navegador não abrir sozinho**, o terminal escreve `abra este endereço no navegador:` com o endereço, e basta copiá-lo e colá-lo na barra de endereços do navegador.
 
-**Se a página parar de responder**, é de propósito, pois ela fica no ar só por 2 minutos depois do fim (ou enquanto os testes rodam), e para vê-la de novo basta rodar o comando outra vez.
+**Se a página parar de responder**, é de propósito, pois o comando fica no ar só por 2 minutos depois de conferir os recibos (ou enquanto os testes rodam), e para vê-la de novo, ou para usar o botão dos testes, basta rodar o comando outra vez.
 
-**Se o botão dos testes der 403**, a página foi aberta por um endereço diferente do que o terminal mostrou, e por isso abra-a pelo endereço com `127.0.0.1` que aparece no terminal.
+**Se a página ou o botão dos testes responder 403**, a página foi aberta por um endereço diferente do que o terminal mostrou, e por isso abra-a pelo endereço exato do terminal, com `127.0.0.1` e a porta.
 
 ## 7. Rodar os testes automáticos
 
 Para quem só quer conferir os números da dissertação, os testes desta seção são **opcionais**, pois esse é o papel da seção 6. Ainda assim, as duas seções conferem coisas diferentes, já que a seção 6 confere os **resultados**, em 13 conferências mostrando que as tabelas saem dos dados publicados, enquanto esta seção confere o **programa**, peça por peça, em 3.587 testes.
 
-Por exemplo, há testes de que o contador de tokens dá a mesma contagem com o texto inteiro ou cortado em pedaços (`test/unit/d1d8_b_counter.test.ts`), de que um recibo alterado sai vermelho no verificador (`test/verifier/verificador.test.ts`) e de que um pedido de várias respostas numa só chamada é recusado antes de sair (`test/services/d1d8_c_review_fixes.test.ts`). Além disso, os testes cobrem casos que as coletas nunca testaram, como adulteração, erros do provedor e falta de rede, e por isso uma queda da conexão com o provedor deixa a operação como incerta, sem reenviá-la (`test/services/d1d8_c_proxy_durable.test.ts`).
+Por exemplo, há testes de que o contador de tokens dá a mesma contagem com o texto inteiro ou cortado em pedaços (`test/unit/d1d8_b_counter.test.ts`) e de que um recibo alterado sai vermelho no verificador (`test/verifier/verificador.test.ts`). Além disso, os testes cobrem casos que as coletas nunca testaram, como adulteração, erros do provedor e falta de rede, e por isso uma falha do provedor no meio da chamada deixa a operação como incerta, e não como zero (`test/unit/d1d8_c_core.test.ts`).
 
 A bateria tem cerca de 3.600 testes automáticos, que também rodam **sem internet**.
 
@@ -503,20 +507,20 @@ Leva de 2 a 6 minutos. **O que deve aparecer** no fim:
 Resultado: 3587 testes — 3579 passaram, 0 falharam, 0 cancelados, 5 pulados, 3 "todo".
 ```
 
-seguido da lista dos testes deixados de fora de propósito e de `TESTES OK`. O total de testes pode ser um pouco diferente no seu computador, e o que importa é `0 falharam` e a última linha `TESTES OK`.
+seguido da lista dos testes deixados de fora de propósito e de `TESTES OK` (ou de `TESTES OK, com aviso: ...`, explicado abaixo). Por isso, mesmo com um total um pouco diferente no seu computador, o que importa é a última linha começar por `TESTES OK`.
 
 #### Como ler a saída
 
 A linha *Resultado* soma os 3587 testes executados e os divide em cinco grupos, em que os *passaram* (3579) deram certo e os *falharam* (0) deram errado, sendo esse o único número obrigatoriamente zero, já os *cancelados* (0) pararam no meio, por exemplo por tempo esgotado. Além disso, os *pulados* (5) e os marcados como `todo` (3) estão explicados logo abaixo, e somados, 3579 + 0 + 0 + 5 + 3 dão exatamente os 3587.
 
-Depois da linha *Resultado*, o comando lista os testes deixados de fora, cada um com o motivo, e termina em `TESTES OK` quando nada falhou, ou em `HOUVE FALHA` quando algum teste falhou. Nesse caso, o detalhe de cada falha fica nas linhas que começam com `✖`, no fim da tela ou no arquivo `testes-banca-saida.txt`, dentro de `C:\otk`.
+Depois da linha *Resultado*, o comando lista os testes deixados de fora, cada um com o motivo, e termina em `TESTES OK` quando nada falhou, em `TESTES OK, com aviso: ...` quando a única falha foi o teste de tempo `desempenho: 1.000 recibos verificados em menos de 5 s`, saindo com o código 0, ou em `HOUVE FALHA` quando falhou qualquer outro teste. Nesse caso, o detalhe de cada falha fica nas linhas que começam com `✖`, no fim da tela ou no arquivo `testes-banca-saida.txt`, dentro de `C:\otk`.
 
 - Os **pulados (5)** renderizam a configuração de produção com o Helm e precisam da imagem Docker `alpine/helm:3.16.4` já baixada, o que este comando não faz, e por isso o próprio teste se pula e avisa `alpine/helm:3.16.4 not present locally`, sem que esse aviso seja defeito. Num computador sem o Docker, outros 6 testes (de `docker compose`) também se pulam, com o aviso `docker CLI not available`, e o total de pulados passa a 11. Já os grupos que avisam `SKIPPED — set OTK_TEST_PG_URL`, que precisam de um PostgreSQL de teste ligado, também ficam de fora, mas o Node não os soma nos pulados.
 - Os **todo (3)** são testes marcados como *a decidir* desde a versão avaliada (na dissertação, os *3 pendentes*), que são decisões de produto em aberto, e não defeitos, e aparecem com `⚠` na saída completa.
 - Os **deixados de fora**, que não entram na contagem, são 9 grupos de testes e 1 arquivo que leem arquivos internos que **não** estão neste repositório (a pasta de coordenação `docs/_ops`, documentos de governança e as regras de dono de cada arquivo), e o comando lista cada um com o motivo.
 - Na versão avaliada, com os arquivos internos presentes, eram 3.563 testes, dos quais 3.560 passavam e 3 ficavam a decidir, número do registro interno do autor que não pode ser refeito aqui. Essa diferença para o total de hoje vem dos testes do verificador, que ainda não existiam, e dos grupos deixados de fora.
 
-**Se aparecer** `HOUVE FALHA`, veja quais linhas começam com `✖`, no fim da tela ou no arquivo `testes-banca-saida.txt`, na pasta `C:\otk`, que abre no Bloco de Notas com dois cliques e permite buscar com Ctrl+F. Caso a **única** linha com `✖` seja `desempenho: 1.000 recibos verificados em menos de 5 s`, o computador estava só lento naquele momento, e por isso basta fechar os outros programas e rodar `npm run testes-banca` de novo, e se continuar só esse, não é defeito do OTK.
+**Se aparecer** `HOUVE FALHA`, veja quais linhas começam com `✖`, no fim da tela ou no arquivo `testes-banca-saida.txt`, na pasta `C:\otk`, que abre no Bloco de Notas com dois cliques e permite buscar com Ctrl+F. Já quando a única falha é o teste de tempo `desempenho: 1.000 recibos verificados em menos de 5 s`, o comando não termina em `HOUVE FALHA`, e sim em `TESTES OK, com aviso: ...`, com o código 0, pois esse teste só mede se o computador estava livre naquele momento, o que não é defeito do OTK. Para vê-lo passar, feche os outros programas e rode `npm run testes-banca` de novo.
 
 Do mesmo jeito, caso as únicas linhas com `✖` sejam `H1-S23 GDPR erasure: receipt integrity and audit trail` e `OWNER of A erases A ...` (`test/security/h1_s23_privacy_retention.test.ts:181`), rode `npm run testes-banca` de novo, pois esse teste, com um defeito que já existia na versão avaliada, falha raramente por acaso, já que procura o texto 1001 numa linha com um resumo sha256 e um identificador aleatórios.
 
@@ -585,7 +589,7 @@ sha256 do relatório JSON: bbcfeed1d0cfb3beb9685eb8157331ca3bd21d8186985f22676a0
 
 #### Como ler a saída
 
-A saída começa com as duas linhas `>` do npm e, logo depois, com a linha *Chaveiro*, que diz se a impressão digital colada confere com o chaveiro carregado.
+A saída começa com as duas linhas `>` do npm, a linha *Verificador de recibos OTK 0.1.0* e, logo depois, a linha *Chaveiro*, que diz se a impressão digital colada confere com o chaveiro carregado.
 
 Em seguida vem um bloco por recibo, na ordem dos arquivos, e a primeira linha de cada bloco traz o veredito entre colchetes (`[OK]`, `[ATENÇÃO]` ou `[FALHOU]`), a operação, o arquivo e a linha de origem do recibo (por exemplo `recibos/b_alterados.jsonl:1`) e o motivo em português. Já as linhas abaixo dela, quando existem, começam por *Significa*, com a explicação desse veredito, ou por `+`, com uma checagem adicional do mesmo recibo.
 
@@ -1018,7 +1022,7 @@ Para copiar a saída do terminal no Windows, selecione o texto com o mouse (arra
 
 | Pasta / arquivo | O que é |
 |---|---|
-| `src/`, `scripts/`, `test/`, `tools/`, `zk/`, `config/`, `sdk/`, `infra/` ... | o OTK. A versão avaliada na dissertação é a tag `versao-avaliada` (commit `9cad91f`), cuja pasta `src/` é **idêntica** à do `7606bc9b`, exceto a pasta nova `src/verifier/` (seção 4, *Para usar a versão exata avaliada na dissertação*). O `main` tem a mesma lógica, com comentários no código, e a prova de que só os comentários mudaram está em [docs/DOCUMENTACAO_DO_CODIGO.md](docs/DOCUMENTACAO_DO_CODIGO.md) e em `docs/PROVA_SO_COMENTARIOS.json`. O histórico do repositório interno, inclusive o próprio commit `7606bc9b`, não é publicado aqui. O `PROVENIENCIA.json` lista o sha256 de cada arquivo no `main` e de onde ele veio, e, nos arquivos que ganharam comentários, lista também o sha256 da versão avaliada (campo `sha256VersaoAvaliada`), que confere com a tag `versao-avaliada`. Com ela dá para conferir que os arquivos são os listados pelo autor, mas que a lista corresponde ao `7606bc9b`, só o autor pode confirmar, porque esse commit não é público. Já `scripts/h2eval/` é o programa que fez as coletas de novembro (versão `b0ec6f24`, sem mudanças na tag e com comentários no `main`), e usa o mesmo código de `src/`. |
+| `src/`, `scripts/`, `test/`, `tools/`, `zk/`, `config/`, `sdk/`, `infra/` ... | o OTK. A versão avaliada na dissertação é a tag `versao-avaliada` (commit `9cad91f`), cuja pasta `src/` é **idêntica** à do `7606bc9b`, exceto a pasta nova `src/verifier/` (seção 4, *Para usar a versão exata avaliada na dissertação*), e que ainda não tem o modo ao vivo da seção 6. O `main` tem a mesma lógica, com comentários no código, e a prova de que só os comentários mudaram está em [docs/DOCUMENTACAO_DO_CODIGO.md](docs/DOCUMENTACAO_DO_CODIGO.md) e em `docs/PROVA_SO_COMENTARIOS.json`. O histórico do repositório interno, inclusive o próprio commit `7606bc9b`, não é publicado aqui. O `PROVENIENCIA.json` lista o sha256 de cada arquivo no `main` e de onde ele veio, e, nos arquivos que ganharam comentários, lista também o sha256 da versão avaliada (campo `sha256VersaoAvaliada`), que confere com a tag `versao-avaliada`. Com ela dá para conferir que os arquivos são os listados pelo autor, mas que a lista corresponde ao `7606bc9b`, só o autor pode confirmar, porque esse commit não é público. Já `scripts/h2eval/` é o programa que fez as coletas de novembro (versão `b0ec6f24`, sem mudanças na tag e com comentários no `main`), e usa o mesmo código de `src/`. |
 | `src/verifier/`, `scripts/verify/`, `test/verifier/`, `web/verificador/` | o verificador de recibos (feito depois da versão avaliada; versão `535ac19c`) |
 | `chaveiro/chaveiro_operador_otk.json` | o chaveiro público do operador (impressão digital `c9dcbb90…`, publicada na dissertação) |
 | `reproducao/otk-banca-pack-20261111.zip` e a pasta `otk-banca-pack-20261111/` | o pacote da banca da coleta de 7 de outubro (descrito no Apêndice C; sha256 do ZIP `3943637b…`, conferido pelo comando da seção 6) |
@@ -1026,7 +1030,7 @@ Para copiar a saída do terminal no Windows, selecione o texto com o mouse (arra
 | `reproducao/reproduzir_tudo.mjs`, `reproducao/testes_banca.mjs`, `reproducao/ferramentas/sem_rede.mjs` | os comandos das seções 6 e 7 e a trava de rede |
 | `demo/demo_banca.mts` | o comando da seção 9 |
 | `reproducao/ao_vivo/` e `test/reproducao_ao_vivo/` | o modo ao vivo da seção 6 (`npm run reproduzir-ao-vivo`) e os testes dele (`npm run test:ao-vivo`), que não entram no `npm run testes-banca` |
-| `docs/` | os documentos públicos do produto que os testes leem (contrato da API, guias), as imagens deste README e os três documentos do código das linhas abaixo |
+| `docs/` | os documentos públicos do produto que os testes leem (contrato da API, guias), as imagens deste README e os documentos do código (`DOCUMENTACAO_DO_CODIGO.md`, `GLOSSARIO_DE_CODIGOS.md` e `PROVA_SO_COMENTARIOS.json`) |
 | `docs/DOCUMENTACAO_DO_CODIGO.md` | como ler os comentários do código e como conferir, com os comandos dele, a prova de que só os comentários mudaram em relação à tag `versao-avaliada` (a prova completa está em `docs/PROVA_SO_COMENTARIOS.json`) |
 | `docs/GLOSSARIO_DE_CODIGOS.md` | o que querem dizer os códigos internos citados nos comentários, como H1 ou D1–D8 |
 | `eslint.docs.config.mjs` | a configuração do lint que confere só os comentários, e que por enquanto roda só no computador de quem o usa, e não no GitHub |

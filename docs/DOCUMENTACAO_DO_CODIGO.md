@@ -9,8 +9,8 @@ Este ramo é a mesma lógica da versão avaliada na dissertação, com comentár
 - **TSDoc no que é exportado:** comentário em toda função, classe, tipo e constante exportados, com `@param`, `@returns` e `@throws`.
 - **Cabeçalho nos testes:** cada arquivo de teste diz o que testa, quais casos cobre, do que precisa e como rodar só ele.
 
-- **Versão avaliada:** a tag `versao-avaliada`, commit `9cad91f`. O `src/` dela é idêntico byte a byte ao commit `7606bc9b` citado na dissertação (ver `PROVENIENCIA.json`).
-- **Este ramo:** a mesma lógica, só com comentários. A prova está abaixo e, completa, em [PROVA_SO_COMENTARIOS.json](PROVA_SO_COMENTARIOS.json).
+- **Versão avaliada:** a tag `versao-avaliada`, commit `9cad91f`. O `src/` dela é idêntico byte a byte ao do commit `7606bc9b` citado na dissertação, fora a pasta nova `src/verifier/` (o verificador de recibos, feito depois) (ver `PROVENIENCIA.json`).
+- **Este ramo:** nos arquivos de código da versão avaliada, tem a mesma lógica, só com comentários, e a prova está abaixo e, completa, em [PROVA_SO_COMENTARIOS.json](PROVA_SO_COMENTARIOS.json). Além disso, o commit `b2f51c5`, citado nesse arquivo como `head`, corresponde ao `06531cd` do `main` por conta da cópia dos commits, e por isso a prova foi refeita no `main`, com o mesmo resultado, que são 914 de 914 arquivos só com comentários e o mesmo hash agregado.
 - **Comentários antigos:** foram mantidos, com o mesmo sentido. O texto deles mudou nestes casos:
   - o `@module` passou a ser o caminho do arquivo;
   - comentários de uma linha viraram blocos, com o mesmo texto e os `@param`/`@returns` que faltavam;
@@ -34,9 +34,9 @@ Este ramo é a mesma lógica da versão avaliada na dissertação, com comentár
 | `npm run testes-banca` | 3.587 testes: 3.579 passam, 0 falham, 5 pulados, 3 "todo" | 3.587 testes: em cada uma das duas rodadas completas, 1 teste sensível a tempo falhou com a máquina carregada (um diferente em cada rodada) e passou rodado sozinho; os outros 3.578 passam |
 | `npm run reproduzir-tudo` | 13 de 13 | 13 de 13 (duas rodadas) |
 
-Sobre o teste de tempo do verificador ("1.000 recibos em menos de 5 s"): rodado alternadamente quatro vezes em cada versão na mesma máquina, deu de 4,4 a 5,7 s na versão avaliada e de 4,4 a 5,2 s neste ramo. O limite depende da máquina, não dos comentários.
+Quanto ao teste de tempo do verificador, que confere 1.000 recibos em menos de 5 s, ele foi rodado alternadamente quatro vezes em cada versão, na mesma máquina, e deu de 4,4 a 5,7 s na versão avaliada e de 4,4 a 5,2 s neste ramo. Por conta disso, o limite depende da máquina, e não dos comentários.
 
-Nada mudou em `reproducao/`, `web/`, `chaveiro/`, `config/`, `package.json`, `package-lock.json` e `tsconfig.json`, nem em nenhum arquivo JSON.
+Os commits de comentários não mudaram nada em `reproducao/`, `web/`, `chaveiro/`, `config/`, `package.json`, `package-lock.json` e `tsconfig.json`, nem nenhum arquivo JSON de dados. Já fora deles, o `main` ganhou o modo ao vivo (`reproducao/ao_vivo/`, `test/reproducao_ao_vivo/` e os atalhos `reproduzir-ao-vivo` e `test:ao-vivo` no `package.json`), que é código novo e por conta disso não faz parte desta prova.
 
 Ficaram sem comentário novo, de propósito:
 - os dois arquivos `.d.ts` de `src/types`, que já tinham cabeçalho;
@@ -45,9 +45,9 @@ Ficaram sem comentário novo, de propósito:
 
 ## Conferir você mesmo
 
-### Para ver que o código compilado é o mesmo
+### Para ver quais arquivos ganharam comentários
 
-Onde rodar: no PowerShell, dentro da pasta do repositório (o começo da linha deve mostrar `PS C:\…\otk-open-token-ledger>`), depois de `npm ci`.
+Onde rodar: no PowerShell, dentro de `C:\otk` (o começo da linha deve mostrar `PS C:\otk>`), depois de `npm ci`.
 
 ```powershell
 git diff --stat versao-avaliada HEAD -- src scripts test
@@ -61,14 +61,14 @@ O que deve aparecer: uma lista de arquivos de `src/`, `scripts/` e `test/` e, no
 
 ### Para conferir os comentários com o lint
 
-Onde rodar: no PowerShell, dentro da pasta do repositório.
+Onde rodar: no PowerShell, dentro de `C:\otk` (o começo da linha deve mostrar `PS C:\otk>`).
 
 ```powershell
 npm install --no-save eslint@10.15.0 typescript-eslint@8.74.0 eslint-plugin-jsdoc@65.5.5
 npx eslint --config eslint.docs.config.mjs src
 ```
 
-O primeiro comando instala, só para esta conferência e sem mudar o `package.json`, as ferramentas de lint. O segundo confere os comentários de `src/`. Por enquanto, essa conferência não roda automaticamente no GitHub: é só local.
+O primeiro comando instala, só para esta conferência e sem mudar o `package.json`, as ferramentas de lint. O segundo confere os comentários de `src/`. Por enquanto, essa conferência não roda automaticamente no GitHub: é só local. O primeiro comando usa a internet e acrescenta ferramentas ao `node_modules`, e por isso, para voltar à instalação exata antes das seções 6 a 9 do README, rode `npm ci` de novo.
 
 O que deve aparecer: nenhuma linha de erro.
 
@@ -85,8 +85,8 @@ This branch has the same logic as the version evaluated in the dissertation, plu
 - **TSDoc on exports:** a doc comment on every exported function, class, type and constant, with `@param`, `@returns` and `@throws`.
 - **A header in every test file:** what it tests, which cases it covers, what it needs and how to run just that file.
 
-- **Evaluated version:** the `versao-avaliada` tag, commit `9cad91f`. Its `src/` is byte-identical to commit `7606bc9b` cited in the dissertation (see `PROVENIENCIA.json`).
-- **This branch:** the same logic, with comments only. The proof is in the table above and, in full, in [PROVA_SO_COMENTARIOS.json](PROVA_SO_COMENTARIOS.json).
+- **Evaluated version:** the `versao-avaliada` tag, commit `9cad91f`. Its `src/` is byte-identical to that of commit `7606bc9b` cited in the dissertation, apart from the new `src/verifier/` folder (the receipt verifier, made later) (see `PROVENIENCIA.json`).
+- **This branch:** in the code files of the evaluated version, the same logic, with comments only. The proof is in the table above and, in full, in [PROVA_SO_COMENTARIOS.json](PROVA_SO_COMENTARIOS.json). The commit `b2f51c5` cited there as `head` corresponds to `06531cd` on `main`, through the copy of the commits, and the proof was redone on `main` with the same result: 914 of 914 files with comments only and the same aggregate hash.
 - **Older comments:** kept, with the same meaning. Their text changed in these cases:
   - `@module` now holds the file path;
   - one-line comments became blocks, with the same text plus the missing `@param`/`@returns`;
@@ -106,10 +106,10 @@ The table above shows, for `src/`, `scripts/` and `test/`:
 - `tsc --removeComments` produces byte-identical files (`diff -r` is empty);
 - the test suite and the reproduction give the same numbers.
 
-Nothing changed in `reproducao/`, `web/`, `chaveiro/`, `config/`, `package.json`, `package-lock.json`, `tsconfig.json` or any JSON file.
+The comment commits changed nothing in `reproducao/`, `web/`, `chaveiro/`, `config/`, `package.json`, `package-lock.json`, `tsconfig.json` or any data JSON file. Apart from them, `main` gained the live mode (`reproducao/ao_vivo/`, `test/reproducao_ao_vivo/` and the `reproduzir-ao-vivo` and `test:ao-vivo` shortcuts in `package.json`), which is new code and not part of this proof.
 
 ## Check it yourself
 
 Same commands as in the Portuguese section above:
 - `git diff --stat versao-avaliada HEAD -- src scripts test` lists the lines added to each file;
-- the two lint commands check the comments in `src/` (expected output: no error lines).
+- the two lint commands check the comments in `src/` (expected output: no error lines); the first uses the internet and adds tools to `node_modules`, so run `npm ci` again to go back to the exact installation.
