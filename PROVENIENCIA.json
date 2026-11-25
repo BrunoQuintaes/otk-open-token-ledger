@@ -93,8 +93,8 @@
   },
   {
    "arquivo": "README.md",
-   "bytes": 34674,
-   "sha256": "32718eecf65c31441ad5e9fc52fe36891028494a1bb959a348402d65eb3032e5",
+   "bytes": 34971,
+   "sha256": "eae6b22f52e82724068dea6b39e489960ce8364ef3431b53ef711a6d5ced2395",
    "origem": "novo (REPO_PUBLICO, C160)",
    "mudanca": "substitui o README.md do repositório interno"
   },
@@ -124,8 +124,8 @@
   },
   {
    "arquivo": "demo/demo_banca.mts",
-   "bytes": 19099,
-   "sha256": "779d53c171f66967ce9f136112323ba6cf1d5d33bf7a9dddcde1a70b649f3ee3",
+   "bytes": 19690,
+   "sha256": "e59d98ba583a78661e1709da9445365edbf131ecd66632f3f4791e03f09bc191",
    "origem": "novo (REPO_PUBLICO, C160)"
   },
   {

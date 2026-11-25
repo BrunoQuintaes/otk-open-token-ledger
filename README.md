@@ -10,7 +10,7 @@ Aqui estão:
 - o **verificador de recibos** (comando e página que abre no navegador);
 - um **passo a passo para usar o OTK no seu computador**, primeiro sem chave nenhuma e depois, se quiser, com a sua própria chave de API.
 
-Você **não precisa saber programar**. Basta seguir os passos na ordem, copiando e colando cada comando. Se algo der errado, a seção [Se travar: cole isto numa IA](#se-travar-cole-isto-numa-ia) tem um texto pronto para pedir ajuda.
+Você **não precisa saber programar**. Basta seguir os passos na ordem, copiando e colando cada comando. Se algo der errado, a seção [12. Se travar: cole isto numa IA](#12-se-travar-cole-isto-numa-ia) tem um texto pronto para pedir ajuda.
 
 ---
 
@@ -27,18 +27,18 @@ Você **não precisa saber programar**. Basta seguir os passos na ordem, copiand
 9. [Use o OTK você mesmo](#9-use-o-otk-você-mesmo)
 10. [O que precisa de chave de API e o que não precisa](#10-o-que-precisa-de-chave-de-api-e-o-que-não-precisa)
 11. [O que o OTK faz e o que não faz (limites)](#11-o-que-o-otk-faz-e-o-que-não-faz-limites)
-12. [Se travar: cole isto numa IA](#se-travar-cole-isto-numa-ia)
+12. [Se travar: cole isto numa IA](#12-se-travar-cole-isto-numa-ia)
 13. [Onde está cada coisa, origem dos arquivos, licença e citação](#13-onde-está-cada-coisa-origem-dos-arquivos-licença-e-citação)
 
 ---
 
 ## 1. O que instalar antes
 
-Você precisa de **dois programas** (e de um terceiro só para a parte 9). Todos são gratuitos. Use sempre o site oficial.
+Você precisa de **dois programas** (e de um terceiro, o Docker, só para a parte 9: se quiser só conferir os números e os recibos, partes 6 a 8, pule o Docker). Todos são gratuitos. Use sempre o site oficial.
 
 | Programa | Para quê | Versão | Windows | Mac |
 |---|---|---|---|---|
-| **Git** | baixar o repositório | qualquer 2.x (testado com 2.51) | https://git-scm.com/download/win — baixe o instalador "64-bit Git for Windows Setup" e clique em **Next** em todas as telas (as opções padrão servem) | abra o Terminal (passo 2) e digite `git --version`; se o Mac oferecer instalar as "ferramentas de linha de comando", aceite. Ou: https://git-scm.com/download/mac |
+| **Git** | baixar o repositório | qualquer 2.x (testado com 2.51) | https://git-scm.com/download/win — baixe o instalador "64-bit Git for Windows Setup" e clique em **Next** em todas as telas (as opções padrão servem; se o Windows perguntar "Deseja permitir que este aplicativo faça alterações?", clique em **Sim**) | abra o Terminal (passo 2) e digite `git --version`; se o Mac oferecer instalar as "ferramentas de linha de comando", aceite. Ou: https://git-scm.com/download/mac |
 | **Node.js** (já traz o **npm**) | rodar o OTK, os testes e a reprodução | **24 LTS** (testado com 24.22.2; o npm que vem junto é o 11) | https://nodejs.org/pt/download — escolha "LTS", versão **24**, "Windows Installer (.msi)", e clique em **Next** em todas as telas | mesma página, "macOS Installer (.pkg)" da versão **24 LTS** |
 | **Docker Desktop** (só para a parte 9) | ligar o banco de dados do OTK numa caixa isolada | qualquer versão atual (testado com 29.x) | https://www.docker.com/products/docker-desktop/ — "Download for Windows". Ele pede para ativar o WSL 2; aceite e reinicie o computador se pedir | mesma página, "Download for Mac" (escolha Apple Silicon ou Intel conforme o seu Mac) |
 
@@ -60,6 +60,8 @@ Para cada comando deste guia:
 2. clique dentro da janela do terminal;
 3. cole com **Ctrl + V** (Windows; ou clique com o botão direito) ou **Command + V** (Mac);
 4. aperte **Enter** e espere o terminal mostrar de novo o `PS C:\...>` (ou o `%` no Mac) antes de colar o próximo.
+
+A partir do passo 5, o começo da linha deve mostrar `PS C:\otk>` (no Mac, `otk %`). Se não mostrar (por exemplo, porque você fechou e abriu o terminal), rode antes `cd C:\otk` (no Mac, `cd ~/otk`).
 
 Cada bloco cinza é **um comando**. Cole um de cada vez, na ordem.
 
@@ -111,14 +113,9 @@ git clone https://github.com/BrunoQuintaes/otk-open-token-ledger.git ~/otk
 
 **O que deve aparecer:** `Cloning into 'C:\otk'...` e, depois de alguns segundos, linhas terminando em `done.`
 
-**Enquanto o repositório estiver privado** (antes de o autor torná-lo público), o GitHub pede login:
+O repositório é **público**: nenhum login é pedido.
 
-- **Windows:** abre uma janela "Connect to GitHub". Clique em **Sign in with your browser**, entre na sua conta do GitHub e clique em **Authorize**. Sua conta precisa ter sido convidada pelo autor (você recebe um e-mail do GitHub; aceite o convite antes).
-- **Mac:** o terminal pede `Username` e `Password`. Em `Username` digite o seu usuário do GitHub. Em `Password` **não** use a senha da conta: crie um token em https://github.com/settings/tokens?type=beta ("Generate new token", acesso só de leitura ao repositório `otk-open-token-ledger`, "Contents: Read-only") e cole o token. O terminal não mostra nada enquanto você cola; é normal. Aperte Enter.
-
-Depois que o repositório ficar **público**, nenhum login é pedido.
-
-**Se aparecer** `Repository not found`: o repositório ainda é privado e sua conta não tem acesso (peça o convite ao autor), ou o endereço foi digitado errado.
+**Se aparecer** `Repository not found`: o endereço foi digitado errado (copie o comando de novo) ou o computador está sem internet.
 **Se aparecer** `destination path 'C:\otk' already exists`: você já baixou antes. Pule para o passo 5, ou apague a pasta `C:\otk` e repita.
 
 Agora entre na pasta (todos os comandos seguintes são colados **dentro dela**):
@@ -201,7 +198,7 @@ TUDO OK: 13 de 13 itens. Detalhes em saida-reproducao\...\RESULTADO_REPRODUCAO.j
 
 "Idêntico byte a byte" quer dizer que o arquivo recalculado tem o mesmo sha256 (uma "impressão digital" de 64 caracteres que muda se qualquer letra mudar) do arquivo auditado. Nos JSON, a comparação ignora só a data de geração e o caminho dos arquivos na máquina do autor; os sha256 dos arquivos de origem são comparados.
 
-**Se aparecer** `FALHOU` em alguma linha: o comando continua e mostra todas as linhas. Abra o arquivo indicado em "Detalhes em ..." e a pasta `saida-reproducao` (dentro de `C:\otk`): ela tem um arquivo `.log.txt` por etapa, com o erro. Use a seção [Se travar](#se-travar-cole-isto-numa-ia).
+**Se aparecer** `FALHOU` em alguma linha: o comando continua e mostra todas as linhas. Abra o arquivo indicado em "Detalhes em ..." e a pasta `saida-reproducao` (dentro de `C:\otk`): ela tem um arquivo `.log.txt` por etapa, com o erro. Use a seção [12. Se travar](#12-se-travar-cole-isto-numa-ia).
 **Se aparecer** `Falta instalar as dependências`: rode o passo 5.
 **Se aparecer** `FALHOU ... sha256 ...` só nas linhas do chaveiro ou da página: o Git converteu o fim de linha desses arquivos ao baixar. Apague a pasta `C:\otk` e baixe de novo (passo 4); o arquivo `.gitattributes` deste repositório impede essa conversão num clone novo.
 
@@ -219,7 +216,7 @@ Leva de 2 a 5 minutos. **O que deve aparecer** no fim:
 Resultado: 3587 testes — 3579 passaram, 0 falharam, 0 cancelados, 5 pulados, 3 "todo".
 ```
 
-seguido da lista dos testes deixados de fora de propósito e de `TESTES OK`.
+seguido da lista dos testes deixados de fora de propósito e de `TESTES OK`. Os números podem variar um pouco de um computador para outro; o que importa é `0 falharam` e a última linha `TESTES OK`.
 
 ![Saída do comando testes-banca](docs/imagens/03_testes_banca.png)
 
@@ -228,7 +225,7 @@ seguido da lista dos testes deixados de fora de propósito e de `TESTES OK`.
 - **deixados de fora (não entram na contagem)**: 9 grupos de testes e 1 arquivo que leem arquivos internos que **não** estão neste repositório (a pasta de coordenação `docs/_ops`, documentos de governança, as regras de dono de cada arquivo). O comando lista cada um com o motivo.
 - A contagem inclui os testes do verificador (que não existiam na versão avaliada). Na versão avaliada, com todos os arquivos internos presentes, a bateria completa dava **3.563 testes: 3.560 passam e 3 "todo"**.
 
-**Se aparecer** `HOUVE FALHA`: abra o arquivo `testes-banca-saida.txt` (na pasta `C:\otk`) e procure as linhas que começam com `✖`. Alguns testes medem tempo (por exemplo `desempenho: 1.000 recibos verificados em menos de 5 s`) e podem falhar se o computador estiver ocupado com outra coisa; feche outros programas e rode de novo antes de concluir que há defeito.
+**Se aparecer** `HOUVE FALHA`: abra o arquivo `testes-banca-saida.txt` (na pasta `C:\otk`; clique duas vezes nele para abrir no Bloco de Notas e use Ctrl+F) e procure as linhas que começam com `✖`. Alguns testes medem tempo (por exemplo `desempenho: 1.000 recibos verificados em menos de 5 s`) e podem falhar se o computador estiver ocupado com outra coisa; feche outros programas e rode de novo antes de concluir que há defeito.
 **Se aparecer** `Aviso: não achei o bash do Git for Windows`: alguns testes rodam scripts bash, que vêm com o Git for Windows. Instale o Git pelo instalador oficial (passo 1) e repita.
 
 ## 8. Conferir recibos com o verificador
@@ -315,7 +312,7 @@ Aqui você liga o OTK da versão avaliada no seu computador, manda uma chamada d
 - **Docker Desktop** instalado e aberto (passo 1). O OTK guarda as operações num banco PostgreSQL; o Docker liga esse banco numa caixa isolada, sem instalar nada no seu sistema. No Windows, o Docker Desktop usa o WSL 2 (ele mesmo oferece ativar). Num Windows sem WSL 2 e sem permissão de administrador, a parte 9 não roda; as partes 6, 7 e 8 rodam do mesmo jeito.
 - Uns 2 GB livres em disco para a imagem do PostgreSQL (baixada uma vez, **usa a internet** só na primeira vez).
 
-Abra o Docker Desktop e espere aparecer **Engine running** (no canto de baixo da janela dele).
+Abra o Docker Desktop (se ele pedir login ou conta, clique em **Skip**/Pular; não é preciso conta) e espere aparecer **Engine running** (no canto de baixo da janela dele).
 
 ### 9.2 Modo demonstração: sem chave, sem custo
 
@@ -361,14 +358,15 @@ Como ler:
 - **custo**: calculado pela tabela pública de preços do gpt-4o-mini; aqui é fictício porque nada foi cobrado.
 - **verificador**: o recibo é **[OK] na assinatura** (íntegro, assinado pela chave desta instalação, chaveiro conferido pela impressão digital). O **amarelo** vem só do aviso "perfil de desenvolvimento": a versão avaliada não tem pesos de CU definitivos (essa escolha ficou em aberto na dissertação) e o verificador avisa isso em todo recibo.
 
-Os arquivos ficam em `C:\otk\demo-saida\<data-hora>`: `recibos\recibo_....json` (o recibo, o mesmo que a rota `GET /v1/operations/{id}/conference` entrega), `chaveiro_desta_instalacao.json`, `operacao.json`, `verificacao.txt` e `RESUMO_DEMO.json`. Para ver na página, abra `web\verificador\verificador-otk.html`, arraste a pasta `recibos` e o `chaveiro_desta_instalacao.json` e cole a impressão digital que o comando mostrou na parte 6.
+Os arquivos ficam em `C:\otk\demo-saida\<data-hora>`: `recibos\recibo_....json` (o recibo, o mesmo que a rota `GET /v1/operations/{id}/conference` entrega), `chaveiro_desta_instalacao.json`, `operacao.json`, `verificacao.txt` e `RESUMO_DEMO.json`. Para ver na página, abra `web\verificador\verificador-otk.html`, arraste a pasta `recibos` e o `chaveiro_desta_instalacao.json` e cole a impressão digital que o comando mostrou no passo [6] da saída (na linha `chaveiro: ... impressão digital: ...`).
 
 ![O recibo da demonstração na página do verificador](docs/imagens/06_verificador_recibo_demo.png)
 
 No fim, o comando desliga e apaga o PostgreSQL de teste. Para deixá-lo ligado (e olhar o banco), use `npm run demo-banca -- --manter`.
 
 **Se aparecer** `PAROU: o Docker não está respondendo`: abra o Docker Desktop e espere "Engine running".
-**Se aparecer** `PAROU: ... porta ... already allocated` ou `porta ocupada`: outro programa usa a porta 55432. No PowerShell, rode `$env:OTK_DEMO_PG_PORT="55433"` e depois `npm run demo-banca` de novo.
+Se a porta 55432 estiver reservada ou ocupada (acontece em alguns Windows), o comando escolhe sozinho outra porta livre e avisa na tela.
+**Se aparecer** `PAROU: ... porta ... already allocated`, `ports are not available` ou `porta ocupada`: no PowerShell, rode `$env:OTK_DEMO_PG_PORT="15432"` e depois `npm run demo-banca` de novo (no Mac: `OTK_DEMO_PG_PORT=15432 npm run demo-banca`).
 
 ### 9.3 Modo com as suas próprias chaves (opcional, custa centavos)
 
@@ -383,7 +381,7 @@ A versão avaliada mede três modelos: **gpt-4o-mini** (OpenAI), **claude-haiku-
 notepad .env
 ```
 
-   O Bloco de Notas pergunta se quer criar o arquivo: clique **Sim**. Escreva **uma** linha, conforme o provedor, colando a sua chave depois do `=`, e salve:
+   O Bloco de Notas pergunta se quer criar o arquivo: clique **Sim**. Escreva **uma** linha, conforme o provedor, colando a sua chave depois do `=`, e salve com Ctrl+S (se o Bloco de Notas abrir a janela "Salvar como", escolha **Todos os arquivos** em "Tipo" e mantenha o nome `.env`):
 
 ```
 OPENAI_API_KEY=cole-aqui-a-sua-chave
@@ -451,7 +449,7 @@ Quando terminar, apague o arquivo `.env` ou revogue a chave no site do provedor.
 - o "estimado × declarado" da CMP8 é **conferência pós-coleta** (calculada depois), e a prova da parte C mostra que a contagem bruta já tinha sido gravada antes de cada envio;
 - os gráficos originais do pacote de 7/10 não são regenerados pelo comando sem rede (precisariam de Python e matplotlib).
 
-## Se travar: cole isto numa IA
+## 12. Se travar: cole isto numa IA
 
 Se algum passo der erro, abra uma IA (ChatGPT, Claude, Gemini ou outra), copie o texto abaixo, troque as partes entre `<...>` e cole:
 

@@ -30,7 +30,7 @@ const REAL = arg('real') as 'openai' | 'anthropic' | 'gemini' | undefined;
 const MANTER = tem('manter');
 const agora = new Date().toISOString().replace(/[:.]/g, '-').replace('Z', '');
 const OUT = path.resolve(arg('pasta') ?? path.join(ROOT, 'demo-saida', agora));
-const PG_PORT = Number(process.env['OTK_DEMO_PG_PORT'] ?? 55432);
+let PG_PORT = Number(process.env['OTK_DEMO_PG_PORT'] ?? 55432);
 const PROJ = 'otk-banca-demo';
 const say = (s = '') => console.log(s);
 const passo = (n: number, s: string) => say(`\n[${n}] ${s}`);
@@ -85,8 +85,11 @@ if (tem('so-conferir')) {
   say(`\nCONFIGURAÇÃO OK${REAL ? `: a chave ${P.keyEnv} está no .env, o .env está fora do git e o Docker responde` : ': o Docker responde'}. Nenhuma chamada foi feita (--so-conferir).`);
   process.exit(0);
 }
+// No Windows, o sistema (Hyper-V/WSL) pode reservar faixas de portas, inclusive a 55432; nesse caso usa uma porta livre escolhida pelo próprio sistema.
+if (!process.env['OTK_DEMO_PG_PORT']) { const livre = await new Promise<boolean>((r) => { const s = net.createServer(); s.once('error', () => r(false)); s.listen(PG_PORT, '127.0.0.1', () => s.close(() => r(true))); });
+  if (!livre) { const antes = PG_PORT; PG_PORT = await freePort(); say(`    a porta ${antes} não está disponível neste computador; usando a porta ${PG_PORT}.`); } }
 const up = docker(['compose', '-p', PROJ, '-f', 'infra/test/docker-compose.services.yml', 'up', '-d', '--wait', 'postgres'], { OTK_TEST_PG_PORT: String(PG_PORT) });
-if (up.status !== 0) falha(`o Docker não conseguiu ligar o PostgreSQL:\n${(up.stderr || up.stdout).slice(-600)}`, `se a mensagem fala em porta ocupada, rode de novo com outra porta: no PowerShell, $env:OTK_DEMO_PG_PORT="55433"; npm run demo-banca`);
+if (up.status !== 0) falha(`o Docker não conseguiu ligar o PostgreSQL:\n${(up.stderr || up.stdout).slice(-600)}`, `se a mensagem fala em porta ocupada, rode de novo com outra porta: no PowerShell, $env:OTK_DEMO_PG_PORT="15432"; npm run demo-banca (no Mac: OTK_DEMO_PG_PORT=15432 npm run demo-banca)`);
 const ADMIN = `postgres://otk:otk-test-only@127.0.0.1:${PG_PORT}/otk`;
 const dbName = `otk_demo_${agora.toLowerCase().replace(/[^a-z0-9]/g, '_')}`.slice(0, 63);
 await espera('o PostgreSQL', async () => { const c = new pg.Client({ connectionString: ADMIN }); await c.connect(); await c.end(); return true; }, 120_000);
