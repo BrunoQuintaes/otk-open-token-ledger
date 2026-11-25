@@ -9,6 +9,20 @@
  * Setup per scenario: N operations of one tenant under a money budget, final CU debited, money
  * pending_price. The first ones carry a frozen table that does not exist (`missing`): never priceable.
  * The rest carry the loaded illustrative table: priceable by the reconciliation.
+ *
+ * Module under test: the pending-price reconciliation of `src/operations/runtime.ts`, with operations built from
+ * `test/fixtures/d1d8/c/builders.ts`.
+ *
+ * Strategy / scenarios: unpriceable oldest operations do not block a priceable one; several batches settle every
+ * priceable operation within the expected number of passes and repeated passes add nothing; the schedule survives a
+ * restart; two workers in parallel settle each operation exactly once; and an unpriceable operation keeps its
+ * exposure, backs off exponentially up to a cap and is reported as stuck.
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`); run with
+ * `--test-concurrency=1`. It sets `OTK_DB_URL` in the test process. With the variables already set,
+ * `npx tsx --test --test-concurrency=1 test/services/d1d8_fps5_reconciliation.test.ts` runs just this file.
+ *
+ * @module test/services/d1d8_fps5_reconciliation.test
  */
 process.env['OTK_DB_URL'] = '';
 
@@ -36,7 +50,15 @@ async function runtime(instanceId: string): Promise<OperationsRuntime> {
   return rt;
 }
 
-/** n pending-price operations of `tenant`; the first `missing` cannot be priced. updated_at spaced 1 s, oldest first. */
+/**
+ * n pending-price operations of `tenant`; the first `missing` cannot be priced. updated_at spaced 1 s, oldest first.
+ *
+ * @param rt - Runtime whose database receives the operations.
+ * @param tenant - Tenant that owns them.
+ * @param n - Total number of operations.
+ * @param missing - How many of the oldest ones reference a price table that does not exist.
+ * @returns The keys of the created operations, oldest first.
+ */
 async function seed(rt: OperationsRuntime, tenant: string, n: number, missing: number): Promise<OperationKey[]> {
   await db.pool.query('INSERT INTO otk_money_budget (budget_id, tenant_id, ceiling_units) VALUES ($1, $2, $3::numeric)', [`b-${tenant}`, tenant, (1000n * P).toString()]);
   const keys: OperationKey[] = [];

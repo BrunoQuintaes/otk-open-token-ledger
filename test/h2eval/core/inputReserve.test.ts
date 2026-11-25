@@ -1,3 +1,23 @@
+/**
+ * Tests the optional conservative input-reserve policy: a pre-send gate, off by default, that can only stop
+ * earlier, never later.
+ *
+ * Modules under test: `scripts/h2eval/core/inputReserve.ts` (`policyBoundTokens`, `evaluateInputReserve`,
+ * `isPolicyModel`), `scripts/h2eval/cli/run.ts` (`inputReservePolicyFromArgs`) and `scripts/h2eval/core/runner.ts`.
+ *
+ * Strategy / partitions: the bound curve (two multipliers, integer results, a floor of 37 tokens, reference
+ * values); the pure decision (no policy changes nothing; models outside the policy are not affected; tools, unknown
+ * local count, out-of-range counts and a reservation below the policy stop); unlisted Anthropic models stopped when
+ * the policy is on; the CLI flag (off without the flag, unknown id and an exemption option without a policy
+ * refused); the executor gate (a planned reservation below the policy reserves and sends nothing and locks the
+ * batch, at or above it continues); default behaviour unchanged; and the explicit exemption list.
+ *
+ * Needs: a writable temporary directory. It sets `H2EVAL_TEST_KEY` to a fake canary value. No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/core/inputReserve.test.ts`
+ *
+ * @module test/h2eval/core/inputReserve.test
+ */
 // SYNTHETIC — OFFLINE. C158 §3.2: conservative INPUT RESERVE policy (ECON-02, R-A x1.03 / x1.05) as a configurable PRE-SEND gate. NOT active by default; it can only stop earlier.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -13,7 +33,13 @@ import type { BuiltRequest } from '../../../scripts/h2eval/types.js';
 
 process.env['H2EVAL_TEST_KEY'] = 'zq-reserve-canary';
 const M55 = 'claude-haiku-5-5';
-/** the price fixture re-keyed to a 5.5 model name (synthetic) */
+/**
+ * the price fixture re-keyed to a 5.5 model name (synthetic)
+ *
+ * @param dir - Directory where the fixture file is written.
+ * @param model - Model id that replaces the fixture's synthetic model name.
+ * @returns The loaded price table.
+ */
 function pricesFor(dir: string, model: string) { const f = writePriceFixture(dir); writeFileSync(f, readFileSync(f, 'utf8').split('sim-haiku').join(model)); return loadPriceTable(f); }
 const TEXTS = { a: Array.from({ length: 30 }, (_, i) => `palavra${i} sintetica de teste`).join(' '), tiny: 'oi' };
 

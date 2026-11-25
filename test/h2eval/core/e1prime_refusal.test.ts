@@ -1,3 +1,23 @@
+/**
+ * Tests that a refusal with complete usage does not count as a consecutive failure, while real failures still stop
+ * the batch.
+ *
+ * Module under test: `scripts/h2eval/core/runner.ts` (`createExecutor`, consecutive-failure stop), with the journal
+ * verifier and the doubles in `../support/double.ts`.
+ *
+ * Strategy / scenarios: two refusals with usage in a row do not stop the batch and the next operation is sent and
+ * settled; refusals stay recorded (journal, record with calculated cost, per-batch refusal count); a burst of five
+ * refusals does not stop the batch by this counter; two served-model mismatches stop the batch before the third
+ * send; a refusal with a mismatched served model counts as a failure; and an error without usage still stops at
+ * the first occurrence as uncertain.
+ *
+ * Needs: a writable temporary directory. It sets `H2EVAL_TEST_KEY` to a fake canary value. Doubles only: no network,
+ * no credential, no GO file.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/core/e1prime_refusal.test.ts`
+ *
+ * @module test/h2eval/core/e1prime_refusal.test
+ */
 // SYNTHETIC — OFFLINE. E1' (C158, 2026-11-12): RECUSA com usage completo (stop_reason=refusal, REFUSED_WITH_USAGE, exclusion NONE) NAO conta como falha consecutiva.
 // Mostra: (1) 2 recusas seguidas nao disparam STOP_CONSECUTIVE_FAILURES e a operacao seguinte e enviada; (2) a recusa continua no journal, no registro (outcome REFUSED_WITH_USAGE, exclusion NONE, custo CALCULATED) e no total de recusas do lote;
 // (3) falhas REAIS continuam disparando: modelServed fora dos aceitos x2 => STOP_CONSECUTIVE_FAILURES; erro sem usage => STOP_UNCERTAIN na 1a; recusa com modelServed fora dos aceitos CONTA;

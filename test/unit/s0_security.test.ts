@@ -3,6 +3,17 @@
  *
  * Tests for SEC-10, SEC-02 security fixes.
  *
+ * Modules under test: `src/auth/authMiddleware.ts` (request authentication when no tenant is configured),
+ * `src/api/tenantKeyRegistry.ts` and `src/auth/jwt.ts` (`getJwtSecret`).
+ *
+ * Strategy / partitions: no tenants configured in production (no credential and a token credential, both
+ * refused); no tenants in development and test (open, kept for compatibility); tenants configured (the
+ * registered token authenticates); the signing secret unset (the getter may return a falsy value).
+ *
+ * Needs: nothing external. Changes `NODE_ENV` and removes `OTK_JWT_SECRET` inside each test and restores them.
+ *
+ * Run just this file: `npx tsx --test test/unit/s0_security.test.ts`
+ *
  * @module test/unit/s0_security
  * @since S0 PACK01 (2026-04-06)
  */

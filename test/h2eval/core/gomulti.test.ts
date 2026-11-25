@@ -1,3 +1,23 @@
+/**
+ * Tests the validator of the multi-batch GO file against a real plan: one valid file and a list of invalid
+ * variants, each refused with its own code.
+ *
+ * Module under test: `scripts/h2eval/core/egress.ts` (`validateGoMultiV1`, `GO_MULTI_MAX_ATTEMPTS`), with a plan
+ * from `scripts/h2eval/cli/plan.ts` and GO files from `../support/gomulti.ts`.
+ *
+ * Strategy / partitions: valid; expired, not yet valid, or a window over 72 hours; a batch outside the plan;
+ * wildcard or empty scope; repeated or short nonces; wrong executor SHA; dirty working tree; another plan; caps that
+ * differ from the effective ledger on either side; attempt limit above the scope or the global maximum;
+ * preregistration mismatch or not configured; placeholder values; tampered digest; missing per-model gate
+ * requirement; unsigned pre-approval; unsigned GO.
+ *
+ * Needs: a writable temporary directory and a synthetic corpus frozen in the `setup` test (allow up to 5 minutes);
+ * sets `H2EVAL_CONTROL_DIR` to a temporary folder when unset. No network, no credential.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/core/gomulti.test.ts`
+ *
+ * @module test/h2eval/core/gomulti.test
+ */
 // SYNTHETIC — OFFLINE. C144 D144-05: negatives of the multi-batch GO validator (h2eval.go.multi.v1): expired / not yet valid / window > 72 h,
 // batch outside the plan, wildcard or empty scope, repeated or short nonces, wrong executor SHA, dirty tree, other plan, caps != effective
 // ledger (either side), maxAttempts above the scope or above 1 446, pre-registration mismatch / unconfigured, placeholder, tampered digest,

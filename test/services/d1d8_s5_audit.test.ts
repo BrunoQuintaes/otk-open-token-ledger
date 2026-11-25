@@ -14,6 +14,18 @@
  * AUD-2: a complete measurement whose quote is partial but whose KNOWN subtotal already exceeds the
  *   reserved worst case. Expected: budgets frozen (money_excess_over_reservation), as when the quote
  *   is complete; the reservation stays held (pending_price), nothing is settled.
+ *
+ * Module under test: the strict money ceiling in the in-process durable gateway (`src/operations/runtime.ts` and the
+ * proxy routes), with the fake provider from `./d1d8_c_provider.ts`.
+ *
+ * Strategy: one scenario per finding, as described above.
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts`; only `OTK_TEST_PG_URL` is read by this file (the
+ * Redis URL in the command above is not used here). Before importing the server it sets fixture values in the test
+ * process for the API's variables (tenants, a fake Anthropic key, the upstream override, `PROVER_URL=disabled`). The
+ * command above runs just this file.
+ *
+ * @module test/services/d1d8_s5_audit.test
  */
 process.env['OTK_DB_URL'] = '';
 process.env['OTK_RECEIPT_LOG'] = '';

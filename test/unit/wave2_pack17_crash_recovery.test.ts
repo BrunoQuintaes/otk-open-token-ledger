@@ -11,6 +11,18 @@
  *   - Recovery summary shape
  *
  * @since Wave 2 Pack 17 (2026-03-15)
+ *
+ * Module under test: `src/automation/CrashRecovery.ts` (`CrashRecoveryManager`), with every dependency passed in
+ * as a stub (counts, chain head, log paths, auto-loop flag).
+ *
+ * Strategy / partitions: as listed above; empty log paths, a log with duplicate request ids, a missing log file,
+ * a store count below the log count, a matching and a mismatching chain head, the auto-loop flag on and off.
+ *
+ * Needs: a temporary directory for the receipt log (files removed after each test); no network.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave2_pack17_crash_recovery.test.ts`
+ *
+ * @module test/unit/wave2_pack17_crash_recovery.test
  */
 
 import { describe, it, beforeEach, afterEach } from 'node:test';

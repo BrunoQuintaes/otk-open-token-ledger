@@ -2,6 +2,20 @@
  * STOPGATE-01 P1.3 (R-12): source key of a request behind (or around) a reverse proxy. The key feeds the per-source
  * authentication-failure limiter of the proxy and the key-lookup miss limiter of the API: a client that can choose its
  * key can rotate it and escape both.
+ *
+ * Module under test: `sourceKey` in `src/security/authFailureLimiter.ts`, called with fake request objects.
+ *
+ * Partitions: absent or invalid hop configuration (forwarding header ignored); one trusted hop (the entry appended by
+ * the proxy wins over client-prepended entries); more hops configured than present (socket peer); non-address entries,
+ * ports and brackets; IPv6 grouping by /64 and IPv4-mapped peers; a trusted-proxy address list (a client reaching the
+ * replica directly cannot choose its key, invalid list entries ignored); and the documented residual without that list.
+ *
+ * Needs: nothing external. Sets and removes `OTK_PROXY_TRUSTED_HOPS` and `OTK_PROXY_TRUSTED_ADDRS` per case and
+ * restores the caller's values at the end.
+ *
+ * Run just this file: `npx tsx --test test/security/stopgate01_r12_trusted_proxy.test.ts`
+ *
+ * @module test/security/stopgate01_r12_trusted_proxy.test
  */
 import { describe, it, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';

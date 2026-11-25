@@ -22,10 +22,19 @@
  * API does when the request sets service_tier; x-test-openai-tier: "none" omits it.
  *
  * Every request is recorded (script, body, whether the proxy aborted it before the end).
+ *
+ * The server listens on an OS-assigned loopback port; point the proxy's provider base URL at {@link ControllableProvider.url}.
+ *
+ * @module test/services/d1d8_c_provider
  */
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
+/**
+ * One request received by the fake provider: the script it asked for, the path, the parsed JSON body, the two
+ * credential headers exactly as received (so tests can check what the proxy forwarded), all headers, whether the
+ * client aborted before the end, and whether the provider finished answering.
+ */
 export interface ProviderCall {
   script: string;
   path: string;
@@ -37,13 +46,19 @@ export interface ProviderCall {
   finished: boolean;
 }
 
+/** A one-shot gate: the provider waits on `promise` until the test calls `release()`. */
 export class Barrier {
   private resolveFn: (() => void) | null = null;
   readonly promise: Promise<void>;
   constructor() { this.promise = new Promise((r) => { this.resolveFn = r; }); }
+  /** Opens the gate; later calls do nothing. */
   release(): void { this.resolveFn?.(); }
 }
 
+/**
+ * Local HTTP server that imitates the OpenAI, Anthropic and Gemini APIs under test control (see the file header
+ * for the request headers that select each behaviour).
+ */
 export class ControllableProvider {
   private server: Server | null = null;
   readonly calls: ProviderCall[] = [];
@@ -56,18 +71,31 @@ export class ControllableProvider {
   onArrive: ((c: ProviderCall) => Promise<void> | void) | null = null;
   port = 0;
 
+  /**
+   * Base URL of the running server (valid after {@link ControllableProvider.start}).
+   *
+   * @returns `http://127.0.0.1:<port>`.
+   */
   get url(): string { return `http://127.0.0.1:${this.port}`; }
 
+  /**
+   * Waits for the next request to arrive after this call (earlier requests are not replayed; several waiters are
+   * served in the order they called).
+   *
+   * @returns The call, as soon as it arrives.
+   */
   nextArrival(): Promise<ProviderCall> {
     return new Promise((r) => this.arrivals.push(r));
   }
 
+  /** Starts listening on a free loopback port and sets `port`. */
   async start(): Promise<void> {
     this.server = createServer((req, res) => { void this.handle(req, res); });
     await new Promise<void>((r) => this.server!.listen(0, '127.0.0.1', r));
     this.port = (this.server.address() as AddressInfo).port;
   }
 
+  /** Releases every armed barrier, closes all open connections and stops the server. */
   async stop(): Promise<void> {
     for (const b of [...this.finalBarriers, ...this.doneBarriers]) b.release();
     this.server?.closeAllConnections();
@@ -166,7 +194,16 @@ export class ControllableProvider {
     call.finished = true;
   }
 
-  /** Gemini generateContent / streamGenerateContent (alt=sse) wire format. */
+  /**
+   * Gemini generateContent / streamGenerateContent (alt=sse) wire format.
+   *
+   * @param req - Incoming request (its URL selects stream or not; `x-test-gemini-*` headers shape the usage).
+   * @param res - Response to write.
+   * @param call - Record of this call; `finished` is set when the answer ends normally.
+   * @param script - Behaviour requested by the test.
+   * @param p - Prompt token count to report.
+   * @param c - Candidate (output) token count to report.
+   */
   private async gemini(req: IncomingMessage, res: ServerResponse, call: ProviderCall, script: string, p: number, c: number): Promise<void> {
     const h = (n: string) => (typeof req.headers[n] === 'string' ? (req.headers[n] as string) : undefined);
     const model = h('x-test-model') ?? (req.url ?? '').match(/models\/([^/:?]+)/)?.[1] ?? 'gemini-2.5-flash-lite';

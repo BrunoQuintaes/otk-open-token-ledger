@@ -17,6 +17,20 @@
  *   - API server: child process spawned via tsx with injected env vars
  *
  * @since u12.remaining.g (GAP-D-004 closure)
+ *
+ * Strategy / scenarios (T1–T8, run in order and sharing state): API and stub health; a receipt is accepted with
+ * its request id and cost units; the proof job reaches the stub without the client waiting; the stored receipt
+ * is read back with its fields; the stub reports the job done; an admin batch flush seals at least one receipt;
+ * and the audit chain head is a non-genesis 64-character hex digest with at least one entry.
+ *
+ * Needs: two free 127.0.0.1 ports, `node_modules/.bin/tsx` to start the API child, and up to 60 s for it to
+ * become healthy. The child gets `API_PORT`, `PROVER_URL`, `OTK_ADMIN_KEY`, `OTK_RECEIPT_LOG` (empty) and
+ * `NODE_ENV` set to fixture values; `OTK_TENANTS` and `OTK_DB_URL` are removed (open mode, in memory). No external
+ * network.
+ *
+ * Run just this file: `npx tsx --test test/integration/e2e_api_prover.test.ts`
+ *
+ * @module test/integration/e2e_api_prover.test
  */
 
 import { describe, it, before, after } from 'node:test';
@@ -54,6 +68,12 @@ async function getFreePort(): Promise<number> {
  * idle on the reference machine) and, inside the parallel `npm test`, exceeded the former fixed 15 s
  * (S4: 8 cancellations in 2/2 runs; fps5: 1/3). The wait now lasts while the child is alive, up to 60 s,
  * and fails at once, with the child's stderr, if it exits — a crash is never mistaken for slowness.
+ *
+ * @param url - Health URL of the API child.
+ * @param child - The API child process, checked for an early exit on each poll.
+ * @param stderrTail - Returns the latest stderr text, quoted in the error message.
+ * @param maxMs - Overall deadline in ms (default 60 000); polls every 300 ms with a 600 ms request timeout.
+ * @throws {Error} When the child exits first, or the deadline passes without a 2xx answer.
  */
 async function waitForHealth(url: string, child: ChildProcess, stderrTail: () => string, maxMs = 60000): Promise<void> {
   const deadline = Date.now() + maxMs;

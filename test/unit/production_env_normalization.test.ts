@@ -4,6 +4,20 @@
  * label reopened the auth-disabled OWNER mode, and authMiddleware treated only "production" as production. Now every
  * value except development / dev / test (case and spaces ignored) or an unset NODE_ENV is a deployed environment.
  * Unset stays permissive (Node convention; tests and local runs) and is documented as a limitation.
+ *
+ * Modules under test: `src/api/productionGuard.ts` (deployed-environment detection), `src/api/routes.ts`
+ * and `src/auth/authMiddleware.ts`, plus the start-up check of `src/api/server.ts`.
+ *
+ * Strategy / partitions: `NODE_ENV` values that must count as deployed (case, spaces and other labels), values
+ * that keep the development mode (development, dev, test), an unset value, and a server start with a
+ * deployed label and no tenants.
+ *
+ * Needs: changes `NODE_ENV` and removes `OTK_ADMIN_KEY` during each test, restoring both afterwards. The
+ * start-up case spawns `src/api/server.ts` with the `tsx` loader on port 0 (killed after at most 40 s).
+ *
+ * Run just this file: `npx tsx --test test/unit/production_env_normalization.test.ts`
+ *
+ * @module test/unit/production_env_normalization.test
  */
 import { describe, it, afterEach, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

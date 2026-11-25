@@ -1,3 +1,24 @@
+/**
+ * Tests for the cache cost interval: exact pico-USD arithmetic for the cheapest and the most expensive outcome of
+ * a call whose cache result is not known in advance.
+ *
+ * Module under test: `scripts/h2eval/cache/costInterval.ts` (`picoPerToken`, `picoToUsd`, `costInterval`,
+ * `inInterval`, `costFromObservation`), with `classifyCache` from `scripts/h2eval/cache/classify.ts` to build
+ * observations.
+ *
+ * Strategy / partitions: price string parsing (valid decimals and rejected formats) and pico-to-USD formatting;
+ * exact interval values for OpenAI and Anthropic (the upper bound uses the larger of the input and cache-write
+ * prices, 1-hour write when the TTL is unknown); the lower bound using only the prefix that fits in the input;
+ * inverted or non-integer token bounds (rejected); unknown prices (state `UNKNOWN` with a reason, never 0); a price
+ * tier the table does not model (explicit failure); and the observed-usage cost for miss, hit and creation, which
+ * must fall inside the interval, with an out-of-interval value detected.
+ *
+ * Needs: nothing external (pure BigInt arithmetic on the built-in price table).
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cache/costInterval.test.ts`
+ *
+ * @module test/h2eval/cache/costInterval.test
+ */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { classifyCache } from '../../../scripts/h2eval/cache/classify.js';

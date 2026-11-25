@@ -1,3 +1,22 @@
+/**
+ * Tests the refusal rule (a refusal with complete usage is not a consecutive failure) under the alternative caps
+ * profile and the production stop threshold of 2 consecutive failures.
+ *
+ * Module under test: `scripts/h2eval/core/runner.ts` (`createExecutor`), with the journal verifier and the doubles
+ * in `../support/double.ts`.
+ *
+ * Strategy / scenarios: two refusals with usage in a row do not stop the batch, and they are costed and settled in
+ * the ledger; a refusal does not reset a running sequence of real failures (failure, refusal, failure stops before
+ * the next send); an OK response still resets the sequence; two served-model mismatches stop the batch, a refusal
+ * with a mismatched model counts, and an error without usage stops as uncertain.
+ *
+ * Needs: a writable temporary directory. It sets `H2EVAL_TEST_KEY` to a fake canary value. Doubles only: no network,
+ * no credential, no GO file.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/core/e2prime_refusal.test.ts`
+ *
+ * @module test/h2eval/core/e2prime_refusal.test
+ */
 // SYNTHETIC — OFFLINE. E2' (C159-A Q04, 2026-11-13): a MESMA regra do E1' (3ea40943) portada para o executor E2 (be8acab2) de Sonnet/Opus, exercida com o perfil de tetos do E2 (ciclo3_c158: 32/32/0/0)
 // e com o valor de producao consecutiveFailureStop = 2 (cli/run.ts). Mostra: (1) recusas com usage completo nao contam; (2) a recusa NAO zera uma sequencia de falhas REAIS em curso (falha real, recusa, falha real => STOP na 4a);
 // (3) falhas reais (modelServed fora dos aceitos) e erro sem usage continuam com o tratamento anterior; (4) o perfil do E2 continua o unico aceito acima do padrao (o teste de tetos fica em capsProfileExecutor.test.ts).

@@ -12,6 +12,27 @@
  *    exercised (plans 404, checkout 400, keys 403 email_not_verified with a positive control, proxy 429 + Retry-After).
  * 6. Every path called by the SDKs (sdk/src/index.ts, sdk/python) is a real route.
  * In-memory stores; the proxy gateway listens on 127.0.0.1 with the provider fetch stubbed (no external network).
+ *
+ * Modules under test (imported dynamically after the environment is set): `src/api/routes.ts`,
+ * `src/api/errors.ts`, `src/api/tenantKeyRegistry.ts`, the user store and email verification
+ * (`src/users/`, `src/auth/emailVerification.ts`), `src/proxy/ProxyGateway.ts` with
+ * `src/security/authFailureLimiter.ts`, and `src/api/receiptStore.ts`. The route inventory comes
+ * from `scripts/ops/extract_routes.mjs`, run as a child process.
+ *
+ * Strategy / partitions: the numbered items above; each item is checked once per documented
+ * path, registered code or SDK call, plus one positive and one negative case for each reachable
+ * error code.
+ *
+ * Needs: read access to the OpenAPI spec, `src/` and the SDK sources; a free loopback port for
+ * the proxy gateway. Sets, at load time, empty storage variables (`OTK_RECEIPT_LOG`, `OTK_DB_URL`,
+ * `OTK_TENANT_LOG`), `PROVER_URL=disabled`, a fake `OPENAI_API_KEY`, a per-run `OTK_JWT_SECRET` and
+ * `OTK_PROXY_AUTH_FAIL_MAX=2`, and deletes `OTK_REDIS_URL`, `OTK_TENANTS`, `OTK_STRICT_VERSIONING`
+ * and `OTK_BILLING_REDIRECT_ORIGINS`; `OTK_ADMIN_KEY` and `globalThis.fetch` are replaced in
+ * `before` and restored in `after`. HTTPS calls get a canned answer; nothing leaves the machine.
+ *
+ * Run just this file: `npx tsx --test test/unit/h1_s24_api_contract.test.ts`
+ *
+ * @module test/unit/h1_s24_api_contract.test
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -106,7 +127,14 @@ const EXTRACTED = JSON.parse(execFileSync(process.execPath, [path.join(ROOT, 'sc
 const DISPATCHERS = new Set(['/v1/', '/auth/saml/', '/auth/oidc/', '/app', '/v1/webhooks', '/scim/v2/', '/admin/gdpr/', '/admin/flags']);
 // H1R2 C1 (S08-F01 fixed): the extractor now reports the handlers that the supplementary list used to cover (regex
 // conditions, *Match variables, flagsPath), so the list is gone and regex/except routes are matched here.
-/** True when (method, concrete path) is served by a handler of the given server (api: routes.ts, SCIM, dashboard). */
+/**
+ * True when (method, concrete path) is served by a handler of the given server (api: routes.ts, SCIM, dashboard).
+ *
+ * @param method - HTTP method in upper case.
+ * @param concrete - Request path with every template parameter already replaced by a sample value.
+ * @param srv - Which server to look in; defaults to the API.
+ * @returns `true` when some non-dispatcher route of the inventory matches.
+ */
 function isRoute(method: string, concrete: string, srv: 'api' | 'proxy' = 'api'): boolean {
   // the API dispatcher cuts one leading /v1 (routes declared with a literal /v1 live at /v1/v1/..., NF-15)
   const rp = srv === 'api' && concrete.startsWith('/v1/') ? concrete.slice(3) : concrete;

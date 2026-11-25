@@ -1,3 +1,22 @@
+/**
+ * Tests that the provider's stop or finish reason is parsed, normalized and persisted, and that completion is
+ * derived only from that reason, with visible, reasoning and total output kept as separate fields.
+ *
+ * Modules under test: `scripts/h2eval/modal/index.ts` (`completionOf`) and the three response parsers, plus
+ * `scripts/h2eval/core/runner.ts`, `scripts/h2eval/core/journal.ts` and `exportDataset` from
+ * `scripts/h2eval/cli/status.ts` for persistence.
+ *
+ * Strategy / partitions: Anthropic `max_tokens` with all output spent on thinking (truncated; visible 0 and reasoning
+ * counted separately); OpenAI `length`, `stop` and `content_filter`; Gemini `MAX_TOKENS`, `STOP` and `SAFETY`;
+ * unknown or free-text reasons never passed through; and an executor run that records the reason and completion in
+ * the journal, the record and the dataset export.
+ *
+ * Needs: a writable temporary directory (through `../support/double.ts`) and the response fixtures. No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/modal/stopreason.test.ts`
+ *
+ * @module test/h2eval/modal/stopreason.test
+ */
 // SYNTHETIC — OFFLINE. VNEXT-1 (C151 item 1): the provider's stop/finish reason is parsed, normalised and PERSISTED (journal RESPONSE_RECEIVED,
 // record, dataset export); completion is derived from the provider's reason only (never inferred from counts); visible, reasoning and total
 // output are always separate fields. Three providers: anthropic stop_reason, openai finish_reason, gemini finishReason. Free text never passes.

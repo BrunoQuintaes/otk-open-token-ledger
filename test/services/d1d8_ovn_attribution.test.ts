@@ -9,6 +9,25 @@
  * 150 × 0.4 = 60 CU = 60 000 000 micro-CU per operation.
  *
  *   . docs/_ops/OVERNIGHT_20261005_MASTER/tools/ovn_env.sh && npx tsx --test test/services/d1d8_ovn_attribution.test.ts
+ *
+ * Modules under test: the project and task attribution of operations in `src/operations/runtime.ts` and the API
+ * routes that register projects, record attribution headers and export signed statements, through the in-process
+ * API with the fake provider from `./d1d8_c_provider.ts`.
+ *
+ * Strategy / scenarios: registration by an operator (a viewer cannot); refusals before the upstream (another
+ * tenant's project, unknown application, malformed header); attributed and unattributed operations, with the
+ * attribution headers never forwarded; retries with the same or a conflicting attribution; the summary invariant
+ * (sum over projects plus unattributed equals the canonical ledger); signed statements that verify against their
+ * receipts and fail when moved or edited; receipts that carry no project label; totals unchanged after a restart;
+ * and a conflicting statement that never blocks the receipt and proof pipeline.
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`); an operator key is generated
+ * per run and never stored. Before importing the server it sets fixture values in the test process for the API's variables (tenants, a
+ * fake OpenAI key, the upstream override, `PROVER_URL=disabled`). The command above first sources an environment
+ * script that is not part of this repository; with `OTK_TEST_PG_URL` already set,
+ * `npx tsx --test test/services/d1d8_ovn_attribution.test.ts` runs just this file.
+ *
+ * @module test/services/d1d8_ovn_attribution.test
  */
 process.env['OTK_DB_URL'] = '';
 process.env['OTK_RECEIPT_LOG'] = '';

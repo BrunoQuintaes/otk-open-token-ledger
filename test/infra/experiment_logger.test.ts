@@ -1,5 +1,22 @@
 /**
  * ExperimentLogger Tests (Pre-U9)
+ *
+ * Behaviour tested: the in-memory experiment record logger meant for benchmarking, which collects one record per
+ * metered call (tokens, latency in ms, cost units, success) and exports them for offline analysis.
+ *
+ * Module under test: `src/infra/logging/ExperimentLogger.ts` (`ExperimentLogger`, `ExperimentRecord`).
+ *
+ * Strategy / partitions: zero, one and many records; `totalTokens` given or derived from input + output; frozen
+ * read-only views; flush and auto-flush (threshold reached, threshold 0 = never); JSON export (compact, pretty,
+ * bigint `gasUsed`, metadata on and off); CSV export (header only when empty, escaping of special characters,
+ * optional fields, metadata column on and off); summary statistics on an empty and a filled logger; filters by
+ * provider, success and latency threshold; and one end-to-end experiment workflow.
+ *
+ * Needs: nothing external (in memory, no file I/O, no network).
+ *
+ * Run just this file: `npx tsx --test test/infra/experiment_logger.test.ts`
+ *
+ * @module test/infra/experiment_logger.test
  */
 
 import { describe, it } from 'node:test';

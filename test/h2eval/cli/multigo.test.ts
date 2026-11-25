@@ -1,3 +1,27 @@
+/**
+ * Tests the multi-batch GO file (one signed go-ahead scope covering several batches) and the execution policy of
+ * `runAuthorized`.
+ *
+ * Modules under test: `scripts/h2eval/core/egress.ts` (`validateGoMultiV1`), `scripts/h2eval/cli/run.ts`
+ * (`runAuthorized`, `STOP_POLICY`, `dispositionOf`), `scripts/h2eval/cli/campaign.ts`,
+ * `scripts/h2eval/cli/common.ts` (directory lock) and `scripts/h2eval/core/ledger.ts`.
+ *
+ * Strategy / partitions: invalid GO files (expired, reused nonce, batch outside the plan, wrong executor SHA,
+ * wildcard scope, attempt limit above the scope or the global maximum, cap mismatch); a pilot run (batches done,
+ * Google skipped without its own gate, a started batch's nonce not reopened by a new GO file, out-of-scope
+ * batch refused); a campaign run (per-model gate, where a failing model is skipped and the others continue; the
+ * study ledger inherits the pilot spend; the global campaign lock); crossing 80% of a sub-ledger with and without
+ * the signed pre-approval up to 100%; the attempt-limit stop; and the stop-policy table. The REAL mode is exercised only up
+ * to its refusal.
+ *
+ * Needs: a writable temporary directory and a synthetic corpus frozen in the `setup` test (allow up to 5 minutes);
+ * sets `H2EVAL_CONTROL_DIR` to a temporary folder when unset (through `../support/gomulti.ts`). No network, no
+ * credential.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cli/multigo.test.ts`
+ *
+ * @module test/h2eval/cli/multigo.test
+ */
 // SYNTHETIC — OFFLINE. C144: multi-batch GO (h2eval.go.multi.v1) negatives and the execution policy: expired GO, reused nonce, batch outside
 // the plan, wrong executor SHA, wildcard scope, maxAttempts above scope / above 1446, caps mismatch; G17 FAIL isolates ONE model and the
 // others continue; Google needs G16-GOOGLE + listing; shared study ledger (pilot spend inherited by the campaign); global campaign lock;

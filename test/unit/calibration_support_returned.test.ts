@@ -2,6 +2,22 @@
  * F-FC-02 (FINAL CLOSURE, 2026-10-07): the calibration profile is selected for the model the provider RETURNED when its
  * local tokenizer is identical to the one used for the local count. Uses the approved real profile of the OVERNIGHT 2
  * campaign (gpt-4o-mini-2024-07-18, calibrated=true) and the two NOT_CALIBRATED ones. No alias is added.
+ *
+ * Modules under test: `calibrationSupportFor` from `src/operations/effects.ts` and the registry
+ * from `src/tokenization/calibrationProfile.ts`, with model support from
+ * `src/providers/catalog/modelCatalog.ts`.
+ *
+ * Strategy / partitions: requested alias with a returned calibrated snapshot (COMPATIBLE);
+ * requested alias with no returned model, and a returned snapshot no profile names (ABSENT);
+ * the two uncalibrated profiles (stay NOT_CALIBRATED); a returned model whose local tokenizer
+ * differs (the requested model's support is kept).
+ *
+ * Needs: read access to three calibration profile JSON files in the repository (one under
+ * `config/calibration/`, two under `docs/_ops/`); no network.
+ *
+ * Run just this file: `npx tsx --test test/unit/calibration_support_returned.test.ts`
+ *
+ * @module test/unit/calibration_support_returned.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,3 +1,27 @@
+/**
+ * Tests the automatic probe of a new model or an unmeasured prompt-length region: the first operation of a region
+ * is judged, and a failed or unresolved probe halts the batch for good.
+ *
+ * Modules under test: `scripts/h2eval/core/modelProbe.ts` (`aboveRangeBand`, `probeRegionOf`, `probeKeyOf`,
+ * `probeStateOf`, `judgeProbe`), `scripts/h2eval/cli/run.ts` (`modelProbeFromArgs`) and
+ * `scripts/h2eval/core/runner.ts`.
+ *
+ * Strategy / partitions: units (regions, key, state and judgement; unknown is never treated as good); CLI and
+ * configuration (limit required, outside [1, 10], NaN and empty refused; no probe without the flag); a new model
+ * whose first operation is the probe; adversarial cases (ratio above the limit, truncated completion, input above
+ * the reservation, an uncertain probe whose human acknowledgement does not license the model, crash windows around
+ * the probe result); the above-range region of a model with a measured range, split into length-doubling bands each
+ * with its own probe; interplay with the reserve policy and the input guard; off by default and exempt models; no
+ * ratio judgement after a passed probe; restart after a passed probe; and refusal before the region when the local
+ * count is unknown.
+ *
+ * Needs: a writable temporary directory. It sets `H2EVAL_TEST_KEY` to a fake canary value. Doubles only: no network,
+ * no credential, no paid call, no GO file.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/core/modelProbe.test.ts`
+ *
+ * @module test/h2eval/core/modelProbe.test
+ */
 // SYNTHETIC — OFFLINE. C158: AUTOMATIC PROBE of a new model / unmeasured length region. The first operation of a region is judged (measured vs estimated vs reservation, completion, tier, reasoning);
 // a failed or unresolved probe halts the batch (STOP_MODEL_PROBE_FAILED, no retry, latching, also after a restart). Adversarial: crash windows, ack of an uncertain probe, tier/truncation, G7 interplay,
 // reserve-policy interplay, off by default. Doubles only: no network, no credential, no paid call, no GO.

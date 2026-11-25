@@ -1,3 +1,24 @@
+/**
+ * Tests that the request instrumentation (body hash and provider request id) coexists with the model probe in the
+ * executor, in REAL mode with an injected fetch and in OFFLINE mode with the double.
+ *
+ * Modules under test: `scripts/h2eval/core/runner.ts` (`createExecutor`), its request instrumentation and probe
+ * judgement, with the journal verifier and the doubles in `../support/double.ts`.
+ *
+ * Strategy / scenarios: a probe of the mid-size comparison model in REAL mode records the hash of the bytes sent and
+ * the response request id, and the probe and reservation decisions are identical with and without a request id and
+ * when the instrumentation fails; the probe rule is preserved (a truncated probe with complete usage passes, a ratio
+ * of 1.95 fails); and OFFLINE mode records the hash of the serialized body and `NOT_AVAILABLE` for the request id.
+ * This file covers what `e1ppp_rinst.test.ts` does not. Tests tagged with a commit id failed before the fix.
+ *
+ * Needs: a writable temporary directory. REAL mode runs only with an injected fetch (no socket); the credential is a
+ * synthetic canary in a temporary env file; OFFLINE runs set `H2EVAL_TEST_KEY` to a fake canary. Importing
+ * `syntheticGo` from `./go.test.ts` also registers that file's tests in this run.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/core/e3hri_rinst.test.ts`
+ *
+ * @module test/h2eval/core/e3hri_rinst.test
+ */
 // SYNTHETIC — OFFLINE. E3HRI (C160, RINST-E3; DR-206): o delta R-INST do E1‴ c9d27216 portado para o executor E3HR 0f64e069 (sonda julgada pelo proposito), que e o do SONNET-R.
 // Estes casos cobrem o que o e1ppp_rinst.test.ts (copiado sem mudanca) nao cobre no E3HR: a convivencia do R-INST com a SONDA de modelo/faixa do E3HR no claude-sonnet-5-5
 // (faixa medida 12..810; texto de L0 ~ 860 => ABOVE_RANGE_B0) e o modo OFFLINE (double) usado pelo ensaio sintetico do kit SONNET-R.
@@ -30,7 +51,12 @@ const truncAt = (maxTokens: number): Mut => (b) => { served(b); b['stop_reason']
 type Line = { kind: string; body: Record<string, unknown> };
 const KINDS_E3HR = new Set(['PLANNED', 'PRECALL_SNAPSHOT_COMMITTED', 'MODEL_PROBE_STARTED', 'RESERVED', 'SENT', 'RESPONSE_RECEIVED', 'ERROR_WITH_USAGE', 'ERROR_NO_USAGE', 'TIMEOUT_UNCERTAIN', 'UNCERTAIN_ISOLATED', 'USAGE_PARSED', 'COST_COMPUTED', 'SETTLED', 'MODEL_PROBE_RESULT', 'STOP_GLOBAL']);
 
-/** Uma sonda do Sonnet (1a operacao da banda ABOVE_RANGE_B0). REAL: fetch injetado com os `headers` dados; OFFLINE: double sem headers (como no ensaio sintetico do kit). */
+/**
+ * Uma sonda do Sonnet (1a operacao da banda ABOVE_RANGE_B0). REAL: fetch injetado com os `headers` dados; OFFLINE: double sem headers (como no ensaio sintetico do kit).
+ *
+ * @param o - Scenario: execution mode, response headers (REAL only), the provider-to-local token ratio to simulate,
+ *   an optional mutation of the fake response, and the output-token cap of the probe.
+ */
 async function probeRun(o: { mode: 'REAL' | 'OFFLINE'; headers?: unknown; ratio?: number; mutate?: Mut; maxTokens?: number }) {
   const dir = tmp('e3hri'); const store = memoryContentStore({ s1: TEXT }); let lastL0 = 0;
   const seenBodies: string[] = []; const doubleReqs: BuiltRequest[] = [];
@@ -55,7 +81,11 @@ async function probeRun(o: { mode: 'REAL' | 'OFFLINE'; headers?: unknown; ratio?
   const lines = verifyJournalText(readFileSync(path.join(dir, 'journal.jsonl'), 'utf8')) as unknown as Line[];
   return { r, lines, seenBodies, doubleReqs, line: (k: string) => lines.find((l) => l.kind === k)?.body, journalText: readFileSync(path.join(dir, 'journal.jsonl'), 'utf8') };
 }
-/** O que a sonda e a reserva decidem, sem os campos do R-INST nem tempos: tem de ser igual com e sem request-id e com falha da instrumentacao. */
+/**
+ * O que a sonda e a reserva decidem, sem os campos do R-INST nem tempos: tem de ser igual com e sem request-id e com falha da instrumentacao.
+ *
+ * @param x - Output of one `probeRun` call.
+ */
 const probeFacts = (x: Awaited<ReturnType<typeof probeRun>>) => {
   const s = x.line('MODEL_PROBE_STARTED'); const res = x.line('MODEL_PROBE_RESULT'); const rv = x.line('RESERVED');
   return { state: x.r.state, stop: x.r.stop, kinds: x.lines.map((l) => l.kind), started: s, verdict: res?.['verdict'], reasons: res?.['reasons'], ratio: res?.['ratio'], localCount: res?.['localCount'], reservedBound: res?.['reservedInputUpperBoundTokens'], reservedUsd: rv?.['usd'], reservedTokens: rv?.['reservedInputUpperBoundTokens'], sentBodies: x.seenBodies };

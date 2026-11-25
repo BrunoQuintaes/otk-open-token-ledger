@@ -5,6 +5,19 @@
  * Validates: configuration, health status, masking, lifecycle, singleton.
  *
  * @since Wave 1 Pack 2 (2026-03-15)
+ *
+ * Module under test: `src/infra/redis/redisClient.ts` (`RedisClient` and the `getRedisClient` singleton).
+ *
+ * Strategy / partitions: defaults and custom options; password masking on a valid URL, an invalid URL and a URL
+ * without password; state and health before connecting; a connection to an unreachable port; the singleton with
+ * `OTK_REDIS_URL` unset and set, repeated calls and reset; the event interface.
+ *
+ * Needs: no Redis. One case tries a TCP connection to `localhost:59999` and expects it to fail within 500 ms.
+ * Removes `OTK_REDIS_URL` before and after each singleton case.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave1_pack02_redis_infra.test.ts`
+ *
+ * @module test/unit/wave1_pack02_redis_infra.test
  */
 
 import { describe, it, beforeEach, afterEach } from 'node:test';

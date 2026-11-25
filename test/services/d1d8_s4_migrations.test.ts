@@ -7,6 +7,20 @@
  * with the default directory scripts/migrations (all files, 001 → 150).
  *
  *   . scripts/ops/s4_env.sh && npx tsx --test --test-concurrency=1 test/services/d1d8_s4_migrations.test.ts
+ *
+ * Module under test: `scripts/ops/migrate.js` with all files in `scripts/migrations`, run as a child process.
+ *
+ * Strategy / scenarios: an empty database (every file applies, a second run applies nothing); a database with a
+ * legacy receipts table (only the original columns added, rows kept); an upgrade from data written by the earlier
+ * runtime (every row kept, the money axis added explicitly); backup and restore of a migrated database (rows and
+ * migration bookkeeping kept, a later run is a no-op); and a compatible rollback and re-apply.
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`), the `docker` command with access
+ * to its container (`OTK_TEST_PG_CONTAINER`, with a default), and permission to spawn Node child processes. The
+ * command above loads the test environment from `scripts/ops/s4_env.sh` first; with the variables already set,
+ * `npx tsx --test --test-concurrency=1 test/services/d1d8_s4_migrations.test.ts` runs just this file.
+ *
+ * @module test/services/d1d8_s4_migrations.test
  */
 import { describe, it, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -23,7 +37,11 @@ import { admitReq, usage, CU } from '../fixtures/d1d8/c/builders.js';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const MIG = path.join(ROOT, 'scripts', 'migrations');
 const CONTAINER = process.env['OTK_TEST_PG_CONTAINER'] ?? 'otk-d1d8-1625-s4-postgres-1';
-/** The official command, default directory (OTK_MIGRATION_DIR removed from the environment). */
+/**
+ * The official command, default directory (OTK_MIGRATION_DIR removed from the environment).
+ *
+ * @param url - Database URL passed to the child process as `OTK_DB_URL`.
+ */
 const migrate = (url: string) => spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'ops', 'migrate.js')], { cwd: ROOT, env: { ...process.env, OTK_DB_URL: url, OTK_MIGRATION_DIR: undefined }, encoding: 'utf8' });
 const ALL = readFileSync(path.join(ROOT, 'docs', 'IT_ADMIN_GUIDE.md'), 'utf8'); // the documented procedure exists
 const P = 1_000_000_000_000n;

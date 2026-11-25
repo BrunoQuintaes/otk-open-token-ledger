@@ -7,7 +7,23 @@
  * 3. resolveTenantId() backward compatibility after E1.2 changes
  * 4. POST /admin/tenants/reload endpoint
  *
+ * Modules under test: `src/api/tenantKeyRegistry.ts` and `handleRequest` in `src/api/routes.ts`
+ * for the registry reload route.
+ *
+ * Strategy / partitions: parsing one pair, several pairs, tokens containing colons, invalid and
+ * empty pairs, empty and whitespace-only input (auth off), whitespace trimming, and a reload that
+ * replaces the previous registry; token context for unknown tokens, auth off, default role and an
+ * explicit role; the older tenant-id lookup before and after a reload; the reload route with a
+ * valid body, invalid JSON, a missing field, a wrong platform key, no platform key configured,
+ * an empty list while auth is on (refused) and immediate effect of a reload.
+ *
+ * Needs: no server (mock request/response objects). Individual route tests set or delete
+ * `OTK_ADMIN_KEY` and restore the previous value at the end of the test.
+ *
+ * Run just this file: `npx tsx --test test/unit/enterprise_e1_2.test.ts`
+ *
  * @since E1.2 (2026-03-13)
+ * @module test/unit/enterprise_e1_2.test
  */
 
 import { describe, it, before, afterEach } from 'node:test';

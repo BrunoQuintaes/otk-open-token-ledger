@@ -1,3 +1,28 @@
+/**
+ * Tests the comparison arm (one Google model and one OpenAI model) in the integrated executor: REAL sends through an
+ * injected fetch, attested arm prices, tier checks, a separate ledger, and usage edge cases that must never turn an
+ * unknown count into 0.
+ *
+ * Modules under test: `scripts/h2eval/index.ts` (`createH2EvalExecutor`, `loadE3GPriceTable`, loaded dynamically),
+ * the real adapters and egress, `scripts/h2eval/core/e3gArm.ts` and the journal verifier.
+ *
+ * Strategy / partitions: a REAL send per arm model (Standard tier, cost from the attested price, provider request id
+ * recorded, cache write charged for the OpenAI model); a served tier other than Standard stops with cost `UNKNOWN`;
+ * missing attested prices and unknown models refused before reserving; the arm ledger (wrong file, wrong caps
+ * profile or the USD 1.00 cap exceeded: nothing is sent); a missing cache-write count gives `UNKNOWN` cost and an
+ * isolated operation; OFFLINE behaviour (Google not locked by default, explicit lock still applies, adapter refusals);
+ * Gemini cached-content count absent (settled at the upper bound and marked), present, invalid; output missing; the
+ * upper bound used by the input guard; text-only handling limited to the arm models; and long-prompt cache writes.
+ * Tests tagged with a commit id failed on the executor before the fix.
+ *
+ * Needs: a writable temporary directory. REAL mode runs only with an injected fetch, so no socket is opened; the
+ * credential is a synthetic canary in a temporary file. Importing `syntheticGo` from `./go.test.ts` also registers
+ * that file's tests in this run.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/core/e3g_braco_go.test.ts`
+ *
+ * @module test/h2eval/core/e3g_braco_go.test
+ */
 // SYNTHETIC — OFFLINE. E3G (C160 BRACO-GO; DR-205): braço Google (gemini-3.1-flash-lite) + OpenAI (gpt-6-luna) no executor científico, sobre o E3HRI 29a910aa.
 // Casos marcados [FALHA NO 29a910aa] reprovam no E3HRI (modelo fora da matriz / modulo e3gArm ausente / lock do Google / request-id NOT_AVAILABLE) e passam no E3G.
 // REAL so com fetch INJETADO (dublê offline: nenhum socket); credencial = canario sintetico em arquivo temporario (nunca process.env de verdade, nenhuma chave real).
@@ -42,7 +67,14 @@ const openaiBody = (o: { prompt?: number; cached?: number; write?: number | null
   return b;
 };
 
-/** One arm operation in REAL mode through the INTEGRATED executor (real adapters, real egress) with an injected fetch. */
+/**
+ * One arm operation in REAL mode through the INTEGRATED executor (real adapters, real egress) with an injected fetch.
+ *
+ * @param p - Which arm model to run (the Google or the OpenAI arm).
+ * @param o - Scenario options: the fake response body and headers, which price table, ledger file and caps to use,
+ *   how many plans to run, the input bound, plan overrides, providers to lock, and `OFFLINE` to use the double
+ *   instead of the injected fetch.
+ */
 async function armRun(p: Arm, o: { body?: () => unknown; headers?: unknown; prices?: 'arm' | 'default'; ledgerFile?: string; caps?: ReturnType<typeof ARM_CAPS>; plans?: number; inputBound?: number; planOver?: Partial<OperationPlan>; lockedProviders?: Provider[]; mode?: 'REAL' | 'OFFLINE' } = {}) {
   const { createH2EvalExecutor, loadE3GPriceTable } = await import('../../../scripts/h2eval/index.js');
   const dir = tmp('e3g'); const store = memoryContentStore({ t: TEXT });

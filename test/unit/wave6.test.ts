@@ -1,5 +1,19 @@
 /**
  * Wave 6 tests — NEW-6.01 (Feature Flags) + NEW-6.02 (Changelog) + P5.1 (Evidence Index)
+ *
+ * Modules under test: `src/features/FeatureFlagService.ts`, `src/dashboard/changelog.ts` (`parseChangelog`)
+ * and `src/automation/EvidenceIndexer.ts` (`buildIndex`).
+ *
+ * Strategy / partitions: flags (create, update, invalid and valid keys, default, unknown flag, tenant override
+ * set, created on demand and cleared, delete, sorted list, independent overrides); changelog (empty, one and
+ * several versions, no date, other headings, empty sections); evidence index (no evidence directory, files per
+ * phase, design files, several phases, skipped directory, sort order, timestamp).
+ *
+ * Needs: temporary directories for the evidence index cases; no network.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave6.test.ts`
+ *
+ * @module test/unit/wave6.test
  */
 
 import assert from 'node:assert/strict';

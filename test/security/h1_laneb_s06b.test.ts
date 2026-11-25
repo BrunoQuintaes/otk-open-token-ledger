@@ -9,6 +9,21 @@
  *       count reaches the limit. The local (memory) limiter stays the fallback when the shared counter fails.
  *   (c) source address: X-Forwarded-For spoofing with OTK_PROXY_TRUSTED_HOPS=0 and =1; IPv6 /64 grouping.
  * In-memory stores only; no network (the shared counter is an in-memory implementation of the shared interface).
+ *
+ * Modules under test: the route handlers of `src/api/routes.ts` and `src/api/tenantCrud.ts` (token registration),
+ * `src/security/authFailureLimiter.ts` (source key, local and shared limiter), `src/proxy/ProxyGateway.ts` (proxy
+ * auth path) and `src/security/IDistributedRateLimiter.ts`.
+ *
+ * Needs: nothing external. Before importing it empties `OTK_RECEIPT_LOG`, `OTK_DB_URL` and `OTK_TENANT_LOG`, sets
+ * `PROVER_URL=disabled` and `OPENAI_API_KEY` to a fixture value (never used for a real call), and removes
+ * `OTK_REDIS_URL`, `OTK_TENANTS` and `OTK_PROXY_ALLOW_UNAUTHENTICATED`. `OTK_ADMIN_KEY`, `OTK_PROXY_TRUSTED_HOPS` and
+ * `OTK_PROXY_AUTH_FAIL_MAX` are saved and restored; individual cases set `OTK_PROXY_TRUSTED_HOPS` and remove it again.
+ * `globalThis.fetch` is replaced so every HTTPS upstream call gets a canned provider answer; the proxy gateway
+ * listens on a local port.
+ *
+ * Run just this file: `npx tsx --test test/security/h1_laneb_s06b.test.ts`
+ *
+ * @module test/security/h1_laneb_s06b.test
  */
 import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

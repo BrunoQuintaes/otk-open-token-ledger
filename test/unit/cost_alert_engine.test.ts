@@ -1,3 +1,18 @@
+/**
+ * CostAlertEngine — unit tests for the CU budget alert levels.
+ *
+ * Module under test: `evalBudget` from `src/economics/CostAlertEngine.ts`.
+ *
+ * Strategy / partitions: consumption below the warning threshold (80%), at or above it, at or
+ * above the critical threshold (95%), just below the critical threshold, above 100% of the
+ * budget, zero consumption, and an invalid budget (throws).
+ *
+ * Needs: nothing external (pure function).
+ *
+ * Run just this file: `npx tsx --test test/unit/cost_alert_engine.test.ts`
+ *
+ * @module test/unit/cost_alert_engine.test
+ */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { evalBudget } from '../../src/economics/CostAlertEngine.js';

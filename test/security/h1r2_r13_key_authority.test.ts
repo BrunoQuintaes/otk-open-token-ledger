@@ -7,6 +7,23 @@
  *
  * Each "stale" assertion documents the defect: without refreshCredential() the per-process hash registry and the TTL
  * snapshot keep admitting what replica A already revoked.
+ *
+ * Further partitions: expired keys; restart of B with an empty registry; key store or subject store down (fail
+ * closed with 503 on strict requests); only values with the dynamic-key prefix are looked up; a single process
+ * without a key authority keeps its local registry; a source presenting unknown keys stops costing lookups after
+ * 20 misses; a slow positive answer started before a revocation does not re-register the key; route classification
+ * (strict vs plain) and credential extraction; and the SQL issued by the PostgreSQL key and status stores (fake pool).
+ *
+ * Modules under test: `src/auth/credentialAuthority.ts` and `src/auth/authMiddleware.ts`, with
+ * `src/api/IApiKeyMetadataStore.ts`, `src/api/tenantKeyRegistry.ts`, `src/auth/subjectStatus.ts`,
+ * `src/infra/pg/PgApiKeyMetadataStore.ts` and `src/infra/pg/PgSubjectStatusStore.ts`.
+ *
+ * Needs: nothing external (memory stores and a fake PostgreSQL pool). `OTK_SUBJECT_STATUS_TTL_MS` is set to 600000
+ * during the first block (so a pass cannot come from the TTL snapshot) and restored afterwards.
+ *
+ * Run just this file: `npx tsx --test test/security/h1r2_r13_key_authority.test.ts`
+ *
+ * @module test/security/h1r2_r13_key_authority.test
  */
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

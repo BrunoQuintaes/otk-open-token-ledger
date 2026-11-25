@@ -9,6 +9,20 @@
  *
  * Does NOT test file I/O directly (OTK_RECEIPT_LOG is set at module load time and
  * cannot be changed in-process). Tests the protocol/format layer instead.
+ *
+ * Under test: the line format that `src/api/receiptStore.ts` writes and reads back, reproduced by
+ * the two helpers below (they are copies of that logic, so a change in the store must be mirrored
+ * here), and `TokenAccountingLayer` from `src/security/TokenAccountingLayer.ts` for the rebuild
+ * of debits.
+ *
+ * Strategy / partitions: one receipt with bigint fields, one without the optional tenant, several
+ * lines; the chain-head format; rebuilding accounting debits from several lines and tenants.
+ *
+ * Needs: nothing external (no file is written).
+ *
+ * Run just this file: `npx tsx --test test/unit/jsonl_persistence.test.ts`
+ *
+ * @module test/unit/jsonl_persistence.test
  */
 
 import { describe, it } from 'node:test';
@@ -21,7 +35,12 @@ import { TokenAccountingLayer } from '../../src/security/TokenAccountingLayer.js
 // JSONL serialization protocol
 // ---------------------------------------------------------------------------
 
-/** Simulate what receiptStore._appendReceiptLog writes */
+/**
+ * Simulate what receiptStore._appendReceiptLog writes
+ *
+ * @param receipt - Receipt to serialize; not modified.
+ * @returns One JSON line ending in a newline, with `userId` and `nonce` as decimal strings.
+ */
 function serializeToJsonl(receipt: RawReceipt): string {
   return JSON.stringify({
     ...receipt,
@@ -30,7 +49,13 @@ function serializeToJsonl(receipt: RawReceipt): string {
   }) + '\n';
 }
 
-/** Simulate what receiptStore startup block reads back */
+/**
+ * Simulate what receiptStore startup block reads back
+ *
+ * @param line - One JSON line as written by `serializeToJsonl`.
+ * @returns The receipt with bigint fields restored; absent fields become empty strings or zero,
+ * as in the store's own reader.
+ */
 function deserializeFromJsonl(line: string): RawReceipt {
   const p = JSON.parse(line) as Record<string, unknown>;
   return {

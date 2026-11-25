@@ -9,6 +9,21 @@
  * under FOR UPDATE with two real connections, the primary-key race between two first assignments, the additive
  * migration of a pre-H1 table, a connection failure surfacing as an error (no false success), and two "replicas"
  * (two pools) observing each other's writes through the store.
+ *
+ * Modules under test: `src/billing/IPlanStore.ts` (`PgPlanStore`) and `src/billing/PlanRegistry.ts`.
+ *
+ * Further scenarios: a stale expected version is a conflict and writes nothing; a plan change and its billing
+ * event record commit atomically (a failing event insert leaves the plan untouched); the same billing event from
+ * two connections is applied once; stale and same-second upgrade events are recorded but not applied; and a write
+ * blocked past the store's server-side bound (`OTK_PLAN_STORE_TIMEOUT_MS`, set to 300 ms in that case and then
+ * restored) rolls back on the server instead of committing late.
+ *
+ * Needs: `OTK_TEST_PG_URL` pointing at a disposable PostgreSQL database (see above); without it every case is
+ * skipped.
+ *
+ * Run just this file: `npx tsx --test test/integration/h1_s01_pg_plan_store.test.ts`
+ *
+ * @module test/integration/h1_s01_pg_plan_store.test
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

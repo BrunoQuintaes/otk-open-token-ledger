@@ -10,6 +10,21 @@
  * - IDistributedRateLimiter wiring in routes
  *
  * @since Wave 3A (PACK 3A-01)
+ *
+ * Modules under test: `src/infra/redis/RedisIdempotencyStore.ts`, `src/infra/redis/RedisRateLimiter.ts`,
+ * `src/infra/pg/PgDeadLetterStore.ts`, `src/infra/storeBootstrap.ts`, the metrics route of `src/api/routes.ts`
+ * and the default distributed rate limiter of `src/security/IDistributedRateLimiter.ts`.
+ *
+ * Strategy / partitions: each store with a mock client (hit, miss, write, limit reached, client absent, reset,
+ * dead-letter status changes and counts); the bootstrap with `OTK_REDIS_URL` and `OTK_DB_URL` unset (all
+ * memory); the metrics route in text and JSON; the default limiter and its denial after the limit.
+ *
+ * Needs: no Redis and no PostgreSQL (mock clients and a mock pool). Removes the two URL variables for the
+ * bootstrap case and restores them.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave3a_pack01_stores.test.ts`
+ *
+ * @module test/unit/wave3a_pack01_stores.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

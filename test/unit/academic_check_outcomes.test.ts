@@ -3,6 +3,22 @@
  * A step passes only when every leaf test outcome is accounted for BY NAME (failures, cancellations and todo equal the
  * declared sets; skips inside the allowed set; total and summary consistent); a non-zero exit is accepted only when it
  * is fully explained by declared failures or cancellations.
+ *
+ * Module under test: `tools/academic_demo/check_outcomes.mjs` (`parseTap`, `classify`), loaded by
+ * dynamic import from the repository root.
+ *
+ * Strategy / partitions: TAP parsing (leaf names are suite path plus test name; suite lines are
+ * ignored); classification of all-pass, declared failure, extra failure, same name in another
+ * suite, stale declaration, declared and undeclared cancellations, todo set changes, allowed and
+ * other skips, a different total, a missing or inconsistent summary, exit code disagreeing with
+ * the outcomes, no declaration for the step, and empty output. The TAP input is synthesized by
+ * `tap()` below, not produced by a real test run.
+ *
+ * Needs: nothing external (pure parsing; no child process, no network).
+ *
+ * Run just this file: `npx tsx --test test/unit/academic_check_outcomes.test.ts`
+ *
+ * @module test/unit/academic_check_outcomes.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -13,7 +29,14 @@ const ROOT = path.resolve(import.meta.dirname, '..', '..');
 const { parseTap, classify } = await import(pathToFileURL(path.join(ROOT, 'tools', 'academic_demo', 'check_outcomes.mjs')).href);
 
 type Leaf = { name: string; outcome: 'pass' | 'fail' | 'cancelled' | 'todo' | 'skipped' };
-/** node:test-shaped TAP: one suite per distinct parent, leaves with YAML blocks, then the summary lines. */
+/**
+ * node:test-shaped TAP: one suite per distinct parent, leaves with YAML blocks, then the summary lines.
+ *
+ * @param leaves - Test outcomes; each name is `"<suite> > <test>"`.
+ * @param summaryOverride - Summary counters to replace (e.g. a wrong `tests` total); others are computed.
+ * @param withSummary - `false` omits the summary lines, as in a killed run.
+ * @returns The TAP text, ending with a newline.
+ */
 function tap(leaves: Leaf[], summaryOverride: Record<string, number> = {}, withSummary = true): string {
   const out: string[] = [];
   const bySuite = new Map<string, Leaf[]>();

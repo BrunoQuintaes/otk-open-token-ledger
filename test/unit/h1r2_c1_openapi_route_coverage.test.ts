@@ -20,6 +20,21 @@
  * To update after adding a route: document it in docs/api/openapi.json (preferred) or, for a non-sensitive route,
  * add one exception entry with the reason. A new error status in a handler must be added to the operation responses.
  * Static only (source + spec): no server, no network.
+ *
+ * Under test: the agreement between the route handlers in `src/` (as listed by
+ * `scripts/ops/extract_routes.mjs`, run as a child process) and `docs/api/openapi.json`, using the
+ * exception list and the route surface fixture named above.
+ *
+ * Strategy / partitions: the four numbered rules, checked over every route of the inventory and
+ * every documented operation; plus "unreachable" exceptions, which must be excluded by the
+ * dispatcher around them. The counts of handlers, documented routes and exceptions are printed
+ * as a test diagnostic.
+ *
+ * Needs: read access to `src/`, the spec and the two fixtures; nothing else.
+ *
+ * Run just this file: `npx tsx --test test/unit/h1r2_c1_openapi_route_coverage.test.ts`
+ *
+ * @module test/unit/h1r2_c1_openapi_route_coverage.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -41,19 +56,37 @@ type Route = { key: string; server: string; methods: string[]; kind: string; pat
 const INVENTORY = JSON.parse(execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'ops', 'extract_routes.mjs'), ROOT, '--json'], { encoding: 'utf-8' })) as Route[];
 const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'patch'];
 
-/** Identity of one (method, route) of the inventory: `<METHOD> <kind>:<path> @<file>` (METHOD may be ANY). */
+/**
+ * Identity of one (method, route) of the inventory: `<METHOD> <kind>:<path> @<file>` (METHOD may be ANY).
+ *
+ * @param m - HTTP method in upper case, or `ANY`.
+ * @param r - Route entry from the inventory.
+ * @returns The identity string used as the key of the exception list.
+ */
 const opId = (m: string, r: Route) => `${m} ${r.kind}:${r.path} @${r.file}`;
 const DISPATCH = new Set(EXC.dispatchers.map((d) => d.route));
 const handlers = INVENTORY.flatMap((r) => r.methods.map((m) => ({ id: opId(m, r), method: m, route: r }))).filter((h) => !DISPATCH.has(h.id));
 
-/** Server of a spec operation: the gateway (port 8788), the prover (3001) or the API (default). */
+/**
+ * Server of a spec operation: the gateway (port 8788), the prover (3001) or the API (default).
+ *
+ * @param op - The OpenAPI operation object.
+ * @param pathItem - The OpenAPI path item that holds the operation.
+ * @returns Which server serves the operation, from the ports in its `servers` URLs.
+ */
 function serverOf(op: Json, pathItem: Json): 'api' | 'proxy' | 'prover' {
   const urls = [...(op.servers ?? []), ...(pathItem.servers ?? [])].map((s: Json) => String(s.url));
   if (urls.some((u) => u.includes(':8788'))) return 'proxy';
   if (urls.some((u) => u.includes(':3001'))) return 'prover';
   return 'api';
 }
-/** Path seen by the handler: the API dispatcher cuts one leading /v1 (routes declared with /v1 live at /v1/v1/...). */
+/**
+ * Path seen by the handler: the API dispatcher cuts one leading /v1 (routes declared with /v1 live at /v1/v1/...).
+ *
+ * @param p - Path as written in the spec.
+ * @param srv - Server of the operation (only `api` strips the prefix).
+ * @returns The path the route handler compares against.
+ */
 const routePathOf = (p: string, srv: string) => (srv === 'api' && p.startsWith('/v1/') ? p.slice(3) : p);
 const concrete = (p: string) => p.replace(/\{[^}]+\}/g, 'sample-id');
 
@@ -81,7 +114,12 @@ const DOCUMENTED = Object.entries<Json>(SPEC.paths).flatMap(([p, item]) => HTTP_
 /** Sensitive surface: may not be left out of the contract. */
 const SENSITIVE = /\/admin|\/scim|\/keys|\/billing|\/webhooks|stripe|\/data\/export|gdpr|provider-keys|\/teams|\/tenants|except:|\/operations|\/attribution|eq:\/proxy/;
 
-/** Handler body: the `if` line and the lines indented below it (same rule as the extractor, larger window). */
+/**
+ * Handler body: the `if` line and the lines indented below it (same rule as the extractor, larger window).
+ *
+ * @param r - Route entry from the inventory (file and 1-based line of its test).
+ * @returns The handler source text; the whole module when the route is a module router.
+ */
 function bodyOf(r: Route): string {
   const lines = read(r.file).split(/\r?\n/);
   // a module regex constant used as the router (D1-D8 operation/attribution routes): the whole module is the handler
@@ -97,6 +135,9 @@ function bodyOf(r: Route): string {
 /**
  * Guards of an enclosing dispatcher that run before the handler (e.g. the webhook 401, the GDPR RBAC, the flags platform
  * check): the dispatcher lines from its `if` up to its first nested method test.
+ *
+ * @param r - Route entry whose enclosing dispatchers are collected.
+ * @returns The guard lines joined with newlines; empty when no dispatcher encloses the route.
  */
 function prologueOf(r: Route): string {
   const lines = read(r.file).split(/\r?\n/);
@@ -115,6 +156,10 @@ function prologueOf(r: Route): string {
 /**
  * Handler text for one method: when the route's body dispatches on the method itself (`if (method === 'GET') {...}`,
  * e.g. SCIM), only the lines before the first nested method test and the nested blocks of that method are kept.
+ *
+ * @param body - Handler text from `bodyOf`.
+ * @param method - HTTP method in upper case.
+ * @returns The filtered text, or `body` unchanged when it has no nested method test.
  */
 function forMethod(body: string, method: string): string {
   const lines = body.split('\n');
@@ -131,9 +176,19 @@ function forMethod(body: string, method: string): string {
   return out.join('\n');
 }
 const handlerText = (r: Route, method?: string) => `${prologueOf(r)}\n${method && method !== 'ANY' ? forMethod(bodyOf(r), method) : bodyOf(r)}`;
-/** A module whose regex constant is the router (no `if` line): one handler function serves several documented paths. */
+/**
+ * A module whose regex constant is the router (no `if` line): one handler function serves several documented paths.
+ *
+ * @param r - Route entry from the inventory.
+ * @returns `true` when the route's line has no `if` test.
+ */
 const isModuleRouter = (r: Route) => !/\bif\s*\(/.test(read(r.file).split(/\r?\n/)[r.line - 1]!);
-/** HTTP error statuses a handler body can write (static). */
+/**
+ * HTTP error statuses a handler body can write (static).
+ *
+ * @param body - Handler text.
+ * @returns The statuses found by pattern matching on the error helpers, sorted.
+ */
 function errorStatuses(body: string): number[] {
   const s = new Set<number>();
   for (const m of body.matchAll(/sendError\(res, 'OTK-(\d{3})\d'/g)) s.add(Number(m[1]));

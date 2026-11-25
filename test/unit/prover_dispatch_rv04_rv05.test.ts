@@ -8,6 +8,21 @@
  *       arrived or retryPendingProofs() was called by hand; nothing scheduled it.
  *
  * The daemon is a fetch stub; responses are released by the test in any order.
+ *
+ * Module under test: `src/api/receiptStore.ts` (proof dispatch, circuit breaker and the recovery loop).
+ *
+ * Strategy / partitions: concurrent sends answered in any order (each nonce sent once); a manual retry while
+ * a send is in flight; refused, connection refused and timeout outcomes (only the timeout is uncertain);
+ * recovery after the prover returns with no new receipt; cooldown respected; stop, idempotent start, reset
+ * and the disabled prover.
+ *
+ * Needs: no network; the global `fetch` is replaced by a stub and restored after each test. Sets
+ * `OTK_RECEIPT_LOG` and `OTK_DB_URL` to empty and `PROVER_CB_THRESHOLD` / `PROVER_CB_COOLDOWN_MS` to small values
+ * before importing the store; uses short real timers (tens of ms).
+ *
+ * Run just this file: `npx tsx --test test/unit/prover_dispatch_rv04_rv05.test.ts`
+ *
+ * @module test/unit/prover_dispatch_rv04_rv05.test
  */
 import { describe, it, before, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

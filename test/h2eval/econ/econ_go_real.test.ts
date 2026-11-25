@@ -2,6 +2,28 @@
  * EXEC-ECON C160 delta 3 (DECISOES_MASTER_ECON): o ramo `h2eval.go.econ.v1` do egress (core/egress.ts readGo) com o validador injetado.
  * Modo REAL só com transporte FALSO (fetchImpl injetado), credencial SINTÉTICA num arquivo temporário (nomes de variável de teste, que
  * não existem no ambiente), nenhuma rede, US$ 0.
+ *
+ * English summary: tests the study-GO branch of the egress in REAL mode with an injected fake transport: sending,
+ * single-use send tokens, refusals before sending, the safety margin before the GO expires, pauses instead of
+ * terminal refusals inside the study, and the study ledger envelope.
+ *
+ * Modules under test: `scripts/h2eval/core/egress.ts` (`createEgress`, `EgressRefused`, `EgressGoEconRefused`),
+ * `scripts/h2eval/econ/econ.ts` (`runEcon`, `goEconEgressValidator`, `ECON_ALLOWED_HOSTS`, `ECON_GO_MARGEM_MS`),
+ * `scripts/h2eval/econ/goEcon.ts` and the caps profile in `scripts/h2eval/core/ledger.ts`.
+ *
+ * Strategy / partitions: a valid GO sends all attempts in order with the credential added only at send time; expiry
+ * between the guard and the egress; attempt budget and sequence scope; one send per token; egress refusals without
+ * sending (expired, not yet valid, model out of scope, file hash changed, no validator injected); older GO formats
+ * unchanged; the default and configurable margin before expiry (never below timeout plus slack); which refusals
+ * become study pauses and which stay terminal outside the study; and the study caps envelope, signed caps and the 80%
+ * acknowledgement.
+ *
+ * Needs: a writable temporary directory; the credential is a synthetic value in a temporary file under test-only
+ * variable names. No network, no spending.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/econ/econ_go_real.test.ts`
+ *
+ * @module test/h2eval/econ/econ_go_real.test
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -32,7 +54,12 @@ function goText(over: Record<string, unknown>): string {
 }
 const provOf = (url: string) => (url.includes('anthropic') ? 'anthropic' : url.includes('openai') ? 'openai' : 'google') as 'anthropic' | 'openai' | 'google';
 
-/** consumidor ECON no modo REAL com fetch falso; `clock` alimenta o egress e o consumidor (mesmo relógio). */
+/**
+ * consumidor ECON no modo REAL com fetch falso; `clock` alimenta o egress e o consumidor (mesmo relógio).
+ *
+ * @param o - `goOver` (fields merged into the signed study GO file, to build invalid ones) and `clock` (time source
+ *   in ms shared by egress and consumer).
+ */
 function realEnv(o: { goOver?: Record<string, unknown>; clock?: () => number } = {}) {
   const a = ambiente({ blocks: 2 });
   const d = mkdtempSync(path.join(tmpdir(), 'econ-real-')); const envFile = path.join(d, 'h2eval.env');

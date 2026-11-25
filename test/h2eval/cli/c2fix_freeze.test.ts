@@ -1,3 +1,24 @@
+/**
+ * Tests freezing the training block after a model probe: which journal endings count as terminal, which still
+ * block the freeze, and that an earlier dataset export is never overwritten.
+ *
+ * Modules under test: `scripts/h2eval/cli/campaign.ts` (`freezeTrain`, `gateFor`, `batchTerminal`,
+ * `exportDatasetForFreeze`, `validateTrainFrozen`, `NON_OPERATION_KINDS`), `scripts/h2eval/cli/status.ts`
+ * (`exportDataset`) and the real hash-chained journal from `scripts/h2eval/core/journal.ts`.
+ *
+ * Strategy / partitions: the set of non-operation journal kinds equals the set the runner replay filters out (read
+ * from the runner source text); terminal endings (settled, probe result last, acknowledged uncertain operation)
+ * let the freeze pass and open the validation gate; really open operations (sent, reserved, probe started without
+ * settlement, missing journal) are refused; an earlier different export is kept byte for byte, an identical one is
+ * reused, and a taken version name is never replaced.
+ *
+ * Needs: a writable temporary directory for synthetic journals; reads `scripts/h2eval/core/runner.ts` as text. No
+ * provider, no network, no credential.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cli/c2fix_freeze.test.ts`
+ *
+ * @module test/h2eval/cli/c2fix_freeze.test
+ */
 // SYNTHETIC — C2-FIX (E1″): freeze-train after a model probe; an operation really open is still refused; an earlier dataset export is never overwritten.
 // Journals are written with the real journal (hash chain); no provider, no network, no credential.
 import { test } from 'node:test';

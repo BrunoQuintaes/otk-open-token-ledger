@@ -14,6 +14,20 @@
  *
  * No server socket, no Docker daemon, no Helm binary required.
  * Uses in-process mockReq/mockRes for API contract verification.
+ *
+ * Files under test: `docker/api/Dockerfile`, `docker/api/docker-compose.api.yml`, the Helm chart
+ * in `infra/helm/otk/`, `scripts/ops/render_helm.sh` and the deploy docs under `docs/devops/`;
+ * code under test: `handleRequest` in `src/api/routes.ts` for the health and probe routes.
+ *
+ * Strategy / partitions: each file exists and contains its contract markers (text checks only);
+ * the legacy health route shape; the liveness and readiness probe shapes (readiness accepts 200
+ * or 503, so it passes with or without a reachable Redis).
+ *
+ * Needs: read access to the repository files listed above; nothing else.
+ *
+ * Run just this file: `npx tsx --test test/unit/deploy_smoke.test.ts`
+ *
+ * @module test/unit/deploy_smoke.test
  */
 
 import { describe, it } from 'node:test';

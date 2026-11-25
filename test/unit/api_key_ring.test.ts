@@ -1,3 +1,18 @@
+/**
+ * ApiKeyRing — unit tests for the in-memory store of provider API secrets per tenant.
+ *
+ * Module under test: `InMemoryApiKeyStore` from `src/security/ApiKeyRing.ts`.
+ *
+ * Strategy / partitions: put, get and delete of one secret (get after delete returns `null`);
+ * overwriting an existing secret; deleting twice (no error); two tenants with the same key id
+ * (isolated).
+ *
+ * Needs: nothing external (fake secret strings only).
+ *
+ * Run just this file: `npx tsx --test test/unit/api_key_ring.test.ts`
+ *
+ * @module test/unit/api_key_ring.test
+ */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { InMemoryApiKeyStore } from '../../src/security/ApiKeyRing.js';

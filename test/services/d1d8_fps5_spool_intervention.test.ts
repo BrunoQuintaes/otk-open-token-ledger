@@ -12,6 +12,22 @@
  *    the record itself is wrong; it stays in the queue;
  *  - CLASH: a stray debit row with the operation's ledger identity already exists (LedgerIdentityError), e.g.
  *    after a bad manual restore: fixable by the operator (remove the stray row), then re-applied.
+ *
+ * Module under test: the measurement spool and its intervention queue in `src/operations/runtime.ts`, with
+ * operations built from `test/fixtures/d1d8/c/builders.ts`.
+ *
+ * Strategy / scenarios: permanent errors next to valid records (valid ones apply, rejected ones move whole to the
+ * queue with an alert, none retried forever); a transient database failure (record stays live and applies later);
+ * restart (queue kept, integrity re-checked, nothing re-applied by itself); re-application exactly once after the
+ * fix, while the unfixable record stays open; an unwritable queue (record kept in the live spool); the live write
+ * path; and the real replay path with a torn queue tail.
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`) and a writable temporary
+ * directory for spool folders; run with `--test-concurrency=1`. It sets `OTK_DB_URL` in the test process. With the
+ * variables already set, `npx tsx --test --test-concurrency=1 test/services/d1d8_fps5_spool_intervention.test.ts`
+ * runs just this file.
+ *
+ * @module test/services/d1d8_fps5_spool_intervention.test
  */
 process.env['OTK_DB_URL'] = '';
 

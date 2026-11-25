@@ -7,6 +7,19 @@
  * 3. canonicalHash binding includes cwVersion field
  *
  * @since STARTUP.S0_CANONICAL_INTEGRITY (2026-03-08)
+ *
+ * Modules under test: `src/api/routes.ts` and `src/api/receiptStore.ts` (idempotent ingestion and the
+ * weights version on the receipt) and `src/metering/SignatureManager.ts` (canonical hash).
+ *
+ * Strategy / partitions: first, second and third post of the same request id; the accounting balance after a
+ * duplicate; the weights version returned on read; the canonical hash with equal, different, absent and
+ * explicit weights versions.
+ *
+ * Needs: nothing external; requests and responses are in-memory mocks and the store is emptied first.
+ *
+ * Run just this file: `npx tsx --test test/unit/startup_s0.test.ts`
+ *
+ * @module test/unit/startup_s0.test
  */
 
 import { describe, it, before } from 'node:test';

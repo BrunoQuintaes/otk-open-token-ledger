@@ -16,6 +16,19 @@
  * Every negative case has a positive control. Only in-memory fakes; no network, no PostgreSQL, no real key.
  * The module is accessed through `any` on purpose: the same file runs against the code before the fix (where the
  * new functions are missing) to show which cases fail there.
+ *
+ * Modules under test: the plan route of `src/api/routes.ts` called in process, `src/billing/PlanRegistry.ts`,
+ * `src/billing/IPlanStore.ts`, `src/billing/meteringQuota.ts`, `src/billing/stripe/StripeWebhookHandler.ts` and
+ * `src/infra/storeBootstrap.ts` (deployed-store checks).
+ *
+ * Needs: nothing external. Before importing it empties `OTK_RECEIPT_LOG`, `OTK_DB_URL` and `OTK_TENANT_LOG`, sets
+ * `PROVER_URL=disabled` and `OTK_PLAN_STORE_TIMEOUT_MS=150` and removes `OTK_REDIS_URL` and `OTK_TENANTS`;
+ * `OTK_ADMIN_KEY` gets a fixture value and is restored after the run; the deployed-store case changes `NODE_ENV`
+ * and `OTK_ALLOW_NON_DURABLE_STORES` and restores them.
+ *
+ * Run just this file: `npx tsx --test test/security/h1_s01_s03_plan_durability.test.ts`
+ *
+ * @module test/security/h1_s01_s03_plan_durability.test
  */
 import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

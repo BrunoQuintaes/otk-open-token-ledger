@@ -1,10 +1,26 @@
 /**
  * TokenAccountingLayer — Unit Tests
+ *
+ * Checks the in-memory ledger of CU debits per tenant and epoch and its reconciliation against the
+ * amount recorded on chain.
+ *
+ * Module under test: `src/security/TokenAccountingLayer.ts`.
+ *
+ * Strategy / partitions: empty ledger; one debit and several debits; the same request id twice
+ * (counted once); isolation by tenant and by epoch; reconciliation when the on-chain total
+ * matches and when it is behind; listing the entries of one tenant and epoch.
+ *
+ * Needs: nothing external (a fresh ledger per test).
+ *
+ * Run just this file: `npx tsx --test test/unit/TokenAccountingLayer.test.ts`
+ *
+ * @module test/unit/TokenAccountingLayer.test
  */
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { TokenAccountingLayer, type TALEntry } from '../../src/security/TokenAccountingLayer.js';
 
+// Fixture builder: a 100-CU debit for tenant-a in epoch 709; tests override single fields.
 function entry(overrides: Partial<TALEntry> = {}): TALEntry {
   return {
     tenantId: 'tenant-a',

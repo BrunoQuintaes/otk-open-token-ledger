@@ -1,3 +1,23 @@
+/**
+ * Tests the named, frozen caps profile that allows one alternative set of spending caps (one larger provider
+ * sub-ledger, the others at 0) only when plan, ledger and GO file carry the same numbers.
+ *
+ * Modules under test: `scripts/h2eval/core/ledger.ts` (`CAPS_PROFILES`, `capsAreAllowedFor`,
+ * `capsAreAllowedProfile`), `scripts/h2eval/cli/plan.ts` (`buildPlan`, `capsOfProfile`) and
+ * `scripts/h2eval/core/egress.ts` (`validateGoMultiV1`).
+ *
+ * Strategy / partitions: the default profile and the named profile pass, any mix or other number is refused;
+ * opening a ledger accepts the named profile only as a whole; the CLI option (absent or default means no change,
+ * unknown name refused); and a multi-batch GO file whose caps must agree with plan and ledger (a mix or a looser GO
+ * is still a caps mismatch).
+ *
+ * Needs: a writable temporary directory and a synthetic corpus freeze (allow up to 5 minutes); sets
+ * `H2EVAL_CONTROL_DIR` to a temporary folder when unset. No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/core/capsProfile.test.ts`
+ *
+ * @module test/h2eval/core/capsProfile.test
+ */
 // SYNTHETIC — OFFLINE. C158 ciclo 3: the ratified US$ 32 Anthropic ceiling as a NAMED, frozen caps profile (ciclo3_c158 = campaign 32, anthropic 32, openai 0, google 0). The executor used to pin
 // the caps to 11/5/3/3 in three places; now it accepts exactly ONE other combination, as a whole, and only when plan, ledger and GO carry the same numbers. Anything else is still GO_CAPS_MISMATCH.
 import { test } from 'node:test';

@@ -1,7 +1,20 @@
 /**
  * ResourceProfiler — smoke tests
  * Validates that CPU/RAM deltas are numeric and CSV header is consistent.
+ *
+ * Module under test: `src/bench/ResourceProfiler.ts` (process resource snapshots used by the
+ * benchmarks).
+ *
+ * Strategy / partitions: one snapshot; the delta between two snapshots; wrapping an async and a
+ * sync function (result is passed through, resources are attached); CSV header columns and a CSV
+ * row of numbers. Values depend on the machine, so only types and shapes are asserted.
+ *
+ * Needs: nothing external (reads the current process's CPU and memory counters).
+ *
+ * Run just this file: `npx tsx --test test/unit/ResourceProfiler.test.ts`
+ *
  * @since U9.2
+ * @module test/unit/ResourceProfiler.test
  */
 
 import { describe, it } from 'node:test';

@@ -1,5 +1,19 @@
 /**
  * Passo 7: conciliação a partir de recibos verificados (só verdes e amarelos entram).
+ *
+ * In English: reconciliation against the provider's statement using only verified receipts.
+ *
+ * Under test: `loadOtkFromVerifiedReceipts` in `scripts/verify/receiptsToOtk.ts` (which receipts become usage records,
+ * which are excluded and why: failed verification, duplicates, another provider), and the reconciliation command
+ * `scripts/reconciliation/reconcile.ts` with `--otk-receipts`, run as a child process on the committed vectors and a
+ * fixture statement; without a keyring it must stop with a usage error (exit 2).
+ *
+ * Needs: the committed vector folder `test/verifier/vetores/` and the reconciliation fixture (read only), `tsx` under
+ * `node_modules`, and a temporary output directory. Paths are relative, so run from the repository root. No network.
+ *
+ * Run just this file: `npx tsx --test test/verifier/conciliacao.test.ts`
+ *
+ * @module test/verifier/conciliacao.test
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

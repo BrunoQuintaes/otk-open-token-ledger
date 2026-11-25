@@ -2,6 +2,22 @@
  * H1.4 — Input Validation Layer Tests
  *
  * Tests Zod schema validation for all POST/PUT endpoint bodies.
+ *
+ * Modules under test: `validateBody` from `src/api/validate.ts`, the request schemas in
+ * `src/api/schemas.ts`, and `handleRequest` in `src/api/routes.ts` for the integration cases.
+ *
+ * Strategy / partitions: receipt submission (valid, each required field missing, wrong type,
+ * negative count, extra fields stripped, empty object with several errors, user id as string and
+ * as number); tenant creation (valid, a sequential token, a token shorter than 24 characters,
+ * missing fields); plan assignment (valid, unknown tier); tenant update (empty object, unknown
+ * role); registry reload (valid, missing field); the receipt route with an invalid body (400
+ * with error code and details) and a valid one (201).
+ *
+ * Needs: nothing external (mock request/response objects; no server).
+ *
+ * Run just this file: `npx tsx --test test/unit/input_validation.test.ts`
+ *
+ * @module test/unit/input_validation.test
  */
 
 import { describe, it } from 'node:test';

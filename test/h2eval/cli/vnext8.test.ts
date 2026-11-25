@@ -1,3 +1,25 @@
+/**
+ * Tests per-arm design parameters read from the converted design file, two integrity stops on provider responses,
+ * and four fixes to the connectivity preflight and campaign journal.
+ *
+ * Modules under test: `scripts/h2eval/design/designParams.ts` (`convertR4DesignV0`, `loadDesignParams`, `armOf`
+ * and the per-arm constants), `scripts/h2eval/cli/plan.ts`, `scripts/h2eval/cli/run.ts`,
+ * `scripts/h2eval/cli/preflight.ts`, `scripts/h2eval/core/ledger.ts` and the journal verifier.
+ *
+ * Strategy / partitions: the vendored source design file (sha256 checked) converts exactly into the committed
+ * candidate, with output caps and thinking policy per arm; a plan with that candidate applies parameters per model
+ * and arm; a response without a stop reason halts everything after settlement, while an HTTP 400 to a
+ * "thinking disabled" request isolates only that arm; preflight age judged once at process start, `H2EVAL_*` names
+ * excluded from the environment fingerprint, Node `execArgv` included, and a corrupt campaign journal with its own
+ * error code.
+ *
+ * Needs: a writable temporary directory and a synthetic corpus freeze (allow several minutes); preflight probes are
+ * injected; sets `H2EVAL_CONTROL_DIR` to a temporary folder when unset. No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cli/vnext8.test.ts`
+ *
+ * @module test/h2eval/cli/vnext8.test
+ */
 // SYNTHETIC — OFFLINE. VNEXT-8 (C151): (a) design parameters PER ARM read from the R4 file (converted from ECON-02's h2eval.r4_design_params.v0;
 // vendored copy + committed candidate kept in sync by this test); (b) R4 integrity stops: provider stop reason absent => STOP_STOP_REASON_MISSING
 // (HALT_ALL, after settlement); HTTP 400 to a thinking-disabled request => STOP_THINKING_DISABLED_REJECTED (ISOLATE_ARM, other arms continue);

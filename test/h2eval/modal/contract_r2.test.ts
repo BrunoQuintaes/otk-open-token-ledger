@@ -1,4 +1,27 @@
-/** R14 addendum: contract rev. 2 items 3-8 and 10 in the modal module; cap violation => STOP. Offline. */
+/**
+ * R14 addendum: contract rev. 2 items 3-8 and 10 in the modal module; cap violation => STOP. Offline.
+ *
+ * Tests the second-revision contract items implemented in the modal module: requested service tier, thinking
+ * defaults, cache TTL, model deprecation, the reasoning allowance in the cost cap, the cap-violation stop, the
+ * image-only exploratory estimate, and per-modality usage details.
+ *
+ * Modules under test: `scripts/h2eval/modal/contract_r2.ts` (`defaultThinkingFor`, `reasoningRecordOf`,
+ * `serviceTierRequestedFor`, `cacheTtlRequestedOf`, `modelDeprecationOf`, `exploratoryFormulaEstimate`,
+ * `REASONING_ALLOWANCE_TOKENS`, `capCovered`), `scripts/h2eval/modal/pricing/pricing.ts`,
+ * `scripts/h2eval/modal/estimators/index.ts` and the adapters.
+ *
+ * Strategy / partitions: thinking defaults and the records the adapters accept (nothing invented); tier, TTL and
+ * deprecation fields; allowances per model and the cap basis naming the dearest cache-write TTL; a cost within the
+ * cap (passes), above it (stop) and unknown (no stop here); the exploratory image estimate against the experimental
+ * estimators and the documented example, and `null` for text and audio; Gemini per-modality details and the OpenAI
+ * 128-token cache rounding note.
+ *
+ * Needs: the response fixtures in `test/h2eval/modal/fixtures/responses/`. No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/modal/contract_r2.test.ts`
+ *
+ * @module test/h2eval/modal/contract_r2.test
+ */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

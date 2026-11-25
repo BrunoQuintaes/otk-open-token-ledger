@@ -8,6 +8,19 @@
  *   4. renderTermsPage() / renderPrivacyPage() / renderDpaPage() return valid HTML
  *   5. Legal pages include required sections
  *   6. routes.ts has /terms, /privacy, /dpa references
+ *
+ * Modules under test: `getSLAForTier` of `src/billing/PlanRegistry.ts` and the pages of
+ * `src/dashboard/legal.ts`; the routes in `src/api/routes.ts` are checked as text.
+ *
+ * Strategy / partitions: the SLA per tier and their ordering; each legal page is HTML with its heading and
+ * required sections; one route check per page.
+ *
+ * Needs: nothing external. Reads `src/api/routes.ts` relative to the current directory, so run it from the
+ * repository root.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave5_sla_legal.test.ts`
+ *
+ * @module test/unit/wave5_sla_legal.test
  */
 
 import { describe, it } from 'node:test';

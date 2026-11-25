@@ -1,3 +1,26 @@
+/**
+ * Tests for the seeded prompt corpus of the cache study: determinism, seed guard, sizes, split assignment and
+ * content hygiene.
+ *
+ * Modules under test: `scripts/h2eval/corpus/manifest.ts` (`buildCorpus`), `scripts/h2eval/corpus/seedGuard.ts`,
+ * `scripts/h2eval/corpus/split.ts` and `scripts/h2eval/corpus/util.ts`.
+ *
+ * Strategy / partitions: same seed against a different seed (hash equality and difference); a golden corpus hash
+ * for the test seed (it must be updated on purpose when the generator changes); refused seeds (seeds already used
+ * by earlier campaigns, an extra deny-list, non-integers, out of range); expected counts of prompts, repetitions,
+ * calls and cells; split balance per cell, group isolation across splits and independence of the split from the
+ * content; `allocateCounts` rounding; dialog counts and unique prefixes; content checks (no lone surrogate, no
+ * personal data, no secret, no emoji); pilot segregation; token-size bands measured with two local tokenizers;
+ * the deterministic grading rubric; and the manifest fields, including `UNKNOWN` (never 0) when no counter is
+ * given.
+ *
+ * Needs: the `js-tiktoken` package for the token-size checks (local, no network). No time or randomness beyond
+ * the fixed test seed.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cache/corpus.test.ts`
+ *
+ * @module test/h2eval/cache/corpus.test
+ */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildCorpus } from '../../../scripts/h2eval/corpus/manifest.js';

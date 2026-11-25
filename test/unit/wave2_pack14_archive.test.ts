@@ -6,6 +6,17 @@
  * getArchiveStats empty results, singleton pattern.
  *
  * @since Wave 2 Pack 14 (2026-03-15)
+ *
+ * Module under test: `src/archive/ReceiptArchive.ts` (`ReceiptArchive` and the `getReceiptArchive` singleton).
+ *
+ * Strategy / partitions: an archive that was never initialized (not ready, archive refused, empty query, zero
+ * stats, safe close); the singleton with `OTK_DB_URL` unset and set.
+ *
+ * Needs: no PostgreSQL (nothing connects; the URL is only stored). Changes `OTK_DB_URL` and resets the singleton.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave2_pack14_archive.test.ts`
+ *
+ * @module test/unit/wave2_pack14_archive.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

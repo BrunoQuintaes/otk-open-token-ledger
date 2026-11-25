@@ -11,6 +11,18 @@
  * Also covers markSubmitted() semantics and end-to-end happy-path preservation.
  *
  * @since PA-04 (2026-03-13)
+ *
+ * Module under test: `src/prover/DurableProofQueue.ts` (`markSubmitted` and the restore on start).
+ *
+ * Strategy / partitions: mark a known and an unknown job; restore a processing job without and with a
+ * transaction hash, a done job and a dead-letter job; the normal flow with and without `markSubmitted`; a
+ * failure that ends in dead letter.
+ *
+ * Needs: a temporary directory for the queue files (removed in `after`); no network.
+ *
+ * Run just this file: `npx tsx --test test/unit/restart_recovery.test.ts`
+ *
+ * @module test/unit/restart_recovery.test
  */
 
 import { describe, it, before, after } from 'node:test';

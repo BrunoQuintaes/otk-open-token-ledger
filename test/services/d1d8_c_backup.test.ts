@@ -4,6 +4,20 @@
  * openings, receipts, conferences and operations exactly; tenant B cannot read tenant A's
  * opening; the dump is a secret-bearing artefact (it contains openings) and is deleted after
  * the test — it is never written to the evidence folder.
+ *
+ * Modules under test: `src/operations/PgOpeningStore.ts`, `src/operations/receiptV3Store.ts` (`PgReceiptV3Store`)
+ * and `src/operations/PgOperationStore.ts`, with crypto doubles from `test/fixtures/d1d8/c/`.
+ *
+ * Strategy: one round trip (write openings, receipts with conferences and operations; dump; restore into a fresh
+ * database; compare exactly) plus the tenant-scoping check on the restored data.
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`) and the `docker` command with
+ * access to its container (name from `OTK_TEST_PG_CONTAINER`, with a default), since `pg_dump` and `psql` run inside
+ * it.
+ *
+ * Run just this file: `npx tsx --test test/services/d1d8_c_backup.test.ts`
+ *
+ * @module test/services/d1d8_c_backup.test
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

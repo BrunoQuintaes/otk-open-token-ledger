@@ -8,6 +8,19 @@
  *  D-OAI-02 a response served on another tier was settled at the Standard tariff as if confirmed.
  *
  *   . scripts/ops/fps5_env.sh && npx tsx --test --test-concurrency=1 test/services/d1d8_gem_before_after.test.ts
+ *
+ * Module under test: the durable gateway in `src/operations/runtime.ts` with the proxy routes, against the fake
+ * provider from `./d1d8_c_provider.ts`.
+ *
+ * Strategy: one scenario per defect listed above, each checked from what the provider actually received or from how
+ * the operation was settled.
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`); run with
+ * `--test-concurrency=1`. Before importing the server it sets fixture values in the test process for the API's
+ * variables (tenants, fake Gemini and OpenAI keys, upstream overrides, `PROVER_URL=disabled`). With the variables
+ * already set, `npx tsx --test --test-concurrency=1 test/services/d1d8_gem_before_after.test.ts` runs just this file.
+ *
+ * @module test/services/d1d8_gem_before_after.test
  */
 process.env['OTK_DB_URL'] = '';
 process.env['OTK_RECEIPT_LOG'] = '';

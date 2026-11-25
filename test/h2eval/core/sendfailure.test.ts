@@ -1,3 +1,23 @@
+/**
+ * Tests how a send failure is classified and journaled: a non-secret cause code and a derived phase hint, with the
+ * operation still uncertain, isolated and never re-sent.
+ *
+ * Modules under test: `scripts/h2eval/core/egress.ts` (`classifySendFailure`, `createEgress`, `EgressRefused`,
+ * `EgressTimeout`, `H2EVAL_ENV_NAMES`) and `scripts/h2eval/core/runner.ts`, with the doubles in
+ * `../support/double.ts`.
+ *
+ * Strategy / partitions: the pure classifier (cause code and phase from the error's code, never from its message; a
+ * code that is not an identifier gives `UNKNOWN`); a simulated TLS failure (journal line with cause code, TLS phase
+ * hint and elapsed time; state uncertain; replay does not re-send); a send timeout; an exception without a code (the
+ * previous behaviour); and two TLS-weakening environment variables that now make REAL mode refuse to start (checked
+ * by name; values never read).
+ *
+ * Needs: a writable temporary directory. No network, no credential.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/core/sendfailure.test.ts`
+ *
+ * @module test/h2eval/core/sendfailure.test
+ */
 // SYNTHETIC — OFFLINE. CYCLE2-A (proposal, incident R17-001): a send failure is classified by the NON-SECRET cause code and a DERIVED phase
 // hint, journaled in TIMEOUT_UNCERTAIN together with the elapsed time. The STATE does not change: UNCERTAIN, isolated, possiblyCharged,
 // reservation kept, never resent on replay. Message text (may carry a URL/host) never reaches the journal; a non-identifier code => UNKNOWN.

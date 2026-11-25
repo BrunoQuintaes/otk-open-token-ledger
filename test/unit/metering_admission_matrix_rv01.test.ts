@@ -7,6 +7,26 @@
  * and POST /receipts read its quota from a budget tracker that nothing ever debited.
  *
  * Provider = fetch stub (no network, no paid call). Accounting = real TAL in memory.
+ *
+ * Modules under test (imported after the environment is set): `src/proxy/ProxyGateway.ts`
+ * (started on a random loopback port), `handleRequest` in `src/api/routes.ts`,
+ * `src/api/receiptStore.ts`, `src/security/talRuntime.ts`, `src/billing/PlanRegistry.ts` and
+ * `src/api/tenantKeyRegistry.ts`.
+ *
+ * Strategy / partitions: for each of the three entries, no token and an unknown token (401), a
+ * VIEWER (403), a MEMBER whose free quota is already used up (429), each with no receipt, no
+ * debit and no provider call; MEMBER and OWNER within quota (one debit for their own tenant,
+ * even when the payload names another tenant);
+ * the legacy gateway route with authentication off still applies the effective tenant's quota.
+ *
+ * Needs: a free loopback port for the gateway; short real waits (50 ms) before checking that no
+ * effect happened. Sets `OTK_RECEIPT_LOG` and `OTK_DB_URL` to empty, `PROVER_URL=disabled` and a
+ * fake `OPENAI_API_KEY` at load time, deletes `OTK_PROXY_ALLOW_UNAUTHENTICATED` before each test,
+ * and replaces `globalThis.fetch` (HTTPS calls get a canned provider answer) until `after`.
+ *
+ * Run just this file: `npx tsx --test test/unit/metering_admission_matrix_rv01.test.ts`
+ *
+ * @module test/unit/metering_admission_matrix_rv01.test
  */
 import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -80,7 +100,14 @@ beforeEach(() => {
 
 type Entry = 'mitm' | 'legacy' | 'api';
 
-/** Call one entry; returns HTTP status and the requestId that would identify the receipt. */
+/**
+ * Call one entry; returns HTTP status and the requestId that would identify the receipt.
+ *
+ * @param entry - Which entry to call: the gateway chat route, the gateway legacy event route or the API.
+ * @param token - Tenant token to present; omitted means no credential header.
+ * @param extra - Fields merged into the usage event (legacy and API entries only).
+ * @returns The HTTP status and the request id under which a receipt would be stored.
+ */
 async function callEntry(entry: Entry, token?: string, extra: Record<string, unknown> = {}): Promise<{ status: number; requestId: string }> {
   const requestId = `rv01-${entry}-${++seq}`;
   const auth: Record<string, string> = token ? { authorization: `Bearer ${token}` } : {};

@@ -9,6 +9,20 @@
  *        subscription identity (cancelling A never cancels B), not by the timestamp.
  * Controls: a NEW subscription after the decision still upgrades; events without subscription ids keep the H1-S03
  * fail-closed rules (C5 in h1_s01_s03_concurrency); same subscription in the same second still fails closed.
+ *
+ * Also covered: an ignored event is recorded with its reason and its redelivery is a duplicate; a subscription id
+ * given as an expanded object is accepted; reprocessing every event after a restart is idempotent; a concurrent admin
+ * downgrade and late old upgrade always end on the lower tier.
+ *
+ * Modules under test: `src/billing/PlanRegistry.ts`, `src/billing/IPlanStore.ts` (memory store) and
+ * `src/billing/stripe/StripeWebhookHandler.ts`.
+ *
+ * Needs: nothing external. Empties `OTK_RECEIPT_LOG` and `OTK_DB_URL` and sets `OTK_PLAN_STORE_TIMEOUT_MS=500` in
+ * `process.env` before importing. Event timestamps are relative to the wall clock (seconds since the Unix epoch).
+ *
+ * Run just this file: `npx tsx --test test/security/h1r2_a2_r07_r11_plan_ordering.test.ts`
+ *
+ * @module test/security/h1r2_a2_r07_r11_plan_ordering.test
  */
 import { describe, it, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

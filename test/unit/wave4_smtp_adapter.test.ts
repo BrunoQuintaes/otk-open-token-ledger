@@ -8,6 +8,19 @@
  *   4. storeBootstrap wiring (email key present in result.stores)
  *
  * @since Wave 4 (W4-SMTP)
+ *
+ * Module under test: `src/email/SmtpEmailAdapter.ts` (with the adapter reset of `src/email/IEmailAdapter.ts`).
+ *
+ * Strategy / partitions: the source file and its decision record exist; the factory with `OTK_SMTP_HOST`
+ * unset and set and with `OTK_SMTP_PORT` set and unset; send with a transport that succeeds,
+ * fails, returns no message id, and with and without a sender override.
+ *
+ * Needs: no SMTP server and no network; the transport is a mock injected in the constructor. Changes
+ * `OTK_SMTP_HOST` (restored after each test) and `OTK_SMTP_PORT` (deleted afterwards).
+ *
+ * Run just this file: `npx tsx --test test/unit/wave4_smtp_adapter.test.ts`
+ *
+ * @module test/unit/wave4_smtp_adapter.test
  */
 
 import { describe, it, beforeEach, afterEach } from 'node:test';

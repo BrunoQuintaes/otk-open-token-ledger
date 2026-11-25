@@ -1,4 +1,22 @@
-/** R14: the synthetic image and audio fixtures are reproducible byte for byte from their generators (sha256 in MANIFEST.json / AUDIO_SPEC.json). */
+/**
+ * R14: the synthetic image and audio fixtures are reproducible byte for byte from their generators (sha256 in MANIFEST.json / AUDIO_SPEC.json).
+ *
+ * Tests that the committed synthetic image fixtures and the specified audio fixtures are reproducible byte for byte
+ * by their generator scripts.
+ *
+ * Modules under test: the generators `scripts/h2eval/modal/tools/gen_synthetic_images.mjs` and
+ * `scripts/h2eval/modal/tools/gen_synthetic_audio.mjs`, run as child processes with the current Node binary.
+ *
+ * Strategy: regenerate the images into a temporary directory and compare sha256 with the manifest and the checksum
+ * file; regenerate the audio files (10, 60 and 180 seconds, 16 kHz mono PCM16) and compare with the committed
+ * specification, which also states that its reference figure is not an estimate.
+ *
+ * Needs: a writable temporary directory and permission to spawn Node child processes. No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/modal/synthetic_media.test.ts`
+ *
+ * @module test/h2eval/modal/synthetic_media.test
+ */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, mkdtempSync } from 'node:fs';

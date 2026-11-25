@@ -2,6 +2,21 @@
  * AUD-FC-05 (FINAL CLOSURE re-audit, 2026-10-07): API keys addressed by id belong to one tenant. A tenant OWNER must
  * not read, revoke or rotate another tenant's key (rotation would hand over a live token of the other tenant). A key
  * of another tenant is answered like a key that does not exist (404). The caller's own keys keep working.
+ *
+ * Modules under test: `handleRequest` in `src/api/routes.ts` for the key-by-id routes, with
+ * `src/api/apiKeyManager.ts` to create keys and `src/api/tenantKeyRegistry.ts` to check that a
+ * key still resolves.
+ *
+ * Strategy / partitions: an OWNER of tenant A reading, revoking and rotating a key of tenant B
+ * (404, key unchanged, no token returned); a missing key id vs a key of another tenant (same
+ * answer); the same three operations on the caller's own key (allowed).
+ *
+ * Needs: nothing external. Uses the in-memory key metadata and token stores, reset before every
+ * test; tenant ids get a per-run suffix so they never collide with other files.
+ *
+ * Run just this file: `npx tsx --test test/unit/api_key_cross_tenant.test.ts`
+ *
+ * @module test/unit/api_key_cross_tenant.test
  */
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

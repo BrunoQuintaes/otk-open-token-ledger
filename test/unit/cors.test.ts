@@ -1,5 +1,21 @@
 /**
  * H1.2 — CORS Configuration Tests
+ *
+ * Checks how allowed browser origins are parsed and how the cross-origin response headers are set.
+ *
+ * Modules under test: `src/api/cors.ts` (`parseCorsConfig`, `applyCors`, `handlePreflight`) and,
+ * for the integration cases, `handleRequest` in `src/api/routes.ts`.
+ *
+ * Strategy / partitions: configuration undefined, `*`, one origin and a comma-separated list;
+ * headers for allow-all, for a matching explicit origin (with Vary and credentials), for a
+ * non-matching origin (none) and no credentials header with the wildcard; a preflight answer;
+ * the router answering a preflight request and adding the origin header to a normal response.
+ *
+ * Needs: nothing external (mock request/response objects; no server).
+ *
+ * Run just this file: `npx tsx --test test/unit/cors.test.ts`
+ *
+ * @module test/unit/cors.test
  */
 
 import { describe, it } from 'node:test';

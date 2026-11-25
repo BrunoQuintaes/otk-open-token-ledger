@@ -3,6 +3,12 @@
  * runs the recovery loop of the real runtime against the database given in argv[2]. A separate process is
  * required because a synchronous stall in the test process would also freeze an in-process second runtime.
  *   node --import tsx test/services/d1d8_ovn_recovery_child.ts <dbUrl> <instanceId> <leaseMs> <intervalMs>
+ *
+ * English summary: child-process entry point used by the recovery tests. It creates the real operations runtime
+ * for the database URL and instance id given as arguments, starts only its recovery loop, prints `ready` on stdout,
+ * and stops cleanly on SIGTERM. It is never imported; tests spawn it.
+ *
+ * @module test/services/d1d8_ovn_recovery_child
  */
 import { OperationsRuntime } from '../../src/operations/runtime.js';
 import { legacyMeasurementPorts } from '../../src/operations/measurementPorts.js';

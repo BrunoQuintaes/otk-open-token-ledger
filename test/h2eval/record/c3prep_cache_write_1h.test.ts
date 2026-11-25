@@ -1,3 +1,21 @@
+/**
+ * Tests that an Anthropic cache write split into 5-minute and 1-hour parts is priced per TTL, instead of pricing the
+ * whole write at the 5-minute price.
+ *
+ * Modules under test: `scripts/h2eval/record/cost.ts` (`computeCost`) with prices from `priceTableFromModal` in
+ * `scripts/h2eval/index.ts`.
+ *
+ * Strategy / partitions: a 1-hour write priced at the 1-hour price; a mixed split with each part at its own price,
+ * and a 5-minute-only write unchanged; a split that does not add up to the total, or a 1-hour part whose complement
+ * is unknown, giving `UNKNOWN` (never under-charging); and a model without a 1-hour price giving `UNKNOWN` when a
+ * 1-hour write is present. Without any split the previous behaviour applies.
+ *
+ * Needs: nothing external (pure cost arithmetic on the repository price tables). No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/record/c3prep_cache_write_1h.test.ts`
+ *
+ * @module test/h2eval/record/c3prep_cache_write_1h.test
+ */
 // SYNTHETIC — OFFLINE. C3-PREP (C160), executor E2''' sobre o E2'' 6cab0d01: B-2 da auditoria Q04-C159C.
 // record/cost.ts precificava o TOTAL da escrita de cache Anthropic (cache_creation_input_tokens) ao preco de 5m; uma escrita de 1h saia a 2,50 (Sonnet) / 5 (Opus) em vez de 4 / 8.
 // Agora: com a divisao 5m/1h conhecida, cada TTL ao seu preco; divisao incoerente com o total, ou parte 1h sem preco/complemento conhecido => UNKNOWN (parada segura).

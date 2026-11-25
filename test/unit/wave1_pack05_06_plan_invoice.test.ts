@@ -2,6 +2,20 @@
  * Wave 1 Pack 5+6 — Plan+RateLimit + Invoice+Tests (S2.1-S2.4)
  *
  * @since Wave 1 Packs 5-6 (2026-03-15)
+ *
+ * Modules under test: `src/billing/PlanRegistry.ts` (plans, assignment, quota and rate limit) and
+ * `src/billing/InvoiceService.ts`, fed by the accounting layer of `src/security/talRuntime.ts`.
+ *
+ * Strategy / partitions: the three tiers and the default plan; assignment and listing; quota within and over
+ * the FREE limit and unlimited PRO; rate limit per tier; invoices for an unknown tenant, with line items,
+ * aggregated by provider and model, quota percentage for a limited and an unlimited plan, and serialization
+ * of bigint fields.
+ *
+ * Needs: nothing external (in-memory registries, reset before each test).
+ *
+ * Run just this file: `npx tsx --test test/unit/wave1_pack05_06_plan_invoice.test.ts`
+ *
+ * @module test/unit/wave1_pack05_06_plan_invoice.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

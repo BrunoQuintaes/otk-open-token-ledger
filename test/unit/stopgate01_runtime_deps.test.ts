@@ -5,6 +5,19 @@
  * devDependencies, so `npm ci --omit=dev` (which skips every lockfile entry flagged "dev": true) produced an install in
  * which the prover and ZK v3 could not load. The images install devDependencies on purpose (tsx is the runtime loader),
  * which hid the mismatch. The check is static: package.json and package-lock.json, no network.
+ *
+ * Under test: the dependency declarations in `package.json` and `package-lock.json` against the packages
+ * imported by the code under `src/` (no source module is imported; the files are scanned as text).
+ *
+ * Strategy / partitions: the scan finds the known runtime imports (so an empty scan cannot pass); every
+ * imported package is a production dependency, except the optional SSO packages loaded with a guarded dynamic
+ * import; no lockfile entry of a runtime import is marked dev; the ZK library versions did not change.
+ *
+ * Needs: only the file system (read only), from the repository root found from this file's location.
+ *
+ * Run just this file: `npx tsx --test test/unit/stopgate01_runtime_deps.test.ts`
+ *
+ * @module test/unit/stopgate01_runtime_deps.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

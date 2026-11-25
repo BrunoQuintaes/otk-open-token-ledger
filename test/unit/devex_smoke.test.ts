@@ -9,6 +9,20 @@
  *
  * Uses the same in-process mockReq/mockRes pattern as other smoke tests.
  * No server socket, no network I/O.
+ *
+ * Files under test: `python/otk_client.py`, `docs/quickstart.md` and the examples under
+ * `examples/python/` and `examples/typescript/`; code under test: `handleRequest` in
+ * `src/api/routes.ts` for the metrics, latest-events and rate-limit status routes.
+ *
+ * Strategy / partitions: files exist and name the documented class, methods and endpoints (text
+ * checks); each documented route answers with the documented fields, after the metrics
+ * collector, event dispatcher and rate limiters are reset.
+ *
+ * Needs: read access to the files listed above; no Python interpreter is run.
+ *
+ * Run just this file: `npx tsx --test test/unit/devex_smoke.test.ts`
+ *
+ * @module test/unit/devex_smoke.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

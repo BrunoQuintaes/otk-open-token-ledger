@@ -9,6 +9,22 @@
  *   - GET /accounting/balance: returns CU balance after receipt store
  *   - TokenAccountingLayer debit: wired via storeReceipt
  *   - talRuntime singleton: getAccountingLayer
+ *
+ * Modules under test: `src/api/tenantKeyRegistry.ts`, `handleRequest` in `src/api/routes.ts`,
+ * `src/api/receiptStore.ts` and `src/security/talRuntime.ts`.
+ *
+ * Strategy / partitions: registry with no tokens (auth off, default tenant) and with one token
+ * (auth on, known and unknown token); receipt creation with no token, an invalid token and a
+ * valid one; receipt read by the same tenant, by another tenant (403) and with no token; the
+ * accounting balance after a stored receipt and for an unknown tenant; the accounting layer is a
+ * singleton. The rate limiter is only reset here; no test in this file reaches a 429 answer.
+ *
+ * Needs: no server (mock request/response objects); the registry, stores and limiters are reset
+ * in the hooks of each block.
+ *
+ * Run just this file: `npx tsx --test test/unit/alpha_hardening.test.ts`
+ *
+ * @module test/unit/alpha_hardening.test
  */
 
 import { describe, it, before, after } from 'node:test';

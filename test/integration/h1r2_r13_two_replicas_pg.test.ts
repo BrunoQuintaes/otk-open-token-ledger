@@ -10,6 +10,24 @@
  * Scenario (prompt H1 final closure, A1 minimum test): create on A → valid on B; revoke on A → refused on B without
  * restart; rotation; tenant (a /signup organization, R-14) deactivated on A; SCIM-deprovisioned author; restart of B;
  * database failure on B (fail closed) and recovery. Also measures the per-request lookup cost and the revocation window.
+ *
+ * In plain terms: a revocation, rotation, tenant deactivation or user deprovisioning done through one API replica
+ * must be enforced by the other replica on its very next request, and a replica that loses its database must refuse
+ * credentials instead of trusting a stale cache. Two extra cases cover an open event stream that must close after
+ * its key is revoked elsewhere, and a user without any membership who must get no token.
+ *
+ * Under test: the API server entrypoint `src/api/server.ts` as a black box over HTTP (signup, login, key
+ * management, admin tenant deactivation, SCIM deprovisioning), backed by its PostgreSQL stores.
+ *
+ * Needs: `OTK_TEST_PG_URL` (disposable database; the test creates and drops its own schema); two API child
+ * processes started with `node_modules/tsx`, each on a free 127.0.0.1 port, with a minimal environment built here
+ * (random admin, SCIM, JWT and static tenant credentials generated per run; no value comes from the caller's
+ * environment except `PATH` and `HOME`); up to 240 s; some fixed waits of about 1 s. Optional `H1R2_EVIDENCE_OUT`:
+ * a file path where the measured timings are written as JSON after the run.
+ *
+ * Run just this file: `npx tsx --test test/integration/h1r2_r13_two_replicas_pg.test.ts`
+ *
+ * @module test/integration/h1r2_r13_two_replicas_pg.test
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -29,7 +47,12 @@ const ADMIN = 'h1r2-admin-key-' + crypto.randomBytes(12).toString('hex');
 const SCIM = 'h1r2-scim-bearer-' + crypto.randomBytes(12).toString('hex');
 const JWT_SECRET = crypto.randomBytes(32).toString('hex');
 
-/** TCP relay that can refuse/cut every connection (database outage seen by one replica only). */
+/**
+ * TCP relay that can refuse/cut every connection (database outage seen by one replica only).
+ *
+ * @param target - Host and port of the real PostgreSQL server.
+ * @returns Controls: `listen` (resolves the relay's 127.0.0.1 port), `cut`, `restore` and `close`.
+ */
 function relay(target: { host: string; port: number }) {
   let down = false;
   const sockets = new Set<net.Socket>();

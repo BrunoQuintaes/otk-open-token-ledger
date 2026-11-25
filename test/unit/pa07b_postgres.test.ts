@@ -6,6 +6,20 @@
  * Integration tests (requiring OTK_DB_URL) are skipped without the env var.
  *
  * @since PA-07 (2026-03-13)
+ *
+ * Module under test: `src/api/PostgresReceiptStore.ts`.
+ *
+ * Strategy / partitions: without a database, the class shape, the constructor and the async method list, a
+ * check that `OTK_DB_URL` is unset (passes trivially when it is set) and a simulated bigint round trip of a
+ * receipt; with a database, create the table twice, insert, duplicate insert refused, read back, missing id,
+ * count, list all and delete all.
+ *
+ * Needs: the integration suite runs only when `OTK_DB_URL` points to a reachable Postgres and is skipped
+ * otherwise; it writes and then deletes rows in that database. The rest needs nothing external.
+ *
+ * Run just this file: `npx tsx --test test/unit/pa07b_postgres.test.ts`
+ *
+ * @module test/unit/pa07b_postgres.test
  */
 
 import { describe, it, before, after } from 'node:test';

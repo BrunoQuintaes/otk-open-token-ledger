@@ -12,6 +12,19 @@
  *   8.  Dry-run (no OTK_PG_URL set) exits 0 (not a fatal error)
  *
  * @since Wave 4 (4B-PACK-4B01 / E5.1)
+ *
+ * Under test: the script `scripts/ops/backup_restore_drill.sh`, read as text and then run once (the later
+ * execution cases reuse that result).
+ *
+ * Strategy / partitions: the script contents (shebang, dump and save commands, JSON output, recovery-time
+ * target); a dry run with no database URL and an unreachable Redis port (exit 0 and each JSON field).
+ *
+ * Needs: `bash` on the PATH. Each run sets `OTK_PG_URL` to empty and `OTK_REDIS_HOST` / `OTK_REDIS_PORT` to a
+ * local port with nothing listening, with a 30 s limit; no database or Redis is touched.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave4_backup_restore.test.ts`
+ *
+ * @module test/unit/wave4_backup_restore.test
  */
 
 import { describe, it } from 'node:test';

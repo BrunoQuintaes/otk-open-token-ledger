@@ -3,6 +3,20 @@
  * The same paths were exercised against a real PostgreSQL 16 in
  * scripts/rehearsal/services_rehearsal.ts; these tests pin the edge cases without Docker,
  * including the concurrency defect found by the independent review of 2026-09-30.
+ *
+ * Module under test: `src/api/receiptStore.ts` (durable write in Postgres mode, with a fake store injected),
+ * checked against the accounting layer of `src/security/talRuntime.ts`.
+ *
+ * Strategy / partitions: insert refused, accepted and hanging (write timeout); two concurrent requests with
+ * the same id when the first write fails and when it succeeds; a row already present for the same tenant and
+ * for another tenant; which restored receipts are sent for proving.
+ *
+ * Needs: no database and no network. Sets `OTK_DB_URL` and `OTK_RECEIPT_LOG` to empty, `PROVER_URL` to
+ * disabled and `OTK_PG_WRITE_TIMEOUT_MS` to 200 before importing the store.
+ *
+ * Run just this file: `npx tsx --test test/unit/receipt_durable_pg_r13.test.ts`
+ *
+ * @module test/unit/receipt_durable_pg_r13.test
  */
 import { describe, it, before, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';

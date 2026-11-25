@@ -10,6 +10,21 @@
  *   - user store failure on the key-minting routes → 503, no key (fail closed);
  *   - role change: a registry token downgraded by the platform loses the permission at once (control).
  * In-memory stores only; no network.
+ *
+ * Also covered: a key minted or rotated with a user's key inherits that user as author (no laundering through a
+ * second key), and a SCIM PATCH that sets the user inactive deprovisions like DELETE (unknown operations → 400).
+ *
+ * Modules under test: the route handlers of `src/api/routes.ts` called in process, with `src/api/apiKeyManager.ts`,
+ * `src/auth/subjectStatus.ts`, `src/auth/jwt.ts`, `src/auth/emailVerification.ts`, `src/api/tenantKeyRegistry.ts`,
+ * `src/api/tenantCrud.ts` and the memory key metadata, token and user stores.
+ *
+ * Needs: nothing external. Before importing it empties `OTK_RECEIPT_LOG`, `OTK_DB_URL` and `OTK_TENANT_LOG`, sets
+ * `PROVER_URL=disabled` and removes `OTK_REDIS_URL` and `OTK_TENANTS`; `OTK_ADMIN_KEY`, `OTK_JWT_SECRET` and
+ * `OTK_SCIM_BEARER_TOKEN` get fixture values and are restored after the run.
+ *
+ * Run just this file: `npx tsx --test test/security/h1_laneb_s05b.test.ts`
+ *
+ * @module test/security/h1_laneb_s05b.test
  */
 import { describe, it, before, after, mock } from 'node:test';
 import assert from 'node:assert/strict';
@@ -55,7 +70,12 @@ async function call(method: string, url: string, headers: Record<string, string>
   let json: any; try { json = JSON.parse(res.body); } catch { json = undefined; }
   return { status: res.statusCode, body: res.body, json };
 }
-/** signup + verified e-mail: the JWT can mint keys */
+/**
+ * signup + verified e-mail: the JWT can mint keys
+ *
+ * @param tag - Short label that makes the e-mail and organization unique within the run.
+ * @returns The new user's id, organization id and signup JWT.
+ */
 async function verifiedUser(tag: string) {
   const email = `lb-s05-${tag}-${RUN}@example.invalid`; const password = `lb-s05-pass-${tag}-${RUN}`;
   const s = await call('POST', '/signup', {}, j({ email, password, name: 'S05b synthetic', orgName: `lb s05 ${tag} ${RUN}` }));

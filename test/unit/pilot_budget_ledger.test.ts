@@ -2,6 +2,22 @@
  * Budget ledger of the paid Anthropic pilot (scripts/pilot/anthropic/budgetLedger.ts).
  * Values checked by hand from the official Haiku 4.5 list prices (USD per MTok:
  * input 1, cache write 5m 1.25 / 1h 2, cache read 0.10, output 5), consulted 2026-09-29.
+ *
+ * Module under test: `scripts/pilot/anthropic/budgetLedger.ts` (cost from usage, reservation bound, cap and
+ * the file ledger shared by concurrent pilot processes).
+ *
+ * Strategy / partitions: cost of plain input/output and of each cache category; a missing usage field gives an
+ * unknown cost, never zero; reservation bound from the dearest input category and the output limit; a model
+ * without a verified price, a cap above the authorised ceiling and a non-finite or negative cap are refused;
+ * settlement by outcome (ok, refused, timeout or missing usage keeps the reservation); a reservation that
+ * would pass the cap and a busy lock are refused; 8 processes racing under one cap get exactly 4 reservations.
+ *
+ * Needs: no network and no provider call. Writes ledgers in temporary directories and, for the race, spawns 8
+ * Node child processes with the `tsx` loader (allow some seconds on a loaded machine).
+ *
+ * Run just this file: `npx tsx --test test/unit/pilot_budget_ledger.test.ts`
+ *
+ * @module test/unit/pilot_budget_ledger.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

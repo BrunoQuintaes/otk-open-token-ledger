@@ -3,6 +3,27 @@
  * (D4-G03/G04/G05, D8-G01 local part, U2-01/U2-02/U2-03/U2-09).
  * Whole-text counts are the reference for the incremental counter: every split of the same
  * text must give the same number (property checked over many deterministic pseudo-random splits).
+ *
+ * Modules under test: `src/providers/catalog/modelCatalog.ts`, `src/tokenization/tokenizerIdentity.ts`,
+ * `src/tokenization/incrementalCounter.ts`, `src/tokenization/localCounter.ts`,
+ * `src/tokenization/conferenceReport.ts`, `src/providers/usage/normalizeUsage.ts` and the legacy
+ * `src/tokenization/TokenizerRegistry.ts`.
+ *
+ * Strategy / partitions: catalog ids against the installed tiktoken model table, dated
+ * snapshots, unlisted ids, approximate providers and unsupported combinations; the tokenizer
+ * identity record; incremental counting vs whole-text counting under random splits, oversized
+ * pieces, a known cut-point regression, a 3000-string fuzz, safe cut points and memory bounds;
+ * local counter coverage for text, tools/images, missing output, oversized input, unsupported
+ * models and per-API text extraction; conference report verdicts from the shared vectors and
+ * for missing usage, counter failure, approximate tokenizers, hidden reasoning, and the relative
+ * delta rule.
+ *
+ * Needs: must be run from the repository root, because it reads
+ * `test/fixtures/d1d8/common_vectors.json` and `package-lock.json` by relative path. No network.
+ *
+ * Run just this file: `npx tsx --test test/unit/d1d8_b_counter.test.ts`
+ *
+ * @module test/unit/d1d8_b_counter.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -21,7 +42,12 @@ const vectors = JSON.parse(readFileSync('test/fixtures/d1d8/common_vectors.json'
 const V = (id: string) => vectors.vectors.find((v) => v.id === id)!;
 const NOW = '2026-09-30T12:00:00.000Z';
 
-/** Deterministic PRNG (mulberry32) so failures are reproducible. */
+/**
+ * Deterministic PRNG (mulberry32) so failures are reproducible.
+ *
+ * @param seed - Any integer; the same seed gives the same sequence.
+ * @returns A function returning the next value in [0, 1) on each call.
+ */
 function rng(seed: number) {
   let a = seed >>> 0;
   return () => {

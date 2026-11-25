@@ -11,6 +11,21 @@
  *  7. getProverMetrics — returns object with expected fields
  *
  * @since W9 (2026-04-07)
+ *
+ * Modules under test: `src/billing/ProviderPaymentRouter.ts`, `src/billing/ProviderBillingImporter.ts`,
+ * `src/auth/jwt.ts`, `src/infra/chain/SepoliaConfig.ts`, `src/infra/routing/RegionRouter.ts`,
+ * `src/infra/redis/RedisClusterConfig.ts` and `src/prover/ProverDaemonManager.ts`.
+ *
+ * Strategy / partitions: listed above per module; each env-driven default is checked with the variable unset
+ * and set (`OTK_CHAIN_TARGET`, `OTK_REGION`, `OTK_REDIS_CLUSTER`, `OTK_REDIS_CLUSTER_NODES`), and refresh tokens
+ * are checked for wrong type, tampering and wrong secret.
+ *
+ * Needs: no network (the billing importers are called with an empty provider key) and no Redis. Changes the
+ * variables above inside each test and restores them.
+ *
+ * Run just this file: `npx tsx --test test/unit/w9_scale_distribution.test.ts`
+ *
+ * @module test/unit/w9_scale_distribution.test
  */
 
 import assert from 'node:assert/strict';

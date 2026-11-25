@@ -8,6 +8,18 @@
  * by running the daemon with OTK_REDIS_URL set (see PA-07 EVD).
  *
  * @since PA-07 (2026-03-13)
+ *
+ * Module under test: `src/prover/BullMQProofQueue.ts` (exported shape and queue name only).
+ *
+ * Strategy / partitions: the class and constant exist; the job data and job result types accept the fields
+ * the daemon relies on (checked at compile time); the env check only confirms that `OTK_REDIS_URL` is unset
+ * in the unit-test context, so the daemon would use `DurableProofQueue` (it passes trivially when it is set).
+ *
+ * Needs: no Redis and no network; nothing connects. Reads `OTK_REDIS_URL` only to check that it is absent.
+ *
+ * Run just this file: `npx tsx --test test/unit/pa07a_bullmq.test.ts`
+ *
+ * @module test/unit/pa07a_bullmq.test
  */
 
 import { describe, it } from 'node:test';

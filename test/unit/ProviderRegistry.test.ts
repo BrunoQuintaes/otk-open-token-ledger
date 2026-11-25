@@ -7,6 +7,21 @@
  * - IProviderAdapter contract: each adapter returns NormalizedUsageEvent
  * - listProviders / isRegistered
  * - Case-insensitive resolution
+ *
+ * Modules under test: `src/providers/ProviderRegistry.ts` and the error codes in
+ * `src/providers/types.ts`.
+ *
+ * Strategy / partitions: default registry contents and ordering; registered, unknown and
+ * mixed-case provider ids; an empty registry; duplicate registration (exact and mixed case);
+ * the output of each built-in adapter for one fixture per provider (fields, CU values, identical
+ * key shape); invalid input to the Gemini and DeepSeek stubs.
+ *
+ * Needs: nothing external. The Gemini and DeepSeek cases expect the stub adapters, which
+ * `createDefault()` picks only when `GEMINI_API_KEY` and `DEEPSEEK_API_KEY` are not set.
+ *
+ * Run just this file: `npx tsx --test test/unit/ProviderRegistry.test.ts`
+ *
+ * @module test/unit/ProviderRegistry.test
  */
 
 import { describe, it } from 'node:test';

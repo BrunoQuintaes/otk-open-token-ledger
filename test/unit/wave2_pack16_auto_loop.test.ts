@@ -11,6 +11,19 @@
  *   - No batch when below threshold
  *
  * @since Wave 2 Pack 16 (2026-03-15)
+ *
+ * Module under test: `src/automation/AutoLoop.ts`, driven with stub dependencies (receipt count, batch flush and
+ * submit functions).
+ *
+ * Strategy / partitions: as listed above; a count above and one below the threshold, submit on and off, a submit
+ * that succeeds and one that fails. The lifecycle loops are stopped after each test; the other cases call
+ * `tick` by hand instead of waiting for the interval.
+ *
+ * Needs: nothing external (no chain is contacted; the submit function is a stub).
+ *
+ * Run just this file: `npx tsx --test test/unit/wave2_pack16_auto_loop.test.ts`
+ *
+ * @module test/unit/wave2_pack16_auto_loop.test
  */
 
 import { describe, it, beforeEach, afterEach } from 'node:test';

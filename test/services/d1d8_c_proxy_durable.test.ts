@@ -5,6 +5,25 @@
  * settlement), D7-G07 (unknown CU: reservation + settlement), D3-G02/G03/G05/G07 plumbing with
  * explicit doubles of A/B (named *Double*; S4 repeats with the real modules).
  * Hand vectors: gpt-4o/openai weights 1.0 × 1.0 (legacy CU_MODEL_v1): CU = tokens.
+ *
+ * Modules under test: `src/operations/runtime.ts` (`OperationsRuntime`) and the proxy routes of the in-process API,
+ * with `src/api/PostgresReceiptStore.ts`, the fake provider from `./d1d8_c_provider.ts`, the TCP relay from
+ * `./d1d8_c_proc.ts`, and crypto, counter and conference doubles from `test/fixtures/d1d8/c/`.
+ *
+ * Strategy / scenarios: admission durable before the provider call and one settlement, with the provider key (not
+ * the tenant token) sent upstream; reopening with the same id; tenant-scoped status without text, read-only for a
+ * viewer; the client leaving during, before and after the stream while the operation still settles once; explicit
+ * cancel versus upstream failure, duration and output limits; worst-case reservation with unknown CU (4 of 20
+ * admitted against the quota); PostgreSQL cut through the relay when the final usage arrives (spooled with fsync and
+ * applied once); and the storage and runtime path from settlement to opening, signed receipt and proof job.
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`) and a writable temporary
+ * directory for the spool. Before importing the server it sets fixture values in the test process for the API's
+ * variables (`OTK_TENANTS`, fake provider keys, upstream overrides, `PROVER_URL=disabled`). No network.
+ *
+ * Run just this file: `npx tsx --test test/services/d1d8_c_proxy_durable.test.ts`
+ *
+ * @module test/services/d1d8_c_proxy_durable.test
  */
 process.env['OTK_DB_URL'] = '';
 process.env['OTK_RECEIPT_LOG'] = '';

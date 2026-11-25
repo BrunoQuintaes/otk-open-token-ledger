@@ -1,4 +1,26 @@
-/** R14: ex ante estimators. Text = OTK counter imported from H1; image = official formulas (EXPERIMENTAL, values from the documentation's own examples); everything else UNSUPPORTED_FOR_ESTIMATION. */
+/**
+ * R14: ex ante estimators. Text = OTK counter imported from H1; image = official formulas (EXPERIMENTAL, values from the documentation's own examples); everything else UNSUPPORTED_FOR_ESTIMATION.
+ *
+ * Tests the ex-ante token estimators: text through the project's local counter, images through the providers'
+ * published formulas (experimental), and everything else explicitly unsupported.
+ *
+ * Modules under test: `scripts/h2eval/modal/estimators/index.ts` (`estimateExAnte`, `estimateOpenAiImageTokens`,
+ * `estimateAnthropicImageTokens`, `readPngSize`, `GOOGLE_AUDIO_REFERENCE_FIGURE`),
+ * `scripts/h2eval/modal/estimators/image_openai_tiles.ts` (`openAiResizedDims`), the request builders, and
+ * `src/tokenization/tokenizerIdentity.ts` as the reference counter.
+ *
+ * Strategy / partitions: text counts per provider (exact for OpenAI, an approximation flagged as uncalibrated where
+ * applicable) and a request with an image or audio part marked unsupported (no local count invented); OpenAI image
+ * tiles (low detail, resize rule, tile count, invalid input); Anthropic image patches against the documented table
+ * for both resolution tiers and the documented cap; Google images and all audio unsupported, and a comparison helper
+ * that refuses an unsupported estimate; and PNG dimensions of the committed synthetic images against their manifest.
+ *
+ * Needs: the image fixtures in `test/h2eval/modal/fixtures/images/` and the local tokenizer package. No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/modal/estimators.test.ts`
+ *
+ * @module test/h2eval/modal/estimators.test
+ */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

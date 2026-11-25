@@ -9,6 +9,22 @@
  * Rule tested here (fail-closed, decision of plan policy still pending with the author): with auth enabled a tenant role
  * may keep or LOWER its own tier; raising it needs the platform operator credential (x-admin-key) or the Stripe checkout
  * webhook (signature-verified). The upstream provider is a fetch stub (no network, no paid call, no real key).
+ *
+ * Strategy / scenarios: end to end, a tenant whose FREE quota is exhausted cannot reopen the proxy by assigning PRO to
+ * itself; OWNER and ADMIN registry tokens are refused when raising their own plan from FREE to STARTER or PRO, and an
+ * OWNER from STARTER to PRO; an OWNER JWT of the shape issued at signup is refused too; an OWNER may lower its own
+ * plan (control).
+ *
+ * Modules under test: the plan assignment route of `src/api/routes.ts` (called in process), `src/billing/PlanRegistry.ts`,
+ * the ledger in `src/security/talRuntime.ts` and the proxy `src/proxy/ProxyGateway.ts`.
+ *
+ * Needs: nothing external. Before importing it empties `OTK_RECEIPT_LOG` and `OTK_DB_URL`, sets
+ * `PROVER_URL=disabled` and `OPENAI_API_KEY` to a fixture value, and removes `OTK_PROXY_ALLOW_UNAUTHENTICATED`;
+ * `OTK_ADMIN_KEY` and `OTK_JWT_SECRET` get fixture values and are restored after the run.
+ *
+ * Run just this file: `npx tsx --test test/security/sec02_n01_plan_self_upgrade.test.ts`
+ *
+ * @module test/security/sec02_n01_plan_self_upgrade.test
  */
 import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

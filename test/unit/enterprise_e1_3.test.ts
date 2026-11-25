@@ -15,7 +15,25 @@
  * 9. 403 on insufficient permission (authenticated but role too low)
  * 10. Zero regression on existing suites
  *
+ * Later security fixes changed items 2 and 4: batch flush and chain head are now platform
+ * operations (403 for every tenant role, including OPERATOR), and replacing the tenant registry
+ * is refused for a tenant OWNER too; the tests assert the current answers.
+ *
+ * Modules under test: `hasPermission` from `src/security/rbac.ts`, and `handleRequest` in
+ * `src/api/routes.ts` with tokens from `src/api/tenantKeyRegistry.ts`.
+ *
+ * Strategy / partitions: the permission matrix for OWNER, ADMIN, OPERATOR, MEMBER and VIEWER;
+ * for each role, the receipt, accounting and admin routes it may and may not call; auth off
+ * with no platform key (open) and with a platform key (still enforced on admin routes); auth on
+ * with no token or an unknown token (401).
+ *
+ * Needs: no server (mock request/response objects). A few tests set or delete `OTK_ADMIN_KEY`
+ * and restore the previous value at the end of the test.
+ *
+ * Run just this file: `npx tsx --test test/unit/enterprise_e1_3.test.ts`
+ *
  * @since E1.3 (2026-03-14)
+ * @module test/unit/enterprise_e1_3.test
  */
 
 import { describe, it, before, beforeEach, afterEach } from 'node:test';

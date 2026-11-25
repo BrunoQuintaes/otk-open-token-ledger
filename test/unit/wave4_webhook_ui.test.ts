@@ -14,6 +14,18 @@
  *  10.  app.ts has /app/webhooks route
  *
  * @since Wave 4 (4E-PACK-4E02 / NEW-4.06)
+ *
+ * Module under test: `src/dashboard/webhooks.ts` (`renderWebhooksPage`), fed with records shaped by
+ * `src/webhooks/WebhookRegistry.ts`; the route in `src/dashboard/app.ts` is checked as text.
+ *
+ * Strategy / partitions: the page with no endpoints and with endpoints, deliveries and dead letters; each
+ * expected section is present in the generated HTML.
+ *
+ * Needs: nothing external; reads one source file from the repository root found from this file's location.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave4_webhook_ui.test.ts`
+ *
+ * @module test/unit/wave4_webhook_ui.test
  */
 
 import { describe, it } from 'node:test';

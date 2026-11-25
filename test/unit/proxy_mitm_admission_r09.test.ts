@@ -3,6 +3,23 @@
  *
  * The upstream provider is a fetch stub (no network, no paid call). The gateway is the
  * real ProxyGateway on an ephemeral port; receipts go to the real receiptStore/TAL.
+ *
+ * Modules under test: `src/proxy/ProxyGateway.ts` (admission on the provider-compatible path), with
+ * `src/api/tenantKeyRegistry.ts`, `src/api/receiptStore.ts`, `src/security/talRuntime.ts` and
+ * `src/billing/PlanRegistry.ts`.
+ *
+ * Strategy / partitions: no token, unknown token, a role without the receipt-write permission, a valid token
+ * (key swap, internal headers stripped, receipt tenant), a streamed response, an exhausted plan quota, and
+ * authentication not configured with and without the explicit unauthenticated-relay opt-in.
+ *
+ * Needs: no external network. The gateway listens on a random port of 127.0.0.1; the global `fetch` is
+ * replaced for https URLs and restored in `after`. Sets `OTK_RECEIPT_LOG` and `OTK_DB_URL` to empty,
+ * `PROVER_URL` to disabled and `OPENAI_API_KEY` to a fixture value, and removes
+ * `OTK_PROXY_ALLOW_UNAUTHENTICATED`, before the modules are imported.
+ *
+ * Run just this file: `npx tsx --test test/unit/proxy_mitm_admission_r09.test.ts`
+ *
+ * @module test/unit/proxy_mitm_admission_r09.test
  */
 import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -31,7 +48,10 @@ const realFetch = globalThis.fetch;
 const TOKEN = 'r09-fixture-token';
 const nowEpoch = () => String(deriveEpoch(Math.floor(Date.now() / 1000)));
 /** M24 INV-06 (RUN-M1-24H): the receipt is written after the response; RUN-S saw one FLAKY failure of the fixed 50 ms
- * wait under load. Wait for the condition itself (up to 2 s) instead of a longer sleep; the assertions stay the same. */
+ * wait under load. Wait for the condition itself (up to 2 s) instead of a longer sleep; the assertions stay the same.
+ * @param cond - Condition polled every 10 ms.
+ * @param ms - Maximum wait in milliseconds; on timeout the function returns without throwing.
+ */
 async function until(cond: () => boolean, ms = 2000): Promise<void> {
   const end = Date.now() + ms;
   while (!cond() && Date.now() < end) await new Promise(r => setTimeout(r, 10));

@@ -7,29 +7,46 @@
  *   - response `model` is the dated snapshot id; `usage` carries cache categories;
  *   - streaming: message_start carries input usage, message_delta carries cumulative usage.
  * Every received request is recorded so tests can check what left the proxy.
+ *
+ * Imported by `test/integration/anthropic_proxy_auth_model_r11.test.ts`, `scripts/pilot/anthropic/runPilot.ts`
+ * and `scripts/rehearsal/proxy_services.ts`. It listens on 127.0.0.1 only, never calls the real provider, and
+ * produces no real usage: the returned token counts are whatever the caller puts in `reply`.
+ *
+ * @module test/integration/fixtures/anthropicLikeServer
  */
 import http, { type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
+/** Usage block the stand-in returns, in tokens, with the Anthropic field names. */
 export interface FakeUsage {
   input_tokens: number;
   output_tokens: number;
+  /** Tokens written to the prompt cache; sent as 0 when omitted. */
   cache_creation_input_tokens?: number;
+  /** Tokens read from the prompt cache; sent as 0 when omitted. */
   cache_read_input_tokens?: number;
 }
 
+/** One request exactly as the stand-in received it (recorded before any validation). */
 export interface ReceivedRequest {
   method: string;
+  /** Request path including the query string. */
   path: string;
+  /** Copy of the request headers, lower-case names as Node.js delivers them. */
   headers: Record<string, string | string[] | undefined>;
+  /** Raw request body as UTF-8 text. */
   body: string;
 }
 
+/** Handle to a running stand-in; tests mutate `reply` and read `received`. */
 export interface AnthropicLikeServer {
+  /** Base URL, `http://127.0.0.1:<port>`, without a trailing slash. */
   url: string;
+  /** Every request received, in arrival order; callers may clear it between tests. */
   received: ReceivedRequest[];
   /** Usage and model returned by the next responses. */
   reply: { model: string; usage: FakeUsage; text: string; omitUsage?: boolean };
+  /** Closes all connections and stops listening. */
   close(): Promise<void>;
 }
 
@@ -40,6 +57,17 @@ function errorBody(type: string, message: string): string {
   return JSON.stringify({ type: 'error', error: { type, message } });
 }
 
+/**
+ * Starts the stand-in on a free 127.0.0.1 port.
+ *
+ * Answers only POST requests whose path starts with the Messages path: 404 otherwise, 401 when the provider key
+ * header does not equal `expectedKey`, 400 without the version header or with a body that is not JSON. A body with
+ * `stream: true` gets a server-sent event stream; any other body gets one JSON message. `reply.omitUsage` removes
+ * the usage block from either form.
+ *
+ * @param expectedKey - The only provider key accepted.
+ * @returns The running server handle; call `close()` when done.
+ */
 export async function startAnthropicLikeServer(expectedKey: string): Promise<AnthropicLikeServer> {
   const received: ReceivedRequest[] = [];
   const state: AnthropicLikeServer = {

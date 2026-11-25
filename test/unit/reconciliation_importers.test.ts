@@ -1,5 +1,20 @@
 /**
  * Phase 10 reconciliation — mapping-driven importers. All statements here are SYNTHETIC fixtures.
+ *
+ * Modules under test: the statement importers of `src/reconciliation/` (bundled mappings, the Anthropic, OpenAI
+ * and Gemini formats) and `src/reconciliation/decimal.ts`.
+ *
+ * Strategy / partitions: every bundled mapping validates; a mapping of another provider is refused; per
+ * provider, a cost and a usage format (cents, JSON numbers kept as text, cached input carved out, tax and
+ * credits separated, unknown model or SKU kept); dates without a timezone rejected unless one is declared; a
+ * header that does not match the mapping; synthetic marker against a REAL declaration; unverified templates;
+ * the same bytes give the same digest.
+ *
+ * Needs: reads fixtures under `test/fixtures/reconciliation/` (relative to the repository root); no network.
+ *
+ * Run just this file: `npx tsx --test test/unit/reconciliation_importers.test.ts`
+ *
+ * @module test/unit/reconciliation_importers.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

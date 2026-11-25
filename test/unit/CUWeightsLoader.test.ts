@@ -1,5 +1,23 @@
 /**
  * CUWeightsLoader — Unit Tests (ADR-0203 Phase 1)
+ *
+ * Checks validation, lookup and signature verification of the signed CU weights table (CW JSON).
+ *
+ * Module under test: `src/economics/CUWeightsLoader.ts`.
+ *
+ * Strategy / partitions: `validateCWJson` with a valid table, `null`, missing version, an expired
+ * or not-yet-valid window, negative and non-finite weights; `loadCWJson` in non-strict mode
+ * (returns `null`) and strict mode (throws); `getModelWeights` for known and unknown
+ * provider/model; `buildSignedMessage` determinism, coverage of every value and key-order
+ * independence; `verifyCWSignature` with a real EIP-191 signature from an ephemeral wallet:
+ * untouched table accepted, each kind of tampering rejected, key reordering accepted, a
+ * signature over the legacy V1 message rejected.
+ *
+ * Needs: nothing external (the signing key is generated in memory and never stored; no network).
+ *
+ * Run just this file: `npx tsx --test test/unit/CUWeightsLoader.test.ts`
+ *
+ * @module test/unit/CUWeightsLoader.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -7,8 +7,23 @@
  * v1 uses the stored proof zk/build/proof.json (no v1 key in zk/keys).
  * Not covered: the daemon HTTP queue (API → /prove → worker); a public or Besu network.
  *
+ * Behaviour tested: `submitProofOnChain` sends each proof to the registry and ABI of its circuit version and is
+ * idempotent per job.
+ *
+ * Strategy / scenarios: a freshly generated v2 proof reaches the v2 registry and the emitted event carries the
+ * epoch, the usage bucket and the commitment; the stored v1 proof reaches the v1 registry (3 public signals);
+ * resubmitting an already registered proof returns the original transaction hash and sends nothing; a job created
+ * for another registry address is refused before any transaction; a v2 proof is refused by a configuration that
+ * only has a v1 registry.
+ *
+ * Needs: a local Hardhat node spawned on a free 127.0.0.1 port (no external network), the compiled contract
+ * artifacts, the v2 circuit files and proving key under `zk/`, and time (each v2 proof is generated live). The
+ * trusted signer is a random wallet funded by the node's dev account; no key is stored in the repository.
+ *
  * Requires compiled artifacts: cd tools/hardhat && npx hardhat compile
  * Run: npx tsx --test test/chain/onchain_submission_v1_v2.test.ts
+ *
+ * @module test/chain/onchain_submission_v1_v2.test
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

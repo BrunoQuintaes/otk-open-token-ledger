@@ -3,6 +3,19 @@
  *
  * Tests computePublishedCUWithCW() and verifyCWSignature() integration.
  * Since D5/S0-F01 a v1 table is refused (see the block below).
+ *
+ * Modules under test: `src/economics/CUEngine.ts` (published CU computed with an optional signed
+ * weights table) and `src/economics/CUWeightsLoader.ts` (`buildSignedMessage`, `verifyCWSignature`).
+ *
+ * Strategy / partitions: no table (`null`, must equal the static `computePublishedCU`); a v1
+ * weighted-sum table for each provider (must throw `CU_WEIGHTS_V1_REJECTED`), for both the bigint
+ * and the Number variant; the signed message is deterministic; a placeholder signature is rejected.
+ *
+ * Needs: nothing external (in-memory fixture tables, no network).
+ *
+ * Run just this file: `npx tsx --test test/unit/CUEngine_dynamic.test.ts`
+ *
+ * @module test/unit/CUEngine_dynamic.test
  */
 
 import { describe, it } from 'node:test';

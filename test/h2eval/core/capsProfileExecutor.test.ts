@@ -1,3 +1,22 @@
+/**
+ * Tests that the executor opens and runs under the named caps profile, and that sub-ledgers set to 0 block their
+ * providers.
+ *
+ * Modules under test: `scripts/h2eval/core/runner.ts` (`createExecutor`) and `scripts/h2eval/core/ledger.ts`
+ * (`BudgetStop`, `CapsAboveDefault`), driven by the doubles in `../support/double.ts`.
+ *
+ * Strategy / partitions: the profile opens, reserves, sends and settles one Anthropic operation; OpenAI and Google
+ * with a 0 sub-ledger are blocked by a budget stop while Anthropic still reserves; the profile branch requires
+ * exactly the three providers (an extra or a missing provider is not covered); and ledgers above or mixed with the
+ * profile are refused when the executor is created.
+ *
+ * Needs: a writable temporary directory. It sets `H2EVAL_TEST_KEY` to a fake canary value, the variable name the
+ * offline egress is configured with. No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/core/capsProfileExecutor.test.ts`
+ *
+ * @module test/h2eval/core/capsProfileExecutor.test
+ */
 // SYNTHETIC — OFFLINE. C158 ciclo 3 (pedido da BOT-01 no G15 do E2): o EXECUTOR abre e roda com o perfil de tetos ciclo3_c158 (32/32/0/0); um ledger acima do perfil continua recusado ao criar o executor;
 // com sub-ledger 0 o OpenAI e o Google ficam bloqueados por BudgetStop (nada do programa pode ser gasto la) e o Anthropic reserva e liquida normalmente.
 import { test } from 'node:test';

@@ -8,7 +8,22 @@
  *   - retry backoff: jobs with nextRetryAt in future skipped by dequeue
  *   - dead-letter: job after MAX_ATTEMPTS attempts goes terminal
  *
+ * Module under test: `src/prover/DurableProofQueue.ts` (the proof job queue that survives a
+ * restart).
+ *
+ * Strategy / partitions: job states pending, processing, done, retry and dead letter; a failure
+ * below and at the attempt limit; dequeue inside the backoff window (skipped) and after it (the
+ * retry time is set into the past by hand, so no real waiting); counts per state; with a log
+ * file: one line per change, restart restoring pending and processing jobs, not restoring done or
+ * dead-letter jobs, keeping the retry time, and skipping malformed lines.
+ *
+ * Needs: the local file system for the persistent block (a temporary directory removed in its
+ * `after` hook). No prover, network or database.
+ *
+ * Run just this file: `npx tsx --test test/unit/durable_proof_queue.test.ts`
+ *
  * @since PA-01 (2026-03-12)
+ * @module test/unit/durable_proof_queue.test
  */
 
 import { describe, it, before, after } from 'node:test';

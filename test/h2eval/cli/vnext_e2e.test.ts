@@ -1,3 +1,26 @@
+/**
+ * Offline end-to-end rehearsal of the revised executor with a simulated provider that reproduces behaviours seen in
+ * a real pilot, followed by a full new study under the revised design.
+ *
+ * Modules under test: `scripts/h2eval/cli/run.ts` (`runAuthorized`, `LEDGER_OPENING_FILE`),
+ * `scripts/h2eval/cli/campaign.ts`, `scripts/h2eval/cli/plan.ts`, `scripts/h2eval/cli/freeze.ts`,
+ * `scripts/h2eval/cli/status.ts`, `scripts/h2eval/core/ledger.ts`, `scripts/h2eval/core/journal.ts` and
+ * `scripts/h2eval/record/snapshot.ts`.
+ *
+ * Strategy / scenarios: the simulated provider counts about 1.5 times the local token estimate, lets adaptive
+ * thinking on a single-turn prompt consume the whole output cap, and fails one send with a TLS verification error.
+ * Phase 1 replays the earlier pilot under the older design and checks what is now recorded (stop reason,
+ * completion, cause code and phase hint). Phase 2 runs a new study under the revised design, from an inherited
+ * opening balance and campaign identity through pilot, per-model gate, training, freeze, validation, selection and
+ * holdout.
+ *
+ * Needs: a writable temporary directory and a synthetic corpus freeze in the `setup` test (allow up to 5 minutes);
+ * sets `H2EVAL_CONTROL_DIR` to a temporary folder when unset; uses the local text counters. No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cli/vnext_e2e.test.ts`
+ *
+ * @module test/h2eval/cli/vnext_e2e.test
+ */
 // SYNTHETIC — OFFLINE. VNEXT-7 (C151 item 7): end-to-end rehearsal of the v-next executor with the simulated provider reproducing the
 // behaviours OBSERVED in the real R17 pilot: (a) the provider counts ~1.5x the local cl100k estimate (U/L0 1.45-1.58 observed), (b) adaptive
 // thinking on a single-turn prompt without system (S1) consumes the whole max_tokens (visible 0, stop_reason max_tokens), (c) a TLS verification

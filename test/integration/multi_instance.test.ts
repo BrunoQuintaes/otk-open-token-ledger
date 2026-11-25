@@ -19,6 +19,20 @@
  * - Accounting isolation: different tenants don't share limits
  *
  * @since Wave 3A (Pack 04)
+ *
+ * Limitation: both "instances" live in one process and read the same in-memory singletons, so this test checks
+ * the store contract, not real cross-process visibility through Redis or PostgreSQL (see the PostgreSQL-gated
+ * two-replica tests in this folder for that).
+ *
+ * Modules under test: the store accessors of `src/api/idempotency.ts`, `src/security/IDistributedRateLimiter.ts`,
+ * `src/api/IDeadLetterStore.ts`, `src/security/IAuditStore.ts` and `src/security/talRuntime.ts`; each block resets
+ * the store it uses before each case.
+ *
+ * Needs: nothing external (in memory, no network, no database).
+ *
+ * Run just this file: `npx tsx --test test/integration/multi_instance.test.ts`
+ *
+ * @module test/integration/multi_instance.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

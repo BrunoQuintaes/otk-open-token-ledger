@@ -7,6 +7,19 @@
  *   3. NotificationService routes events to channels
  *   4. Event lifecycle triggers notifications
  *   5. File structure
+ *
+ * Modules under test: `src/email/ConsoleEmailAdapter.ts`, `src/email/templates.ts`,
+ * `src/notifications/NotificationService.ts` with `src/notifications/notificationRules.ts`, driven through
+ * `src/publisher/EventDispatcher.ts`.
+ *
+ * Strategy / partitions: as listed above; one event per key lifecycle kind, a disabled rule, several events,
+ * custom rules and unsubscribing; required rule fields; one existence check per source file.
+ *
+ * Needs: nothing external; no e-mail is sent (the console adapter keeps messages in memory).
+ *
+ * Run just this file: `npx tsx --test test/unit/wave3c_pack02_email_notify.test.ts`
+ *
+ * @module test/unit/wave3c_pack02_email_notify.test
  */
 
 import { describe, it } from 'node:test';

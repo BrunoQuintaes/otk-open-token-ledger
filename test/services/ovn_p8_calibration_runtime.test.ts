@@ -7,6 +7,23 @@
  * call) and the calibrated profile (SYNTHETIC test fixture; target = a synthetic rule, not Anthropic usage).
  *
  *   OTK_TEST_PG_URL=... OTK_TEST_REDIS_URL=... node node_modules/tsx/dist/cli.mjs --test test/services/ovn_p8_calibration_runtime.test.ts
+ *
+ * Modules under test: the calibration-profile selection of the conference step in `src/operations/runtime.ts`, the
+ * profile files it loads at start-up, and the signed conference report, through the in-process API with the fake
+ * provider from `./d1d8_c_provider.ts`.
+ *
+ * Strategy / scenarios: provider usage equal to the adjusted expectation is compared and within the threshold, and
+ * the report names the profile while keeping the raw local count; an inflated provider count is divergent under the
+ * calibrated threshold; a restarted runtime reloads the same files and reaches the same outcome without changing
+ * earlier reports; and without profiles, or with the bootstrap's refusal of synthetic profiles, the heuristic is used
+ * with no verdict and a log event.
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts`; only `OTK_TEST_PG_URL` is read by this file (the
+ * Redis URL in the command above is not used here); a writable temporary directory; an operator key generated per
+ * run. Before importing the server it sets fixture values in the test process for the API's variables (tenants, a
+ * fake Anthropic key, the upstream override, `PROVER_URL=disabled`). The command above runs just this file.
+ *
+ * @module test/services/ovn_p8_calibration_runtime.test
  */
 process.env['OTK_DB_URL'] = '';
 process.env['OTK_RECEIPT_LOG'] = '';

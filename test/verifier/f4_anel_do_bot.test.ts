@@ -3,6 +3,26 @@
  * (otk.bridge.keyring_file.v1) convertendo-o sem perda; formato desconhecido dá "formato de chaveiro
  * não reconhecido" (amarelo), não "foi mexido"; textos para leigo sem "schema"; CU sem recibo somado
  * aparece como "desconhecida". Só chaves de TESTE, mais o anel PÚBLICO B5F (só endereço, sem segredo).
+ *
+ * In English: the verifier accepts the public keyring file written by the operator's bot (`otk.bridge.keyring_file.v1`)
+ * by converting it without loss; an unknown keyring format is reported as "keyring format not recognized" (yellow),
+ * never as tampering; texts for lay readers avoid the word "schema"; CU with no counted receipt is shown as unknown.
+ *
+ * Module under test: `src/verifier/index.ts` (keyring conversion, parsing, verification, rendering) and the command
+ * `runCli` of `scripts/verify/otk.ts`.
+ *
+ * Strategy / scenarios: the bot keyring gives the same verdicts as the equivalent public keyring, with and without a
+ * fingerprint; lossless conversion (key id, address, status, retirement date and order) with closed field sets; the
+ * real public keyring of a deployed operator converts to the fingerprint quoted in the thesis; unknown format; the bot
+ * keyring dropped among the receipts is recognized as a keyring; lay texts; unknown CU; and the existing public-keyring
+ * path still yields the committed report sha256.
+ *
+ * Needs: the committed vectors and the public keyring copy in `test/verifier/f4/` (read only; addresses only, no
+ * secret) and a temporary directory. No network.
+ *
+ * Run just this file: `npx tsx --test test/verifier/f4_anel_do_bot.test.ts`
+ *
+ * @module test/verifier/f4_anel_do_bot.test
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

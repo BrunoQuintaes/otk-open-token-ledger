@@ -6,6 +6,19 @@
  *
  * Pattern: fire N simultaneous evaluate() calls and assert at most maxRequests
  * are allowed; all extras are denied or throttled.
+ *
+ * Module under test: `AdaptiveRateLimiter` and `buildRateLimitKey` from `src/security/index.ts`.
+ *
+ * Strategy / partitions: 10 evaluate-and-record calls against a limit of 5 (at most 5 allowed,
+ * the rest denied or throttled); a key after `reset(key)`; two independent keys; the key built
+ * from the first 8 characters of a token for failed-authentication limiting. The limiter is
+ * synchronous, so the calls run back to back in one loop rather than through `Promise.all`.
+ *
+ * Needs: nothing external (a fresh limiter per test).
+ *
+ * Run just this file: `npx tsx --test test/unit/concurrency.test.ts`
+ *
+ * @module test/unit/concurrency.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

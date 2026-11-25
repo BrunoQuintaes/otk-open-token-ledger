@@ -2,6 +2,21 @@
  * Nonce Model Tests (ADR-0004)
  *
  * Tests for per-user monotonic nonce anti-replay model.
+ *
+ * Module under test: `src/sdk/OTKSDK.ts` (`OTKSDK` nonce handling), signing with a test signer from
+ * `src/metering/SignatureManager.ts`.
+ *
+ * Strategy / partitions: the initial nonce from the constructor; automatic increment after each receipt; manual
+ * resynchronisation and its use by the next receipt; independent sequences for different users. The remaining
+ * cases only document the expected on-chain registry behaviour (nonce check, query before submit, rejection of a
+ * nonce mismatch or a reused commitment, the breaking change from the previous nonce handling); they hold
+ * descriptive values and do not exercise any contract or SDK code.
+ *
+ * Needs: nothing external (in memory; no chain, no network).
+ *
+ * Run just this file: `npx tsx --test test/sdk/NonceModel.test.ts`
+ *
+ * @module test/sdk/NonceModel.test
  */
 
 import { describe, it } from 'node:test';

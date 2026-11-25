@@ -1,6 +1,19 @@
 /**
  * S0 (run 20260930-1625), request A 20260930-2217: the PUSH0 detectors must not read the solc
  * metadata trailer as code, and must still flag a real PUSH0 opcode.
+ *
+ * Module under test: `findPush0Opcodes` and `executableEnd` from `scripts/ops/evm_bytecode.mjs`
+ * (PUSH0 is the 0x5f opcode, not supported by the Berlin EVM of the local chain).
+ *
+ * Strategy / partitions: 0x5f as the operand of PUSH1 (data); a real PUSH0 in code (flagged);
+ * 0x5f inside a well-formed metadata trailer (not flagged); a trailer with an inconsistent length
+ * or a head that is not CBOR (the whole bytecode is scanned).
+ *
+ * Needs: nothing external (hand-written bytecode strings).
+ *
+ * Run just this file: `npx tsx --test test/unit/d1d8_s0_push0.test.ts`
+ *
+ * @module test/unit/d1d8_s0_push0.test
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

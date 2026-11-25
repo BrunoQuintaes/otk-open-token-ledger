@@ -1,4 +1,24 @@
-/** R14-FIX: F-INT-2 (Haiku 4.5 ends UNCERTAIN: outputVisible/reasoning UNKNOWN without output_tokens_details) and F-INT-1 (the adapter is the single source of the body; system block + breakpoint at the end of the stable prefix; OpenAI/Google field decisions). Offline. */
+/**
+ * R14-FIX: F-INT-2 (Haiku 4.5 ends UNCERTAIN: outputVisible/reasoning UNKNOWN without output_tokens_details) and F-INT-1 (the adapter is the single source of the body; system block + breakpoint at the end of the stable prefix; OpenAI/Google field decisions). Offline.
+ *
+ * Tests two integration fixes in the adapters: an Anthropic model response without output-token details must still
+ * be costed, and the adapter is the single source of the request body.
+ *
+ * Module under test: `scripts/h2eval/modal/index.ts` (`ADAPTERS`, `bodyOf`, `canonicalJson`, `AdapterError`,
+ * `loadPriceTable`, `computeCost` and the Anthropic and OpenAI parsers).
+ *
+ * Strategy / partitions: the root cause reproduced through the public interface and the narrow rule (a thinking
+ * block present, or an adaptive model, keeps `UNKNOWN` unless the request turned thinking off), with the same check on
+ * a non-reasoning OpenAI model and on Gemini; and the request body (the Anthropic system block and where the cache
+ * breakpoint goes for each prefix setting, OpenAI and Gemini field choices, determinism of `bodyOf`, and the
+ * thinking parameter agreeing with the reasoning setting).
+ *
+ * Needs: the response fixtures in `test/h2eval/modal/fixtures/responses/`. No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/modal/r14fix.test.ts`
+ *
+ * @module test/h2eval/modal/r14fix.test
+ */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

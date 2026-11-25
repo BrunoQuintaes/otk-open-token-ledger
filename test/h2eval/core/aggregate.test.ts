@@ -1,3 +1,22 @@
+/**
+ * Tests that the aggregated spending cap of pilot plus campaign is enforced by code through one authoritative
+ * study ledger.
+ *
+ * Modules under test: `scripts/h2eval/core/runner.ts` (`createExecutor`) and `scripts/h2eval/core/ledger.ts`
+ * (`openLedger`, `usdToPico`), driven by the doubles in `../support/double.ts`.
+ *
+ * Strategy / scenarios: (1) spend recorded by a "pilot" batch reduces what a "campaign" batch in another directory
+ * may still reserve on the same ledger; (2) a reservation that would overflow a provider sub-ledger is refused even
+ * with a signed 80% acknowledgement and a signed pre-approval to 100%; (3) a reservation that would overflow the
+ * global cap is refused while the provider sub-ledger is still open; (4) opening a ledger with caps above the
+ * defaults (11 / 5 / 3 / 3 USD) is refused.
+ *
+ * Needs: a writable temporary directory. No network, no credential.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/core/aggregate.test.ts`
+ *
+ * @module test/h2eval/core/aggregate.test
+ */
 // SYNTHETIC — OFFLINE. C144 D144-04 (author's request, 01:33 UTC): the AGGREGATED cap pilot + campaign is applied BY CODE through ONE
 // authoritative study ledger: (1) the pilot's spend reduces what the campaign may still reserve (same sub-ledger, other batch directory);
 // (2) a reservation that would overflow 5/3/3 is refused (STOP_BUDGET_PROVIDER) even with a signed pauseAck AND a signed

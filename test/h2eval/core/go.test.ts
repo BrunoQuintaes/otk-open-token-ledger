@@ -1,3 +1,19 @@
+/**
+ * Tests the pure validator of the single-batch GO file (the signed go-ahead a REAL batch needs) and exports the
+ * synthetic GO builder other tests reuse.
+ *
+ * Module under test: `scripts/h2eval/core/egress.ts` (`validateGoV1`, `GO_REQUIRED_STOPS`, `H2EVAL_ENV_NAMES`).
+ *
+ * Strategy / partitions: a complete synthetic GO validates; each validation rule, broken one at a time, fails with
+ * its own code, and no error code echoes a value from the GO; editing any field after signing breaks the digest;
+ * and the environment variable names and the forbidden-variable list match the documented `H2EVAL_*` names.
+ *
+ * Needs: nothing external (pure validation with a fixed clock value). A valid GO here never opens REAL mode.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/core/go.test.ts`
+ *
+ * @module test/h2eval/core/go.test
+ */
 // SYNTHETIC — pure validator of the GO file (h2eval.go.v1, R17_GO_TEMPLATE.md). No egress, no fetch, no credential: a VALID GO here
 // never opens REAL mode (that also needs realFlag + env + preflight in the runner, which runner.test proves is unreachable).
 import { test } from 'node:test';
@@ -10,6 +26,16 @@ const NOW = Date.parse('2026-11-10T23:00:00.000Z');
 const PREREG = 'ab'.repeat(32);
 const ctx: GoContext = { provider: 'anthropic', phase: 'PILOT', modelRequested: 'sim-haiku', batchId: 'batch1', executorVersion: EXECUTOR_VERSION, executorCodeSha: 'c'.repeat(40), preregistrationSha256: PREREG, campaign: 'H2EVAL-TEST', nowMs: NOW, ledgerCaps: { campaignUsd: '11', providerUsd: '5' } };
 
+/**
+ * Builds the JSON text of a complete, valid synthetic single-batch GO file (schema `h2eval.go.v1`) for the test
+ * campaign, model `sim-haiku` and batch `batch1`.
+ *
+ * Also imported by other tests (for example `e1ppp_rinst.test.ts`), which then register this file's tests too.
+ *
+ * @param over - Top-level fields that replace the defaults, to build invalid GO files; a `goDigestSha256` given
+ *   here is kept as is, otherwise the digest is the canonical sha256 of the other fields.
+ * @returns The GO file content as a JSON string.
+ */
 export function syntheticGo(over: Partial<GoFileV1> = {}): string {
   const base: Omit<GoFileV1, 'goDigestSha256'> = {
     schema: 'h2eval.go.v1', campaign: 'H2EVAL-TEST', phase: 'PILOT', provider: 'anthropic', modelIds: ['sim-haiku'], modelDeprecationAck: null,

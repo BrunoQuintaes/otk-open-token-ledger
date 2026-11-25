@@ -1,4 +1,25 @@
-/** R14: versioned H2-EVAL price table and exact cost (pico-USD). Cross-checked against the H1 ledger values of 07/10/2026. */
+/**
+ * R14: versioned H2-EVAL price table and exact cost (pico-USD). Cross-checked against the H1 ledger values of 07/10/2026.
+ *
+ * Tests the versioned price table of the evaluation harness and exact cost computation in pico-USD, cross-checked
+ * against costs recorded by an earlier evaluation campaign.
+ *
+ * Modules under test: `scripts/h2eval/modal/pricing/pricing.ts` (`loadPriceTable`, `computeCost`, `costCap`) and the
+ * response parsers in `scripts/h2eval/modal/adapters/index.ts`.
+ *
+ * Strategy / partitions: table loading (versioned, sourced, `null` means unknown and 0 is refused); exact costs for
+ * recorded OpenAI, Anthropic and Gemini calls including cache hits, cache writes by TTL, thoughts billed as output
+ * and tier selection by prompt length; rules for `UNKNOWN` and stops (non-standard terms, no usage, unknown cache
+ * split as a flagged upper bound, a needed null price, a model outside the table); and the cost cap as the worst
+ * case.
+ *
+ * Needs: the response fixtures in `test/h2eval/modal/fixtures/responses/` and a writable temporary directory for
+ * modified tables. No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/modal/pricing.test.ts`
+ *
+ * @module test/h2eval/modal/pricing.test
+ */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';

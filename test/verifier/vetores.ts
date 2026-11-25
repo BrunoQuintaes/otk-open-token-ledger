@@ -4,6 +4,21 @@
  * (RFC 6979), então o mesmo código gera os mesmos bytes — e o mesmo sha256 do relatório.
  *
  * Cada caso usa uma operação própria (op-<caso>) para que as asserções sejam por id.
+ *
+ * In English: builds the test vectors of the offline receipt verifier (`src/verifier`). Receipts are signed on the
+ * fly with fixed, public TEST keys (never a real key); because ethers' ECDSA signatures are deterministic (RFC 6979),
+ * the same code always yields the same bytes and the same report sha256. Each case uses its own operation id
+ * (`op-<case>`) so assertions can address items by id. The cases cover a valid receipt and an identical duplicate,
+ * eight kinds of tampering, format errors, envelope and key problems (wrong domain, unknown, revoked and retired
+ * keys, forged or altered dates, signer address vs declared key id), conference reports, store-level problems
+ * (declared vs recomputed digest, conflicts, invalid JSON, a truncated last line), codec edge cases, content
+ * warnings, a conference export with a misleading operator verdict, legacy formats and a few summary variations.
+ *
+ * Imported by `gera_vetores.ts`, `verificador.test.ts`, `receipts_export.test.ts` and the web verifier's vector
+ * generator. Pure computation:
+ * nothing is written to disk and nothing goes to the network.
+ *
+ * @module test/verifier/vetores
  */
 import { ethers } from 'ethers';
 import { createReceiptCrypto, digestReceiptV3, envelopeDigest } from '../../src/receipt/v3/receiptCrypto.js';
@@ -16,6 +31,10 @@ import type { PrivateReceiptV3, SignedEnvelope } from '../../src/types/d1d8/inde
 import { conferenceFixture, receiptFixture } from '../fixtures/d1d8/a/receiptFixture.js';
 
 // CHAVES DE TESTE (públicas, sem valor; só para os vetores)
+/**
+ * Fixed TEST wallets: `op` (active operator key), `retired`, `revoked` and `outsider` (not in the keyring). Their
+ * private keys are repeated-byte constants and therefore public; never use them for anything real.
+ */
 export const TEST_KEYS = {
   op: new ethers.Wallet('0x' + '11'.repeat(32)),
   retired: new ethers.Wallet('0x' + '22'.repeat(32)),
@@ -23,21 +42,39 @@ export const TEST_KEYS = {
   outsider: new ethers.Wallet('0x' + '44'.repeat(32)),
 };
 const CIRCUIT = 'metering_v3@sha256:test';
+/** Instant (ISO 8601, UTC) at which the `retired` test key stopped being valid for new signatures. */
 export const RETIRED_AT = '2026-11-10T00:00:00.000Z';
 
+/** Public keyring of the test operator: one active, one retired (at {@link RETIRED_AT}) and one revoked key. */
 export const KEYRING_ENTRIES: PublicKeyEntry[] = [
   { keyId: 'teste-op-2026-11', address: TEST_KEYS.op.address, status: 'active' },
   { keyId: 'teste-op-2026-10', address: TEST_KEYS.retired.address, status: 'retired', retiredAt: RETIRED_AT },
   { keyId: 'teste-op-2026-09', address: TEST_KEYS.revoked.address, status: 'revoked' },
 ];
+/** The test keyring serialized exactly as the verifier expects `chaveiro.json` (the fingerprint is over these bytes). */
 export const KEYRING_TEXT = serializePublicKeyRing({ schema: 'otk.keyring.public.v1', operator: 'operador-de-teste', keys: KEYRING_ENTRIES });
+/**
+ * Wraps {@link KEYRING_TEXT} as a verifier input file named `chaveiro.json`.
+ *
+ * @returns A new input file object on each call.
+ */
 export const keyringFile = (): InputFile => ({ name: 'chaveiro.json', bytes: new TextEncoder().encode(KEYRING_TEXT) });
 
 const ring = createKeyRing(KEYRING_ENTRIES.map((k) => ({ ...k, address: k.address as `0x${string}` })));
 const SIGNED_AT = '2026-11-05T12:00:03.000Z';
+/** Receipt signer of the test operator (active key, clock fixed at the signing instant), so signatures repeat. */
 export const rc = createReceiptCrypto({ keyRing: ring, signer: { keyId: 'teste-op-2026-11', wallet: TEST_KEYS.op }, now: () => new Date(SIGNED_AT) });
 
-/** Recibo de produção (sem perfil de desenvolvimento), de modo que o caso válido possa ser verde. */
+/**
+ * Recibo de produção (sem perfil de desenvolvimento), de modo que o caso válido possa ser verde.
+ *
+ * A production-profile receipt, so that the valid case can be green.
+ *
+ * @param op - Case name; the operation id becomes `op-<op>`.
+ * @param o - Optional overrides: `admittedAt` (ISO 8601), `model` (requested and returned), `provider`, and `cu`
+ *   (CU units at scale 1; default from the base fixture).
+ * @returns A new, mutable unsigned receipt.
+ */
 export function prodReceipt(op: string, o: { admittedAt?: string; model?: string; provider?: string; cu?: bigint } = {}): PrivateReceiptV3 {
   const r = receiptFixture({ circuitId: CIRCUIT, operationId: `op-${op}`, admittedAt: o.admittedAt ?? '2026-11-05T12:00:00.000Z', publicCommitment: '123', cuUnits: o.cu });
   r.config.developmentProfile = false;
@@ -47,20 +84,49 @@ export function prodReceipt(op: string, o: { admittedAt?: string; model?: string
   return r;
 }
 
+/**
+ * Signs a receipt envelope with an arbitrary wallet and declared key id, bypassing the keyring (used to build forged,
+ * revoked, retired and mismatched-signer cases).
+ *
+ * @param wallet - Signing wallet.
+ * @param keyId - Key id written in the envelope (need not match the wallet).
+ * @param r - Receipt whose digest is signed.
+ * @param signedAt - Declared signing instant (ISO 8601); defaults to the fixed signing instant.
+ * @param domain - Envelope domain; defaults to the private receipt domain.
+ * @returns The signed envelope.
+ */
 export async function signWith(wallet: ethers.Wallet, keyId: string, r: PrivateReceiptV3, signedAt = SIGNED_AT, domain: SignedEnvelope['domain'] = 'OTK_PRIVATE_RECEIPT_V3'): Promise<SignedEnvelope> {
   const unsigned = { schema: 'otk.envelope.v1' as const, domain, payloadDigest: digestReceiptV3(r), alg: 'eip191-secp256k1' as const, signer: wallet.address as `0x${string}`, keyId, signedAt };
   const signature = (await wallet.signMessage(ethers.getBytes(envelopeDigest(unsigned)))) as `0x${string}`;
   return { ...unsigned, signature };
 }
 
+/**
+ * Encodes one receipt-store line (`kind: 'receipt'`) as the operation store writes it.
+ *
+ * @param receipt - Receipt object (possibly tampered).
+ * @param envelope - Signed envelope (possibly altered).
+ * @param digest - Declared digest; defaults to the digest recomputed from `receipt`.
+ * @returns One line of JSON text (bigints encoded as text by the codec), without a trailing newline.
+ */
 export const storeLine = (receipt: unknown, envelope: unknown, digest?: string): string =>
   encodeJson({ kind: 'receipt', digest: digest ?? digestReceiptV3(receipt as PrivateReceiptV3), envelope, receipt });
 
 const mutate = (r: PrivateReceiptV3, f: (x: PrivateReceiptV3) => void): PrivateReceiptV3 => { const c = structuredClone(r); f(c); return c; };
 
+/**
+ * Expected verifier outcome for one item: its id (`<tenant>/<operation>` or `<file>#<line>`), the verdict
+ * (`verde` = valid, `amarelo` = warning or unsupported, `vermelho` = invalid), the reason code and, when relevant,
+ * the item kind.
+ */
 export interface Expect { id: string; verdict: 'verde' | 'amarelo' | 'vermelho'; code: string; kind?: string }
 
-/** Conjunto completo: arquivos + o veredito esperado de cada item. */
+/**
+ * Conjunto completo: arquivos + o veredito esperado de cada item.
+ *
+ * @returns The input files (under `recibos/`, including a non-receipt file and a copy of the keyring) and the
+ *   expected outcome of each item, in a fixed order.
+ */
 export async function buildVectors(): Promise<{ files: InputFile[]; expect: Expect[] }> {
   const lines: Record<string, string[]> = {};
   const add = (file: string, line: string) => { (lines[file] ??= []).push(line); };

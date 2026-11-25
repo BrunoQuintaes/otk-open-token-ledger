@@ -1,4 +1,25 @@
-/** R14: request builders and usage parsers against documented response shapes (fixtures/responses/*.json). Offline. */
+/**
+ * R14: request builders and usage parsers against documented response shapes (fixtures/responses/*.json). Offline.
+ *
+ * Tests the per-API request builders and usage parsers of the evaluation harness against documented response
+ * shapes, so every token category is mapped once and a missing field never becomes 0.
+ *
+ * Module under test: `scripts/h2eval/modal/index.ts` (`ADAPTERS`, `modalitySupport`, the OpenAI Chat, Anthropic
+ * Messages and Gemini generateContent builders and parsers) and `cacheObserved` from
+ * `scripts/h2eval/modal/canonical.ts`.
+ *
+ * Strategy / partitions: request builders fix the price-relevant parameters per API and model, and modality support
+ * follows the documentation; per parser: disjoint categories on a recorded call, cache hits and creation, absent
+ * details (`UNKNOWN`, partial usage), image and audio units, refusals and filters that keep usage, unexpected tool or
+ * audio output, non-standard service tiers, errors without usage, and the served model kept raw; and invariants over
+ * every fixture (no absent field becomes 0; sanitized raw usage holds numbers only).
+ *
+ * Needs: the response fixtures in `test/h2eval/modal/fixtures/responses/`. Pure parsing otherwise; no network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/modal/adapters.test.ts`
+ *
+ * @module test/h2eval/modal/adapters.test
+ */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

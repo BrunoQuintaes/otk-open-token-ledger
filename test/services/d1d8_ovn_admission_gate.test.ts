@@ -9,6 +9,22 @@
  *   - default gate (pool − 3 = 1 admission in the database): the others wait in memory → every request admitted, no 503.
  *
  *   . docs/_ops/OVERNIGHT_20261005_MASTER/tools/ovn_env.sh && npx tsx --test test/services/d1d8_ovn_admission_gate.test.ts
+ *
+ * Module under test: the admission path of `src/operations/runtime.ts` (admission gate in front of the
+ * PostgreSQL pool and the execution lease written at admission), through the in-process API with the fake provider
+ * from `./d1d8_c_provider.ts`.
+ *
+ * Strategy / scenarios: without an effective gate the waiting admissions exhaust the pool (503); with the default
+ * gate every request waits in memory and is admitted; a queue wait beyond the configured timeout gives a named 503
+ * with nothing reserved or sent; and the admitting transaction writes the execution lease only when asked.
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`); one test holds a database
+ * lock for 7 s. Before importing the server it sets fixture values in the test process for the API's variables (tenants, a
+ * fake OpenAI key, the upstream override, `PROVER_URL=disabled`). The command above first sources an environment
+ * script that is not part of this repository; with `OTK_TEST_PG_URL` already set,
+ * `npx tsx --test test/services/d1d8_ovn_admission_gate.test.ts` runs just this file.
+ *
+ * @module test/services/d1d8_ovn_admission_gate.test
  */
 process.env['OTK_DB_URL'] = '';
 process.env['OTK_RECEIPT_LOG'] = '';
@@ -47,7 +63,14 @@ const call = (base: string, token: string, op: string) => fetch(`${base}/v1/chat
   body: JSON.stringify({ model: 'gpt-4o-mini', max_tokens: 16, messages: [{ role: 'user', content: 'hi' }] }),
 });
 
-/** 8 concurrent requests while the tenant's quota row stays locked for 7 s; returns every status and error. */
+/**
+ * 8 concurrent requests while the tenant's quota row stays locked for 7 s; returns every status and error.
+ *
+ * @param base - Base URL of the in-process API.
+ * @param token - Tenant API token.
+ * @param tenant - Tenant whose admission lock is held.
+ * @param tag - Label that makes the operation ids of this burst unique.
+ */
 async function burst(base: string, token: string, tenant: string, tag: string): Promise<Array<{ status: number; error: string | null }>> {
   const warm = await call(base, token, `${tag}-warm`); await warm.text(); // creates the quota row of this epoch
   const lock = await db.pool.connect();

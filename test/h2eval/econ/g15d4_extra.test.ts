@@ -5,6 +5,23 @@
  * conteúdo: o teste "recusa do egress que NÃO é do GO" passa a exigir o comportamento NOVO do delta 5 (R-D4: pausa não terminal PAUSE_ECON_EGRESS;
  * a reexecução com a credencial certa envia a seq uma vez, sem REPLAY_SKIPPED). O original media o travamento (ABORTED_BEFORE_SEND).
  * Também: `void EgressGoEconRefused` no fim (o import original não era usado em valor e o tsc acusava TS6133).
+ *
+ * English summary: an independent auditor's own tests of the economic study's later egress changes, kept in the
+ * suite: the guard-to-egress race with its own clock (a non-terminal pause, then exactly one send under a new GO),
+ * the exact limits of the expiry margin, a non-GO egress refusal (missing credential) turned into a non-terminal
+ * pause, and which refusals use the study-specific error class.
+ *
+ * Modules under test: `scripts/h2eval/core/egress.ts` (`createEgress`, `EgressRefused`, `EgressGoEconRefused`),
+ * `scripts/h2eval/econ/econ.ts` (`runEcon`, `ECON_ALLOWED_HOSTS`, `ECON_GO_MARGEM_MS`) and
+ * `scripts/h2eval/econ/goEcon.ts`, using the fixture in `./econ_fixture.ts`.
+ *
+ * Needs: a writable temporary directory; the credential is a synthetic value in a temporary file. Optional
+ * environment variable `G15_D4_OUT`: when set, the test writes a JSON dump of intermediate values to that path.
+ * Fake transport; no network, no spending.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/econ/g15d4_extra.test.ts`
+ *
+ * @module test/h2eval/econ/g15d4_extra.test
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

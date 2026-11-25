@@ -1,3 +1,18 @@
+/**
+ * MetricsCollector — unit tests for the per-provider and per-model usage metrics kept in memory.
+ *
+ * Module under test: `MetricsCollector` from `src/observability/MetricsCollector.ts`.
+ *
+ * Strategy / partitions: first record and several successes; errors below 50% (healthy) and at or
+ * above 50% (degraded); no requests (unknown health); two providers and two models of one
+ * provider kept apart; injected snapshot time; reset; average latency over three records.
+ *
+ * Needs: nothing external (a fresh collector per test).
+ *
+ * Run just this file: `npx tsx --test test/unit/metrics_collector.test.ts`
+ *
+ * @module test/unit/metrics_collector.test
+ */
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { MetricsCollector } from '../../src/observability/MetricsCollector.js';

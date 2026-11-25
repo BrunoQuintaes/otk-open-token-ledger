@@ -1,3 +1,25 @@
+/**
+ * Tests that a model probe is judged by its declared purpose (measuring the input) so that a refused or truncated
+ * probe with complete usage passes, while every real failure still fails.
+ *
+ * Modules under test: `scripts/h2eval/core/modelProbe.ts` (`judgeProbe`, `probeKeyOf`, `probeStateOf`) and
+ * `scripts/h2eval/core/runner.ts` (`createExecutor`), with the journal verifier and the doubles in
+ * `../support/double.ts`.
+ *
+ * Strategy / partitions: unit checks of the completion criterion (a refusal with complete usage and a truncation
+ * with complete usage pass; without response context only COMPLETE passes; each failing refusal condition fails
+ * with its reason; the other criteria such as the token ratio, the reserve, reasoning, service tier and unknown
+ * usage still apply); executor runs (refused and truncated probes pass and the region continues; a ratio of 1.95, a
+ * refusal without usage, partial usage, a wrong served model, and an uncertain send each stop the series and nothing
+ * more is sent). Tests tagged with a commit id failed on the executor before the fix.
+ *
+ * Needs: a writable temporary directory. It sets `H2EVAL_TEST_KEY` to a fake canary value. Doubles only: no
+ * network, no credential, no GO file.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/core/e1hr_probe.test.ts`
+ *
+ * @module test/h2eval/core/e1hr_probe.test
+ */
 // SYNTHETIC — OFFLINE. E1HR (C160, HAIKU-R-FIX; opcao (b) do X1 do kit HAIKU-R, B2): a sonda de modelo/faixa e julgada pelo seu PROPOSITO declarado (medir a ENTRADA: U/L0 <= limite, U <= reserva).
 // Uma sonda que termina em REFUSAL_WITH_USAGE (protocolo HAIKU-R 48befe37 §5.1: HTTP 200, outcome REFUSED_WITH_USAGE, usage COMPLETE, stop_reason refusal, U>0, modelo servido = pedido, custo CALCULATED,
 // exclusion NONE) ou TRUNCADA por max_tokens com usage completo NAO reprova; recusa sem usage, usage parcial, modelo errado, razao acima do limite, entrada acima da reserva e sonda incerta continuam reprovando.

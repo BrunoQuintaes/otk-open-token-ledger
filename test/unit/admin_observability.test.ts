@@ -8,6 +8,21 @@
  *   - GET /admin/chain-head: chain head changes after storeReceipt
  *
  * These endpoints close GAP-C-004 (admin observability).
+ *
+ * Modules under test: `handleRequest` in `src/api/routes.ts` for the two admin read endpoints,
+ * with `src/api/receiptStore.ts` (stored receipts move the audit chain head) and the token
+ * accounting layer from `src/security/talRuntime.ts`.
+ *
+ * Strategy / partitions: admin key not configured (open), configured with the header missing,
+ * wrong and correct; chain head before and after a stored receipt; the accounting summary
+ * without parameters, after a debit, and for one tenant and epoch.
+ *
+ * Needs: no server (mock request/response objects). Sets and deletes `OTK_ADMIN_KEY` in
+ * `process.env` in its hooks; the stores are flushed before and after the file.
+ *
+ * Run just this file: `npx tsx --test test/unit/admin_observability.test.ts`
+ *
+ * @module test/unit/admin_observability.test
  */
 
 import { describe, it, before, after } from 'node:test';

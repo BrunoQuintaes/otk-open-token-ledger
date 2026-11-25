@@ -9,6 +9,22 @@
  *   max_tokens 1 024  → 250 000 000 000 +   5 120 000 000 = 255 120 000 000 (US$ 0.25512)
  *   max_tokens 64 000 → 250 000 000 000 + 320 000 000 000 = 570 000 000 000 (US$ 0.57)
  *   max_tokens 64 001 → refused (above the documented maximum output)
+ *
+ * Modules under test: `src/operations/moneyBound.ts` (`assessMoneyBound`, policies,
+ * `returnedModelAllowed`), `src/pricing/reservation.ts` and `src/pricing/priceUsage.ts`.
+ *
+ * Strategy / partitions: the default policy and its per-model limits; reservations at the
+ * max_tokens extremes listed above; many splits of a window-sized input across categories at
+ * full output, for every returnable model, never cost more than the reservation; returned model
+ * ids (listed in any case vs unlisted or absent); request categories without a defensible bound
+ * (each refused with a reason); forwarded provider headers other than the API version.
+ *
+ * Needs: must be run from the repository root (reads the Haiku 4.5 price table under
+ * `scripts/pilot/anthropic/` by relative path). No network.
+ *
+ * Run just this file: `npx tsx --test test/unit/d1d8_s4_money_bound.test.ts`
+ *
+ * @module test/unit/d1d8_s4_money_bound.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

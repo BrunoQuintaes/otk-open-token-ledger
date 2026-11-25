@@ -24,6 +24,20 @@
  *  20.  MemoryWebhookStore: updateDeadLetterReplay sets replayedAt
  *
  * @since Wave 4 (4E-PACK-4E01 / E6.6)
+ *
+ * Modules under test: `src/webhooks/WebhookRegistry.ts` (in-memory store and endpoint creation),
+ * `src/webhooks/WebhookDelivery.ts` (signing and delivery) and `src/webhooks/WebhookRetryQueue.ts`; the route
+ * list in `src/api/routes.ts` is checked as text.
+ *
+ * Strategy / partitions: as listed above (the numbering is the original plan, not the test order). The
+ * dead-letter case records the failed attempts through the delivery class and adds the dead-letter entry
+ * itself; it does not run the retry queue through its delays.
+ *
+ * Needs: no network; HTTP posting is an injected mock function. Uses a short real wait (50 ms) for the queue.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave4_webhooks.test.ts`
+ *
+ * @module test/unit/wave4_webhooks.test
  */
 
 import { describe, it } from 'node:test';

@@ -3,6 +3,17 @@
  *
  * Tests POST /receipts, GET /receipts/:id, POST /admin/flush-batch
  * using the same in-process mock pattern as api_routes_smoke.test.ts.
+ *
+ * Modules under test: `src/api/routes.ts` and `src/api/receiptStore.ts`.
+ *
+ * Strategy / partitions: a valid receipt (201); invalid JSON and missing required fields (400); reading a
+ * stored receipt and an unknown id (404); the batch flush returns the count of stored receipts.
+ *
+ * Needs: nothing external; requests and responses are in-memory mocks and the store is emptied first.
+ *
+ * Run just this file: `npx tsx --test test/unit/receipts_api.test.ts`
+ *
+ * @module test/unit/receipts_api.test
  */
 
 import { describe, it, before } from 'node:test';

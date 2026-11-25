@@ -16,6 +16,15 @@
  *  10. Multi-batch cycle (reset after release)
  *
  * @since U5.3.1
+ *
+ * Module under test: `src/publisher/PublishPolicy.ts`.
+ *
+ * Needs: nothing external; time comes from a fake clock. The defaults cases assume that `CU_PUBLISH_POLICY`,
+ * `PUBLISH_WINDOW_MS` and `PUBLISH_MIN_BATCH_K` are not set in the environment.
+ *
+ * Run just this file: `npx tsx --test test/unit/publish_policy_window_k.test.ts`
+ *
+ * @module test/unit/publish_policy_window_k.test
  */
 
 import { describe, it } from 'node:test';
@@ -38,7 +47,13 @@ function makeClock(startMs = 0) {
   };
 }
 
-/** Build a policy with a fake clock for deterministic time control. */
+/**
+ * Build a policy with a fake clock for deterministic time control.
+ * @param mode - Publish mode under test.
+ * @param windowMs - Batch window in milliseconds of the fake clock.
+ * @param minBatchK - Minimum number of receipts per batch.
+ * @param clock - Fake clock; a new one starting at 0 ms by default.
+ */
 function makePolicy<T>(
   mode: PublishPolicyMode,
   windowMs: number,

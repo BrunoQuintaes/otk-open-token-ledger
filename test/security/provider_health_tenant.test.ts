@@ -5,6 +5,17 @@
  * Now a tenant caller gets the health of its own receipts only; the platform keeps the global view.
  * Also M24-SEC-11 (latent): a verified credential without a tenant must not fall into "all tenants" on this branch.
  * Sentinel values: tenant B uses provider 'sentinel-prov' with 7919 CU; tenant A uses 'openai' with 13 CU.
+ *
+ * Modules under test: the provider health route of `src/api/routes.ts` (called in process with mock request and
+ * response objects), reading the dashboard indexer `src/dashboard/indexer.ts`; credentials come from
+ * `src/api/tenantKeyRegistry.ts` and `src/auth/jwt.ts`.
+ *
+ * Needs: nothing external. `OTK_ADMIN_KEY` and `OTK_JWT_SECRET` get fixture values for the run and are restored
+ * afterwards; the indexer and the token registry are reset before each case.
+ *
+ * Run just this file: `npx tsx --test test/security/provider_health_tenant.test.ts`
+ *
+ * @module test/security/provider_health_tenant.test
  */
 import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

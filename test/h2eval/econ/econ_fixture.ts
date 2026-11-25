@@ -2,6 +2,15 @@
  * EXEC-ECON C160: fixture OFFLINE do estudo econômico (corpus mínimo, cronograma com os 5 modelos misturados por bloco, tabela do Sonnet 5
  * de TESTE, transporte falso por modelo). Nenhuma rede, nenhuma credencial, US$ 0. Os preços do Sonnet 5 aqui são SINTÉTICOS (3/15) e a
  * atestação é FIXTURE: não é atestação do autor (G-2 segue aberto).
+ *
+ * English summary: offline fixture for the economic-study executor (`scripts/h2eval/econ/econ.ts`). It writes a
+ * minimal corpus (one system prompt, two user messages), a schedule that mixes the five study models in each
+ * block, a test-only price table for one model whose real price is not attested here (synthetic 3 / 15 USD per
+ * million tokens), and fake per-provider responses in each provider's documented shape with synthetic numbers.
+ * {@link ambiente} assembles all of it into a ready executor configuration with an offline transport. No network,
+ * no credential, no spending. Used by the tests in `test/h2eval/econ/`.
+ *
+ * @module test/h2eval/econ/econ_fixture
  */
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -10,11 +19,27 @@ import { sha256Canon, sha256Hex } from '../../../scripts/h2eval/core/canon.js';
 import type { BuiltRequest } from '../../../scripts/h2eval/types.js';
 import { loadEconPriceTable, ECON_TIMEOUT_MS, type CronLine, type EconConfig, type G7b } from '../../../scripts/h2eval/econ/econ.js';
 
+/**
+ * Creates a fresh temporary directory named `econ-<p>-…`.
+ *
+ * @param p - Short label for the directory name.
+ * @returns Absolute path of the new, empty directory (not deleted automatically).
+ */
 export const tmp = (p: string): string => mkdtempSync(path.join(tmpdir(), `econ-${p}-`));
+/** Synthetic system prompt (a personal-organization assistant that answers only with JSON), repeated 5 times. */
 export const SISTEMA = ('Você é um assistente de organização pessoal. Responda só com JSON válido, sem texto fora do objeto. Classifique a mensagem do usuário.' + ' ').repeat(5).trim();
+/** The two synthetic user messages of the fixture corpus; corpus item i uses `USER[i]`. */
 export const USER = ['Anotar a frase: a ordem simplifica o dia.', 'Não esquecer de assinar o cliente amanhã cedo.'];
+/** The five study models as `[model id, provider, study arm]`, in the order they appear inside each schedule block. */
 export const MODELOS: Array<[string, CronLine['provider'], string]> = [['gpt-6-luna', 'openai', 'C1'], ['gemini-3.1-flash-lite', 'google', 'C3'], ['claude-haiku-5-5', 'anthropic', 'C2'], ['claude-opus-5-5', 'anthropic', 'B'], ['claude-sonnet-5', 'anthropic', 'B']];
 
+/**
+ * Writes the fixture corpus: the system prompt file (named by its sha256) and `itens.jsonl` with one item per user
+ * message.
+ *
+ * @param dir - Parent directory; the corpus goes into `<dir>/CORPUS`.
+ * @returns The corpus directory and the canonical prompt hash of each item, in `USER` order.
+ */
 export function writeCorpus(dir: string): { corpusDir: string; prompts: string[] } {
   const corpusDir = path.join(dir, 'CORPUS'); mkdirSync(path.join(corpusDir, 'sistema'), { recursive: true });
   const sisSha = sha256Hex(Buffer.from(SISTEMA, 'utf8')); writeFileSync(path.join(corpusDir, 'sistema', `${sisSha}.txt`), SISTEMA);
@@ -28,7 +53,15 @@ export function writeCorpus(dir: string): { corpusDir: string; prompts: string[]
   return { corpusDir, prompts };
 }
 
-/** blocos de 5 tentativas (os 5 modelos misturados na ordem dada); `only` restringe a um modelo (cronograma de 1 linha). */
+/**
+ * blocos de 5 tentativas (os 5 modelos misturados na ordem dada); `only` restringe a um modelo (cronograma de 1 linha).
+ *
+ * @param dir - Directory where `CRONOGRAMA.jsonl` is written.
+ * @param prompts - Prompt hashes from {@link writeCorpus}; block b uses prompt `b mod prompts.length`.
+ * @param o - `blocks` (default 2), `only` (keep only one model), and `extra` (rewrites each line, to build invalid
+ *   schedules).
+ * @returns The schedule file path, the sha256 of its exact text, and the lines written.
+ */
 export function writeCronograma(dir: string, prompts: string[], o: { blocks?: number; only?: string; extra?: (l: CronLine) => CronLine } = {}): { file: string; sha: string; lines: CronLine[] } {
   const lines: CronLine[] = []; const blocks = o.blocks ?? 2; let seq = 0;
   for (let b = 0; b < blocks; b++) for (const [model, provider, arm] of MODELOS) {
@@ -40,6 +73,14 @@ export function writeCronograma(dir: string, prompts: string[], o: { blocks?: nu
   return { file, sha: sha256Hex(Buffer.from(txt, 'utf8')), lines };
 }
 
+/**
+ * Writes a test-only price table for the one study model whose real price is attested elsewhere (synthetic prices,
+ * marked as a fixture, never an attestation).
+ *
+ * @param dir - Directory where `sonnet5_fixture.json` is written.
+ * @param over - Top-level fields merged into the table, to build invalid tables.
+ * @returns Path of the written file.
+ */
 export function writeSonnet5Fixture(dir: string, over: Record<string, unknown> = {}): string {
   const t = { schema: 'otk.h2eval.price_table.v1', version: 'TESTE-sonnet5-fixture', currency: 'USD', unit: 'micro-USD per 1M', capturedUtc: '2026-11-17T00:00:00Z', source: { note: 'FIXTURE DE TESTE: NAO e atestacao do autor (G-2 aberto)' },
     models: { 'claude-sonnet-5': { provider: 'anthropic', api: 'anthropic.messages', availability: 'FIXTURE', standardTerms: {}, notes: [], attestation: { attestedBy: 'human:FIXTURE', decisionRecords: ['DR-0'], literals: [{ file: 'FIXTURE', sha256: 'f'.repeat(64) }], tier: 'STANDARD' },
@@ -48,7 +89,20 @@ export function writeSonnet5Fixture(dir: string, over: Record<string, unknown> =
 }
 
 // ---------------------------------------------------------------- respostas no formato real de cada provedor (corpo documentado; números sintéticos)
+/**
+ * Kind of fake response: normal text, refusal, content filter, output limit reached, usage missing, zero output,
+ * or a null field (stop reason or input count).
+ */
 export type Caso = 'texto' | 'recusa' | 'filtro' | 'limite' | 'ausente' | 'zero' | 'nulo';
+/**
+ * Builds a fake HTTP 200 response in the documented body shape of the given provider for one response kind.
+ *
+ * @param provider - Provider whose body shape is used (`google` means the Gemini generateContent shape).
+ * @param model - Model id echoed in the body.
+ * @param caso - Which kind of response to build.
+ * @param texto - Answer text for the kinds that carry text (default a small JSON object).
+ * @returns Status and body; the token numbers are synthetic.
+ */
 export function respostaDe(provider: CronLine['provider'], model: string, caso: Caso, texto = '{"route":"captura"}'): { httpStatus: number; body: unknown } {
   if (provider === 'anthropic') {
     const usage = (o: Record<string, unknown> = {}) => ({ input_tokens: 90, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, cache_creation: { ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 0 }, output_tokens: 40, output_tokens_details: { thinking_tokens: 12 }, service_tier: 'standard', inference_geo: 'global', ...o });
@@ -89,8 +143,19 @@ export function respostaDe(provider: CronLine['provider'], model: string, caso: 
   }
 }
 
+/** A ready offline study: its temporary directory, the executor configuration, every request sent so far, and the schedule lines. */
 export interface Ambiente { dir: string; cfg: EconConfig; sent: BuiltRequest[]; cron: CronLine[] }
-/** `answer(req, n)` responde por pedido (n = índice do envio); default: 'texto' do provedor do modelo pedido. */
+/**
+ * `answer(req, n)` responde por pedido (n = índice do envio); default: 'texto' do provedor do modelo pedido.
+ *
+ * The configuration uses OFFLINE egress with a double that records each request in `sent`, a clock that advances
+ * one second per reading from a fixed date, and the study's per-attempt timeout.
+ *
+ * @param o - Options: `blocks` and `only` for the schedule, `answer` (fake response per request), `g7b` (Google
+ *   reserve input; default open), `sonnet5` (`false` leaves out the fixture price table), `extraCfg` (fields merged
+ *   into the configuration last) and `cronExtra` (rewrites each schedule line).
+ * @returns The assembled offline study.
+ */
 export function ambiente(o: { blocks?: number; only?: string; answer?: (req: BuiltRequest, n: number) => Promise<{ httpStatus: number; body: unknown }> | { httpStatus: number; body: unknown }; g7b?: G7b; sonnet5?: boolean; extraCfg?: Partial<EconConfig>; cronExtra?: (l: CronLine) => CronLine } = {}): Ambiente {
   const dir = tmp('amb'); const { corpusDir, prompts } = writeCorpus(dir); const c = writeCronograma(dir, prompts, { blocks: o.blocks, only: o.only, extra: o.cronExtra });
   const batchDir = path.join(dir, 'batch'); mkdirSync(batchDir, { recursive: true });

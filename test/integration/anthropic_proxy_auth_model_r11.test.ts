@@ -11,6 +11,27 @@
  *
  * No network and no paid call: the upstream host is redirected to the local stand-in.
  * This does not validate authentication against the real provider (that needs a key).
+ *
+ * Modules under test: `src/proxy/ProxyGateway.ts` (`startProxyGateway`, `proxyMeteringCounts`) end to end, with
+ * the tenant token registry, the receipt store and the accounting layer; plus `openUpstream` from
+ * `src/proxy/ProxyForwarder.ts` for the OpenAI-style upstream.
+ *
+ * Strategy / scenarios: an unmodified Anthropic SDK client, non-streaming and streaming (alias requested, dated
+ * snapshot recorded); the OTK token sent in the documented proxy style; the OTK token in a query parameter (removed
+ * from the upstream URL, other parameters kept); an invalid OTK token (401, provider never contacted); an unknown
+ * model family (no receipt, metering-failed counter); usage missing in the response (no zero-token receipt);
+ * cache token categories (counted as outside CU, receipt keeps input/output); and an OpenAI-style upstream where
+ * the client's credentials are dropped and only the provider key is sent. Every upstream request is checked for
+ * the provider key and for the absence of the OTK token.
+ *
+ * Needs: local HTTP servers on 127.0.0.1 (the gateway on a free port, the Anthropic stand-in and an echo server);
+ * `globalThis.fetch` is wrapped so only the Anthropic host is redirected. Sets `OTK_RECEIPT_LOG`, `OTK_DB_URL`,
+ * `PROVER_URL` and `ANTHROPIC_API_KEY` (fixture value) in `process.env` before importing the gateway, so receipts
+ * stay in memory and no prover is called. Short sleeps (about 120 ms) wait for asynchronous receipt recording.
+ *
+ * Run just this file: `npx tsx --test test/integration/anthropic_proxy_auth_model_r11.test.ts`
+ *
+ * @module test/integration/anthropic_proxy_auth_model_r11.test
  */
 import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

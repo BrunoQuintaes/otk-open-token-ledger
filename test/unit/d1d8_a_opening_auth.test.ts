@@ -1,6 +1,27 @@
 /**
  * D2-G02 / D2-G05 / D1-G01 (TS side) — commitment opening, public bucket policy and public
  * authorization for ReceiptRegistryV3 (front A, run 20260930-1625).
+ *
+ * Module under test: the v3 public-receipt helpers exported by `src/zk/v3/index.ts` (commitment
+ * openings, unit mapping, bucket policy, `createPublicAuthorizationBuilder` and
+ * `verifyPublicAuthorization`, `epochOf`), using the receipt fixture from `test/fixtures/d1d8/a/receiptFixture.ts`.
+ *
+ * Strategy / partitions: the circuit tag constant; CU-to-circuit unit mapping (exact, zero, a
+ * scale that would lose digits, a scale that is not a power of ten, negative, too large); bucket
+ * windows checked against hand values; two openings of the same usage give different
+ * commitments and the caller cannot choose the blinding; random field elements stay in range
+ * without repeats over 2000 draws; the signed statement's digest equals an independent EIP-712
+ * computation and changes with chain, registry or schema; the builder refuses public data that
+ * does not match the private receipt; the verifier rejects altered fields, digest, signer,
+ * policy, window, circuit or inactive key; strict UTC parsing of epochs; the public signed
+ * statement carries no exact usage, tenant, operation, user or opening secret.
+ *
+ * Needs: nothing external (random in-memory operator wallet, fixed chain domain values; no chain
+ * or network).
+ *
+ * Run just this file: `npx tsx --test test/unit/d1d8_a_opening_auth.test.ts`
+ *
+ * @module test/unit/d1d8_a_opening_auth.test
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

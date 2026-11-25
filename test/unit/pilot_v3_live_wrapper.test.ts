@@ -3,6 +3,21 @@
  * reservation) is never run again, whatever its exit code; a phase that reserved nothing may be retried; an
  * interrupted phase, open/uncertain exposure, an unreadable ledger or marker and bad arguments block before
  * anything runs; the test hooks need the explicit test mode and a stub key. Nothing is called.
+ *
+ * Module under test: the shell wrapper `scripts/pilot/anthropic/run_live_pv3.sh`, driven with the stub runner
+ * `test/unit/fixtures/pilot_v3_stub_runner.ts` instead of the real pilot runner.
+ *
+ * Strategy / partitions: bad phase or no credential; provider selection (each provider's own key variable,
+ * unknown provider); phases already finished are skipped; a failure after a reservation stops the run, a
+ * failure without one may be retried; an interrupted phase with and without a new reservation; ledger parsing
+ * (spaced JSON, CRLF, unreadable ledger or marker); test hooks outside test mode; open or uncertain exposure.
+ *
+ * Needs: `bash` on the PATH. Each case runs in a temporary directory with a stub key and with every
+ * `OTK_*`, `*_API_KEY` and `PV3_*` variable removed from the child environment; no provider is called.
+ *
+ * Run just this file: `npx tsx --test test/unit/pilot_v3_live_wrapper.test.ts`
+ *
+ * @module test/unit/pilot_v3_live_wrapper.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

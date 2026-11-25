@@ -10,6 +10,19 @@
  * Uses inline stub ProverDaemon (same pattern as proof_status.test.ts).
  *
  * @since PA-03 (2026-03-12)
+ *
+ * Modules under test: `src/prover/DurableProofQueue.ts` (the `txHash` stored by `complete`) and
+ * `src/api/routes.ts` with `src/api/receiptStore.ts` (the receipt read path that copies the prover's `txHash`).
+ *
+ * Strategy / partitions: queue level, complete with and without a `txHash`; API level, prover job done with a
+ * `txHash`, done without one, still pending, and the receipt core fields unchanged when the hash is added.
+ *
+ * Needs: a stub prover HTTP server on a random port of 127.0.0.1 (started in `before`, stopped in `after`);
+ * sets and deletes `PROVER_URL` in `process.env`. No external network.
+ *
+ * Run just this file: `npx tsx --test test/unit/pa03_txhash.test.ts`
+ *
+ * @module test/unit/pa03_txhash.test
  */
 
 import { describe, it, before, after, beforeEach } from 'node:test';

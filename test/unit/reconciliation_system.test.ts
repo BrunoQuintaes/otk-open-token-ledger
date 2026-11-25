@@ -1,5 +1,16 @@
 /**
  * Tests — ReconciliationSystem (RB-054) — QA1 edge cases
+ *
+ * Module under test: `src/economics/ReconciliationSystem.ts`.
+ *
+ * Strategy / partitions: empty inputs; matched, OTK-only and external-only records; totals per side;
+ * receipts sharing a transaction hash; a fixed `nowIso` gives a deterministic report.
+ *
+ * Needs: nothing external (pure functions).
+ *
+ * Run just this file: `npx tsx --test test/unit/reconciliation_system.test.ts`
+ *
+ * @module test/unit/reconciliation_system.test
  */
 
 import { describe, it } from 'node:test';

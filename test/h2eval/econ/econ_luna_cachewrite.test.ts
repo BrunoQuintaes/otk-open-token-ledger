@@ -2,6 +2,24 @@
  * EXEC-ECON C160 delta 6 (DECISOES_MASTER_ECON; achado do smoke pago ECON, seq 2): gpt-6-luna sem prompt_tokens_details.cache_write_tokens
  * => liquidação pelo LIMITE SUPERIOR (prompt × 0,125 + completion × 0,50), custo declarado UPPER_BOUND, tentativa NÃO incerta.
  * Forma exata da seq 2 do smoke, só metadados (o texto da resposta é substituído). Offline, transporte falso, US$ 0.
+ *
+ * English summary: tests that, inside the economic study, an OpenAI arm response without the cache-write count is
+ * settled at a declared upper bound instead of being left uncertain, and that nothing else changes.
+ *
+ * Modules under test: `scripts/h2eval/econ/econ.ts` (`runEcon`) and `scripts/h2eval/core/e3gArm.ts`
+ * (`openaiCacheWriteUpperBound`), using the fixture in `./econ_fixture.ts`.
+ *
+ * Strategy / partitions: the exact metadata of the observed response (content filter, no cache-write field) settles
+ * at the upper bound and the collection continues; the same with a normal stop; any other missing or null field
+ * still gives `UNKNOWN`; a present cache-write count gives a calculated cost; the pure function's preconditions (only
+ * that model, only a missing cache-write count, integer prompt and completion counts); and outside the study the
+ * old behaviour (`UNKNOWN`) is kept.
+ *
+ * Needs: a writable temporary directory (through the fixture). Fake transport; no network, no spending.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/econ/econ_luna_cachewrite.test.ts`
+ *
+ * @module test/h2eval/econ/econ_luna_cachewrite.test
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -11,7 +29,11 @@ import { runEcon, type Tentativa } from '../../../scripts/h2eval/econ/econ.js';
 import { openaiCacheWriteUpperBound } from '../../../scripts/h2eval/core/e3gArm.js';
 import { ambiente, respostaDe } from './econ_fixture.js';
 
-/** seq 2 do smoke (CHECKPOINT ECON_SMOKE_RUN l. 39/53): HTTP 200, content_filter, prompt 61, completion 1249 (raciocínio 1136), tier default, servido gpt-6-luna, SEM cache_write_tokens */
+/**
+ * seq 2 do smoke (CHECKPOINT ECON_SMOKE_RUN l. 39/53): HTTP 200, content_filter, prompt 61, completion 1249 (raciocínio 1136), tier default, servido gpt-6-luna, SEM cache_write_tokens
+ *
+ * @param over - `usage` fields merged into the response's usage object and an optional `finish` reason.
+ */
 function smokeSeq2(over: { usage?: Record<string, unknown>; finish?: string } = {}) {
   return { httpStatus: 200, body: { id: 'chatcmpl-SINTETICO', object: 'chat.completion', model: 'gpt-6-luna', service_tier: 'default',
     choices: [{ index: 0, finish_reason: over.finish ?? 'content_filter', message: { role: 'assistant', content: '<texto omitido: so metadados>', refusal: null } }],

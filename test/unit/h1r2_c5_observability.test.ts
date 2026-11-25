@@ -1,5 +1,21 @@
 /**
  * H1R2 C5 (H1 final closure run): revocation, denied attempts, recovery and ZK signals in /metrics, without identifiers.
+ *
+ * Modules under test: `getMetricsText` from `src/observability/prometheusMetrics.ts`, fed by
+ * `sendRbacDenial` (`src/api/errors.ts`) and `refreshCredential` with an injected key authority
+ * (`src/auth/credentialAuthority.ts`).
+ *
+ * Strategy / partitions: every new metric family is present (with the status store reported as
+ * not configured, -1); after a 401 denial, a 429 denial and the refusal of a revoked key, the
+ * counters increase and the exposition contains no tenant name, raw key, key hash, key id or
+ * token.
+ *
+ * Needs: nothing external (fake key authority and response object; registry and authority are
+ * reset in `after`).
+ *
+ * Run just this file: `npx tsx --test test/unit/h1r2_c5_observability.test.ts`
+ *
+ * @module test/unit/h1r2_c5_observability.test
  */
 import { describe, it, after } from 'node:test';
 import assert from 'node:assert/strict';

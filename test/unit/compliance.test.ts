@@ -6,6 +6,19 @@
  *   - minimizeEvent produces correct output per mode (full / aggregate / redacted)
  *   - RetentionPolicy hints map to correct purgeable/maxAgeSecs
  *   - toComplianceAuditRecord bridges minimized event → AuditRecord
+ *
+ * Module under test: the privacy exports of `src/privacy/index.ts`.
+ *
+ * Strategy / partitions: the three presets (DEFAULT, STRICT, AUDIT); event minimization in full,
+ * aggregate and redacted mode (which fields survive, which are removed or masked); each
+ * retention class (ephemeral, short term, long term, permanent) and whether it is purgeable;
+ * the audit record built from a minimized event in each mode.
+ *
+ * Needs: nothing external (one in-memory usage event from `evt()`).
+ *
+ * Run just this file: `npx tsx --test test/unit/compliance.test.ts`
+ *
+ * @module test/unit/compliance.test
  */
 
 import { describe, it } from 'node:test';

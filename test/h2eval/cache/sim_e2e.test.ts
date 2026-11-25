@@ -1,3 +1,24 @@
+/**
+ * End-to-end offline simulation of the cache study: rendered dialogs go through simulated provider caches, and the
+ * returned usage is classified, diagnosed, priced and fed to the planner.
+ *
+ * Modules under test: `scripts/h2eval/cache/classify.ts`, `scripts/h2eval/cache/costInterval.ts`,
+ * `scripts/h2eval/cache/dialogs.ts` and `scripts/h2eval/cache/planner.ts`, driven by the `SimProvider` doubles in
+ * `./doubles.ts`.
+ *
+ * Strategy / scenarios: hit-attempt dialogs inside the TTL for each provider; no-hit control dialogs; isolation
+ * between dialogs; TTL expiry after a 400-second gap and the 1-hour TTL that survives it; a provider that ignores
+ * the cache mark; a prefix below the provider minimum; a partial hit; a response without usage; a contaminated
+ * control whose nonce does not break the prefix; the paired token audit of control against hit-attempt; the ex-ante
+ * cost interval covering the observed cost in every scenario; the pilot-to-planner pipeline; and no cross-provider
+ * false hits.
+ *
+ * Needs: nothing external (simulated time in seconds, no network, no real tokenizer).
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cache/sim_e2e.test.ts`
+ *
+ * @module test/h2eval/cache/sim_e2e.test
+ */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { classifyCache, diagnose, resolveArm, summarizeDialog, type CacheObservation, type Observed, type Provider } from '../../../scripts/h2eval/cache/classify.js';

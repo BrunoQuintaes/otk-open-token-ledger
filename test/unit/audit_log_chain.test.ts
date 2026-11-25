@@ -1,3 +1,18 @@
+/**
+ * AuditLogChain — unit tests for the hash chain that links audit log records.
+ *
+ * Module under test: `canonicalize` and `chainHash` from `src/security/AuditLogChain.ts`.
+ *
+ * Strategy / partitions: canonical form independent of key order in flat and nested metadata
+ * and stable with arrays; the chain hash changes when the record changes and when the previous
+ * hash changes, and is the same for the same input.
+ *
+ * Needs: nothing external (pure hashing).
+ *
+ * Run just this file: `npx tsx --test test/unit/audit_log_chain.test.ts`
+ *
+ * @module test/unit/audit_log_chain.test
+ */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { canonicalize, chainHash } from '../../src/security/AuditLogChain.js';

@@ -5,6 +5,23 @@
  * be removed, still ended "DEMO DONE" with exit 0. The script runs in a fake repository root with fake docker/npx and
  * a node wrapper that fakes only the heavy steps (Besu generation/readiness, e2e, receipt check, test runners).
  * The version of a919934 (before) is exercised too, to show the defect.
+ *
+ * Under test: the shell scripts `tools/academic_demo/run_demo.sh` (run in a sandbox) and, by text inspection, the
+ * port waits in `run_demo.sh` and `run_from_package.sh`.
+ *
+ * Strategy / scenarios: the baseline (9 of 9 consistent operations, clean teardown, exit 0); cleanup removes the
+ * demo network's private keys unless `DEMO_KEEP_KEYS=1`; 8 of 9 consistent (exit 1); teardown refused by docker
+ * (exit 1); the local chain never ready (exit 1, environment brought down); custom compose project names honoured;
+ * the pre-fix version showing both defects; and the "wait until the fixed host ports are quiet" helper (free port
+ * returns at once; no-op without `/proc/net/tcp`).
+ *
+ * Needs: `bash` (the sandboxed cases are skipped without it) and, for the pre-fix case, git history containing
+ * commit a919934 (skipped otherwise). No real docker, chain or network: fake `docker`, `npx`, `npm` and `node`
+ * wrappers are placed first on `PATH` inside temporary directories that are removed after the run.
+ *
+ * Run just this file: `npx tsx --test test/release/academic_demo_script.test.ts`
+ *
+ * @module test/release/academic_demo_script.test
  */
 import { describe, it, after } from 'node:test';
 import assert from 'node:assert/strict';

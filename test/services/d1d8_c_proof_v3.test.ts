@@ -3,6 +3,24 @@
  * (D7-G08 destination change, D7 §11, D1-G04 C part: answer lost after mining → no second tx).
  * Real PostgreSQL; A's adapter, authorization builder and the chain are explicit doubles
  * (S4 repeats on Besu with src/zk/v3 and the v3 registry, ROTEIRO_BESU_S4.md of A).
+ *
+ * Modules under test: `src/operations/runtime.ts` (`OperationsRuntime`) and the proof pipeline in
+ * `src/operations/proofPipeline.ts`, driven through the in-process API with the fake provider from
+ * `./d1d8_c_provider.ts`; the proof adapter, the public-input builder and the chain submitter are doubles from
+ * `test/fixtures/d1d8/c/doubles.ts`.
+ *
+ * Strategy / scenarios: a settled operation produces one proof and one transaction to the target frozen in the job;
+ * a mined transaction whose answer was lost is checked in the registry on retry, without a second transaction; and
+ * a destination changed after the job is never used, while an instance configured for the original target sends it
+ * after a restart.
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`). Before importing the server it
+ * sets fixture values in the test process for the API's variables (`OTK_TENANTS`, a fake `OPENAI_API_KEY`,
+ * `PROVER_URL=disabled`, the upstream override); no real provider, prover or chain is contacted.
+ *
+ * Run just this file: `npx tsx --test test/services/d1d8_c_proof_v3.test.ts`
+ *
+ * @module test/services/d1d8_c_proof_v3.test
  */
 process.env['OTK_DB_URL'] = '';
 process.env['OTK_RECEIPT_LOG'] = '';

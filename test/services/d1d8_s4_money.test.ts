@@ -9,6 +9,21 @@
  * observed 2026-10-01T12:00Z, gpt-4o-mini-2024-07-18 → gpt-4o-mini): input 10 × 200 000 µUSD/MTok
  * (price in force from 2026-10-01) = 2 000 000 pico-USD; output 2 × 600 000 = 1 200 000;
  * total 3 200 000 pico-USD (US$ 0.0000032). Reservation US$ 0.10 = 100 000 000 000 pico-USD.
+ *
+ * Module under test: the money axis of `src/operations/runtime.ts` and its PostgreSQL stores (reservation,
+ * settlement, pending-price resolution and spool replay), with operations built from
+ * `test/fixtures/d1d8/c/builders.ts`.
+ *
+ * Strategy / scenarios: a missing price debits CU once while money stays held; a partial price keeps the subtotal as
+ * information only; later completion from the stored usage settles exactly once and repeating it is a no-op; a
+ * legitimate zero and a complete price settle as quoted; the status shape separates reserved, confirmed and pending;
+ * and a spooled measurement after a torn tail reaches PostgreSQL once.
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`) and a writable temporary
+ * directory for the spool. The command above loads the test environment from `scripts/ops/s4_env.sh` first; with the
+ * variables already set, `npx tsx --test --test-concurrency=1 test/services/d1d8_s4_money.test.ts` runs just this file.
+ *
+ * @module test/services/d1d8_s4_money.test
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

@@ -11,6 +11,23 @@
  * check uses it when present; entries written by older replicas (legacy field only) are still honored by the legacy
  * comparison until they expire (TTL), and the legacy field is still written so older replicas keep working during a
  * rolling deploy. The HTTP contract (header, 200/201 replay, 409 OTK-4091) does not change.
+ *
+ * Modules under test (imported after the environment is set): `src/api/idempotency.ts` and, for
+ * the end-to-end case, `handleRequest` in `src/api/routes.ts`.
+ *
+ * Strategy / partitions: legacy fingerprint vectors unchanged; one fixed colliding pair; the
+ * legacy collision rate over 10^5 bodies; v2 fingerprint vectors; stored entries with both
+ * fingerprints; a colliding body under the same key (conflict); an entry with only the legacy
+ * field (still honoured); matching legacy but different v2 (conflict); the receipt route with the
+ * colliding pair (409).
+ *
+ * Needs: no server, database or network. Sets `OTK_RECEIPT_LOG` and `OTK_DB_URL` to empty,
+ * `PROVER_URL=disabled`, and deletes `OTK_REDIS_URL` and `OTK_TENANTS` before the modules load,
+ * so the in-memory stores are used with authentication off.
+ *
+ * Run just this file: `npx tsx --test test/unit/h1r2_c3_idempotency_hash_v2.test.ts`
+ *
+ * @module test/unit/h1r2_c3_idempotency_hash_v2.test
  */
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

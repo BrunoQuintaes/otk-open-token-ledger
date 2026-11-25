@@ -2,6 +2,20 @@
  * GA Readiness tests — src/api/gaReadinessCheck.ts
  *
  * Verifies the structure and correctness of the GA readiness check module.
+ *
+ * Module under test: `checkGAReadiness` and `isGAReady` from `src/api/gaReadinessCheck.ts` (the
+ * checklist for general availability).
+ *
+ * Strategy / partitions: exactly 6 requirements with unique, canonical ids and all fields; the
+ * legal-pages requirement passes and names its three routes; the requirements that need a human
+ * action stay pending; `isGAReady` with a pending, an all-pass and a failing list; the load test
+ * script, the disaster-recovery drill script and the readiness document exist.
+ *
+ * Needs: read access to those repository files; nothing else.
+ *
+ * Run just this file: `npx tsx --test test/unit/ga_readiness.test.ts`
+ *
+ * @module test/unit/ga_readiness.test
  */
 
 import assert from 'node:assert/strict';

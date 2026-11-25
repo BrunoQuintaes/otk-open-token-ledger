@@ -4,6 +4,16 @@
  *   vetores/chaveiro.json      chaveiro público de TESTE
  *   vetores/esperado.json      impressão digital, sha256 do relatório (com e sem impressão digital) e vereditos
  * Uso: npx tsx test/verifier/gera_vetores.ts [--check]   (--check só compara com o que está no disco)
+ *
+ * In English: writes the receipt verifier's test vectors to `test/verifier/vetores/` (input receipt files, the public
+ * TEST keyring `chaveiro.json` and the expected results `esperado.json`: keyring fingerprint, report sha256 with and
+ * without the fingerprint, exit codes and per-item verdicts). They are used by the static verifier page and by the
+ * Node-versus-browser parity check. With `--check` nothing is written: each file is compared byte for byte with the
+ * disk and the exit code is 1 when any differs. Also run as `npm run verifier:vectors` and by the reproduction
+ * script's vector check; `verificador.test.ts` imports {@link expectedFiles} for the same comparison.
+ * Importing the module has no side effect; only running it as a script writes or checks files.
+ *
+ * @module test/verifier/gera_vetores
  */
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -11,8 +21,15 @@ import { fileURLToPath } from 'node:url';
 import { reportSha256, verifyBundle } from '../../src/verifier/index.js';
 import { buildVectors, KEYRING_FINGERPRINT, KEYRING_TEXT, keyringFile } from './vetores.js';
 
+/** Absolute path of the committed vector folder `test/verifier/vetores/`. */
 export const VETORES_DIR = resolve(dirname(fileURLToPath(import.meta.url)), 'vetores');
 
+/**
+ * Builds, in memory, every file of the vector folder exactly as it should be on disk.
+ *
+ * @returns Map from the path relative to {@link VETORES_DIR} (e.g. `recibos/...`, `chaveiro.json`,
+ *   `esperado.json`) to the file bytes. Deterministic: the same code yields the same bytes. Writes nothing.
+ */
 export async function expectedFiles(): Promise<Map<string, Uint8Array>> {
   const { files, expect } = await buildVectors();
   const m = new Map<string, Uint8Array>();

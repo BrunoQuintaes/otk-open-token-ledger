@@ -9,6 +9,22 @@
  *   5. REST endpoint contract via handleRequest
  *
  * No PG required — uses in-memory stores.
+ *
+ * Modules under test: `src/api/apiKeyManager.ts`, `src/api/IApiKeyMetadataStore.ts` (in-memory store),
+ * `src/api/ITokenStore.ts`, the event dispatcher of `src/publisher/runtime.ts` and the key routes of
+ * `src/api/routes.ts`.
+ *
+ * Strategy / partitions: hashing (same and different inputs); store create, get, list per tenant, revoke and
+ * revoke twice, missing key; manager create, list, revoke, rotate and missing key, each with its event; the
+ * routes create, list, revoke and create without a label; the event kinds; the presence of the store, manager,
+ * PostgreSQL store and migration files.
+ *
+ * Needs: no PostgreSQL and no network (in-memory stores, reset before each test). The mock requests send the
+ * value of `OTK_ADMIN_KEY` (or a test default) as the platform key.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave3c_pack01_api_keys.test.ts`
+ *
+ * @module test/unit/wave3c_pack01_api_keys.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

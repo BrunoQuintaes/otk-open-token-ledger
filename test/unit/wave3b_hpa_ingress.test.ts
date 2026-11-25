@@ -3,6 +3,18 @@
  *
  * Validates Horizontal Pod Autoscaler (NEW-3.02) and Ingress + TLS (NEW-3.03)
  * templates without requiring Helm binary. All checks are fs-based.
+ *
+ * Under test: the autoscaler and ingress templates and the values files of the Helm chart under
+ * `infra/helm/otk/`, read as text.
+ *
+ * Strategy / partitions: API version, kind, enable flag and the expected sections of each template; defaults
+ * off in the base values; the replicas guard in the deployment; the production and staging overrides.
+ *
+ * Needs: only the file system (read only), from the repository root found from this file's location.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave3b_hpa_ingress.test.ts`
+ *
+ * @module test/unit/wave3b_hpa_ingress.test
  */
 
 import { describe, it } from 'node:test';

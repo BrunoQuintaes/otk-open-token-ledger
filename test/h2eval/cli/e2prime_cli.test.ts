@@ -1,3 +1,23 @@
+/**
+ * Offline rehearsal, through the full executor path, of campaign batches for the two larger comparison models in
+ * which the provider refuses two consecutive prompts but still returns complete usage.
+ *
+ * Modules under test: `scripts/h2eval/cli/freeze.ts`, `scripts/h2eval/cli/plan.ts` (`buildPlan`, `capsOfProfile`),
+ * `scripts/h2eval/cli/run.ts` (`runBatch`) and the journal verifier in `scripts/h2eval/core/journal.ts`, with the
+ * real adapter and ledger, the repository's design file and a simulated provider.
+ *
+ * Strategy / scenarios, per model: campaign plans built with a named cost-cap profile (first batch = training, no
+ * gate); refusals with complete usage at calls 7 and 8 do not stop the batch (the next call is sent, the batch
+ * completes, refusals recorded, resuming does not re-send); a refusal without complete usage still stops the batch
+ * as uncertain. It is the same scenario as `e1prime_cli.test.ts`, applied to other models.
+ *
+ * Needs: a writable temporary directory (one campaign folder per scenario); allow up to 5 minutes per test. It sets
+ * `H2EVAL_ANTHROPIC_API_KEY` to a fake canary value. No paid call, no network, no real credential.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cli/e2prime_cli.test.ts`
+ *
+ * @module test/h2eval/cli/e2prime_cli.test
+ */
 // SYNTHETIC — OFFLINE. E2' (C159-A Q04, 2026-11-13): ensaio com o CAMINHO COMPLETO do executor E2 (freeze -> plan de CAMPANHA -> runBatch, adaptador e ledger reais, provedor SIMULADO) para Sonnet 5.5 e Opus 5.5,
 // com o perfil de tetos do E2 (ciclo3_c158: 32/32/0/0), o arquivo de desenho do repositorio e um diretorio de campanha proprio por cenario (1o lote = treino, sem gate): DUAS RECUSAS com usage completo seguidas (indices 7 e 8) NAO param o lote e a operacao seguinte VAI;
 // as recusas ficam registradas; retomar nao reenvia nada; uma recusa SEM usage completo continua parando (STOP_UNCERTAIN). Mesmo cenario do e1prime_cli.test.ts (Haiku), aqui nos modelos do E2.

@@ -1,3 +1,23 @@
+/**
+ * Tests that, for every usage shape of the three providers, the adapter's usage parser and the record validator
+ * classify the cache outcome the same way and that valid usage is not rejected.
+ *
+ * Modules under test: `ADAPTERS[api].parseUsage` from `scripts/h2eval/modal/index.ts` and `cacheObservedOf`,
+ * `validateUsage` and `UsageInvalid` from `scripts/h2eval/record/usage.ts`.
+ *
+ * Strategy / partitions: for the OpenAI arm model, a cache write without a read (creation) and a missing, null or
+ * negative write count with no read (`UNKNOWN`, never 0 and never no-hit), plus agreement over all shapes (write,
+ * read, absent, zero, null, a subset larger than its container); the older OpenAI model, where a write count is
+ * ignored; Anthropic documented shapes (agree) and undocumented or inconsistent shapes (still refused); and Google
+ * for both the matrix model and the arm model (an absent read never becomes 0). Tests tagged with a commit id failed
+ * before the fix.
+ *
+ * Needs: nothing external (pure parsing and validation). No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/record/usage_contract_e3g5.test.ts`
+ *
+ * @module test/h2eval/record/usage_contract_e3g5.test
+ */
 // SYNTHETIC — OFFLINE. E3G5 (C160 OPENAI-R-FIX, DR-221): contrato de usage dos tres provedores.
 // Para cada forma de usage (escrita de cache, leitura, ausente, zero, null, subset maior que o container), o adaptador
 // (ADAPTERS[api].parseUsage -> cacheObserved de modal/canonical.ts) e o validador (record/usage.ts cacheObservedOf) tem de concordar,

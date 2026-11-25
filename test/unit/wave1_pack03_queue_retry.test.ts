@@ -10,6 +10,19 @@
  *   - Configuration validation
  *
  * @since Wave 1 Pack 3 (2026-03-15)
+ *
+ * Modules under test: `src/prover/ProductionQueue.ts` (durable mode) and `src/api/deadLetterStore.ts`.
+ *
+ * Strategy / partitions: enqueue, dequeue (with and without jobs), complete, depth and job lookup; a failure
+ * below the retry limit and at the limit (dead letter recorded in the store); the stored transaction hash; a
+ * full queue (rejection, dead letter and metrics); default and custom configuration.
+ *
+ * Needs: no Redis; `OTK_REDIS_URL` is removed so the queue stays in durable mode. The retry defaults come from the
+ * `PROVER_*` variables when they are set. Uses short real waits for the backoff.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave1_pack03_queue_retry.test.ts`
+ *
+ * @module test/unit/wave1_pack03_queue_retry.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

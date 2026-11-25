@@ -1,5 +1,22 @@
 /**
  * Tests — BillingToken (RB-053) — QA1 edge cases
+ *
+ * Checks the prepaid CU billing token: whether a debit is allowed, the debit itself and
+ * deterministic creation.
+ *
+ * Module under test: `src/economics/BillingToken.ts` (`canDebit`, `debitToken`,
+ * `createBillingToken`).
+ *
+ * Strategy / partitions: `canDebit` with enough balance, too little balance, an expired token, no
+ * expiry (expiry epoch 0), a debit of exactly the balance and a debit of 0 CU; `debitToken`
+ * returns a new token and leaves the input unchanged, and throws on an expired token or too
+ * little balance; creation with fixed id and creation time is deterministic.
+ *
+ * Needs: nothing external (pure functions).
+ *
+ * Run just this file: `npx tsx --test test/unit/billing_token.test.ts`
+ *
+ * @module test/unit/billing_token.test
  */
 
 import { describe, it } from 'node:test';

@@ -2,6 +2,21 @@
  * D1–D8 / C (D3-G04 part C): migrations 100–103 through the real `scripts/ops/migrate.js` on a
  * fresh PostgreSQL database — applied once, re-run without duplication — plus the documented
  * rollback scripts, and the runtime's own idempotent schema step coexisting with migrate.js.
+ *
+ * Module under test: the migration runner `scripts/ops/migrate.js` (run as a child process with `OTK_DB_URL` and
+ * `OTK_MIGRATION_DIR` set) and the runtime's `ensureD1D8Schema`, with the SQL migration and rollback files.
+ *
+ * Strategy / scenarios: a historical reproduction with the original retention migration that stops the runner; a
+ * first run that applies the migrations; a second run that adds nothing; the runtime schema step as a no-op on a
+ * migrated database, also twice concurrently; rollback scripts that remove only the new tables and their migration
+ * rows; and re-applying everything after the rollback.
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`), a writable temporary directory
+ * for migration subsets, and permission to spawn Node child processes.
+ *
+ * Run just this file: `npx tsx --test test/services/d1d8_c_schema.test.ts`
+ *
+ * @module test/services/d1d8_c_schema.test
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

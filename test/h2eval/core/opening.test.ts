@@ -1,3 +1,24 @@
+/**
+ * Tests the signed ledger opening file through which a new study inherits, as committed, what a previous study
+ * settled or left uncertain.
+ *
+ * Modules under test: `scripts/h2eval/core/ledger.ts` (`openLedger`, `validateLedgerOpening`, `LedgerOpeningError`,
+ * `inheritedPicoOf`), `scripts/h2eval/cli/run.ts` (`runAuthorized`, `readLedgerOpening`, `LEDGER_OPENING_FILE`)
+ * and the planner.
+ *
+ * Strategy / partitions: the opening applied once as the first ledger lines, inherited money counted against the
+ * provider and campaign caps, reopening without duplication, and an unchanged ledger without the file; refusals
+ * (opening after the ledger started, values different from those already inherited, unsigned, tampered digest,
+ * unknown provider, wrong schema); and a run whose inherited amount is above 80% pauses at the first operation. The
+ * previous study's directory is never touched.
+ *
+ * Needs: a writable temporary directory and a synthetic corpus freeze (allow several minutes); sets
+ * `H2EVAL_CONTROL_DIR` to a temporary folder when unset. The inherited amounts are synthetic. No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/core/opening.test.ts`
+ *
+ * @module test/h2eval/core/opening.test
+ */
 // SYNTHETIC — OFFLINE. VNEXT-5 (C151 item 5): a NEW study ledger inherits, as committed, what a previous study settled and left uncertain
 // (0.01200928 settled + 0.003662 uncertain on Anthropic in R17), through a SIGNED opening file applied once as the first lines of the ledger.
 // Inherited money counts against 5/3/3/11 and against the 80 % pause; it is never released; the opening after a started ledger, a mismatch,

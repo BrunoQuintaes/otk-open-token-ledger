@@ -8,6 +8,20 @@
  * Gates: torn tail → restart → new append; transfer through replay(); torn resolution → restart → new
  * entry; reading with visible corruption (and recovery of entries already fused by the old code, checked by
  * sha256); failure to persist keeps the source record live.
+ *
+ * Module under test: the intervention queue and quarantine file of `MeasurementSpool` in
+ * `src/operations/spool.ts`.
+ *
+ * Strategy / partitions: the gates listed above, plus two ways of making the transfer write fail
+ * (a read-only file, which is skipped when running as root because root ignores the mode, and
+ * a fault that holds for root too) and a torn line in the quarantine evidence file.
+ *
+ * Needs: the local file system (fresh directories in the OS temporary folder); no database or
+ * network.
+ *
+ * Run just this file: `npx tsx --test test/unit/d1d8_fps5_intervention_durability.test.ts`
+ *
+ * @module test/unit/d1d8_fps5_intervention_durability.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

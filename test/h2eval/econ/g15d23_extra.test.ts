@@ -4,6 +4,25 @@
  * INCORPORADO pelo agente EXEC-ECON C160 no delta 4 (R-D2: mutantes B03/B05), de runs/C160/EXEC_ECON_G15/D23/replica/g15tests/. Única mudança
  * de conteúdo: o teste da corrida (R-D1) passa a exigir o comportamento NOVO do delta 4 (recusa de GO ECON no egress = pausa não terminal;
  * a reexecução com GO novo no MESMO diretório envia a seq 2, nunca REPLAY_SKIPPED). O original media o travamento (ABORTED_BEFORE_SEND).
+ *
+ * English summary: an independent auditor's own tests of the economic study's GO handling, kept in the suite: a
+ * race between the order guard and the egress, the cumulative attempt budget, a sequence range not starting at 0,
+ * a GO of the wrong schema, a GO changed on disk mid-run, extra egress refusals, and a probe over the five models
+ * that includes a null stop reason with complete usage.
+ *
+ * Modules under test: `scripts/h2eval/core/egress.ts` (`createEgress`, `EgressRefused`), `scripts/h2eval/econ/econ.ts`
+ * (`runEcon`, `goEconEgressValidator`, `ECON_ALLOWED_HOSTS`) and `scripts/h2eval/econ/goEcon.ts`, using the fixture in
+ * `./econ_fixture.ts`.
+ *
+ * Needs: a writable temporary directory; the credential is a synthetic value in a temporary file. The last test
+ * reads and imports the study's external grading module from a fixed folder outside the repository (hash
+ * checked) and fails, rather than skips, when that file is absent. Optional environment variable `G15_D23_OUT`:
+ * when set, the test writes a JSON dump of intermediate values to that path. Fake transport; no network, no
+ * spending.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/econ/g15d23_extra.test.ts`
+ *
+ * @module test/h2eval/econ/g15d23_extra.test
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

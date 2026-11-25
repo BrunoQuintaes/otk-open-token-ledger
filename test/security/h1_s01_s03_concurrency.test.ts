@@ -9,6 +9,24 @@
  *   C5 Stripe: an upgrade and a cancellation with the SAME `created` second resolve to the lower tier (fail closed);
  *   C6 Stripe: a signed event whose tenant does not exist is refused without creating a plan row.
  * In-memory fakes only; the PostgreSQL versions of C3/C4 are in test/integration/h1_s01_pg_plan_store.test.ts.
+ *
+ * Also covered: a cancellation for a tenant this replica sees as unknown or deactivated is still applied; checkout
+ * sessions carry the tenant and tier in the subscription metadata; store and billing-event failures appear in the
+ * metrics counters without tenant ids; an ambiguous downgrade that committed after its timeout is not undone by a
+ * read that started earlier (with a control where it did not commit); and the requirement of a USD ceiling on
+ * budgets is switched off only by an explicit 0 in deployed environments.
+ *
+ * Modules under test: `src/billing/PlanRegistry.ts`, `src/billing/IPlanStore.ts`,
+ * `src/billing/stripe/StripeWebhookHandler.ts`, `src/billing/stripe/StripeClient.ts`,
+ * `src/observability/prometheusMetrics.ts` and `moneyBudgetRequiredFromEnv` in `src/operations/runtime.ts`.
+ *
+ * Needs: nothing external. Empties `OTK_RECEIPT_LOG` and `OTK_DB_URL` and sets `OTK_PLAN_STORE_TIMEOUT_MS=150`
+ * before importing (one case raises it to 3000 and sets it back); the last case changes `NODE_ENV` and
+ * `OTK_REQUIRE_MONEY_BUDGET` and restores them. Some cases wait real time around the store timeout.
+ *
+ * Run just this file: `npx tsx --test test/security/h1_s01_s03_concurrency.test.ts`
+ *
+ * @module test/security/h1_s01_s03_concurrency.test
  */
 import { describe, it, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

@@ -10,6 +10,17 @@
  *   - GET /version → 200 + { apiVersion }
  *   - POST /ping  → 200 + { echo: <body> }
  *   - GET /unknown → 404 + { ok: false }
+ *
+ * Module under test: `handleRequest` in `src/api/routes.ts`.
+ *
+ * Strategy / partitions: the export exists; one known read route, the version route, the echo
+ * route with a body, and an unknown route.
+ *
+ * Needs: nothing external.
+ *
+ * Run just this file: `npx tsx --test test/unit/api_routes_smoke.test.ts`
+ *
+ * @module test/unit/api_routes_smoke.test
  */
 
 import { describe, it } from 'node:test';

@@ -4,6 +4,23 @@
  * Redis `eval`, and a real `LOCK TABLE` that holds the INSERT past the application timeout.
  * The scenarios are the ones of docs/_ops/correcoes/REVISAO_CODEX_20260930/probes.mjs with the
  * correct expectations; the "before" results are in C/C2_rv30/before/.
+ *
+ * Modules under test: the in-process API with its PostgreSQL receipt path and Redis projection (Redis client
+ * `ioredis`), plus a local HTTP server that stands in for the prover and counts proof requests.
+ *
+ * Strategy / scenarios: a rejected Redis write is replayed rather than forgotten, and the strict debit throws while
+ * the outbox effect stays pending; the deduplication marker lives inside the aggregate key, expires with it, and a
+ * marker in the old layout still counts; and a PostgreSQL commit that lands after the application timeout (held by a
+ * real table lock) still produces exactly one proof request, with and without a client retry, and the ledger counts
+ * each late receipt once.
+ *
+ * Needs: the test PostgreSQL and Redis from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`, `OTK_TEST_REDIS_URL`).
+ * Before importing the server it sets fixture values in the test process for the API's variables (database URL,
+ * write timeout of 2,000 ms, prover URL and recovery interval). No network beyond loopback.
+ *
+ * Run just this file: `npx tsx --test test/services/d1d8_c_rv30_inproc.test.ts`
+ *
+ * @module test/services/d1d8_c_rv30_inproc.test
  */
 process.env['OTK_DB_URL'] = '';
 process.env['OTK_RECEIPT_LOG'] = '';

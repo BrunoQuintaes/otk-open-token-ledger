@@ -7,6 +7,20 @@
  *   - Unknown chains return status='error'
  *   - result.data is always an array
  *   - All query types produce correct shapes
+ *
+ * Modules under test: `src/infra/subgraphSurface.ts` (query builders, the stub executor and the live fetch
+ * wiring) with `src/infra/chainRegistry.ts`; also the committed `subgraph/schema.graphql`.
+ *
+ * Strategy / partitions: the three query builders; a known development chain, an unknown chain and chain 1;
+ * the result fields always present; the schema entities and their fields; the live fetch without
+ * `OTK_SUBGRAPH_URL` (stub error, no request).
+ *
+ * Needs: no network (the URL variable is removed for the fetch case and restored). Reads
+ * `subgraph/schema.graphql` relative to the current directory, so run it from the repository root.
+ *
+ * Run just this file: `npx tsx --test test/unit/subgraph_surface.test.ts`
+ *
+ * @module test/unit/subgraph_surface.test
  */
 
 import { describe, it } from 'node:test';

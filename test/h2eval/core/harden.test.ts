@@ -1,3 +1,25 @@
+/**
+ * Tests hardening fixes from an independent review of the executor: caps limits, replay with a changed plan, the
+ * batch directory lock, ledger and journal reconciliation, send timeout, preflight token and corpus determinism.
+ *
+ * Modules under test: `scripts/h2eval/core/runner.ts` (`createExecutor`, `BatchLockedError`,
+ * `LedgerReconciliationError`), `scripts/h2eval/core/ledger.ts`, `scripts/h2eval/core/egress.ts` (`createEgress`,
+ * `EgressRefused`), `scripts/h2eval/core/journal.ts` and `scripts/h2eval/corpus/manifest.ts` (`buildCorpus`).
+ *
+ * Strategy / partitions: caps above the defaults refused, lower caps accepted, unknown provider refused; the same
+ * operation id with a different plan aborted on replay while the same plan is skipped; a busy executor in the same
+ * directory refused, an idle one superseded and losing the lock; an edited ledger that no longer matches the journal
+ * refused at open; a send that never answers ends as uncertain with the reservation kept and is never re-sent; a send
+ * without the single-use preflight token of the same body refused; three direct negatives (REAL preflight without
+ * the flag, a batch cap above 25% of the sub-ledger, a settlement above the reservation); and the same seed giving
+ * the same corpus hash.
+ *
+ * Needs: a writable temporary directory; one test waits for a send timeout (short timer). No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/core/harden.test.ts`
+ *
+ * @module test/h2eval/core/harden.test
+ */
 // SYNTHETIC — OFFLINE. R15-HARDEN negatives (independent review B06, R15_REVIEW_PHASE1.md): A1 caps above defaults refused and GO tied to
 // the effective caps; M1 replay with a different plan aborted; M2 batchDir lock; M3 ledger reconciled with the journal; M5 send timeout
 // => TIMEOUT_UNCERTAIN with the reservation kept; B2 corpus determinism; B3 send requires the preflight token.

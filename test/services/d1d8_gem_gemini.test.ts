@@ -15,6 +15,26 @@
  *    + 40 × 400 000 = 95 200 000 + 20 480 000 + 16 000 000 = 131 680 000 pico (cache is inside the prompt: never added twice);
  *  - thinking 7 on 20/5: total 32; CU 32 × 540 000 = 17 280 000; cost 20 × 100 000 + (5 + 7) × 400 000 = 6 800 000 pico;
  *  - blocked prompt 30: CU 30 × 540 000 = 16 200 000; cost 3 000 000 pico.
+ *
+ * Module under test: the durable gateway (`src/operations/runtime.ts` and the proxy routes) for the Gemini API,
+ * against the fake provider from `./d1d8_c_provider.ts` in Gemini wire format and a TCP relay from `./d1d8_c_proc.ts`.
+ *
+ * Strategy / partitions: credentials (only the operator key reaches the provider, in its own header; client tokens
+ * and URL keys never do; provider 401 and 403; missing provider key as certain non-delivery); money (refusals of
+ * unbounded or ambiguous requests before the upstream; reservation, CU and cost equal to the hand values; implicit
+ * cache as a subset of the prompt; unexpected thinking; a non-standard tier; an unexpected returned model; a budget
+ * shared by two instances); review fixes (response masks, other parameter spellings and routing parameters never
+ * forwarded); usage parsing (JSON and SSE with cumulative usage, blocked prompts, output limit, omitted zero
+ * counts); and recovery (client disconnect, upstream cut, cancel from another instance, idempotent reopen, PostgreSQL
+ * down at the end with spool and restart).
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`) and a writable temporary
+ * directory; run with `--test-concurrency=1`. Before importing the server it sets fixture values in the test process
+ * for the API's variables (tenants, a fake Gemini key, the upstream override, `PROVER_URL=disabled`). With the
+ * variables already set, `npx tsx --test --test-concurrency=1 test/services/d1d8_gem_gemini.test.ts` runs just this
+ * file.
+ *
+ * @module test/services/d1d8_gem_gemini.test
  */
 process.env['OTK_DB_URL'] = '';
 process.env['OTK_RECEIPT_LOG'] = '';

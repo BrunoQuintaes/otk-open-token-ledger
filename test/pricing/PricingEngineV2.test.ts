@@ -1,5 +1,20 @@
 /**
  * Tests — PricingEngineV2 (RB-055)
+ *
+ * Module under test: `src/pricing/PricingEngineV2.ts` (`resolveModelTier`, `volumeDiscount`, `computePricingV2`,
+ * `DEFAULT_VOLUME_BRACKETS`), which turns cost units into a price using a model tier, an SLA surcharge on the
+ * markup, a volume discount and an optional currency conversion.
+ *
+ * Strategy / partitions: known models of each tier and an unknown model (falls back to the middle tier); small,
+ * bracket-boundary and large volumes, and custom brackets; a basic price; tier ordering for the same CU; each SLA
+ * surcharge; the discount effect; conversion to BRL with and without an exchange rate; and monotonicity of the
+ * volume discount.
+ *
+ * Needs: nothing external (pure functions).
+ *
+ * Run just this file: `npx tsx --test test/pricing/PricingEngineV2.test.ts`
+ *
+ * @module test/pricing/PricingEngineV2.test
  */
 
 import { describe, it } from 'node:test';

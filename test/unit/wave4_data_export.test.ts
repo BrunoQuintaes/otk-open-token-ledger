@@ -18,6 +18,17 @@
  *  14.  resolveDefaultStatus() returns components array
  *
  * @since Wave 4 (4C-PACK-4C03 / NEW-4.01+NEW-4.02)
+ *
+ * Modules under test: `src/api/dataExport.ts` and `src/dashboard/status.ts`; the route list is checked by
+ * reading `src/api/routes.ts` as text.
+ *
+ * Strategy / partitions: as listed above.
+ *
+ * Needs: nothing external; reads source files from the repository root found from this file's location.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave4_data_export.test.ts`
+ *
+ * @module test/unit/wave4_data_export.test
  */
 
 import { describe, it } from 'node:test';

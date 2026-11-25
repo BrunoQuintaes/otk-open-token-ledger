@@ -4,6 +4,19 @@
  * Real: API server child process, cwRuntime, CUWeightsLoader (EIP-191 over the canonical
  * V2 message), POST/GET /receipts. Substitute: an ephemeral signing key generated here.
  * Current failure mode (static weights when the signature is invalid) is D4, still open.
+ *
+ * Strategy / scenarios: a table with a valid signature by a trusted signer is loaded (checked in the server's
+ * log), and a receipt then names the weights that actually produced its CU (`static`); a table with one tampered
+ * weight is rejected and receipts stay on the static weights.
+ *
+ * Needs: one free 127.0.0.1 port for the API child process (started with `tsx`), a temporary directory for the
+ * weights file, and time for each start. The child gets `NODE_ENV`, `OTK_RECEIPT_LOG` (empty), `PROVER_URL`
+ * (`disabled`), `OTK_CW_JSON_FILE` and `OTK_TRUSTED_SIGNERS`; `OTK_TENANTS`, `OTK_DB_URL` and `OTK_REDIS_URL` are
+ * removed. No database, no external network.
+ *
+ * Run just this file: `npx tsx --test test/integration/cw_runtime_wiring.test.ts`
+ *
+ * @module test/integration/cw_runtime_wiring.test
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

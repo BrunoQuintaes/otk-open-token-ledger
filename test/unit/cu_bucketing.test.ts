@@ -14,7 +14,26 @@
  *   verifies the DEFAULT state (no CU_MODE or CU_BUCKET_SIZE env set) and
  *   the pure bucketCU() function independently of env state.
  *
+ * Item 6 changed since this list was written: the tests now require the SDK's default cost
+ * normalizer to return the exact CU (same as `computeKnownCu`), not the published bucket.
+ *
+ * Modules under test: `src/economics/CUEngine.ts`, `defaultCostNormalizer` from
+ * `src/sdk/OTKSDK.ts` and `computeKnownCu` from `src/operations/knownCu.ts`.
+ *
+ * Strategy / partitions: `bucketCU` on exact multiples, values below, at and above half a bucket,
+ * tiny values, bucket sizes 100, 50, 10 and 1, and invalid input (bucket size 0 or less,
+ * negative CU); default mode and bucket size; published vs raw CU in bucketed and raw mode, for
+ * the bigint and Number variants; the SDK normalizer for small consumption; real provider/model
+ * inputs whose published CU is a multiple of the bucket.
+ *
+ * Needs: nothing external. `CU_MODE` (or `CU_PUBLISH_MODE`) and `CU_BUCKET_SIZE` are read once by
+ * `CUEngine` at import; the default checks accept either mode, and the bucket-size check is
+ * skipped when `CU_BUCKET_SIZE` is set.
+ *
+ * Run just this file: `npx tsx --test test/unit/cu_bucketing.test.ts`
+ *
  * @since U5.3
+ * @module test/unit/cu_bucketing.test
  */
 
 import { describe, it } from 'node:test';

@@ -1,3 +1,25 @@
+/**
+ * Tests the preparation of the second evaluation cycle: per-structure prediction profiles, a larger holdout option
+ * when freezing the corpus, and byte-identical plans for designs that use neither.
+ *
+ * Modules under test: `scripts/h2eval/cli/campaign.ts` (`profileParamsProblem`, `predictorFrom`,
+ * `selectOnValidation`, `validateValidationSelected`, `PROFILE_METHODS`), `scripts/h2eval/cli/freeze.ts`
+ * (`freezeCorpus` with `groupsPerCell`) and `scripts/h2eval/cli/plan.ts`.
+ *
+ * Strategy / partitions: profile parameter shapes (one triple per model, per-structure triples, wrong keys or
+ * values refused); predictor lookup with and without a per-structure entry or operation structure (falls back to the
+ * model triple, bit for bit as before); `select` refusing an invalid method or malformed parameters before writing
+ * the gate and revalidating the gate on every use; corpus freeze with 12 groups per cell (larger holdout, same
+ * cells) against the default (byte-identical corpus); and golden regressions against earlier plans.
+ *
+ * Needs: a writable temporary directory; allow up to 5 minutes for corpus freezes. The golden regression tests read
+ * plan, design and preregistration files from fixed local folders and are skipped, visibly, when they are absent.
+ * No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cli/cycle2prep.test.ts`
+ *
+ * @module test/h2eval/cli/cycle2prep.test
+ */
 // SYNTHETIC — OFFLINE. C154 (preparo do ciclo 2): (1) perfil por ESTRUTURA no `select` / predictor: `params[model].byStructure[S1|S2|S3]`
 // com fallback no triplo do modelo; method `M1S` aceito; forma validada ao gravar E a cada uso do gate; perfis sem `byStructure` se comportam
 // exatamente como antes (mesmo snapshot). (2) `freeze-corpus --groups-per-cell`: variante com holdout maior, mesmo desenho de celulas; sem o

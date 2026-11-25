@@ -8,6 +8,17 @@
  *   - PROVER_URL=disabled documented for local testing
  *
  * @since Wave 2 Pack 18 (2026-03-15)
+ *
+ * Under test: the guide `docs/QUICKSTART.md`, read as text (no module is imported and no command is run).
+ *
+ * Strategy / partitions: the file exists; each of the 10 sections is present; the request examples carry the
+ * expected fields; the disabled-prover setting is documented.
+ *
+ * Needs: only the file system (read only), from the repository root found from this file's location.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave2_pack18_quickstart.test.ts`
+ *
+ * @module test/unit/wave2_pack18_quickstart.test
  */
 
 import { describe, it } from 'node:test';

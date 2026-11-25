@@ -5,6 +5,22 @@
  *   - buildEnvelope produces correct EventEnvelope shape
  *   - EventDispatcher: emit, subscribe/unsubscribe, latest, buffer bounds, reset
  *   - GET /events/latest route reflects emitted events
+ *
+ * Modules under test: the publisher exports of `src/publisher/index.ts` (`buildEnvelope`,
+ * `EventDispatcher`, `getDispatcher`) and `handleRequest` in `src/api/routes.ts` for the
+ * latest-events route.
+ *
+ * Strategy / partitions: an envelope with all fields, without an event id and without a
+ * timestamp; delivery to a subscriber, delivery status, unsubscribe, and a subscriber that
+ * throws (dispatch continues); the latest N events, a full buffer dropping the oldest, and reset
+ * keeping subscribers; the route with an empty and a non-empty buffer.
+ *
+ * Needs: nothing external (in-process route call with mock objects; no server). The route cases
+ * assume authentication is off, as it is when no tenant tokens are configured.
+ *
+ * Run just this file: `npx tsx --test test/unit/event_delivery.test.ts`
+ *
+ * @module test/unit/event_delivery.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

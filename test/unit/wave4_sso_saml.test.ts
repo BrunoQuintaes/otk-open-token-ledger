@@ -16,6 +16,19 @@
  *  12.  Metadata XML contains AssertionConsumerService
  *
  * @since Wave 4 (4D-PACK-4D01 / NEW-4.03)
+ *
+ * Module under test: `src/auth/sso/SamlProvider.ts` (real SP metadata, stub assertion validation); the decision
+ * record and the route list in `src/api/routes.ts` are checked as text.
+ *
+ * Strategy / partitions: the metadata XML elements; the entity id read from `OTK_SAML_ENTITY_ID`; an assertion
+ * without and with a NameID; a custom callback URL.
+ *
+ * Needs: nothing external. Changes `OTK_SAML_ENTITY_ID` and restores it. The stub validation refuses deployed
+ * environments, so `NODE_ENV` must not be a deployed value.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave4_sso_saml.test.ts`
+ *
+ * @module test/unit/wave4_sso_saml.test
  */
 
 import { describe, it, before, after } from 'node:test';

@@ -2,6 +2,28 @@
  * D1–D8 front B — signed weights v2, multiplicative CU, price and reservation
  * (D4-G01/G02, D5-G01/G05/G07, S0-F01). Expected values: test/fixtures/d1d8/common_vectors.json.
  * Signing keys are random per run (Wallet.createRandom); no key material is stored.
+ *
+ * Modules under test: `src/economics/cuWeightsV2.ts`, `src/economics/computeCu.ts`,
+ * `src/economics/cuWeightsRuntimeV2.ts`, the legacy `src/pricing/CostUnits.ts`,
+ * `src/pricing/priceUsage.ts` and `src/pricing/reservation.ts`.
+ *
+ * Strategy / partitions: CU from the shared vectors (raw totals and normalized usage, latency
+ * has no effect, missing usage gives `null`); statuses for an unknown model, a model swap, dated
+ * aliases, partial usage, an unsupported formula and invalid totals; weights table validation
+ * (valid, missing, tampered weight or alias, garbage or misattributed signature, untrusted
+ * signer, expired vs not yet valid, malformed shapes); runtime snapshots (restart with the
+ * source down, no snapshot, rejected or replayed older tables, signer rotation, prototype-key
+ * ids, frozen references, revocation); prices per category, missing price (`null`, never US$ 0),
+ * price history, unpriced or zero-count addends, overlapping windows; worst-case reservation
+ * and the input-size upper bound.
+ *
+ * Needs: must be run from the repository root (reads `test/fixtures/d1d8/common_vectors.json` and
+ * `test/fixtures/d1d8/b/price_table_illustrative_v1.json` by relative path); one snapshot test
+ * writes to a temporary directory that it removes. No network.
+ *
+ * Run just this file: `npx tsx --test test/unit/d1d8_b_cu_price.test.ts`
+ *
+ * @module test/unit/d1d8_b_cu_price.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

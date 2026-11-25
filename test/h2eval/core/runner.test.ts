@@ -1,3 +1,31 @@
+/**
+ * Tests the executor's per-operation state machine: fixed step order, replay without re-sending, crash recovery at
+ * every step, uncertainty, every spending cap, unknown prices, the stop file, secret hygiene and an unreachable REAL
+ * mode.
+ *
+ * Modules under test: `scripts/h2eval/core/runner.ts` (`createExecutor`), `scripts/h2eval/core/ids.ts`,
+ * `scripts/h2eval/core/journal.ts`, `scripts/h2eval/core/ledger.ts` and `scripts/h2eval/record/snapshot.ts`, with
+ * the doubles in `../support/double.ts`.
+ *
+ * Strategy / partitions: the normal flow (journal kinds in order, snapshot before sending, reservation equal to the
+ * cost cap, settlement); idempotent replay; a crash injected at each step (before sending the reservation is
+ * released, after sending the operation is isolated as uncertain and possibly charged); send failures; refusals
+ * with and without usage; partial usage (cost `UNKNOWN`, never 0); provider, batch and campaign caps checked before
+ * sending; unknown price; a cost above the reserved cap; the stop file; two real failures in a row; a canary secret
+ * in the process environment that never appears in any file or request; REAL mode unreachable in tests (flag, GO
+ * file and key variable each missing, or a forbidden variable present); concurrency of one; a non-text modality
+ * with an unknown local count; and a repository check that nothing outside `scripts/h2eval` and `test/h2eval`
+ * differs from the earlier evaluated commit.
+ *
+ * Needs: a writable temporary directory; the `git` command and a repository checkout for the last test (it runs
+ * `git diff` against a fixed commit, so any change outside those two folders, including comment-only changes, makes
+ * it fail). It sets `H2EVAL_TEST_KEY` and `H2EVAL_TEST_FORBIDDEN` to fake values. Importing `syntheticGo` from
+ * `./go.test.ts` also registers that file's tests in this run. No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/core/runner.test.ts`
+ *
+ * @module test/h2eval/core/runner.test
+ */
 // SYNTHETIC — OFFLINE. R11 runner + R15-style negatives: replay, crash at every point, duplicates, uncertain, every cap, unknown
 // price, stop file, canary secret, REAL unreachable. Doubles only; no network; no credential value ever read in OFFLINE mode.
 import { test } from 'node:test';

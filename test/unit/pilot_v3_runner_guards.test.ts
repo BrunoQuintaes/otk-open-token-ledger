@@ -1,6 +1,19 @@
 /**
  * PILOTO_V3 — guards of the v3 Anthropic runner that need no service: nothing is called and nothing is
  * created when the credential, the arguments or the database are missing.
+ *
+ * Module under test: `scripts/pilot/anthropic/runPilotV3.ts`, run as a child process.
+ *
+ * Strategy / partitions: live mode without the provider key (exit 3) for each provider profile; bad
+ * arguments and an unknown provider (exit 4); a non-canonical ledger path in live mode (exit 4); no isolated
+ * database configured (exit 5). Each case also checks that nothing was created.
+ *
+ * Needs: Node with the `tsx` loader; the child environment has every `OTK_*` and `*_API_KEY` variable removed.
+ * The Postgres URL passed points to a closed local port, so no database and no network is reached.
+ *
+ * Run just this file: `npx tsx --test test/unit/pilot_v3_runner_guards.test.ts`
+ *
+ * @module test/unit/pilot_v3_runner_guards.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

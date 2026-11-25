@@ -7,6 +7,13 @@
  *     newCommitmentOpening (CSPRNG); a fixed blinding is acceptable only inside test vectors.
  *
  * Regenerate: npx tsx test/fixtures/d1d8/a/v3Vectors.ts --write   (checked by d1d8_a_vectors.test.ts)
+ *
+ * `computeVectors` recomputes, from {@link receiptFixture} and the v3 library in `src/zk/v3`, the receipt and
+ * conference digests and signatures, the commitment, the operation reference, the bucket and the signed public
+ * authorization. The unit test compares them with `v3_vectors.json`; the Hardhat registry test reads the same JSON.
+ * Importing this module has no side effect; only running it with `--write` overwrites `v3_vectors.json` next to it.
+ *
+ * @module test/fixtures/d1d8/a/v3Vectors
  */
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -18,7 +25,9 @@ import {
 } from '../../../../src/zk/v3/index.js';
 import { conferenceFixture, receiptFixture } from './receiptFixture.js';
 
+/** Public seed string; the vector operator's private key is `ethers.id(VECTOR_KEY_SEED)` (TEST ONLY). */
 export const VECTOR_KEY_SEED = 'otk-d1d8-a-public-test-vector-key-v1 (TEST ONLY, public seed)';
+/** Circuit identifier recorded in the vector receipt, opening and authorization (`metering_v3@sha256:<hex>`). */
 export const VECTOR_CIRCUIT_ID = 'metering_v3@sha256:11ae0c5394ace052a71f7f633dadf3fed3284620565908c5bb873065a6a4ec32';
 /** Hardhat in-process default deployer: nonce 0 → verifier, nonce 1 → registry (see the Hardhat test). */
 export const VECTOR_DOMAIN: ChainDomain = {
@@ -28,7 +37,13 @@ export const VECTOR_DOMAIN: ChainDomain = {
   schemaVersion: REGISTRY_V3_SCHEMA,
 };
 
-/** The fixed opening of the vector (TEST ONLY). */
+/**
+ * The fixed opening of the vector (TEST ONLY).
+ *
+ * @param key - Tenant and operation the opening belongs to; copied, not kept by reference.
+ * @returns A new opening with usage 640 CU (640_000_000 units at scale 1_000_000) and fixed blinding, user
+ *   reference, epoch and salt.
+ */
 export function vectorOpening(key: { tenantId: string; operationId: string }): CommitmentOpening {
   return {
     schema: 'otk.opening.v1',
@@ -41,6 +56,13 @@ export function vectorOpening(key: { tenantId: string; operationId: string }): C
   };
 }
 
+/**
+ * Computes the full v3 cross-check vector set deterministically (fixed key, opening and clock).
+ *
+ * @returns A JSON-ready object (bigints as decimal strings) with the operator address, chain domain, receipt and
+ *   conference digests and signatures, commitment, operation reference, bucket, authorization fields, digest and
+ *   signature, and the four public signals `[commitment, epoch, bucketMin, bucketMax]`. Writes nothing.
+ */
 export async function computeVectors() {
   const wallet = new ethers.Wallet(ethers.id(VECTOR_KEY_SEED));
   const ring = createKeyRing([{ keyId: 'vector-op-1', address: wallet.address as `0x${string}`, status: 'active' }]);
@@ -73,6 +95,7 @@ export async function computeVectors() {
   };
 }
 
+/** Absolute path of the committed vector file `v3_vectors.json`, in the same folder as this module. */
 export const VECTORS_PATH = path.join(import.meta.dirname, 'v3_vectors.json');
 
 if (process.argv.includes('--write')) {

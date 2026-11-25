@@ -3,6 +3,19 @@
  * tenant view of /admin/dead-letters (list and counters) was computed over the 100 most recent entries of ALL tenants,
  * so another tenant could push a tenant's entries out of its own view. The tenant filter now runs in the store
  * (WHERE tenant_id = $n) and the counters are per tenant. Needs OTK_TEST_PG_URL (disposable test database).
+ *
+ * Modules under test: `src/infra/pg/PgDeadLetterStore.ts` and the dead-letter functions of
+ * `src/api/deadLetterStore.ts` (`listDeadLetters`, `deadLetterCount`, `pendingCount`), with the store selected through
+ * `setDeadLetterStore`.
+ *
+ * Strategy / scenarios: an older entry of tenant A is listed although 150 newer entries of tenant B exist; counters
+ * are per tenant; and a tenant's list never contains another tenant's entries.
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`).
+ *
+ * Run just this file: `npx tsx --test test/services/d1d8_runs_deadletters_pg_scope.test.ts`
+ *
+ * @module test/services/d1d8_runs_deadletters_pg_scope.test
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

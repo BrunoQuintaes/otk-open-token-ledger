@@ -6,6 +6,28 @@
  *   1000 input + 2000 output tokens = 1 × 0.005 + 2 × 0.015 = 0.035 USD
  *
  * The prover is replaced by a local fetch stub (no network). No Stripe call is made.
+ *
+ * Modules under test (imported dynamically after the environment is set):
+ * `src/api/receiptStore.ts` (tenant stamping, prover circuit breaker), `src/billing/UsageMeterService.ts`
+ * (pricing and usage submission), `src/economics/ReconciliationSystem.ts`, `src/billing/PlanRegistry.ts`
+ * with `src/billing/IPlanStore.ts`, and `src/security/talRuntime.ts`.
+ *
+ * Strategy / partitions: tenant argument present, absent and contradicting the receipt, and
+ * duplicates; billing with real token counts, a genuine zero, missing counts (never priced as 0)
+ * and an unknown model, plus submission of an incomplete period, a complete period without and
+ * with a usage-record port; reconciliation of several receipts in one transaction, including an
+ * unpriced one; plan cache loading, refresh after another replica's write, read-through and a
+ * concurrent read; prover outage (circuit opens after 2 failures, cooldown, half-open replay) and
+ * a failed half-open trial.
+ *
+ * Needs: no network and no database. Sets `OTK_RECEIPT_LOG`, `OTK_DB_URL` (both empty),
+ * `PROVER_URL`, `PROVER_CB_THRESHOLD` and `PROVER_CB_COOLDOWN_MS` before the modules load, and
+ * replaces `globalThis.fetch` during the prover block (restored after each test); that block
+ * waits on real timers for the 200 ms cooldown.
+ *
+ * Run just this file: `npx tsx --test test/unit/core_fixes_r02_r06_r07_r12_r14.test.ts`
+ *
+ * @module test/unit/core_fixes_r02_r06_r07_r12_r14.test
  */
 import { describe, it, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

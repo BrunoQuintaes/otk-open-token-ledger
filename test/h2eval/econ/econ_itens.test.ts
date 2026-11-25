@@ -1,6 +1,29 @@
 /**
  * EXEC-ECON C160: testes UNITÁRIOS dos 12 itens do delta v3.1 (offline, transporte falso, US$ 0).
  * Cada teste traz [ITEM n] no nome para o G15 conferir a cobertura item a item.
+ *
+ * English summary: unit tests of the twelve items of the economic-study executor change, each test tagged with its
+ * item number so coverage can be checked item by item.
+ *
+ * Modules under test: `scripts/h2eval/econ/econ.ts` (schedule validation, plans, cost-cap policy, order verdict,
+ * attempt lines, Google reserve), the adapters in `scripts/h2eval/modal/index.ts`, `scripts/h2eval/record/cost.ts`
+ * (`computeCostCap`), `persistResponse` in `scripts/h2eval/core/runner.ts`, the caps profile in
+ * `scripts/h2eval/core/ledger.ts` and the body-parity checker `./paridade_h_kit_v3_1.mjs`.
+ *
+ * Strategy / partitions: request bodies without reasoning, sampling, tool or cache keys for every model, and the
+ * legacy bodies unchanged; body parity against the checker (whose file hash is verified first); explicit
+ * single-candidate and no-streaming fields; the model that exists only in parity mode and its price gap; content-
+ * addressed response persistence; schedule-to-plan mapping and schedule validation; the study ledger profile; corpus
+ * hash recomputation; the Anthropic cost cap without the cache-write surcharge; a cost check over the real external
+ * schedule (skipped when absent); the three allowed hosts; the fixed timeout; the Google reserve; the order verdict;
+ * visible output text; and the per-attempt line with uncertain cost as a range, never 0.
+ *
+ * Needs: a writable temporary directory. One test reads a schedule and corpus from a fixed folder outside the
+ * repository and is skipped, visibly, when it is absent. No network, no spending.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/econ/econ_itens.test.ts`
+ *
+ * @module test/h2eval/econ/econ_itens.test
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -23,7 +46,12 @@ import { tmp, writeCorpus, writeCronograma, writeSonnet5Fixture, respostaDe } fr
 import { conferirCorpo } from './paridade_h_kit_v3_1.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-/** O arquivo do kit tem fim de linha CRLF (sha 5fef3430 = bytes do kit). Um checkout com LF (core.autocrlf) volta a CRLF byte a byte antes do sha. */
+/**
+ * O arquivo do kit tem fim de linha CRLF (sha 5fef3430 = bytes do kit). Um checkout com LF (core.autocrlf) volta a CRLF byte a byte antes do sha.
+ *
+ * @param b - File bytes with LF or CRLF line endings.
+ * @returns The same bytes with every line ending as CRLF.
+ */
 function comCRLF(b: Buffer): Uint8Array { const out: number[] = []; for (let i = 0; i < b.length; i++) { if (b[i] === 13 && b[i + 1] === 10) continue; if (b[i] === 10) out.push(13); out.push(b[i]!); } return Uint8Array.from(out); }
 /** kit v3.1 (fora do repositório; só leitura). Ausente => o teste do K-CUSTO real é pulado e declarado. */
 const KIT_V31 = 'C:/dev/otk-round2-orchestrator-20261106/docs/_ops/coordination/academic_20261110/runs/C160/ECON_PREP/V3_1';

@@ -13,6 +13,24 @@
  * Where CURRENT and MODEL disagree, the comparison test carries `todo: 'PENDING_HUMAN_POLICY …'`: it runs, its
  * failure is reported as TODO (suite stays green), and the divergence is visible in the output. Nothing here is an
  * approved policy (see docs/_ops/runs/OTK-H1-STOPGATE-01-20261013/P3/DECISION_MEMO_ENTITLEMENTS.md).
+ *
+ * In English, the ten scenarios: an administrative courtesy against the cancellation of an older subscription; two
+ * simultaneous active subscriptions; cancelling the lower-tier and the higher-tier one; a late payment event after
+ * an administrative decision (inside and outside the clock-skew window); a duplicate payment event (also delivered
+ * concurrently); an administrative downgrade (including a tenant's own downgrade); refund, failed payment and other
+ * unsupported events, plus an unpaid checkout; store failures before and after commit and a hanging admin write;
+ * and concurrent modifications. Cases marked PROPOSAL describe a behaviour no implementation has yet.
+ *
+ * Modules under test (CURRENT side): `src/billing/IPlanStore.ts`, `src/billing/PlanRegistry.ts` and
+ * `src/billing/stripe/StripeWebhookHandler.ts`, driven with synthetic events. The MODEL side is pure code inside this file.
+ *
+ * Needs: nothing external. Sets `OTK_RECEIPT_LOG` and `OTK_DB_URL` to empty, `OTK_PLAN_STORE_TIMEOUT_MS` to 300 and
+ * `OTK_PLAN_ADMIN_ORDER_SKEW_S` to 60 in `process.env` before importing the modules. Timestamps follow the wall
+ * clock (seconds since the Unix epoch); the hanging-write case waits about the store timeout.
+ *
+ * Run just this file: `npx tsx --test test/policy/stopgate01_entitlements.test.ts`
+ *
+ * @module test/policy/stopgate01_entitlements.test
  */
 import { describe, it, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -55,7 +73,13 @@ class EntitlementLedgerModel {
     return [...this.sources.values()].filter((s) => s.status === 'active').map((s) => ({ kind: s.kind, ref: s.ref, tier: s.tier }));
   }
 
-  /** All-or-nothing: a failure inside `fn` leaves the ledger exactly as it was (stands for one DB transaction). */
+  /**
+   * All-or-nothing: a failure inside `fn` leaves the ledger exactly as it was (stands for one DB transaction).
+   *
+   * @param fn - The changes to apply.
+   * @returns Whatever `fn` returns.
+   * @throws {Error} Rethrows any error from `fn`, after restoring the snapshot.
+   */
   transact<T>(fn: () => T): T {
     const snap = { sources: new Map([...this.sources].map(([k, v]) => [k, { ...v }])), events: new Map(this.events), unsupported: [...this.unsupported], adm: this.adminDecidedAtS, seq: this._courtesySeq };
     try { return fn(); } catch (err) {
@@ -71,7 +95,15 @@ class EntitlementLedgerModel {
     return outcome;
   }
 
-  /** Paid grant of a Stripe subscription (checkout.session.completed with payment_status=paid). */
+  /**
+   * Paid grant of a Stripe subscription (checkout.session.completed with payment_status=paid).
+   *
+   * @param eventId - Billing event id (a repeated id returns `duplicate`).
+   * @param created - Event creation time, seconds since the Unix epoch.
+   * @param sub - Subscription id.
+   * @param tier - Tier the subscription grants.
+   * @returns `applied`, `stale`, `superseded_by_admin`, `held_for_reconciliation` or `duplicate`.
+   */
   stripeGrant(eventId: string, created: number, sub: string, tier: Tier): string {
     return this._once(eventId, () => {
       const k = `stripe:${sub}`;
@@ -90,7 +122,14 @@ class EntitlementLedgerModel {
     });
   }
 
-  /** customer.subscription.deleted: ends ONLY that subscription's source (courtesy and other subscriptions untouched). */
+  /**
+   * customer.subscription.deleted: ends ONLY that subscription's source (courtesy and other subscriptions untouched).
+   *
+   * @param eventId - Billing event id (a repeated id returns `duplicate`).
+   * @param created - Event creation time, seconds since the Unix epoch.
+   * @param sub - Subscription id.
+   * @returns `applied`, `no_effect_unknown_subscription` (a tombstone is kept) or `duplicate`.
+   */
   stripeCancel(eventId: string, created: number, sub: string): string {
     return this._once(eventId, () => {
       const k = `stripe:${sub}`;
@@ -106,7 +145,12 @@ class EntitlementLedgerModel {
     });
   }
 
-  /** Administrative courtesy: an ADDITIONAL source; it does not revoke paid subscriptions. */
+  /**
+   * Administrative courtesy: an ADDITIONAL source; it does not revoke paid subscriptions.
+   *
+   * @param tier - Tier granted by the courtesy.
+   * @returns The new courtesy reference (`courtesy-<n>`).
+   */
   adminCourtesy(tier: Tier): string {
     const ref = `courtesy-${++this._courtesySeq}`;
     this.sources.set(`courtesy:${ref}`, { kind: 'courtesy', ref, tier, status: 'active', lastCreated: 0 });
@@ -116,6 +160,9 @@ class EntitlementLedgerModel {
   /**
    * Administrative restriction (downgrade, fraud, abuse): every source known now is revoked/ended, a floor courtesy at
    * `tier` is created when tier > FREE, and the decision time becomes the R-07 epoch (A2 rule kept).
+   *
+   * @param tier - Floor tier left after the restriction.
+   * @param nowS - Decision time, seconds since the Unix epoch.
    */
   adminRestrict(tier: Tier, nowS: number): void {
     for (const s of this.sources.values()) {
@@ -126,7 +173,14 @@ class EntitlementLedgerModel {
     this.adminDecidedAtS = nowS;
   }
 
-  /** Event type without an approved policy (refund, failed payment, past_due …): recorded, never changes the tier. */
+  /**
+   * Event type without an approved policy (refund, failed payment, past_due …): recorded, never changes the tier.
+   *
+   * @param eventId - Billing event id (a repeated id returns `duplicate`).
+   * @param type - Billing event type.
+   * @param sub - Subscription id.
+   * @returns `recorded_unsupported_pending_policy` or `duplicate`.
+   */
   stripeUnsupported(eventId: string, type: string, sub: string): string {
     return this._once(eventId, () => { this.unsupported.push({ eventId, type, ref: sub }); return 'recorded_unsupported_pending_policy'; });
   }
@@ -195,7 +249,12 @@ interface ScenarioSpec {
   pending?: string;
 }
 
-/** Three tests per scenario: CURRENT (passes), MODEL (passes), comparison (passes, or TODO when they diverge). */
+/**
+ * Three tests per scenario: CURRENT (passes), MODEL (passes), comparison (passes, or TODO when they diverge).
+ *
+ * @param name - Scenario name used in the three test names.
+ * @param spec - Steps and the expected results on each side.
+ */
 function scenario(name: string, spec: ScenarioSpec): void {
   it(`CURRENT  ${name} → ${spec.current.tier}`, async () => {
     const r = await runProduction(spec.steps());

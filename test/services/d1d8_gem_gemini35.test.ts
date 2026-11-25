@@ -10,6 +10,20 @@
  *  - worst case maxOutputTokens 64: 1 048 576 × 300 000 + 64 × 2 500 000 = 314 572 800 000 + 160 000 000 = 314 732 800 000 pico;
  *  - usage 100 prompt / 50 candidates / 3 thoughts (total 153): CU 153 × 540 000 = 82 620 000;
  *    cost 100 × 300 000 + (50 + 3) × 2 500 000 = 30 000 000 + 132 500 000 = 162 500 000 pico (US$ 0,0001625).
+ *
+ * Module under test: the durable gateway (`src/operations/runtime.ts` and the proxy routes) for one Gemini model
+ * under money policy v5, against the fake provider from `./d1d8_c_provider.ts`.
+ *
+ * Strategy / partitions: the thinking setting must be exactly "minimal" (absent, a thinking budget, other levels and
+ * thought output refused before the provider); JSON and SSE answers with thought tokens settle by the hand values
+ * without freezing the budget; and the forwarded body keeps the setting, with the provider key in its own header.
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`); run with
+ * `--test-concurrency=1`. Before importing the server it sets fixture values in the test process for the API's
+ * variables (tenants, a fake Gemini key, the upstream override, `PROVER_URL=disabled`). With the variables already
+ * set, `npx tsx --test --test-concurrency=1 test/services/d1d8_gem_gemini35.test.ts` runs just this file.
+ *
+ * @module test/services/d1d8_gem_gemini35.test
  */
 process.env['OTK_DB_URL'] = '';
 process.env['OTK_RECEIPT_LOG'] = '';

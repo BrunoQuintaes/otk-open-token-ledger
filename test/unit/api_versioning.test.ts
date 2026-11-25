@@ -2,6 +2,20 @@
  * H1.1 — API Versioning Tests
  *
  * Tests /v1/ prefix stripping, strict versioning redirect, and infra route bypass.
+ *
+ * Module under test: `handleRequest` in `src/api/routes.ts` (version-prefix handling).
+ *
+ * Strategy / partitions: default mode with and without the version prefix, for an infrastructure
+ * route, a receipt creation, the metrics route and the OpenAPI document; strict mode with a bare
+ * POST (308, method and body kept), a bare GET (301), a query string that must survive the
+ * redirect, and the infrastructure and dashboard routes that never redirect.
+ *
+ * Needs: no server (mock request/response objects). The strict-mode block sets
+ * `OTK_STRICT_VERSIONING=1` before each test and deletes it after each test.
+ *
+ * Run just this file: `npx tsx --test test/unit/api_versioning.test.ts`
+ *
+ * @module test/unit/api_versioning.test
  */
 
 import { describe, it, beforeEach, afterEach } from 'node:test';

@@ -6,6 +6,23 @@
  * Numeric negatives exercise the witness generator, whose asserts mirror the R1CS constraints;
  * positives are additionally checked against the r1cs (wtns check). This is not a formal proof of
  * circuit soundness.
+ *
+ * Modules under test: the v3 metering circuit (compiled `zk/v3` artifacts) and `src/zk/v3` (commitment, Poseidon,
+ * opening, public authorization builder, proof adapter).
+ *
+ * Partitions: usage 0, the bucket window edges and 2^64 − 1 (satisfy the constraints, output equals the TypeScript
+ * commitment); below or above the window, 2^64, a value just below the field modulus, min > max and max ≥ 2^64 (the
+ * witness generator refuses); a tampered witness fails the r1cs check; artifact hashes that do not match the manifest,
+ * or a verification key from another circuit, are refused; a real proof from an opening verifies, while an altered
+ * signal or another verification key does not, and the encoded submission carries the exact signals; and a sanity
+ * check that a naive blinding-guess attack finds nothing on v3 public data (not a privacy proof).
+ *
+ * Needs: the compiled v3 circuit, the demonstration proving and verification keys and `zk/v3/MANIFEST.json`; a
+ * temporary directory for witness files (removed afterwards); seconds of CPU for the real proof. No network.
+ *
+ * Run just this file: `npx tsx --test test/zk/d1d8_a_circuit_v3.test.ts`
+ *
+ * @module test/zk/d1d8_a_circuit_v3.test
  */
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -82,7 +99,14 @@ test('D2-G04 negatives: below/above window, 2^64, p−5 (N7), min>max, max ≥ 2
   }
 });
 
-/** Overwrites witness signal `index` (32-byte LE field element) in a .wtns file. */
+/**
+ * Overwrites witness signal `index` (32-byte LE field element) in a .wtns file.
+ *
+ * @param src - Witness file to read (not modified).
+ * @param dst - Path of the tampered copy to write.
+ * @param index - Zero-based signal index in the witness section.
+ * @param value - New field element value; only its low bytes, up to the element size declared by the file, are written.
+ */
 function tamperWtns(src: string, dst: string, index: number, value: bigint): void {
   const b = Buffer.from(readFileSync(src));
   let off = 12; // "wtns" + version + nSections

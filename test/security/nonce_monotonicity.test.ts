@@ -5,6 +5,17 @@
  * 
  * NOTE: This file documents expected on-chain behavior.
  * Full nonce model tests are in test/sdk/NonceModel.test.ts
+ *
+ * Module under test: none. Every case builds a small object or string that describes the expected registry rule
+ * (per-user and per-submitter nonce storage, rejection of duplicate and out-of-order nonces, the commitment
+ * double check, desynchronisation risk, storage cost, reference patterns) and asserts only on that local value;
+ * no contract or source module is imported, so these cases cannot fail because of a defect in the registry.
+ *
+ * Needs: nothing external.
+ *
+ * Run just this file: `npx tsx --test test/security/nonce_monotonicity.test.ts`
+ *
+ * @module test/security/nonce_monotonicity.test
  */
 
 import { describe, it } from 'node:test';

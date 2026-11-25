@@ -5,6 +5,15 @@
  *   R-05 flushSubjectStatus() drained a GLOBAL error list: with two concurrent deactivations, the caller whose write
  *        failed could get "ok" (and the other one the error).
  * In-memory store with an injectable write failure; no network.
+ *
+ * Module under test: `src/auth/subjectStatus.ts` (subject status cache, durable store, flush and background retry).
+ *
+ * Needs: nothing external. Sets `OTK_SUBJECT_STATUS_TTL_MS=0` in `process.env` (every read refreshes from the store)
+ * and resets the module's store before each case.
+ *
+ * Run just this file: `npx tsx --test test/security/h1_review_r04_r05.test.ts`
+ *
+ * @module test/security/h1_review_r04_r05.test
  */
 import { describe, it, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';

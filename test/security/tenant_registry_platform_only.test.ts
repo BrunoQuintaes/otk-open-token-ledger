@@ -7,6 +7,24 @@
  * The same writes let an ADMIN create an OWNER token or take over the OWNER's token (F-FC-01 and two more vectors).
  * Now every write to the tenant registry is a platform operation (x-admin-key); reads stay scoped to the caller's tenant
  * and no longer expose the platform-wide audit counter. Sentinel token value: 7919.
+ *
+ * Strategy / scenarios: a signup OWNER cannot register a proxy token for its own organization (and the provider is
+ * never called), while the platform credential still can (control); an ADMIN cannot create an OWNER token, change or
+ * replace an OWNER record, or delete its own record; the tenant list shown to a tenant role has no audit counter,
+ * while the platform still sees it.
+ *
+ * Modules under test: the tenant routes of `src/api/routes.ts` and `src/api/tenantCrud.ts` (called in process),
+ * `src/api/tenantKeyRegistry.ts` and the proxy `src/proxy/ProxyGateway.ts` (listening on a local port), with a
+ * memory user store.
+ *
+ * Needs: nothing external. Before importing it empties `OTK_RECEIPT_LOG` and `OTK_DB_URL`, sets
+ * `PROVER_URL=disabled` and `OPENAI_API_KEY` to a fixture value; `globalThis.fetch` is replaced so provider calls are
+ * counted and answered locally; `OTK_ADMIN_KEY` and `OTK_JWT_SECRET` get fixture values and are restored after the
+ * run.
+ *
+ * Run just this file: `npx tsx --test test/security/tenant_registry_platform_only.test.ts`
+ *
+ * @module test/security/tenant_registry_platform_only.test
  */
 import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

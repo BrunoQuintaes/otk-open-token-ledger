@@ -5,6 +5,26 @@
  * Every scenario imports the candidate's own modules (never the A/B/C clones) and asserts the
  * corrected behaviour; on the merged-but-unfixed tree they fail (evidence in S4/S4_0/).
  * Expected values are computed by hand in the comments, not by the functions under test.
+ *
+ * Modules under test: `src/operations/spool.ts`, `src/operations/codec.ts`,
+ * `src/operations/proxyDurable.ts`, `src/operations/transitions.ts`,
+ * `src/providers/usage/normalizeUsage.ts` and `src/pricing/priceUsage.ts`.
+ *
+ * Strategy / partitions: spool recovery (torn tail then append, records before the tear kept,
+ * corruption in the middle reported and quarantined, schema-invalid lines, append during
+ * replay, crashes before the rename and between apply and rewrite, facts round trip); pricing
+ * with a full table, a removed cache price (partial, never billed at the base rate), a
+ * legitimate zero price, zero cached tokens, documented inheritance of the output price for
+ * reasoning, and a partial quote through the codec; settlement of money when the price is
+ * missing, partial, absent, zero or complete, and completion of a pending price exactly once.
+ *
+ * Needs: must be run from the repository root (reads
+ * `test/fixtures/d1d8/b/price_table_illustrative_v1.json` by relative path); spool tests write to
+ * fresh directories in the OS temporary folder. No database or network.
+ *
+ * Run just this file: `npx tsx --test test/unit/d1d8_s4_abc_regressions.test.ts`
+ *
+ * @module test/unit/d1d8_s4_abc_regressions.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

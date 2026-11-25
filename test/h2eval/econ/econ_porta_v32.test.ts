@@ -2,6 +2,23 @@
  * EXEC-ECON C160 delta 2 (master; X1 v3.2 ressalva R-A): `truncated` BOOLEANO a partir do `completion` e `stopReason` sempre presente
  * na linha por tentativa, com contrato nos 3 provedores passando pela porta v3.2 REAL do kit (rubrica_econ.mjs sha 73b4f400…).
  * Offline, US$ 0. A porta é lida do kit (fora do repositório, só leitura); sem o kit nesta máquina, o teste da porta é pulado e declarado.
+ *
+ * English summary: tests that each per-attempt line of the economic study carries a boolean `truncated` derived from
+ * the completion and always a `stopReason`, and that these lines pass the study's external grading gate.
+ *
+ * Modules under test: `scripts/h2eval/econ/econ.ts` (`truncatedOf`, `tentativaOf`, `runEcon`), using the fixture in
+ * `./econ_fixture.ts`.
+ *
+ * Strategy / partitions: `truncatedOf` for complete, truncated, unknown, refused and other completions; a record that
+ * has only the completion field; and the contract over three providers and five models (complete, output limit, no
+ * end) checked by the real external gate module, whose file hash is verified.
+ *
+ * Needs: a writable temporary directory. The gate test imports a module from a fixed folder outside the repository
+ * and is skipped, visibly, when that folder is absent. No network, no spending.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/econ/econ_porta_v32.test.ts`
+ *
+ * @module test/h2eval/econ/econ_porta_v32.test
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

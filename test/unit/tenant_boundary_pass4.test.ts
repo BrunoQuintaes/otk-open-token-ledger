@@ -4,6 +4,19 @@
  *   tenant callers get only their own usage, receipts and trend; platform-wide aggregates need the platform credential;
  * - /invoices?tenantId= of another tenant is refused; /v1/reports/teams lists only the caller's own teams;
  * - the global reconciliation report and the platform-wide reconciliation run are platform operations.
+ *
+ * Module under test: `src/api/routes.ts` (tenant scoping of the analytics, dashboard, invoice, team report and
+ * reconciliation routes), with `src/api/tenantKeyRegistry.ts`, `src/dashboard/indexer.ts` and
+ * `src/users/teamStore.ts` as fixtures.
+ *
+ * Strategy / partitions: per route, no credential (401), another tenant (403 or refused), the caller's own
+ * tenant (200) and the platform credential (200 on aggregates).
+ *
+ * Needs: nothing external; requests are in-memory mocks. Sets `OTK_ADMIN_KEY` for the run and restores it.
+ *
+ * Run just this file: `npx tsx --test test/unit/tenant_boundary_pass4.test.ts`
+ *
+ * @module test/unit/tenant_boundary_pass4.test
  */
 import { describe, it, beforeEach, before, after } from 'node:test';
 import assert from 'node:assert/strict';

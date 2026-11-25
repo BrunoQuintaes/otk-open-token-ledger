@@ -5,6 +5,18 @@
  *   - limiter: keyed by source, never by tenant; a throttled source gets 429 + Retry-After even with a valid token, while
  *     the same valid token from another source works; bounded memory; window expiry; MAX=0 disables it.
  * The upstream provider is a fetch stub (no network, no real key); in-memory stores only.
+ *
+ * Modules under test: the tenant routes of `src/api/routes.ts` and `src/api/tenantCrud.ts` (called in process),
+ * `src/security/authFailureLimiter.ts` and the proxy authentication path of `src/proxy/ProxyGateway.ts`.
+ *
+ * Needs: nothing external. Before importing it empties `OTK_RECEIPT_LOG`, `OTK_DB_URL` and `OTK_TENANT_LOG`, sets
+ * `PROVER_URL=disabled` and `OPENAI_API_KEY` to a fixture value, and removes `OTK_REDIS_URL`, `OTK_TENANTS` and
+ * `OTK_PROXY_ALLOW_UNAUTHENTICATED`; `OTK_ADMIN_KEY`, `OTK_PROXY_TRUSTED_HOPS` and `OTK_PROXY_AUTH_FAIL_MAX` are
+ * saved and restored. The proxy gateway listens on a local port.
+ *
+ * Run just this file: `npx tsx --test test/security/h1_s06_tenant_tokens_auth_limiter.test.ts`
+ *
+ * @module test/security/h1_s06_tenant_tokens_auth_limiter.test
  */
 import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

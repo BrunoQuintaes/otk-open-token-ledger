@@ -3,6 +3,19 @@
  *
  * Verifies X-Request-Id generation, passthrough, format, and presence
  * in response headers, body, and logger entries.
+ *
+ * Modules under test: `src/api/routes.ts` (request id per request) and
+ * `src/infra/logging/StructuredLogger.ts` (request id on log entries).
+ *
+ * Strategy / partitions: no client id (a UUID v4 is generated), a client-sent id (passed through), the id in
+ * success and error bodies, uniqueness across requests; the logger with an id set, updated and inherited by a
+ * child logger.
+ *
+ * Needs: nothing external; requests and responses are in-memory mocks.
+ *
+ * Run just this file: `npx tsx --test test/unit/request_id.test.ts`
+ *
+ * @module test/unit/request_id.test
  */
 
 import { describe, it } from 'node:test';

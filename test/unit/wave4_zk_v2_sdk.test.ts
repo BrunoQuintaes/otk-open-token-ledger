@@ -16,6 +16,21 @@
  *  12. ProverClient.poll() throws on timeout
  *
  * @since Wave 4 (4A-PACK-4A01 / S5.1+S5.2)
+ *
+ * Modules under test: `src/prover/ProverClient.ts` (types from `src/prover/ProofQueue.ts`); the SDK exports in
+ * `src/sdk/OTKSDK.ts`, the result fields in `ProofQueue.ts` and the key path read in `src/prover/ProverDaemon.ts`
+ * are checked as text.
+ *
+ * Strategy / partitions: the client base URL from the default, from `OTK_PROVER_URL` and from the constructor;
+ * the submitted body; a prove call that polls until done and the public signal order; the key path variable;
+ * the older SDK exports still present. The key path "change between calls" case only reassigns the variable.
+ *
+ * Needs: a mock prover HTTP server on a random port of 127.0.0.1 for the submit and prove groups. Changes
+ * `OTK_PROVER_URL` and `OTK_ZK_KEY_PATH` and restores them. No real prover and no chain.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave4_zk_v2_sdk.test.ts`
+ *
+ * @module test/unit/wave4_zk_v2_sdk.test
  */
 
 import { describe, it, before, after, afterEach } from 'node:test';

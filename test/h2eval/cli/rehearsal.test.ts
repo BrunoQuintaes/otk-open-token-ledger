@@ -1,3 +1,24 @@
+/**
+ * Offline end-to-end rehearsal of a micro-pilot through the command-line functions: freeze the corpus, plan, run
+ * with the simulated provider, stop, replay and export.
+ *
+ * Modules under test: `scripts/h2eval/cli/freeze.ts`, `scripts/h2eval/cli/plan.ts`, `scripts/h2eval/cli/run.ts`
+ * (`runBatch`, `realPreconditions`, `selectBatch`), `scripts/h2eval/cli/status.ts` (`exportDataset`, `status`,
+ * `stop`), `scripts/h2eval/cli/main.ts`, the ledger, the journal verifier, the adapters and the content store.
+ *
+ * Strategy / scenarios: corpus freeze (generator run as a child process, candidate not ratified); planning
+ * (ratification required unless the rehearsal flag is given, 21 calls per model, one model per batch, the batch-cap
+ * rule, Google branch locked); offline runs per model (all calls costed, cache hits where expected, replay never
+ * re-sends, export); stops by STOP file, by budget and by an injected rate-limit error without usage; and the REAL
+ * mode failing closed (preconditions listed, exit 6) before any socket.
+ *
+ * Needs: a writable temporary directory; allow up to 4 minutes for the corpus freeze. It sets
+ * `H2EVAL_OPENAI_API_KEY` to a fake canary value to show the offline path never reads it. No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cli/rehearsal.test.ts`
+ *
+ * @module test/h2eval/cli/rehearsal.test
+ */
 // SYNTHETIC — OFFLINE end-to-end rehearsal of the R17 micro-pilot through the R15 CLI: freeze-corpus (candidate, not ratified) →
 // plan (pilot: 6 S1 + 3 S3 + 2 S2 dialogs = 21 calls per model, ≤ 60, one model per batch, batch cap min(1.5×Σcap, 25 % sub-ledger))
 // → run --mode offline (simulated provider) → journal / pre-call snapshots / ledger per provider / stop by cap and by file / replay

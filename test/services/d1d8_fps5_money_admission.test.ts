@@ -12,6 +12,26 @@
  * row lock. Whatever commits first is seen by the other: an admission that finds a budget needs a
  * strict reservation under the budget's policy (else `money_policy_required`), and a budget/link
  * whose tenant still has open exposure not covered by it is refused.
+ *
+ * Module under test: the admission path of `src/operations/runtime.ts` (`OperationsRuntime`) through the in-process
+ * gateway, with the database-side tenant lock and triggers from the migrations, and the fake provider from
+ * `./d1d8_c_provider.ts`.
+ *
+ * Strategy / scenarios: a budget created, linked or re-policied between the gateway's early read and the admission
+ * (an unbounded request never reaches the provider, a bounded one is re-assessed strictly, a new shared membership
+ * and a changed policy are seen by the admission); database guards serializing budget changes with admissions
+ * (creation waits for an in-progress admission and refuses uncovered exposure; policy change and deletion refused
+ * while an operation under the budget is open; two instances with different bound policies); strict refusals of
+ * an unsupported beta header and an output cap above the documented maximum; and cache TTLs other than 5 minutes
+ * refused before the upstream.
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`); run with
+ * `--test-concurrency=1`. Before importing the server it sets fixture values in the test process for the API's
+ * variables (tenants, a fake Anthropic key, the upstream override, `PROVER_URL=disabled`). With the variables
+ * already set, `npx tsx --test --test-concurrency=1 test/services/d1d8_fps5_money_admission.test.ts` runs just this
+ * file.
+ *
+ * @module test/services/d1d8_fps5_money_admission.test
  */
 process.env['OTK_DB_URL'] = '';
 process.env['OTK_RECEIPT_LOG'] = '';
@@ -65,7 +85,11 @@ const budgetRow = async (id: string) => (await db.pool.query<{ s: string; h: str
   'SELECT spent_units::text AS s, held_units::text AS h, frozen_reason AS f, money_policy AS p FROM otk_money_budget WHERE budget_id = $1', [id])).rows[0]!;
 const opRow = async (tenant: string, id: string) => (await db.pool.query<{ budget_ids: string[]; policy: string | null; money: string | null }>(
   "SELECT budget_ids, limits->>'moneyBoundPolicy' AS policy, money->>'state' AS money FROM otk_operations WHERE tenant_id = $1 AND operation_id = $2", [tenant, id])).rows[0];
-/** held of a budget = Σ reserved money of its operations whose money axis is still open. */
+/**
+ * held of a budget = Σ reserved money of its operations whose money axis is still open.
+ *
+ * @param budgetId - Budget whose stored `held` amount is compared with the sum recomputed from its operations.
+ */
 async function assertHeldConsistent(budgetId: string): Promise<void> {
   const r = await db.pool.query<{ held: string; open: string }>(
     `SELECT b.held_units::text AS held,
@@ -74,7 +98,13 @@ async function assertHeldConsistent(budgetId: string): Promise<void> {
        FROM otk_money_budget b WHERE b.budget_id = $1`, [budgetId]);
   assert.equal(r.rows[0]!.held, r.rows[0]!.open, `budget ${budgetId}: held equals the open reservations`);
 }
-/** Wrap the gateway's early read so that `act` runs right after it, before the admission transaction. */
+/**
+ * Wrap the gateway's early read so that `act` runs right after it, before the admission transaction.
+ *
+ * @param rt - Runtime whose early read is wrapped (only for `tenant`).
+ * @param tenant - Tenant whose next early read triggers `act`.
+ * @param act - Concurrent change to run in that window (for example, creating a budget).
+ */
 function afterEarlyRead(rt: OperationsRuntime, tenant: string, act: () => Promise<void>): void {
   const original = rt.store.hasMoneyBudget.bind(rt.store);
   let done = false;

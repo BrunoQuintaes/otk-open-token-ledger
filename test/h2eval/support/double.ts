@@ -1,6 +1,14 @@
 /**
  * Test doubles (OFFLINE only): a pure ProviderAdapter over the anthropic.messages shape, an in-memory ContentStore, a price table
  * fixture and an egress double that answers from a script. No network, no credential, no content in logs.
+ *
+ * These doubles let the executor in `scripts/h2eval/core/runner.ts` run its full state machine (plan, snapshot,
+ * reserve, send, parse usage, cost, settle) without a provider. They are imported by most tests under
+ * `test/h2eval/core/`, and by tests in `test/h2eval/record/`, `test/h2eval/modal/` and `test/h2eval/econ/`.
+ * The adapter is a simplified Anthropic Messages adapter for one synthetic model ({@link MODEL}); it is not the
+ * production adapter from `scripts/h2eval/modal/`.
+ *
+ * @module test/h2eval/support/double
  */
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -11,12 +19,26 @@ import { cacheObservedOf } from '../../../scripts/h2eval/record/usage.js';
 import { H2EVAL_SCHEMA, type BuiltRequest, type ContentStore, type Count, type NormalizedUsageH2, type OperationPlan, type ParsedRefusal, type ProviderAdapter, type ResolvedContent } from '../../../scripts/h2eval/types.js';
 import type { ModelSupport } from '../../../src/types/d1d8/index.js';
 
+/** Synthetic model id served by the double adapter and priced by the fixture price table. */
 export const MODEL = 'sim-haiku';
+/** Host the double adapter declares as official; the executor's egress allowlist checks requests against it. */
 export const OFFICIAL_HOST = 'api.anthropic.com';
 
+/**
+ * Creates a fresh temporary directory for one test.
+ *
+ * @param prefix - Short label put in the directory name (`h2eval-<prefix>-…`) to tell test folders apart.
+ * @returns Absolute path of the new, empty directory (not deleted automatically).
+ */
 export function tmp(prefix: string): string { return mkdtempSync(path.join(tmpdir(), `h2eval-${prefix}-`)); }
 
-/** Price fixture (otk.price_table.v1): input 1.00, output 5.00, cache read 0.10, cache write 1.25 USD/MTok (micro-USD) — synthetic. */
+/**
+ * Price fixture (otk.price_table.v1): input 1.00, output 5.00, cache read 0.10, cache write 1.25 USD/MTok (micro-USD) — synthetic.
+ *
+ * @param dir - Directory where `prices.json` is written (overwritten if present).
+ * @param over - Optional changes; `omit` lists price categories to leave out, to test a missing price.
+ * @returns Path of the written price file.
+ */
 export function writePriceFixture(dir: string, over: { omit?: string[] } = {}): string {
   const entries = [
     { provider: 'anthropic', model: MODEL, category: 'input', pricePerMTokMicroUsd: '1000000' },
@@ -28,8 +50,22 @@ export function writePriceFixture(dir: string, over: { omit?: string[] } = {}): 
   writeFileSync(p, JSON.stringify({ schema: 'otk.price_table.v1', version: 'h2eval-test-fixture-v1', currency: 'USD', capturedUtc: '2026-10-01T00:00:00.000Z', entries }));
   return p;
 }
+/**
+ * Writes the fixture price table into `dir` and loads it with the executor's price loader.
+ *
+ * @param dir - Directory for the fixture file.
+ * @param over - Optional categories to omit, as in {@link writePriceFixture}.
+ * @returns The loaded price table.
+ */
 export const prices = (dir: string, over?: { omit?: string[] }) => loadPriceTable(writePriceFixture(dir, over));
 
+/**
+ * In-memory content store keyed by the sha256 of each text; every text becomes one user message.
+ *
+ * @param texts - Map from a test-chosen name to the prompt text.
+ * @returns A content store plus `sha`, the map from each name to its content hash. `get` throws `Error` when the
+ *   hash is unknown; `getBytes` always returns an empty array (no binary content).
+ */
 export function memoryContentStore(texts: Record<string, string>): ContentStore & { sha: Record<string, string> } {
   const byHash: Record<string, ResolvedContent> = {}; const sha: Record<string, string> = {};
   for (const [name, text] of Object.entries(texts)) {
@@ -39,7 +75,14 @@ export function memoryContentStore(texts: Record<string, string>): ContentStore 
   return { sha, get: async (h) => { const c = byHash[h]; if (!c) throw new Error('content not found'); return c; }, getBytes: async () => new Uint8Array() };
 }
 
+/** Synthetic protocol hash used by every plan built with {@link plan}. */
 export const PROTOCOL = 'a'.repeat(64);
+/**
+ * Builds a valid single-operation plan for the double adapter, with defaults for every field.
+ *
+ * @param over - Fields to override; `promptSha256` is required and must be a hash present in the content store.
+ * @returns The operation plan (pilot phase, text S1 structure, 64 output tokens, no cache directives).
+ */
 export function plan(over: Partial<OperationPlan> & { promptSha256: string }): OperationPlan {
   return {
     schema: H2EVAL_SCHEMA.plan, studyId: 'h2eval-test', protocolHash: PROTOCOL, manifestSha256: 'b'.repeat(64), batchId: 'batch1', phase: 'PILOT', cellId: 'C1', groupId: 'G1', promptId: 'P1', rep: 1, variant: 'v1', split: 'NONE',
@@ -48,9 +91,19 @@ export function plan(over: Partial<OperationPlan> & { promptSha256: string }): O
   };
 }
 
+/**
+ * One scripted provider answer: `ok` (HTTP 200 with usage; token counts default to 300 input, 20 output, 0 cache),
+ * `refuse_with_usage` (HTTP 200 refusal with complete usage), `error_no_usage` (HTTP 500 without usage) or
+ * `usage_missing_fields` (HTTP 200 whose usage lacks most fields).
+ */
 export type ScriptedBody = { kind: 'ok'; input?: number; output?: number; read?: number; write?: number } | { kind: 'refuse_with_usage'; input: number } | { kind: 'error_no_usage' } | { kind: 'usage_missing_fields' };
 
-/** Anthropic-like bodies the double adapter understands. */
+/**
+ * Anthropic-like bodies the double adapter understands.
+ *
+ * @param s - The scripted answer to render.
+ * @returns HTTP status and response body in the Anthropic Messages shape.
+ */
 export function bodyOf(s: ScriptedBody): { status: number; body: unknown } {
   if (s.kind === 'ok') return { status: 200, body: { id: 'msg_sim', type: 'message', model: MODEL, content: [{ type: 'text', text: 'ok' }], stop_reason: 'end_turn', usage: { input_tokens: s.input ?? 300, output_tokens: s.output ?? 20, cache_read_input_tokens: s.read ?? 0, cache_creation_input_tokens: s.write ?? 0, service_tier: 'standard' } } };
   if (s.kind === 'refuse_with_usage') return { status: 200, body: { id: 'msg_sim', type: 'message', model: MODEL, content: [], stop_reason: 'refusal', usage: { input_tokens: s.input, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0, service_tier: 'standard' } } };
@@ -60,6 +113,15 @@ export function bodyOf(s: ScriptedBody): { status: number; body: unknown } {
 
 const c = (v: unknown): Count => (typeof v === 'number' && Number.isSafeInteger(v) && v >= 0 ? v : 'UNKNOWN');
 
+/**
+ * Pure provider adapter for {@link MODEL} over the Anthropic Messages shape: builds requests, detects refusals and
+ * normalizes usage.
+ *
+ * Usage fields that are missing or not safe non-negative integers become `'UNKNOWN'` (never 0); usage counts as
+ * `COMPLETE` only when input, cache read, cache write and output are all numbers. It performs no I/O.
+ *
+ * @returns A new adapter instance.
+ */
 export function doubleAdapter(): ProviderAdapter {
   const support: ModelSupport = { provider: 'anthropic', api: 'anthropic.messages', modelRequested: MODEL, catalogKey: MODEL, support: 'generic_fallback', catalogVersion: 'test', tokenizer: { package: 'js-tiktoken', packageVersion: '1.0.21', encoding: 'cl100k_base', vocabularyDigest: null, messageAssembly: { id: 'otk.assembly.text_parts', version: '1' } } };
   return {
@@ -93,7 +155,12 @@ export function doubleAdapter(): ProviderAdapter {
   };
 }
 
-/** Egress double: answers from a script, in order; a step may be 'throw' (send failure => UNCERTAIN). Never reads the credential. */
+/**
+ * Egress double: answers from a script, in order; a step may be 'throw' (send failure => UNCERTAIN). Never reads the credential.
+ *
+ * @param steps - Answers consumed in order (the array is mutated); once empty, every further call answers `ok`.
+ * @returns `double`, the egress function to give the executor, and `seen`, every request it received in order.
+ */
 export function scriptedDouble(steps: Array<ScriptedBody | 'throw'>) {
   const seen: BuiltRequest[] = [];
   return { seen, double: async (req: BuiltRequest) => { seen.push(req); const s = steps.shift() ?? ({ kind: 'ok' } as ScriptedBody); if (s === 'throw') throw new Error('SYN_SEND_FAILURE'); const { status, body } = bodyOf(s); return { httpStatus: status, body }; } };

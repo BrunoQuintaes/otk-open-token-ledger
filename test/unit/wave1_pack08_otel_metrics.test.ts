@@ -7,6 +7,19 @@
  *     gauge set, getMetricsText output
  *
  * @since Wave 1 Pack 8 (2026-03-15)
+ *
+ * Modules under test: `src/observability/otel.ts` and `src/observability/prometheusMetrics.ts`.
+ *
+ * Strategy / partitions: tracing disabled by default and enabled with an endpoint; span creation, end, no-op
+ * and real trace ids, the exporter receiving a finished span, a wrapped function that returns and one that
+ * throws; each metric kind updated and the text and content type of the metrics output.
+ *
+ * Needs: nothing external (spans go to a test callback; no collector is contacted). The default-off case
+ * assumes `OTK_OTEL_ENDPOINT` is unset.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave1_pack08_otel_metrics.test.ts`
+ *
+ * @module test/unit/wave1_pack08_otel_metrics.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

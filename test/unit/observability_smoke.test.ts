@@ -6,6 +6,19 @@
  *
  * Uses the same in-process mock pattern as api_routes_smoke.test.ts.
  * No server socket, no network I/O.
+ *
+ * Modules under test: `getCollector` from `src/observability/runtime.ts` and `handleRequest` in
+ * `src/api/routes.ts` for the JSON metrics route.
+ *
+ * Strategy / partitions: the runtime returns one shared collector with record, snapshot and
+ * reset; the metrics route answers the snapshot shape when empty, after a recorded event, and
+ * with degraded health after errors. The collector is reset before each route test.
+ *
+ * Needs: nothing external.
+ *
+ * Run just this file: `npx tsx --test test/unit/observability_smoke.test.ts`
+ *
+ * @module test/unit/observability_smoke.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

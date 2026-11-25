@@ -7,6 +7,20 @@
  * receipt to arrive, also after a restart.
  *
  * Not exercised: PostgreSQL, Redis, a real prover, chain.
+ *
+ * Strategy / scenarios (in order, sharing one API process across the two cases): receipts accepted while the prover
+ * is down are sent by the NEXT server process after a restart, with no client request, each exactly once, and both
+ * proof-job correlations are persisted; then the prover goes down and comes back while the server keeps running,
+ * and the pending receipt is sent by the recovery loop without new traffic, never twice.
+ *
+ * Needs: two free 127.0.0.1 ports (API child and prover stub), a temporary directory for the receipt log, `tsx`
+ * for the child, and a few seconds of wall-clock waits. The child gets `NODE_ENV`, `OTK_TENANTS`, `OTK_ADMIN_KEY`,
+ * `OTK_RECEIPT_LOG`, `PROVER_URL`, `PROVER_CB_THRESHOLD`, `PROVER_CB_COOLDOWN_MS` and `PROVER_RECOVERY_INTERVAL_MS`
+ * (100 ms) set to fixture values; `OTK_DB_URL` and `OTK_REDIS_URL` are removed. No external network.
+ *
+ * Run just this file: `npx tsx --test test/integration/prover_recovery_restart_rv05.test.ts`
+ *
+ * @module test/integration/prover_recovery_restart_rv05.test
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

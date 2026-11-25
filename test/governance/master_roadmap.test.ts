@@ -5,6 +5,27 @@
  * Cada regra tem um caso negativo: o validador precisa recusar uma cópia adulterada.
  *
  * Rodar: npx tsx --test test/governance/master_roadmap.test.ts
+ *
+ * In English: tests the project's authoritative roadmap file `docs/governance/OTK_MASTER_ROADMAP_CURRENT.json` and
+ * its generator `scripts/ops/generate_master_roadmap.mjs` (`load`, `validate`, `checkOutputsUpToDate`,
+ * `checkDeterminism`, `generateAll`).
+ *
+ * Strategy / partitions: (1) the committed state: the JSON validates with zero errors, the generated documents on
+ * disk match the JSON, two generations are byte-identical, the historical inventory and the recovered legacy
+ * records match their recorded counts, required items and milestones exist, no decision is recorded as approved,
+ * and the critical path of the first horizon contains only open required items chained by predecessors;
+ * (2) one negative case per validation rule: each test mutates an in-memory deep copy (duplicate id, unresolved
+ * predecessor, dependency cycle, successors not the inverse of predecessors, completion without git evidence or with
+ * local-only evidence, enum and field violations, a forbidden timestamp field, a first-horizon item or milestone
+ * depending on a later horizon, an active item depending on an excluded one, a legacy record with a real date, a
+ * decision marked approved, a changed title not reflected in the generated outputs) and expects the matching error.
+ *
+ * Needs: only the repository files (reads the JSON and the generated documents under `docs/governance`); writes
+ * nothing, no network.
+ *
+ * Run just this file: `npx tsx --test test/governance/master_roadmap.test.ts`
+ *
+ * @module test/governance/master_roadmap.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

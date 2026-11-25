@@ -4,6 +4,19 @@
  * is unreachable on purpose: reaching it would fail differently), both for typed callers (compile error,
  * kept by @ts-expect-error) and for callers that bypass the type. The legacy adapter remains available
  * only as an explicit factory.
+ *
+ * Modules under test: `OperationsRuntime` and `operationsOptionsFromEnv` from
+ * `src/operations/runtime.ts`, and `legacyMeasurementPorts` from `src/operations/measurementPorts.ts`.
+ *
+ * Strategy / partitions: creating the runtime with the measurement ports omitted and explicitly
+ * `undefined` (both rejected); options built from the environment carry no measurement; the
+ * legacy adapter is labelled as legacy.
+ *
+ * Needs: no database (the URL points at a closed local port and must never be contacted).
+ *
+ * Run just this file: `npx tsx --test test/unit/d1d8_fps5_measurement_required.test.ts`
+ *
+ * @module test/unit/d1d8_fps5_measurement_required.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

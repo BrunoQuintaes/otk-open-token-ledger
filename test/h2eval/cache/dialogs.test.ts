@@ -1,3 +1,23 @@
+/**
+ * Tests for the three-turn dialogs of the cache study and the request bodies rendered from them for each provider.
+ *
+ * Module under test: `scripts/h2eval/cache/dialogs.ts` (`renderDialog`, `renderCall`, `nonceOf`, `controlOf`,
+ * `auditNonceTokens`, `checkTtl`, `MIN_PREFIX_TOKENS`, `TTL_ASSUMED`), with the corpus from
+ * `scripts/h2eval/corpus/` built by the shared test helpers.
+ *
+ * Strategy / partitions: turn structure (call k carries turns 1..k and the k-1 scripted answers); the hit-attempt
+ * arm (identical prefix in all calls and providers, no nonce) against the no-hit arm (a unique fixed-width nonce at
+ * the start of every call); where the Anthropic `cache_control` mark appears (and where it must not); determinism of
+ * the body hash (sha256 of the canonical JSON); per-API parameters derived from the adapters; the paired control
+ * (same content, only the nonce changes, with its token difference audited, or `UNKNOWN` without a counter); call
+ * spacing against the TTL; documented minimum prefix sizes; and prefix distinctness across dialogs.
+ *
+ * Needs: the `js-tiktoken` package for the token checks (local, no network).
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cache/dialogs.test.ts`
+ *
+ * @module test/h2eval/cache/dialogs.test
+ */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { auditNonceTokens, checkTtl, controlOf, MIN_PREFIX_TOKENS, nonceOf, renderCall, renderDialog, TTL_ASSUMED, type Dialog, type Provider, type RenderOptions } from '../../../scripts/h2eval/cache/dialogs.js';

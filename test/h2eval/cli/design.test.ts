@@ -1,3 +1,24 @@
+/**
+ * Tests that output-token limits and the reasoning ("thinking") policy of each model come from the design-parameters
+ * file, reach the request bodies correctly, and change the plan's protocol hash.
+ *
+ * Modules under test: `scripts/h2eval/design/designParams.ts` (`loadDesignParams`, `thinkingSupport`, the default
+ * file), `scripts/h2eval/cli/plan.ts` (`buildPlan`), `scripts/h2eval/cli/freeze.ts`, the per-API adapters in
+ * `scripts/h2eval/modal/` and the content store.
+ *
+ * Strategy / partitions: the default design file reproduces the constants previously hard-coded in the planner,
+ * and the support matrix is documented; the default plan's request bodies per model; an alternative design (thinking
+ * disabled and a higher output cap) giving a different body, a lower cost cap and a different protocol hash; an
+ * undocumented model and policy combination (exit 3) and an invalid file (exit 4); and the usage parser's
+ * reasoning count with thinking off or adaptive.
+ *
+ * Needs: a writable temporary directory and a synthetic corpus frozen in the `setup` test (allow up to 5 minutes).
+ * No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cli/design.test.ts`
+ *
+ * @module test/h2eval/cli/design.test
+ */
 // SYNTHETIC — OFFLINE. VNEXT-2 (C151 item 2): maxTokens and the reasoning policy come from a design-parameters file (h2eval.design_params.v1),
 // never from constants in plan.ts; the file's sha256 is part of protocolHash. Anthropic: policy OFF on Haiku 5.5 sends thinking: {type: "disabled"}
 // (documented in runs/R17_REAL/H2_DIAG/docs/effort.html) and no output_config; ADAPTIVE sends output_config.effort. An undocumented model × policy

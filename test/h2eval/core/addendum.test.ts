@@ -1,3 +1,23 @@
+/**
+ * Tests the executor rules added by the second revision of the data contract: locked Google branch, pause at 80% of
+ * a sub-ledger, batch size and one model per batch, model-mismatch exclusion and new snapshot fields.
+ *
+ * Modules under test: `scripts/h2eval/core/runner.ts` (`createExecutor`), `scripts/h2eval/core/ids.ts`,
+ * `scripts/h2eval/core/journal.ts` and `scripts/h2eval/record/snapshot.ts`, driven by the doubles in
+ * `../support/double.ts`.
+ *
+ * Strategy / partitions: the Google arm in OFFLINE mode is not run (nothing reserved or sent, terminal on replay);
+ * reaching 80% of a provider sub-ledger pauses before sending until an explicit acknowledgement; a batch is limited
+ * to N calls (here 2) and one model, counted from the journal so the limit survives a restart; a served model
+ * outside the accepted set is recorded as an exclusion with its cost (never silently dropped); and the thinking,
+ * cache TTL, reasoning allowance and cap basis fields are written to the snapshot before sending.
+ *
+ * Needs: a writable temporary directory (from the support helpers). No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/core/addendum.test.ts`
+ *
+ * @module test/h2eval/core/addendum.test
+ */
 // SYNTHETIC — OFFLINE. Contract R2 addendum (CONTRACT_MIN_FOR_EXECUTOR_R2.md items 4/5/6/10/11/12, R10 R2 §5, R16/R17 alignment):
 // locked Google branch, pause at 80% of a sub-ledger, batch ≤ N calls and one model per batch, EXCL_MODEL_MISMATCH, snapshot fields.
 import { test } from 'node:test';

@@ -1,3 +1,26 @@
+/**
+ * Tests two fixes in campaign planning and pricing for the larger comparison models: holdout population selection
+ * by a corpus mark, and a price table version that adds their cache prices.
+ *
+ * Modules under test: `scripts/h2eval/cli/plan.ts` (`buildPlan`, `capsOfProfile`), `scripts/h2eval/cli/run.ts`
+ * (`runBatch`), `scripts/h2eval/cli/freeze.ts`, `scripts/h2eval/modal/pricing/pricing.ts` (`loadPriceTable`),
+ * `priceTableFromModal` from `scripts/h2eval/index.ts` and `scripts/h2eval/record/cost.ts` (`computeCost`).
+ *
+ * Strategy / partitions: with the `r6mHoldout` mark, the larger models plan the whole training and validation blocks
+ * and only the marked holdout units, while the smaller model is unchanged; an unmarked corpus keeps the previous
+ * behaviour; negative controls (a unit without the mark, a mark outside the holdout, a manifest that disagrees, an
+ * empty mark) make the plan refuse; the new price table equals the previous one plus only the new cache prices;
+ * ex-post cost of a 5-minute cache write and a cache read is calculated, while a non-zero count without a price stays
+ * `UNKNOWN`; and a full offline training batch with cache operations completes with calculated costs. The plan only
+ * identifies holdout operations; nothing is sent.
+ *
+ * Needs: a writable temporary directory and a synthetic corpus frozen in the `setup` test (allow up to 5 minutes).
+ * No paid call, no network, no credential.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cli/e2pp_c159c.test.ts`
+ *
+ * @module test/h2eval/cli/e2pp_c159c.test
+ */
 // SYNTHETIC — OFFLINE. E2'' (C159C Fase 4, Q04, 2026-11-13): testes dos dois defeitos corrigidos sobre o E2' 2ae955f4.
 // G-1: o `plan` de CAMPANHA de Sonnet/Opus 5.5 respeita a populacao do R6-M (treino e validacao inteiros; do holdout SO as unidades com r6mHoldout=true no corpus);
 //      Haiku nao muda; corpus sem marca = comportamento anterior declarado; marca incompleta, fora do holdout, divergente do manifesto ou vazia = recusa.
@@ -28,7 +51,16 @@ const common = { preregFile: PREREG, phase: 'CONFIRMATORY' as const, orderBySpli
 const jl = (f: string) => readFileSync(f, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l) as Record<string, unknown>);
 const wjl = (f: string, rows: unknown[]) => writeFileSync(f, rows.map((r) => JSON.stringify(r)).join('\n') + '\n');
 type Unit = Record<string, unknown> & { split: string };
-/** copy of the synthetic corpus with the R6-M mark written on EVERY unit (jsonl and manifest); `markS1`/`markDlg` choose the r6mHoldout=true units; `tweak` corrupts on purpose */
+/**
+ * copy of the synthetic corpus with the R6-M mark written on EVERY unit (jsonl and manifest); `markS1`/`markDlg` choose the r6mHoldout=true units; `tweak` corrupts on purpose
+ *
+ * @param name - Name of the copy's folder inside the test's temporary work directory.
+ * @param markS1 - Decides, for the k-th holdout text prompt, whether it is marked `r6mHoldout: true`; units outside
+ *   the holdout are always marked `false`.
+ * @param markDlg - Same decision for the k-th holdout dialog.
+ * @param tweak - Optional hook that corrupts the marked prompts, dialogs or manifest before they are written.
+ * @returns The path of the marked corpus copy.
+ */
 function marked(name: string, markS1: (u: Unit, k: number) => boolean, markDlg: (u: Unit, k: number) => boolean, tweak?: (c: { s1: Unit[]; dlg: Unit[]; man: { s1: { prompts: Unit[] }; dialogs: Unit[] } }) => void): string {
   const dir = path.join(WORK, name); cpSync(BASE, dir, { recursive: true });
   const s1 = jl(path.join(dir, 's1_prompts.jsonl')) as Unit[]; const dlg = jl(path.join(dir, 'dialogs.jsonl')) as Unit[]; const man = JSON.parse(readFileSync(path.join(dir, 'manifest.json'), 'utf8'));

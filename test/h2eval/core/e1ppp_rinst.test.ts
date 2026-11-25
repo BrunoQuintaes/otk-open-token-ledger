@@ -1,3 +1,25 @@
+/**
+ * Tests the request instrumentation of the executor: the sha256 of the exact body bytes sent and the provider's
+ * request id, recorded without changing what is sent and without reading the credential header.
+ *
+ * Modules under test: `scripts/h2eval/core/requestInstrumentation.ts` (`wireBody`, `wireBodySha256`,
+ * `wireBodySha256Of`, `providerRequestId`, `providerRequestIdFromResponse`, `REQUEST_ID_HEADER`, `NOT_AVAILABLE`)
+ * and `scripts/h2eval/core/runner.ts` (`createExecutor`) in REAL mode with an injected fetch.
+ *
+ * Strategy / partitions: the body hash equals the sha256 of the UTF-8 bytes the transport received (not a
+ * canonical form) and a present request id is recorded; an absent request id (or a response without headers) gives
+ * `NOT_AVAILABLE` with a reason, never an invented value; a failing header read gives `NOT_AVAILABLE` without
+ * throwing, and the send and result stay identical; only the allow-listed response header is read, nothing is
+ * iterated; and the pure core (byte hash, failures without throwing, a provider without a documented header).
+ *
+ * Needs: a writable temporary directory. REAL mode runs only with an injected fetch, so no socket is opened; the
+ * credential is a synthetic canary in a temporary env file, never in the process environment. Importing
+ * `syntheticGo` from `./go.test.ts` also registers that file's tests in this run.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/core/e1ppp_rinst.test.ts`
+ *
+ * @module test/h2eval/core/e1ppp_rinst.test
+ */
 // SYNTHETIC — OFFLINE. E1‴ (C160): R-INST prospectivo no executor científico. REAL mode is exercised ONLY with an injected fetch — no socket is ever opened.
 // The credential is a synthetic canary in a temporary file (never process.env). Checks: sha256 of the exact body bytes; request-id present / absent / instrumentation failure;
 // the instrumentation never changes what is sent nor the result; the credential header is never read nor recorded.
@@ -20,7 +42,11 @@ const okChecks = { insideGitTree: () => false, insideSyncFolder: () => false, ac
 type Seen = { body: string; headerNames: string[] };
 type FakeRes = Record<string, unknown>;
 
-/** Runs ONE operation in REAL mode with an injected fetch; `respond` builds the fake response. Returns the journal lines, the record and what the transport saw. */
+/**
+ * Runs ONE operation in REAL mode with an injected fetch; `respond` builds the fake response. Returns the journal lines, the record and what the transport saw.
+ *
+ * @param respond - Builds the fake HTTP response from what the injected fetch received (body text and header names).
+ */
 async function realRun(respond: (seen: Seen) => FakeRes | Promise<FakeRes>) {
   const d = mkdtempSync(path.join(tmpdir(), 'h2eval-e1ppp-')); const envFile = path.join(d, 'h2eval.env'); writeFileSync(envFile, `${VAR}=${CANARY}\r\n`);
   const go = path.join(d, 'GO.json'); writeFileSync(go, syntheticGo({ campaign: 'h2eval-test', window: { notBeforeUtc: new Date(Date.now() - 60_000).toISOString(), expiresUtc: new Date(Date.now() + 3_600_000).toISOString() } }));
@@ -41,7 +67,11 @@ async function realRun(respond: (seen: Seen) => FakeRes | Promise<FakeRes>) {
 }
 const ok = bodyOf({ kind: 'ok' });
 const okRes = (headers: unknown): FakeRes => ({ status: ok.status, headers, json: async () => ok.body });
-/** Result fields that must not depend on the instrumentation (timestamps and latency excluded). */
+/**
+ * Result fields that must not depend on the instrumentation (timestamps and latency excluded).
+ *
+ * @param x - Output of one `realRun` call.
+ */
 const stable = (x: Awaited<ReturnType<typeof realRun>>) => ({ state: x.r.state, stop: x.r.stop, kinds: x.lines.map((l) => l.kind), outcome: x.rec['outcome'], httpStatus: x.rec['httpStatus'], usage: x.rec['usage'], cost: x.rec['cost'], responseSha256: x.rec['responseSha256'], finalState: x.rec['finalState'], sentBody: x.seen.map((s) => s.body) });
 
 test('E1‴ R-INST: wireBodySha256 é o sha256 dos BYTES exatos que o transporte recebeu (UTF-8, não canônico); request-id presente é gravado; credencial nunca gravada', async () => {

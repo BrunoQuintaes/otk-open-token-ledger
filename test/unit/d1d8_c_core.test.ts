@@ -2,6 +2,26 @@
  * D1–D8 / C — pure pieces of the durable operation model: DDL ↔ migration files, accounting
  * scales and the two admission rules (hand vectors), state machine, codec round trip, ids.
  * No database here; the stores are exercised against real PostgreSQL in test/services/.
+ *
+ * Modules under test: `src/operations/schema.ts`, `src/operations/accounting.ts`,
+ * `src/operations/transitions.ts`, `src/operations/codec.ts` and `src/operations/ids.ts`, with
+ * builders from `test/fixtures/d1d8/c/builders.ts`.
+ *
+ * Strategy / partitions: each migration file equals the DDL in the schema module, and the
+ * relation and column lists match it, with version ranges and idempotency; accounting scales
+ * (exact conversion, refused lossy scale, quota 0 means unlimited); quota and money admission
+ * rules against hand vectors, an unknown worst case, and an excess over the reservation; state
+ * machine transitions (final vs partial usage, cancel, disconnect, upstream failure, late
+ * measurement, release, write-once fields, no plain hold at the end); codec round trips and
+ * strict integers; effect ids for legacy receipts vs operations and across tenants; the request
+ * digest ignores prompt text.
+ *
+ * Needs: read access to `scripts/migrations/*.sql`; no database or network (one test imports
+ * `src/api/PostgresReceiptStore.ts` only for its key helper).
+ *
+ * Run just this file: `npx tsx --test test/unit/d1d8_c_core.test.ts`
+ *
+ * @module test/unit/d1d8_c_core.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -18,7 +38,12 @@ import { CONFIG, CU, conference, receiptV3, reservation, usage } from '../fixtur
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
-/** Top-level SQL statements (split on ';' outside $tag$…$tag$ bodies), `--` comments removed first. */
+/**
+ * Top-level SQL statements (split on ';' outside $tag$…$tag$ bodies), `--` comments removed first.
+ *
+ * @param text - SQL source text.
+ * @returns The statements, trimmed, without empty entries.
+ */
 function sqlStatements(text: string): string[] {
   const sql = text.replace(/--.*$/gm, '');
   const out: string[] = [];

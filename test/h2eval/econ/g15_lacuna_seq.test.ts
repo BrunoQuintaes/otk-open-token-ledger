@@ -1,3 +1,17 @@
+/**
+ * Two checks added by an independent audit of the economic-study executor: a schedule with a gap in the sequence
+ * numbers is refused, and the study's caps profile is not accepted by any older GO path.
+ *
+ * Modules under test: `scripts/h2eval/econ/econ.ts` (`validateCronograma`) and `scripts/h2eval/core/ledger.ts`
+ * (`capsAreAllowedProfile`, `capsAreAllowedFor`, `CAPS_PROFILE_ECON_DR277`), using the fixture in
+ * `./econ_fixture.ts`.
+ *
+ * Needs: a writable temporary directory (through the fixture). No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/econ/g15_lacuna_seq.test.ts`
+ *
+ * @module test/h2eval/econ/g15_lacuna_seq.test
+ */
 // Incorporado do G15 EXEC-ECON (auditor-independente C160, replica/g15tests/g15_extra.test.ts, R3: mutante M09), sem mudanca de conteudo alem deste cabecalho.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

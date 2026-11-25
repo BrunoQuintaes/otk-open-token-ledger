@@ -1,3 +1,24 @@
+/**
+ * Tests that campaign plans for the two newer comparison models resolve their text-corpus operations correctly and
+ * that their per-model design entries are validated.
+ *
+ * Modules under test: `scripts/h2eval/cli/plan.ts` (`buildPlan`, `s1CorpusIdOf`, `capsOfProfile`),
+ * `scripts/h2eval/cli/freeze.ts` (`freezeCorpus`) and `scripts/h2eval/design/designParams.ts`.
+ *
+ * Strategy / partitions: a model without its own corpus id reuses the full list of the older model of the same
+ * provider (same operations and splits); a model with neither an id nor an alias yields `null` and an explicit stop
+ * code instead of reading a file named after `undefined`; the design model list includes the newer models as
+ * optional entries that are validated when declared, while older designs stay valid. Each regression test is
+ * labelled with the commit on which it failed before the fix.
+ *
+ * Needs: a writable temporary directory (a synthetic corpus and preregistration are written there) and the
+ * working directory at the repository root (it reads `scripts/h2eval/design/R6_PILOT_DESIGN_PARAMS.json` and the
+ * text of `scripts/h2eval/cli/plan.ts`). No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cli/armCampaignPlan.test.ts`
+ *
+ * @module test/h2eval/cli/armCampaignPlan.test
+ */
 // SYNTHETIC — OFFLINE. C160 E3G3 (B1 e B2 do PROTO-GO), sobre o E3G2 5d9dbf88.
 // B1: um plano de CAMPANHA para gemini-3.1-flash-lite / gpt-6-luna lia s1_operations.undefined.jsonl (sem alias de corpus). Agora cada modelo do braco usa a
 // lista FULL do modelo legado do MESMO provedor (gemini-3.5-flash-lite / gpt-4o-mini); modelo sem id nem alias => STOP explicito S1_CORPUS_ALIAS_MISSING.

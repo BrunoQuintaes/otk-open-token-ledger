@@ -6,6 +6,23 @@
  * runs through the real entrypoint in d1d8_c_proxy_entry.test.ts (now with the D1–D8 profile).
  *
  *   . scripts/ops/s4_env.sh && OTK_S4_BESU_DIR=… npx tsx --test --test-concurrency=1 test/services/d1d8_s4_int_real.test.ts
+ *
+ * Modules under test: the real measurement, signing, opening, proof and runtime modules composed in in-process
+ * gateways, with the fake provider from `./d1d8_c_provider.ts` and the local Besu network.
+ *
+ * Strategy / scenarios: client closing before usage, idempotent reopen, cancel from another instance and an upstream
+ * cut (usage final once, partial usage never final, never re-sent); a proof job frozen to its registry and submitted
+ * once, also with a timeout after mining; negatives (cross-tenant read or export refused, no opening material or
+ * operator key in answers or outbox payloads, a revoked signer refused by the registry and re-enabled afterwards);
+ * and backup and restore with `pg_dump`/`psql` keeping openings, receipts and their cryptographic links.
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`), the `docker` command with
+ * access to its container (`OTK_TEST_PG_CONTAINER`, with a default), and the local Besu network described by
+ * `OTK_S4_BESU_DIR`. Before importing the server it sets fixture values in the test process for the API's variables
+ * (tenants, a fake OpenAI key, the upstream override, `PROVER_URL=disabled`). The command above shows how to run just
+ * this file.
+ *
+ * @module test/services/d1d8_s4_int_real.test
  */
 process.env['OTK_DB_URL'] = '';
 process.env['OTK_RECEIPT_LOG'] = '';

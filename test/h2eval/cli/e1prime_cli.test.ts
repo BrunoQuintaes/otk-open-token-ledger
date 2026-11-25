@@ -1,3 +1,22 @@
+/**
+ * Offline rehearsal, through the full executor path, of a batch in which the provider refuses two consecutive
+ * prompts but still returns complete usage.
+ *
+ * Modules under test: `scripts/h2eval/cli/freeze.ts`, `scripts/h2eval/cli/plan.ts`, `scripts/h2eval/cli/run.ts`
+ * (`runBatch`, the same loop the run commands use) and the journal verifier in `scripts/h2eval/core/journal.ts`,
+ * with the real adapter and ledger and a simulated provider.
+ *
+ * Strategy / scenarios: a one-batch, 21-call plan for one model; refusals with complete usage at calls 7 and 8 do
+ * not stop the batch (call 9 is sent, 21 of 21 complete, refusals recorded, resuming does not re-send); a refusal
+ * without complete usage is still a failure that stops the batch as uncertain.
+ *
+ * Needs: a writable temporary directory; allow up to 4 minutes per test. It sets `H2EVAL_ANTHROPIC_API_KEY` to a
+ * fake canary value to show the offline path never reads it. No paid call, no network, no real credential.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cli/e1prime_cli.test.ts`
+ *
+ * @module test/h2eval/cli/e1prime_cli.test
+ */
 // SYNTHETIC — OFFLINE. E1' (C158/C159, 2026-11-12): ensaio com o CAMINHO COMPLETO do executor (freeze -> plan -> runBatch, o mesmo laco de `run`/`run-authorized`, adaptador e ledger reais, provedor SIMULADO)
 // reproduzindo o cenario do lote 2 do Haiku: DUAS RECUSAS com usage completo seguidas (indices 7 e 8) NAO param o lote e a operacao seguinte VAI; o lote termina 21/21; as recusas ficam registradas; retomar nao reenvia nada.
 // Sem chamada paga, sem rede, sem credencial, sem GO.

@@ -4,6 +4,24 @@
  * only its own cycle; the platform credential still sees all.
  * RUN-S 2026-10-09: the first block is the validated proposal (unchanged); the second block adds the credential origins
  * (key created by /keys, JWT, revoked key) and attempts to choose the tenant through the query string or headers.
+ *
+ * Modules under test: `handleRequest` in `src/api/routes.ts` for the billing cycles route, with
+ * the token registry, the API key manager, `signToken` from `src/auth/jwt.ts`, the dashboard
+ * indexer and `src/billing/BillingCycleWorker.ts` used to create credentials and cycles.
+ *
+ * Strategy / partitions: OWNER of tenant A and of tenant B (each sees only its own cycle); a
+ * MEMBER (refused) and no credential (401); the platform key (sees all) and a wrong platform key;
+ * an ADMIN API key, an OWNER JWT and a revoked key; a tenant id in the query string or in
+ * headers (ignored); a tenant with no cycles (empty list); no amount of another tenant in the
+ * response.
+ *
+ * Needs: no server (mock request/response objects). Sets `OTK_ADMIN_KEY` and `OTK_JWT_SECRET`
+ * to per-run test values in `before` and restores the previous values in `after`; stores and
+ * indexer are reset before every test.
+ *
+ * Run just this file: `npx tsx --test test/unit/billing_cycles_tenant.test.ts`
+ *
+ * @module test/unit/billing_cycles_tenant.test
  */
 import { describe, it, beforeEach, before, after } from 'node:test';
 import assert from 'node:assert/strict';

@@ -10,6 +10,17 @@
  *   [0] commitment  = Poseidon(userId, usage, nonce, epoch)   ← circuit OUTPUT
  *   [1] epoch                                                  ← public INPUT
  *   [2] maxUsage                                               ← public INPUT
+ *
+ * Under test: the committed v1 circuit outputs in `zk/build/` against a TypeScript Poseidon recomputation
+ * (`circomlibjs`); no module of `src/` is imported.
+ *
+ * Needs: `zk/build/public.json` and, for the first case, `zk/build/metering_input.json` (read only). When they are
+ * missing the cases return early and pass without checking anything, so a green run here is meaningful only where
+ * those files exist. No network.
+ *
+ * Run just this file: `npx tsx --test test/zk/publicSignals.binding.test.ts`
+ *
+ * @module test/zk/publicSignals.binding.test
  */
 
 import test from "node:test";

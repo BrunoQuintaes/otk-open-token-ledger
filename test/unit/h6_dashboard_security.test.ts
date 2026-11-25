@@ -1,5 +1,19 @@
 /**
  * H-PACK-08 Tests — H6.1-H6.4 Dashboard & Security Hardening
+ *
+ * Modules under test: `escapeHtml` from `src/dashboard/sanitize.ts` and the CSRF token helpers in
+ * `src/auth/csrf.ts`.
+ *
+ * Strategy / partitions: HTML escaping of each special character, empty and safe text, an
+ * event-handler injection and unicode tricks; CSRF tokens are 64 hex characters, equal for the
+ * same session, different across sessions, and rejected for a wrong token, a wrong session or a
+ * different length.
+ *
+ * Needs: nothing external.
+ *
+ * Run just this file: `npx tsx --test test/unit/h6_dashboard_security.test.ts`
+ *
+ * @module test/unit/h6_dashboard_security.test
  */
 
 import { describe, it } from 'node:test';

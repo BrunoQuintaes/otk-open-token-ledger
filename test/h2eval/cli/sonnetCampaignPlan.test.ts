@@ -1,3 +1,20 @@
+/**
+ * Tests that a campaign plan for the two larger comparison models reuses the text-corpus operation list of the
+ * newer small model, so the plan no longer fails with a missing operation list.
+ *
+ * Modules under test: `scripts/h2eval/cli/plan.ts` (`buildPlan`, `capsOfProfile`) and
+ * `scripts/h2eval/cli/freeze.ts` (`freezeCorpus`).
+ *
+ * Strategy: one scenario that compares the larger models' plans with the small model's plan (same operations and
+ * splits, paired by text, each operation carrying the right model id) and checks that the small model's plan is
+ * unchanged.
+ *
+ * Needs: a writable temporary directory and a synthetic corpus freeze (allow several minutes). No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cli/sonnetCampaignPlan.test.ts`
+ *
+ * @module test/h2eval/cli/sonnetCampaignPlan.test
+ */
 // SYNTHETIC — OFFLINE. C158 ciclo 3 (achado do ensaio sintetico): um plano de CAMPANHA para Sonnet/Opus 5.5 falhava com S1_OPERATIONS_MISSING porque o gerador do corpus so escreve a lista de operacoes dos ids originais.
 // Agora Sonnet/Opus usam a lista do claude-haiku-5-5 (mesmos prompts, grupos e splits: o holdout do R6-M e lido pareado por texto). Haiku, GPT e Gemini nao mudam.
 import { test } from 'node:test';

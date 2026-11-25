@@ -1,5 +1,19 @@
 /**
  * Phase 10 reconciliation — exact decimals, explicit timezones and lossless readers.
+ *
+ * Modules under test: `src/reconciliation/decimal.ts`, `src/reconciliation/time.ts` and
+ * `src/reconciliation/parse.ts`.
+ *
+ * Strategy / partitions: decimals (exact lexemes and exponents, refused non-decimals, rescale and half-even
+ * rounding, the zero rule of the relative difference); timestamps (instants with a zone, naive values with and
+ * without a declared zone, DST gaps and folds, local day bounds across DST); CSV and JSON readers (quoting,
+ * CRLF, preamble, mismatched records, number lexemes).
+ *
+ * Needs: nothing external (pure functions).
+ *
+ * Run just this file: `npx tsx --test test/unit/reconciliation_parsing.test.ts`
+ *
+ * @module test/unit/reconciliation_parsing.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

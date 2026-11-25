@@ -1,6 +1,23 @@
 /**
  * D1–D8 / C — EffectOutbox, OpeningStore and receipt v3 stores against real PostgreSQL, plus the
  * JSONL receipt store (C1; D3-G02/G03/G06 storage part, D2-G06 storage part, D7 §11 frozen target).
+ *
+ * Modules under test: `src/operations/PgEffectOutbox.ts` (`PgEffectOutbox`, `LeaseLostError`),
+ * `src/operations/PgOpeningStore.ts` (`PgOpeningStore`, `OpeningConflictError`) and `src/operations/receiptV3Store.ts`
+ * (`PgReceiptV3Store`, `JsonlReceiptV3Store` and their errors).
+ *
+ * Strategy / partitions: outbox (idempotent enqueue, concurrent claims never shared, completion by a non-owner
+ * refused, expired leases reclaimed, the frozen target returned unchanged, retry versus dead after max attempts,
+ * heartbeats while the handler runs, live leases never handed out, queue metrics); opening store (round trip,
+ * idempotent rewrite, conflicting content refused without echoing it, tenant scope); and the receipt stores, both
+ * PostgreSQL and JSON lines (fsync per line, reopened from the file, a torn last line ignored and counted).
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`) and a writable temporary
+ * directory for the JSON-lines store; some tests wait on short real timers for lease expiry.
+ *
+ * Run just this file: `npx tsx --test test/services/d1d8_c_outbox_storage.test.ts`
+ *
+ * @module test/services/d1d8_c_outbox_storage.test
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

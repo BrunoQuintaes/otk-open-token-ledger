@@ -19,6 +19,21 @@
  *  14.  StripeWebhookHandler handle() never throws
  *
  * @since Wave 4 (4C-PACK-4C02 / P4.5)
+ *
+ * Modules under test: `src/billing/stripe/StripeClient.ts` and `src/billing/stripe/StripeWebhookHandler.ts`,
+ * with the plan state of `src/billing/PlanRegistry.ts`; the decision record and the route list in
+ * `src/api/routes.ts` are checked as text.
+ *
+ * Strategy / partitions: checkout session, webhook event construction with and without a secret, the real client
+ * without the payment SDK, the price ids read from `OTK_STRIPE_PRICE_IDS`; each handled event kind, an unknown
+ * kind, missing metadata or tenant, and an input that would throw.
+ *
+ * Needs: no network and no payment account; the payment API is an in-memory mock with fake ids. Changes
+ * `OTK_STRIPE_PRICE_IDS` and restores it.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave4_stripe.test.ts`
+ *
+ * @module test/unit/wave4_stripe.test
  */
 
 import { describe, it, before, after } from 'node:test';

@@ -4,6 +4,22 @@
  * Tests for the canonical bigint CU computation engine.
  * Covers: determinism, rounding, overflow, unknown provider/model,
  * error codes, regression vectors from CostWeights legacy.
+ *
+ * Module under test: `src/pricing/CostUnits.ts` (`calculateCostUnitsV1` and its number facade, the integer weight
+ * tables, `CUError` and `CU_ERROR`), and its agreement with the older `src/pricing/CostWeights.ts` facade.
+ *
+ * Strategy / partitions: frozen golden vectors of the CU_MODEL_v1 formula (a change means a breaking formula
+ * change); repeated calls; rounding (exact, fractional, half-up at a tie); unknown provider and model, and
+ * case-insensitive lookup; invalid inputs (negative or non-integer token counts); results above the uint64 maximum
+ * (and above `Number.MAX_SAFE_INTEGER` for the number facade) must throw, while large valid counts pass; the
+ * utility listings; consistency between the provider and model weight tables; and regression against
+ * the legacy facade.
+ *
+ * Needs: nothing external (pure functions).
+ *
+ * Run just this file: `npx tsx --test test/pricing/CostUnits.deterministic.test.ts`
+ *
+ * @module test/pricing/CostUnits.deterministic.test
  */
 
 import { describe, it } from 'node:test';

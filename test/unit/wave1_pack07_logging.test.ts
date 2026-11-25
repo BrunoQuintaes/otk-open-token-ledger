@@ -12,6 +12,16 @@
  *   - Singleton behavior
  *
  * @since Wave 1 Pack 7 (2026-03-15)
+ *
+ * Module under test: `src/infra/logging/StructuredLogger.ts`.
+ *
+ * Strategy / partitions: as listed above; the emitted lines are captured through an injected sink.
+ *
+ * Needs: nothing external.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave1_pack07_logging.test.ts`
+ *
+ * @module test/unit/wave1_pack07_logging.test
  */
 
 import { describe, it, beforeEach } from 'node:test';
@@ -32,7 +42,11 @@ function createCaptureSink(): { lines: string[]; sink: (line: string) => void } 
   return { lines, sink: (line: string) => lines.push(line) };
 }
 
-/** Parse the first captured line as a LogEntry. */
+/**
+ * Parse the first captured line as a LogEntry.
+ * @param lines - Lines collected by a capture sink; must not be empty (the assertion fails otherwise).
+ * @returns The parsed entry.
+ */
 function parseFirst(lines: string[]): LogEntry {
   assert.ok(lines.length > 0, 'expected at least one log line');
   return JSON.parse(lines[0]) as LogEntry;

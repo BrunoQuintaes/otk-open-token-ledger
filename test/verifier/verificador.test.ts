@@ -1,6 +1,26 @@
 /**
  * Verificador offline de recibos (VERIFICADOR_MVP, C160): vetores, chaveiro, comando, determinismo
  * e paridade Node × bundle de navegador (vm sem rede). Só chaves de TESTE (test/verifier/vetores.ts).
+ *
+ * In English: tests the offline receipt verifier. Module under test: `src/verifier/index.ts` (`verifyBundle`, keyring
+ * parsing and serialization, fingerprint normalization, report rendering, sha256 and CSV), plus the command-line
+ * entry `runCli` of `scripts/verify/otk.ts`.
+ *
+ * Strategy / partitions: every vector reaches its expected verdict and code with an anchored keyring; tampering,
+ * misleading operator verdicts, duplicates and conflicts, truncated lines, non-receipt files; keyring without
+ * fingerprint, fingerprint formats, no keyring, malformed public keyrings; summary totals (only green and yellow
+ * counted, exact sums across scales, unknown never zero, period filters); report determinism; texts for lay readers;
+ * human and CSV output; the committed vector folder equals the regenerated one; command exit codes and outputs;
+ * keyring export; the verifier core imports no Node module; parity of a browser bundle (built with esbuild, run in a
+ * `vm` context without network) with the command's report sha256; a performance bound; network blocked during
+ * verify; and the rules that decide by the signing address and count only receipts whose signature checked.
+ *
+ * Needs: `esbuild` (devDependency) for the parity case and temporary directories. The performance case asserts that
+ * 1 000 receipts verify in under 5 s of wall-clock time, so a very slow or overloaded machine can fail it. No network.
+ *
+ * Run just this file: `npx tsx --test test/verifier/verificador.test.ts`
+ *
+ * @module test/verifier/verificador.test
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

@@ -6,6 +6,20 @@
  * 3. Data of another tenant (seeded receipts, TAL debit, API key label) never appears in a public route nor in what a
  *    VIEWER of tenant A can read, for the three credential origins: static token, key created by /keys, JWT.
  * Static extraction is not a proof of authorization; the dynamic checks below are the evidence.
+ *
+ * Also checked: every public route in the inventory states its reason.
+ *
+ * Under test: `scripts/ops/extract_routes.mjs` (run once as a child `node` process with `--json`) against the
+ * committed inventory, and the route handlers of `src/api/routes.ts` called in process with mock request and response
+ * objects (each call bounded at 4 s). Tenant B is seeded with a dynamic key label, an indexed receipt, a dead letter and
+ * a ledger debit.
+ *
+ * Needs: only the repository files; no network, no database. `OTK_ADMIN_KEY` and `OTK_JWT_SECRET` get fixture values
+ * for the run and are restored afterwards.
+ *
+ * Run just this file: `npx tsx --test test/security/route_surface.test.ts`
+ *
+ * @module test/security/route_surface.test
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

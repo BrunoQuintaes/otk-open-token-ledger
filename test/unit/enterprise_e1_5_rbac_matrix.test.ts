@@ -4,7 +4,22 @@
  * Trava explicitamente a matriz de permissões RBAC para evitar regressões futuras.
  * Testa hasPermission() diretamente para todos os 5 roles × 7 permissões (ADR-0206).
  *
+ * Locks the role-based permission matrix so that any change to it is a visible test failure.
+ *
+ * Module under test: `hasPermission` from `src/security/rbac.ts`. The expected matrix is written
+ * out in this file (`CANONICAL_MATRIX`) and must mirror the role table in that module.
+ *
+ * Strategy / partitions: every role against every one of the 7 permissions (granted and not
+ * granted); OWNER is a superset of every role; each role has exactly its canonical set; the
+ * permission list is exactly the canonical one; ADMIN and OPERATOR are equal; the chain
+ * MEMBER, OPERATOR, ADMIN, OWNER only grows; only OWNER holds the key administration permission.
+ *
+ * Needs: nothing external (pure function).
+ *
+ * Run just this file: `npx tsx --test test/unit/enterprise_e1_5_rbac_matrix.test.ts`
+ *
  * @since E1.5 (2026-03-14)
+ * @module test/unit/enterprise_e1_5_rbac_matrix.test
  */
 
 import assert from 'node:assert/strict';

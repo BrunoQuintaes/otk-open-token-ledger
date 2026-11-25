@@ -8,6 +8,19 @@
  *     JSONL persistence, singleton
  *
  * @since Wave 1 Pack 9 (2026-03-15)
+ *
+ * Modules under test: `src/security/SecretsManager.ts` and `src/security/GovernanceTrail.ts`.
+ *
+ * Strategy / partitions: secrets read through an injected environment reader (present and missing keys), the
+ * overlay taking priority, merged key listing, singleton and test override; the governance trail append,
+ * hash chaining, listing with filters, integrity check, count, head hash, a file round trip and the singleton.
+ *
+ * Needs: no real secrets (fake values in an injected reader). The file round trip writes one JSONL file in the
+ * OS temp folder and deletes it.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave1_pack09_kms_governance.test.ts`
+ *
+ * @module test/unit/wave1_pack09_kms_governance.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

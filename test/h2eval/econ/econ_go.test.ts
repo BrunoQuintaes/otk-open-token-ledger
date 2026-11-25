@@ -1,6 +1,25 @@
 /**
  * EXEC-ECON C160 delta 2 (R2 do G15): contrato do GO do estudo (h2eval.go.econ.v1). Offline, US$ 0.
  * Aceita SÓ o perfil ECON; recusa vencido, teto e escopo; os validadores de GO existentes não mudam e continuam recusando o ECON.
+ *
+ * English summary: tests the economic study's own GO file format and how the study executor uses it.
+ *
+ * Modules under test: `scripts/h2eval/econ/goEcon.ts` (`validateGoEconV1`, `goEconCoversAttempt`,
+ * `GO_ECON_REQUIRED_STOPS`, `GO_ECON_MAX_WINDOW_MS`), `scripts/h2eval/econ/econ.ts` (`runEcon`), the caps profiles in
+ * `scripts/h2eval/core/ledger.ts`, and the existing validators in `scripts/h2eval/core/egress.ts`.
+ *
+ * Strategy / partitions: a valid study GO accepted; caps inside the study envelope and equal to the effective ledger
+ * accepted, anything else refused in both directions; validity window (expired, not yet valid, too long); scope (model
+ * outside the study, wildcard, inconsistent provider, sequence range outside the schedule, too many attempts);
+ * identity fields; signature, digest, stops, placeholder and schema; the older validators still refusing this
+ * format; per-attempt coverage; and runs that pause at the end of the covered range, when the attempt budget runs
+ * out, when the GO expires mid-run or changes during the run, and that do not start without a valid GO.
+ *
+ * Needs: a writable temporary directory (through the fixture). No network, no spending.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/econ/econ_go.test.ts`
+ *
+ * @module test/h2eval/econ/econ_go.test
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

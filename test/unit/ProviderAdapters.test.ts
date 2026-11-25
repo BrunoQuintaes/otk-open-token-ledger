@@ -3,6 +3,21 @@
  *
  * Tests for OpenAI and Anthropic adapters with realistic JSON fixtures.
  * Validates: token parsing, CU computation, error handling, determinism.
+ *
+ * Modules under test: `src/providers/adapters/OpenAIAdapter.ts`,
+ * `src/providers/adapters/AnthropicAdapter.ts` and the error type in `src/providers/types.ts`.
+ *
+ * Strategy / partitions: a standard response per adapter and per model family; model-name
+ * normalization (lowercase, date-snapshot suffix removed); invalid responses (missing usage,
+ * missing model, negative or non-integer token counts) throw `AdapterParseError`; zero tokens;
+ * repeated calls give the same result; the caller's timestamp is used; both adapters give the
+ * same CU and the same event shape for equivalent usage.
+ *
+ * Needs: nothing external (inline JSON fixtures, no network).
+ *
+ * Run just this file: `npx tsx --test test/unit/ProviderAdapters.test.ts`
+ *
+ * @module test/unit/ProviderAdapters.test
  */
 
 import { describe, it } from 'node:test';

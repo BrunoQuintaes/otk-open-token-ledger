@@ -11,6 +11,18 @@
  *
  * These tests are the programmatic equivalent of the rc2_release_checklist.md.
  * No I/O to live systems — purely file system assertions.
+ *
+ * Under test: the repository layout (no source module is imported); files are checked by path relative to the
+ * repository root found from this file's location.
+ *
+ * Strategy / partitions: one existence check per required file or directory, grouped as above; the agent
+ * instructions file may instead be declared as excluded by the manifest of the academic package.
+ *
+ * Needs: only the file system (read only).
+ *
+ * Run just this file: `npx tsx --test test/unit/rc2_smoke.test.ts`
+ *
+ * @module test/unit/rc2_smoke.test
  */
 
 import { describe, it } from 'node:test';

@@ -11,6 +11,23 @@
  * the documented context window of Haiku 4.5 (200 000 tokens), priced at the highest input-side tariff (cache write 5 min,
  * 1.25 µUSD/token), plus max_tokens × 5 µUSD: for max_tokens 64, 250 000 000 000 + 320 000 000 = 250 320 000 000 pico-USD.
  * Settlement of usage 100/50: 100 × 1 + 50 × 5 = 350 µUSD-per-MTok-units → 350 000 000 pico-USD.
+ *
+ * Module under test: the strict money ceiling in the in-process durable gateway (`src/operations/runtime.ts` and the
+ * proxy routes), with the fake provider from `./d1d8_c_provider.ts`.
+ *
+ * Strategy / scenarios: requests without a defensible cost bound (tools, cache marks, thinking, images, a regional
+ * inference setting, unlisted models) refused before the provider; a bounded request reserved at the hand worst case
+ * and settled at the quoted total; one ceiling shared by two tenants and two instances (exactly 3 of 8 concurrent
+ * requests reach the provider); an upstream cut without usage keeping the worst case held, also after a restart; and
+ * a returned model outside the reserved set freezing the budget.
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`). Before importing the server it
+ * sets fixture values in the test process for the API's variables (tenants, a fake Anthropic key, the upstream
+ * override, `PROVER_URL=disabled`). The command above loads the test environment from `scripts/ops/s4_env.sh` first;
+ * with the variables already set, `npx tsx --test --test-concurrency=1 test/services/d1d8_s4_money_ceiling.test.ts`
+ * runs just this file.
+ *
+ * @module test/services/d1d8_s4_money_ceiling.test
  */
 process.env['OTK_DB_URL'] = '';
 process.env['OTK_RECEIPT_LOG'] = '';

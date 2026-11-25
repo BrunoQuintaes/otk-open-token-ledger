@@ -1,3 +1,26 @@
+/**
+ * Offline end-to-end rehearsal of a whole evaluation campaign through the command-line functions, using the
+ * simulated provider.
+ *
+ * Modules under test: `scripts/h2eval/cli/freeze.ts`, `scripts/h2eval/cli/plan.ts`, `scripts/h2eval/cli/run.ts`
+ * (`runBatch`, `runAuthorized`, `selectBatch`), `scripts/h2eval/cli/campaign.ts` (`freezeTrain`,
+ * `selectOnValidation`, `gateFor`, `writeGateG17`), `scripts/h2eval/record/snapshot.ts` and the ledger helpers.
+ *
+ * Strategy / scenarios, in campaign order: the campaign-phase plan (blocks in a fixed order, at most 60 calls and one
+ * model and one block per batch, worst case per provider within the 5/3/3 USD sub-ledgers); the code locks
+ * (validation refused before the training block is frozen, holdout refused before a validation selection, freeze
+ * refused while a training batch is not terminal); an authorized run of many batches from one signed scope, with the
+ * Google scope halted as not run; then validation, selection and holdout, whose snapshots carry the fixed
+ * prediction, and a replay that never re-sends.
+ *
+ * Needs: a writable temporary directory; a synthetic multi-batch GO file from `../support/gomulti.ts` (which
+ * sets `H2EVAL_CONTROL_DIR` to a temporary folder when it is unset). Some tests allow several minutes. No network,
+ * no credential.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cli/campaign.test.ts`
+ *
+ * @module test/h2eval/cli/campaign.test
+ */
 // SYNTHETIC — OFFLINE end-to-end rehearsal of the WHOLE campaign (R18–R20) through the CLI with the simulated provider: plan phase CAMPAIGN
 // (train → comparative → validation → holdout, batches ≤ 60, one model per batch), code locks (validation refused before TRAIN_FROZEN,
 // holdout refused before VALIDATION_SELECTED), immutable prediction in the holdout snapshots, run-authorized over several batches with

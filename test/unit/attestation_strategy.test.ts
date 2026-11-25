@@ -16,7 +16,26 @@
  *   8. AttestationNotImplementedError has correct code and strategyId
  *   9. defaultAttestationStrategy is provider_signed
  *
+ * Since the rename above, items 6 and 9 hold under the new id: the default mode and the default
+ * strategy are `operator_recount`, and `provider_signed` is accepted only as a legacy alias.
+ *
+ * Modules under test: the strategies in `src/oracle/attestation/` (`OperatorRecountStrategy` and
+ * its deprecated alias `ProviderSignedStrategy`, `FutureProofStrategy`,
+ * `AttestationStrategyFactory`, `IAttestationStrategy` with `AttestationNotImplementedError`).
+ *
+ * Strategy / partitions: the working strategy (fields, level, stateless output, class and
+ * singleton); the not-yet-implemented strategy (always throws, with the right code, message and
+ * strategy id); factory resolution by default, by explicit id and by the legacy id; the mode
+ * read from the environment when absent and when set to the legacy value; the shared interface
+ * contract for every registered strategy; the alias objects are the same objects as the new ones.
+ *
+ * Needs: nothing external. Reads `ATTESTATION_MODE`; the default-value assertions run only when
+ * it is unset, and the legacy-alias test sets it and restores the previous value.
+ *
+ * Run just this file: `npx tsx --test test/unit/attestation_strategy.test.ts`
+ *
  * @since U12.9.1
+ * @module test/unit/attestation_strategy.test
  */
 
 import { describe, it } from 'node:test';

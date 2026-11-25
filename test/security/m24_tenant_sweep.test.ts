@@ -9,6 +9,19 @@
  * Each defect found carries a `M24-DYN-NN FINDING` comment. DYN-01/02/03/04/05/06/07 were fixed in the same run (the
  * assertions now pass); DYN-08/09/10 stay OPEN and are marked `todo` (they run and report, without failing the suite).
  * In-memory stores only: no network, no database, no Redis (PROVER_URL disabled, OTK_DB_URL and logs empty).
+ *
+ * Modules under test: every tenant-facing route of `src/api/routes.ts` (called in process), with the stores and
+ * services they read: tenant key registry, JWT, role checks (`src/security/rbac.ts`), dashboard indexer, dead
+ * letters, ledger, plans, provider key vault, feature flags, tenant CRUD, idempotency, webhooks, teams, billing
+ * cycles, event streams and the memory key and token stores.
+ *
+ * Needs: nothing external. Before importing it empties `OTK_RECEIPT_LOG`, `OTK_DB_URL` and `OTK_TENANT_LOG`, sets
+ * `PROVER_URL=disabled` and removes `OTK_REDIS_URL`, `OTK_TENANTS` and `OTK_SCIM_BEARER_TOKEN`; `OTK_ADMIN_KEY` and
+ * `OTK_JWT_SECRET` get fixture values and are restored after the run.
+ *
+ * Run just this file: `npx tsx --test test/security/m24_tenant_sweep.test.ts`
+ *
+ * @module test/security/m24_tenant_sweep.test
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

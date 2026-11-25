@@ -14,6 +14,19 @@
  *  10.  ProverDaemonManager re-exports ProverDaemonStatus type
  *
  * @since Wave 4 (4B-PACK-4B02 / E5.2)
+ *
+ * Module under test: `src/prover/ProverDaemonManager.ts`; the route and the dynamic import in
+ * `src/api/routes.ts` are checked as text.
+ *
+ * Strategy / partitions: initial status; the restart delay and maximum restarts read from
+ * `PROVER_RESTART_DELAY_MS` and `PROVER_MAX_RESTARTS`; stop before start and stop twice; recording a proof;
+ * the singleton.
+ *
+ * Needs: nothing external; no prover process is started. Changes the two variables above and restores them.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave4_prover_manager.test.ts`
+ *
+ * @module test/unit/wave4_prover_manager.test
  */
 
 import { describe, it } from 'node:test';

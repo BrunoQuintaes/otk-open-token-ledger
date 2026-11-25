@@ -1,3 +1,26 @@
+/**
+ * Tests for the second revision of the cache study's data contract: seed checks, text-collision report, the
+ * per-model text-arm design, the manifest, the hash-addressed content store and the public cache API.
+ *
+ * Modules under test: `scripts/h2eval/cache/contentStore.ts`, `scripts/h2eval/cache/dialogs.ts`,
+ * `scripts/h2eval/cache/index.ts`, `scripts/h2eval/corpus/collision.ts`, `scripts/h2eval/corpus/s1Plan.ts`,
+ * `scripts/h2eval/corpus/seedGuard.ts` and `scripts/h2eval/corpus/seedVerify.ts`.
+ *
+ * Strategy / partitions: default seed accepted and every previously used seed refused; read-only seed scan of
+ * reference repositories (seed found, not found, and a missing reference giving `INCOMPLETE_SCAN`, never "clean");
+ * byte-for-byte text and body collisions (detected) against different text (not); per-model design sizes and
+ * policy minimums; manifest hashes and references; content store round trip, idempotence, tampering and conflicts,
+ * an invalid hash, a one-byte change on disk and binary content; plan parameters (service tier, cache TTL only for
+ * the Anthropic hit-attempt arm, nonce tokens only for the control arm, `UNKNOWN` without a counter); the exported
+ * API; the segregated pilot call count; and a golden corpus hash for the test seed.
+ *
+ * Needs: a writable temporary directory (`os.tmpdir()`), the `git` command (the seed scan builds throwaway
+ * repositories there) and the `js-tiktoken` package. No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cache/r2.test.ts`
+ *
+ * @module test/h2eval/cache/r2.test
+ */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';

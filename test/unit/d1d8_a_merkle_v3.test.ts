@@ -1,5 +1,19 @@
 /**
  * D1-G05 (TS side) — Merkle v3 with domain separation and cardinality-bound paths.
+ *
+ * Module under test: `src/crypto/merkleV3.ts` (leaf and node hashing, root, proof, root from
+ * proof).
+ *
+ * Strategy / partitions: roots for 1, 2 and 3 leaves compared with roots built by hand (an odd
+ * node is promoted, not duplicated); every index of trees with 1 to 9 leaves verifies, while
+ * another leaf, another index, an extra or missing sibling, or an index at or above the leaf
+ * count is rejected; an inner node presented as a leaf is rejected.
+ *
+ * Needs: nothing external (keccak256 from ethers; no network).
+ *
+ * Run just this file: `npx tsx --test test/unit/d1d8_a_merkle_v3.test.ts`
+ *
+ * @module test/unit/d1d8_a_merkle_v3.test
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

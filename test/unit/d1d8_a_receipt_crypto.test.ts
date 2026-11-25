@@ -2,6 +2,24 @@
  * D3-G01 / D1-G01 (receipt side) — CE1 encoding, receipt v3 and conference v1 signatures,
  * legacy verification with the original algorithms (front A, run 20260930-1625).
  * Expected bytes below are written by hand from the CE1 table in A/01_design.md §5.
+ *
+ * Modules under test: `src/receipt/v3/canonicalEncoding.ts`, `src/receipt/v3/receiptCrypto.ts`,
+ * `src/receipt/v3/keyRing.ts`, and for the legacy case `src/metering/SignatureManager.ts` and
+ * `src/receipt/canonicalReceiptV1.ts`.
+ *
+ * Strategy / partitions: CE1 bytes for each value type; refused inputs (JS numbers, undefined,
+ * lone surrogates, dates, sparse arrays); different domains give different digests; a v3
+ * receipt that verifies, and one changed in count, version, tenant, binding or configuration;
+ * envelopes with the wrong domain, a forged signer, and unknown, revoked or retired keys; key
+ * ring rules (one entry per address, a retired key needs a retirement time); conference
+ * statements whose coverage or count changes, or that are moved to another receipt; legacy raw
+ * and V1 receipts still verify with the original algorithms.
+ *
+ * Needs: nothing external (in-memory keys and a fixed clock; no network).
+ *
+ * Run just this file: `npx tsx --test test/unit/d1d8_a_receipt_crypto.test.ts`
+ *
+ * @module test/unit/d1d8_a_receipt_crypto.test
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

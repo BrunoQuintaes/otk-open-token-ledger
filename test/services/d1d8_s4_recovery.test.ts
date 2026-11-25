@@ -5,6 +5,18 @@
  * marked process_lost). Operations of other (dead) instances are still recovered by lease expiry.
  *
  *   . scripts/ops/s4_env.sh && npx tsx --test --test-concurrency=1 test/services/d1d8_s4_recovery.test.ts
+ *
+ * Module under test: the recovery pass of `src/operations/runtime.ts`, with an operation built from
+ * `test/fixtures/d1d8/c/builders.ts`.
+ *
+ * Strategy: one scenario; the instance's own in-flight operation with an expired lease is left alone, and it is
+ * recovered once it leaves the in-flight set.
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`). The command above loads the test
+ * environment from `scripts/ops/s4_env.sh` first; with the variables already set,
+ * `npx tsx --test --test-concurrency=1 test/services/d1d8_s4_recovery.test.ts` runs just this file.
+ *
+ * @module test/services/d1d8_s4_recovery.test
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

@@ -2,6 +2,21 @@
  * OTKSDK Unit Tests
  *
  * Tests for receipt construction and dual receipt binding validation.
+ *
+ * Modules under test: `src/sdk/OTKSDK.ts` (raw and dual receipt builders, binding validation,
+ * the `OTKSDK` class, `defaultCostNormalizer`), with `deriveEpoch`/`deriveUsage` from
+ * `src/types/receipt.ts` and the test signer from `src/metering/SignatureManager.ts`.
+ *
+ * Strategy / partitions: raw receipt from a fixed provider response with the default and a
+ * custom cost normalizer; dual receipt with a signature; binding validation for a correct pair,
+ * a mismatched epoch and a mismatched signature hash; the class increments its nonce per
+ * receipt; the default normalizer with normal and zero token counts.
+ *
+ * Needs: nothing external (fixed timestamps, in-memory test signer, no network).
+ *
+ * Run just this file: `npx tsx --test test/unit/OTKSDK.test.ts`
+ *
+ * @module test/unit/OTKSDK.test
  */
 
 import { describe, it } from 'node:test';

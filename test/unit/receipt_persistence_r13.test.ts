@@ -3,6 +3,19 @@
  *
  * OTK_RECEIPT_LOG points into a directory that does not exist yet, so appendFileSync
  * fails (ENOENT) until the test creates it. No database or network is used.
+ *
+ * Modules under test: `src/api/receiptStore.ts` (durability mode and the synchronous write) and
+ * `src/api/routes.ts` (the receipt creation route).
+ *
+ * Strategy / partitions: the reported durability mode; a failed write is not acknowledged and has no effect;
+ * the route answers 503 when the write fails.
+ *
+ * Needs: a temporary directory; sets `OTK_RECEIPT_LOG`, `OTK_DB_URL` and `PROVER_URL` and removes
+ * `OTK_TENANTS` before importing the modules.
+ *
+ * Run just this file: `npx tsx --test test/unit/receipt_persistence_r13.test.ts`
+ *
+ * @module test/unit/receipt_persistence_r13.test
  */
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';

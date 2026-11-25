@@ -1,3 +1,21 @@
+/**
+ * Tests that the declared input-reserve policy is written on every RESERVED journal line of a batch, and that a
+ * resume declaring a different policy halts.
+ *
+ * Module under test: `scripts/h2eval/cli/run.ts` (`runAuthorized`), with the planner, the corpus freeze and the
+ * synthetic GO and acknowledgement helpers from `../support/`.
+ *
+ * Strategy / scenarios: a pilot batch run with a deliberate "none" declaration (present on every reservation); a
+ * resume with the same declaration (continues); and a resume with a different declaration (halts with a reserve
+ * policy mismatch). Same setup as `reserves.test.ts`.
+ *
+ * Needs: a writable temporary directory and a synthetic corpus frozen in the `setup` test (allow up to 5 minutes);
+ * sets `H2EVAL_CONTROL_DIR` to a temporary folder when unset. No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cli/reserve_declared.test.ts`
+ *
+ * @module test/h2eval/cli/reserve_declared.test
+ */
 // SYNTHETIC — OFFLINE. MET-02 R4(a) (C158 §3.2): the declared input-reserve choice is in EVERY RESERVED line of the batch journal; a resume that declares something different from what the
 // earlier operations used halts (RESERVE_POLICY_MISMATCH). Same setup as reserves.test.ts (pilot plan, multi-GO, offline provider).
 import { test } from 'node:test';

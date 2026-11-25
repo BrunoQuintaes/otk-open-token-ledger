@@ -2,6 +2,18 @@
  * D1-G01 / D3-G01 — static v3 vectors (test/fixtures/d1d8/a/v3_vectors.json) are reproduced
  * exactly by the current code. A change in encoding, digest, commitment or signature breaks this
  * test; such a change needs a new schema version, not a silent vector update.
+ *
+ * Module under test: everything `computeVectors` in `test/fixtures/d1d8/a/v3Vectors.ts` calls
+ * (v3 encoding, digests, commitment and signatures).
+ *
+ * Strategy: one comparison of the freshly computed vectors with the committed JSON file, plus a
+ * check of the hand-computed epoch and bucket window in the public signals.
+ *
+ * Needs: read access to the committed vectors file; no network.
+ *
+ * Run just this file: `npx tsx --test test/unit/d1d8_a_vectors.test.ts`
+ *
+ * @module test/unit/d1d8_a_vectors.test
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

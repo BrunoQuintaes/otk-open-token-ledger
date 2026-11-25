@@ -1,6 +1,21 @@
 /**
  * R19 — version-aware on-chain submission (no network in this file).
  * The end-to-end check against a local chain is test/chain/onchain_submission_v1_v2.test.ts.
+ *
+ * Module under test: `src/prover/onChainSubmission.ts` (`REGISTRY_ABI`, `PUBLIC_SIGNAL_COUNT`,
+ * `normalizeVersion`, `proofToSolidity`, `submitProofOnChain`).
+ *
+ * Strategy / partitions: public signal counts for circuit v1 (3) and v2 (4); conversion keeps all
+ * four v2 signals and swaps the pi_b coordinates; a signal count that does not match the version;
+ * version names "1"/"2" accepted and unknown ones refused; submission with no chain configured
+ * (returns `null`) and a v2 proof when only a v1 registry is configured (refused before sending).
+ *
+ * Needs: nothing external. The refused case names an RPC URL on a closed local port and a random
+ * in-memory key; it is rejected before any connection.
+ *
+ * Run just this file: `npx tsx --test test/unit/onchain_submission_r19.test.ts`
+ *
+ * @module test/unit/onchain_submission_r19.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

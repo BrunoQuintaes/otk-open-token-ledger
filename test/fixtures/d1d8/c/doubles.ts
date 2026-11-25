@@ -5,6 +5,14 @@
  * B: src/providers/d1d8Measurement.ts). Never imported by src/**. Their encodings are NOT A's
  * canonical encoding and their numbers are NOT B's formula: a test that passes with a double
  * proves C's plumbing (ordering, persistence, binding checks), not A's or B's correctness.
+ *
+ * In plain terms: these are stand-ins for the receipt signing and digest module, the CU formula, the local token
+ * counter, the conference report builder, the commitment opening generator, the public authorization builder, the
+ * proof adapter and the chain submitter, so the durable operation layer (`src/operations`) can be tested without
+ * real cryptographic circuits, tokenizers or a chain. Signing uses a random in-memory wallet; nothing is written to
+ * disk and nothing goes to the network.
+ *
+ * @module test/fixtures/d1d8/c/doubles
  */
 import { ethers } from 'ethers';
 import type {
@@ -17,8 +25,20 @@ import { canonicalJson } from '../../../../src/operations/ids.js';
 const digestOf = (domain: string, payload: unknown): Hex32 =>
   ethers.keccak256(ethers.toUtf8Bytes(`${domain}\n${canonicalJson(payload)}`)) as Hex32;
 
+/** A {@link ReceiptCrypto} double that also exposes its signer address and key id, so tests can assert them. */
 export interface ReceiptCryptoDouble extends ReceiptCrypto { readonly signer: string; readonly keyId: string }
 
+/**
+ * Creates a receipt crypto double: keccak256 digests over `domain + "\n" + canonical JSON` and EIP-191 signatures
+ * by one wallet with key id `double-key-1`.
+ *
+ * Verification reports `wrong_domain`, `digest_mismatch`, `bad_signature`, `unauthorized_signer` (any signer other
+ * than this wallet) or, for a conference, `binding_mismatch` when it does not point at the given receipt. Legacy
+ * receipts are always `unsupported_version`.
+ *
+ * @param wallet - Signing wallet; defaults to a new random one.
+ * @returns The double. Digests are NOT the canonical v3 encoding.
+ */
 export function createReceiptCryptoDouble(wallet = ethers.Wallet.createRandom()): ReceiptCryptoDouble {
   const keyId = 'double-key-1';
   const sign = async (domain: SignedEnvelope['domain'], digest: Hex32): Promise<SignedEnvelope> => ({
@@ -50,7 +70,13 @@ export function createReceiptCryptoDouble(wallet = ethers.Wallet.createRandom())
   return self;
 }
 
-/** CU double: (tIn + tOut) × 0.4 exactly, in micro-CU (hand-checkable: 100 + 20 → 48 CU). */
+/**
+ * CU double: (tIn + tOut) × 0.4 exactly, in micro-CU (hand-checkable: 100 + 20 → 48 CU).
+ *
+ * @param usage - Normalized usage; only `tIn` and `tOut` are read.
+ * @param cfg - Weight reference and formula name, copied into the result.
+ * @returns A `computed` result, or `usage_not_computable` with `cu: null` when either token count is `null`.
+ */
 export function computeCuDouble(usage: NormalizedUsage, cfg: Pick<CuConfig, 'ref' | 'formula'>): CuResult {
   if (usage.tIn === null || usage.tOut === null) {
     return { schema: 'otk.cu_result.v1', status: 'usage_not_computable', cu: null, formula: cfg.formula, weights: cfg.ref, tIn: usage.tIn, tOut: usage.tOut, wModelMilli: null, wProviderMilli: null, developmentProfile: true };
@@ -59,14 +85,24 @@ export function computeCuDouble(usage: NormalizedUsage, cfg: Pick<CuConfig, 'ref
   return { schema: 'otk.cu_result.v1', status: 'computed', cu: { units, scale: 1_000_000n }, formula: cfg.formula, weights: cfg.ref, tIn: usage.tIn, tOut: usage.tOut, wModelMilli: 400n, wProviderMilli: 1000n, developmentProfile: true };
 }
 
-/** Reservation double: CU(estimatedInput + maxOutput) with the same 0.4 weight. */
+/**
+ * Reservation double: CU(estimatedInput + maxOutput) with the same 0.4 weight.
+ *
+ * @param req - Reservation request; only `estimatedInputTokens` and `maxOutputTokens` are read.
+ * @returns A worst-case CU reservation in micro-CU, with no money part.
+ */
 export const estimateReservationDouble: EstimateReservationFn = (req) => ({
   cu: { units: (req.estimatedInputTokens + req.maxOutputTokens) * 400_000n, scale: 1_000_000n } as Scaled,
   money: null,
   basis: 'worst_case_estimate@double',
 });
 
-/** Local counter double: counts whitespace-separated words (not a tokenizer). */
+/**
+ * Local counter double: counts whitespace-separated words (not a tokenizer).
+ *
+ * @returns A stateful counter: input words are counted on the JSON text of the request body, output words on each
+ *   text chunk; `finish` reports both categories as covered.
+ */
 export function createLocalCounterDouble(): LocalCounter {
   let input = 0n; let output = 0n;
   const words = (s: string) => BigInt(s.split(/\s+/).filter(Boolean).length);
@@ -81,6 +117,13 @@ export function createLocalCounterDouble(): LocalCounter {
   };
 }
 
+/**
+ * Conference report double: compares provider and local counts for input and output (absolute delta only, `null`
+ * when either side is missing) and always returns state `incomplete` with verdict `not_applicable`.
+ *
+ * @param args - Operation key, receipt digest, normalized usage, local count result, threshold and creation time.
+ * @returns A new report with no tokenizer description and no relative deltas.
+ */
 export const buildConferenceReportDouble: BuildConferenceReportFn = (args) => {
   const local = new Map(args.local.counts.map((c) => [c.category, c.count]));
   const prov = new Map(args.usage.categories.map((c) => [c.name, c.count]));
@@ -95,7 +138,15 @@ export const buildConferenceReportDouble: BuildConferenceReportFn = (args) => {
   };
 };
 
-/** Opening double: random blinding from node crypto (CSPRNG), not A's field construction. */
+/**
+ * Opening double: random blinding from node crypto (CSPRNG), not A's field construction.
+ *
+ * @param key - Tenant and operation identifiers of the opening.
+ * @param usage - Committed usage (scaled CU).
+ * @param circuitId - Circuit the opening is meant for.
+ * @param privateInputs - Extra private circuit inputs, kept by reference.
+ * @returns A new opening with a 31-byte random blinding written in decimal and the current time as `createdAt`.
+ */
 export const newCommitmentOpeningDouble: NewCommitmentOpeningFn = (key: OperationKey, usage: Scaled, circuitId: string, privateInputs: Record<string, string>): CommitmentOpening => ({
   schema: 'otk.opening.v1', key, circuitId, usage,
   blinding: BigInt(ethers.hexlify(ethers.randomBytes(31))).toString(10), privateInputs, createdAt: new Date().toISOString(),
@@ -106,7 +157,14 @@ export const newCommitmentOpeningDouble: NewCommitmentOpeningFn = (key: Operatio
 import type { BuildPublicAuthorizationFn, ProofAdapter, ProofBundle, PublicAuthorization } from '../../../../src/types/d1d8/index.js';
 import type { ChainSubmitter, Target } from '../../../../src/operations/proofPipeline.js';
 
-/** Authorization double: digest over the public fields (keccak of canonical JSON), double envelope. */
+/**
+ * Authorization double: digest over the public fields (keccak of canonical JSON), double envelope.
+ *
+ * @param crypto - Receipt crypto double whose receipt signature is reused as the authorization envelope (domain and
+ *   payload digest replaced, so the signature itself does not cover the authorization digest).
+ * @returns A builder that derives the operation reference and replay key from the tenant and operation ids, with
+ *   epoch fixed at 1.
+ */
 export function createBuildPublicAuthorizationDouble(crypto: ReceiptCryptoDouble): BuildPublicAuthorizationFn {
   return async ({ receipt, domain, bucket }) => {
     const operationRef = ethers.keccak256(ethers.toUtf8Bytes(`ref
@@ -125,7 +183,13 @@ ${operationRef}`)) as Hex32,
   };
 }
 
-/** Proof adapter double: no circuit; calldata = [replayKey, authorizationDigest, publicSignals]. */
+/**
+ * Proof adapter double: no circuit; calldata = [replayKey, authorizationDigest, publicSignals].
+ *
+ * @param circuitId - Circuit id reported by the adapter and stamped on every bundle.
+ * @returns The adapter plus a `proved` counter incremented on each `prove` call (lets tests assert that a retry
+ *   did not prove twice). Local verification always succeeds.
+ */
 export function createProofAdapterDouble(circuitId: string): ProofAdapter & { proved: number } {
   const self = {
     circuitId,
@@ -141,21 +205,51 @@ export function createProofAdapterDouble(circuitId: string): ProofAdapter & { pr
   return self;
 }
 
-/** Chain double: one registry (replayKey → authorizationDigest) per target; can lose one answer. */
+/**
+ * Chain double: one registry (replayKey → authorizationDigest) per target; can lose one answer.
+ *
+ * A target is keyed by chain id, lower-cased registry address and schema version. Every `submit` is recorded in
+ * `txs` and registers the call immediately. Setting `loseNextAnswer` makes the next `submit` register the call and
+ * then throw a timeout error, simulating a transaction that was mined but whose answer never arrived.
+ */
 export class ChainSubmitterDouble implements ChainSubmitter {
+  /** Simulated registries by target key; each maps replay key to the registered authorization digest. */
   readonly registries = new Map<string, Map<string, string>>();
+  /** Every submitted call in order, with its target key and call arguments. */
   readonly txs: Array<{ target: string; args: unknown[] }> = [];
+  /** When `true`, the next `submit` registers the call, resets this flag and then throws. */
   loseNextAnswer = false;
   private reg(t: Target): Map<string, string> {
     const k = `${t.chainId}:${t.registry.toLowerCase()}:${t.schemaVersion}`;
     if (!this.registries.has(k)) this.registries.set(k, new Map());
     return this.registries.get(k)!;
   }
+  /**
+   * Counts the transactions sent to one target.
+   *
+   * @param t - Target chain, registry and schema version.
+   * @returns Number of `submit` calls recorded for that target, including one whose answer was lost.
+   */
   txsTo(t: Target): number { return this.txs.filter((x) => x.target === `${t.chainId}:${t.registry.toLowerCase()}:${t.schemaVersion}`).length; }
+  /**
+   * Reports whether the authorization's replay key is already registered on the target.
+   *
+   * @param t - Target chain, registry and schema version.
+   * @param auth - Authorization whose replay key and digest are looked up.
+   * @returns `not_registered`, `registered_same` (same authorization digest) or `registered_other`.
+   */
   async registration(t: Target, auth: PublicAuthorization) {
     const cur = this.reg(t).get(auth.replayKey);
     return cur === undefined ? 'not_registered' as const : cur === auth.authorizationDigest ? 'registered_same' as const : 'registered_other' as const;
   }
+  /**
+   * Records the call and registers `args[0]` (replay key) with `args[1]` (authorization digest) on the target.
+   *
+   * @param t - Target chain, registry and schema version.
+   * @param call - Encoded call; only `args` is used.
+   * @returns A fake transaction hash derived from the running transaction count.
+   * @throws {Error} When `loseNextAnswer` is set: the call is already registered, only the answer is lost.
+   */
   async submit(t: Target, call: { abi: string[]; functionName: string; args: unknown[] }) {
     const m = this.reg(t);
     this.txs.push({ target: `${t.chainId}:${t.registry.toLowerCase()}:${t.schemaVersion}`, args: call.args });

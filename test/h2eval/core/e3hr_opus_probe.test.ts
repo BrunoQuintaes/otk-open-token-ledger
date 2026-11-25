@@ -1,3 +1,25 @@
+/**
+ * Tests the purpose-based probe judgement (measure the input; a truncation with complete usage does not fail) for
+ * the probes of the largest comparison model, whose probes may be truncated by their output cap.
+ *
+ * Modules under test: `scripts/h2eval/core/modelProbe.ts` (`judgeProbe`, `probeKeyOf`, `probeStateOf`) and
+ * `scripts/h2eval/core/runner.ts` (`createExecutor`), with the journal verifier and the doubles in
+ * `../support/double.ts`.
+ *
+ * Strategy / partitions: unit checks with the planned probe sizes (a summary probe with a 512-token cap and an
+ * analysis first call with a 256-token cap, each truncated with complete usage, pass; a token ratio of 1.91 fails
+ * while exactly 1.9 passes; a refusal without usage, reasoning above the allowance and a wrong served model fail);
+ * executor runs (truncated probes pass and the band continues; ratio 1.91, refusal without usage and an uncertain
+ * send stop the series and nothing more is sent). Sizes come from the audited plan, not from provider responses.
+ * Tests tagged with a commit id failed on the executor before the fix.
+ *
+ * Needs: a writable temporary directory. It sets `H2EVAL_TEST_KEY` to a fake canary value. Doubles only: no network,
+ * no credential, no GO file.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/core/e3hr_opus_probe.test.ts`
+ *
+ * @module test/h2eval/core/e3hr_opus_probe.test
+ */
 // SYNTHETIC — OFFLINE. E3HR (C160, OPUS-FIX): o delta da sonda do E1HR (0c48a96d sobre c9d27216) portado para o executor E2''' 11bcd2f4, com os casos do OPUS (R6-M E3PPP).
 // A sonda de modelo/faixa e julgada pelo seu PROPOSITO declarado (medir a ENTRADA: U/L0 <= limite e U <= reserva). Para o Opus (claude-opus-5-5, faixa medida 12..810), as sondas do plano
 // sao a 1a operacao de cada banda ABOVE_RANGE_Bk: resumo com max_tokens 512 (L0 ~ 860-875), call1 de analise com max_tokens 256 (L0 ~ 5.000) e codigo com 2048. O raciocinio conta no max_tokens,

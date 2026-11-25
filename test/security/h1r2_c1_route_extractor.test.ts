@@ -11,6 +11,16 @@
  *    variable, path flag, router predicate) is reported by the extractor at that line, except the conditions listed
  *    in NOT_A_ROUTE with the reason (guards and delegations, never a wildcard).
  * Static only: no server, no network.
+ *
+ * Under test: `scripts/ops/extract_routes.mjs`, run as a child `node` process with `--json`; the routers it scans are
+ * read as text (the list of scanned files is taken from the extractor's own source). A third case checks that a
+ * negated path condition is an exclusion, not a route.
+ *
+ * Needs: only the repository files; spawns `node` once per call to the extractor.
+ *
+ * Run just this file: `npx tsx --test test/security/h1r2_c1_route_extractor.test.ts`
+ *
+ * @module test/security/h1r2_c1_route_extractor.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,7 +1,21 @@
 /**
  * ReceiptIndexer — unit tests for IndexedReceipt schema and state persistence.
  * Uses no live RPC; tests the data model only.
+ *
+ * Module under test: the `IndexedReceipt` type from `scripts/indexer/receipt_indexer.ts` (imported
+ * as a type only, so the indexer itself does not run).
+ *
+ * Strategy / partitions: required fields and their JSON types (bigint values as strings, ISO
+ * timestamps) with a serialize/parse round trip; the JSONL output format (one object per line,
+ * appending keeps earlier lines); the shape of the indexer state file.
+ *
+ * Needs: the local file system only (writes JSONL and state files to fresh temporary directories
+ * that the `after` hooks remove); no network, no chain.
+ *
+ * Run just this file: `npx tsx --test test/unit/ReceiptIndexer.test.ts`
+ *
  * @since U10.1
+ * @module test/unit/ReceiptIndexer.test
  */
 
 import { describe, it, before, after } from 'node:test';

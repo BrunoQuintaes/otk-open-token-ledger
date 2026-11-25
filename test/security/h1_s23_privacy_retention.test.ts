@@ -11,6 +11,18 @@
  *   accepts ONLY the statements the module issues today (an unknown statement fails the test): what is removed, what is
  *   pseudonymised (ledger rows keep their amounts), what is kept (tombstone with the request digest), journal written
  *   before the transaction, other tenant untouched, refusal of non-terminal operations, replay after a restore.
+ *   A last case pins that the shipped retention policy erases nothing by age (retention periods are still undecided).
+ *
+ * Modules under test: `src/api/routes.ts` and `src/api/gdpr.ts` (called in process), `src/api/receiptStore.ts`,
+ * `src/operations/retention.ts` and `src/operations/context.ts`.
+ *
+ * Needs: nothing external. Before importing it empties `OTK_RECEIPT_LOG`, `OTK_DB_URL` and `OTK_TENANT_LOG`, sets
+ * `PROVER_URL=disabled` and removes `OTK_REDIS_URL` and `OTK_TENANTS`. Part 3 writes its erasure journal to a
+ * temporary directory that is removed afterwards; some cases capture `process.stderr` to read the audit log lines.
+ *
+ * Run just this file: `npx tsx --test test/security/h1_s23_privacy_retention.test.ts`
+ *
+ * @module test/security/h1_s23_privacy_retention.test
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -55,7 +67,12 @@ async function call(method: string, url: string, headers: Record<string, string>
   return { status: res.statusCode, body: res.body, json, hdrs: res.hdrs };
 }
 const bearer = (t: string) => ({ authorization: `Bearer ${t}` });
-/** Run fn while capturing what the structured logger writes to stderr. */
+/**
+ * Run fn while capturing what the structured logger writes to stderr.
+ *
+ * @param fn - Work to run; stderr output is swallowed while it runs and restored afterwards.
+ * @returns The result of `fn` and the captured lines, each parsed as JSON (or `{ raw }` when not JSON).
+ */
 async function captureStderr<T>(fn: () => Promise<T>): Promise<{ out: T; lines: Json[] }> {
   const orig = process.stderr.write.bind(process.stderr);
   const chunks: string[] = [];

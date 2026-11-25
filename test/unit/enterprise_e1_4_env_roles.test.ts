@@ -8,7 +8,21 @@
  * - Token with ":"        → still works
  * - All roles: OWNER, ADMIN, OPERATOR, MEMBER, VIEWER
  *
+ * Module under test: `loadTenantsFromString` and the lookups of `src/api/tenantKeyRegistry.ts`.
+ * The tenant list is passed as a string argument; the test never reads or sets `OTK_TENANTS`.
+ *
+ * Strategy / partitions: the legacy format (one and several entries, a token with colons, the
+ * loaded count, auth switched on); the explicit format for each of the five roles, with tokens
+ * containing colons; an unknown or empty role (entry skipped, neighbours kept); mixed formats
+ * and several tenants in one string; empty and whitespace-only input, a pair without a colon,
+ * and a reload that clears the previous state.
+ *
+ * Needs: nothing external (the registry is cleared before each test).
+ *
+ * Run just this file: `npx tsx --test test/unit/enterprise_e1_4_env_roles.test.ts`
+ *
  * @since E1.4 (2026-03-14)
+ * @module test/unit/enterprise_e1_4_env_roles.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

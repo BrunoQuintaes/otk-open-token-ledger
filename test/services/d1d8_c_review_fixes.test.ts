@@ -2,6 +2,24 @@
  * D1–D8 / C — regression tests for the findings of the adversarial review of C (two agents,
  * 2026-10-01; see C/REVISAO_ADVERSARIAL_C.md). Each test fails on the code before the fix.
  * Real PostgreSQL; local controllable provider; legacy measurement ports unless stated.
+ *
+ * Module under test: `src/operations/runtime.ts` (`OperationsRuntime`) through the in-process API proxy routes,
+ * with the fake provider from `./d1d8_c_provider.ts`.
+ *
+ * Strategy / scenarios, one per review finding: a dated model name in the provider answer still settles with the
+ * admitted weights; a 4xx without usage releases the hold; requests refused before the provider (no call, no
+ * operation) for each refused case in the table; headers allowlisted in both directions; a slow reader and an
+ * oversized non-stream body still metered; an exception after the start ends the operation as uncertain without a
+ * leftover lease; cancelling an operation that never started releases it at once; and a spool folder without a
+ * stable instance id refused.
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`) and a writable temporary
+ * directory. Before importing the server it sets fixture values in the test process for the API's variables
+ * (`OTK_TENANTS`, fake provider keys, upstream overrides, `PROVER_URL=disabled`). No network.
+ *
+ * Run just this file: `npx tsx --test test/services/d1d8_c_review_fixes.test.ts`
+ *
+ * @module test/services/d1d8_c_review_fixes.test
  */
 process.env['OTK_DB_URL'] = '';
 process.env['OTK_RECEIPT_LOG'] = '';

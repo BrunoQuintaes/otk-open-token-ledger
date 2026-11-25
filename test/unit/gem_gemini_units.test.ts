@@ -6,6 +6,30 @@
  *    100 000, cache 10 000, output 400 000), never by the functions under test; SSE fed split at EVERY byte offset;
  *  - G-GEM-MONEY (pure): policy v4 admission, v2/v3 unchanged, tier matching;
  *  - versioned development weights: the historical profile keeps its digest.
+ *
+ * Modules under test: `upstreamHeaders` from `src/proxy/ProxyForwarder.ts`,
+ * `stripQueryCredentials` from `src/proxy/ProxyGateway.ts`, the measurement exports of
+ * `src/providers/d1d8Measurement.ts`, `src/providers/usage/streamUsageAccumulator.ts`,
+ * `developmentWeights` from `src/operations/d1d8Ports.ts`, `src/operations/moneyBound.ts` and,
+ * for the last case, `d1d8ProfileFromEnv` from `src/operations/bootstrapD1D8.ts`.
+ *
+ * Strategy / partitions: headers per provider with client credentials in any letter case, and
+ * credentials in the query string; Gemini JSON responses (basic, implicit cache, thinking,
+ * absent or invalid usage, blocked prompt, served tier); Gemini streams split at every byte
+ * offset and one byte at a time, cut early, with no usage, with a blocked prompt, plus the
+ * served tier of an OpenAI stream; money policy v4 vs v2/v3, the OpenAI service tier, the
+ * published policy list and tier matching; the historical and new development weight
+ * profiles; startup configuration accepting v4 and a known weights profile and refusing unknown
+ * ones.
+ *
+ * Needs: must be run from the repository root (reads
+ * `scripts/pilot/price_table_pilot_v3_gemini_20261003.json` by relative path). The startup case
+ * passes its own environment object and a database URL on a closed local port; no database or
+ * network.
+ *
+ * Run just this file: `npx tsx --test test/unit/gem_gemini_units.test.ts`
+ *
+ * @module test/unit/gem_gemini_units.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

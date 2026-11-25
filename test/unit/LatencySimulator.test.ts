@@ -1,6 +1,23 @@
 /**
  * LatencySimulator — unit tests
+ *
+ * Checks the simulated network latency used by the benchmarks (per-hop delay, consensus delay,
+ * estimated block time and throughput).
+ *
+ * Module under test: `src/bench/LatencySimulator.ts` (`LatencySimulator`, `latencyConfigFromEnv`).
+ *
+ * Strategy / partitions: disabled (base 0 ms) vs enabled; jitter 0 (exact delay) vs jitter > 0
+ * (delay stays within the jitter band); estimates at zero and at positive latency; reading the
+ * configuration from the environment when no variable is set.
+ *
+ * Needs: real timers (a few short awaited delays). `latencyConfigFromEnv` reads
+ * `NET_LATENCY_MS`, `NET_LATENCY_JITTER` and `IBFT_ROUNDS`; the test only asserts valid ranges,
+ * so it passes whether or not they are set.
+ *
+ * Run just this file: `npx tsx --test test/unit/LatencySimulator.test.ts`
+ *
  * @since U9.5
+ * @module test/unit/LatencySimulator.test
  */
 
 import { describe, it } from 'node:test';

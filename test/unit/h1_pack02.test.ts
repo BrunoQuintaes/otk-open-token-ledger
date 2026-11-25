@@ -1,6 +1,23 @@
 /**
  * H-PACK-02 Tests — H1.6 (Idempotency), H1.7 (Graceful Shutdown),
  * H1.8 (Body Limits), H1.9 (Security Headers)
+ *
+ * Modules under test: `src/api/securityHeaders.ts`, `src/api/limits.ts`, `src/api/idempotency.ts`,
+ * the shutdown flag in `src/api/server.ts`, and `handleRequest` in `src/api/routes.ts` for the
+ * route-level cases.
+ *
+ * Strategy / partitions: the core security headers, HSTS absent and present depending on
+ * `OTK_TLS_ENABLED`, and headers on a real route answer; a body within and above the size limit,
+ * the error messages, and an oversized receipt (413); body hashes equal and different;
+ * idempotency for a new key, the same key and body (cached), the same key with another body
+ * (conflict, 409 on the route) and no key; the shutdown flag default and reset.
+ *
+ * Needs: no server (mock request/response objects; importing `server.ts` does not start a
+ * listener in these tests). Sets and deletes `OTK_TLS_ENABLED` within the HSTS tests.
+ *
+ * Run just this file: `npx tsx --test test/unit/h1_pack02.test.ts`
+ *
+ * @module test/unit/h1_pack02.test
  */
 
 import { describe, it, beforeEach, afterEach } from 'node:test';

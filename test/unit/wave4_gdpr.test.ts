@@ -22,6 +22,19 @@
  *  18.  gdpr.ts exports handleGdprExport and handleGdprErase
  *
  * @since Wave 4 (4B-PACK-4B04 / E5.5+E5.6)
+ *
+ * Module under test: `src/api/gdpr.ts` (export and erasure handlers and the store registry); the route list in
+ * `src/api/routes.ts`, the permission in `src/security/rbac.ts` and the migration SQL are checked as text.
+ *
+ * Strategy / partitions: as listed above (the numbering is the original plan, not the test order); export in
+ * JSON and CSV and erasure, each with an injected in-memory store.
+ *
+ * Needs: nothing external (mock request and response, injected store); reads source files from the repository
+ * root found from this file's location.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave4_gdpr.test.ts`
+ *
+ * @module test/unit/wave4_gdpr.test
  */
 
 import { describe, it, before } from 'node:test';

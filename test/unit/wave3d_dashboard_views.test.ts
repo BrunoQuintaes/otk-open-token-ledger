@@ -6,6 +6,20 @@
  *   2. Indexer: getUsageByProvider + getProviderHealth
  *   3. REST endpoints: /app/api/usage, /app/api/admin/summary, /app/api/providers/health, /app/api/dead-letters
  *   4. Dashboard HTML contains all 6 tabs (Overview, Receipts, Billing, Admin, Health, Onboarding)
+ *
+ * Modules under test: `src/dashboard/indexer.ts` (usage per provider and provider health),
+ * `src/dashboard/app.ts` (the tabbed page) and the dashboard API routes of `src/api/routes.ts`.
+ *
+ * Strategy / partitions: usage aggregated per provider and model, filtered by tenant, average latency, unknown
+ * tenant, ordering; health with p95 and maximum latency and ordering; each tab and its script and style in the
+ * page; one call per dashboard API route; the exported types compile.
+ *
+ * Needs: nothing external; requests are in-memory mocks that send the value of `OTK_ADMIN_KEY` (or a test
+ * default) as the platform key.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave3d_dashboard_views.test.ts`
+ *
+ * @module test/unit/wave3d_dashboard_views.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

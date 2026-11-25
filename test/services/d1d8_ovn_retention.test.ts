@@ -6,6 +6,24 @@
  * the product default keeps everything (RETENTION_POLICY_UNSET, decision of the author).
  *
  *   . docs/_ops/OVERNIGHT_20261005_MASTER/tools/ovn_env.sh && npx tsx --test test/services/d1d8_ovn_retention.test.ts
+ *
+ * Modules under test: the erasure and retention functions of `src/operations/runtime.ts` and the API's handling of
+ * erased operation ids, through the in-process API with the fake provider from `./d1d8_c_provider.ts`.
+ *
+ * Strategy / scenarios, in order: three settled operations with receipt, opening and conference; the default policy
+ * erases nothing; a backup taken before erasure; erasing one operation (private material removed, tombstone and
+ * pseudonymous debit kept, totals unchanged); a retry of the erased id answered 410 without any call or debit;
+ * restoring the backup brings the data back and replaying the erasure journal erases it again; and an age policy
+ * with test periods that never erases an operation with open exposure.
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`) and the `docker` command with
+ * access to its container (name from `OTK_TEST_PG_CONTAINER`, with a default) for `pg_dump` and `psql`; a
+ * throwaway operator key is generated per run. Before importing the server it sets fixture values in the test process for the API's variables (tenants, a
+ * fake OpenAI key, the upstream override, `PROVER_URL=disabled`). The command above first sources an environment
+ * script that is not part of this repository; with `OTK_TEST_PG_URL` already set,
+ * `npx tsx --test test/services/d1d8_ovn_retention.test.ts` runs just this file.
+ *
+ * @module test/services/d1d8_ovn_retention.test
  */
 process.env['OTK_DB_URL'] = '';
 process.env['OTK_RECEIPT_LOG'] = '';

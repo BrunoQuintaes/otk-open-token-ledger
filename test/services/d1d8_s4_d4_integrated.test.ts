@@ -9,6 +9,17 @@
  * Real PostgreSQL 16, in-process gateway, synthetic provider.
  *
  *   . scripts/ops/s4_env.sh && npx tsx --test --test-concurrency=1 test/services/d1d8_s4_d4_integrated.test.ts
+ *
+ * Modules under test: the composed durable profile (`bootstrapD1D8` with signed weights read from a file) and the
+ * in-process gateway of `src/operations/runtime.ts`, with the fake provider from `./d1d8_c_provider.ts`.
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`) and a writable temporary
+ * directory; signer keys are generated per run. Before importing the server it sets fixture values in the test
+ * process for the API's variables (tenants, a fake OpenAI key, the upstream override, `PROVER_URL=disabled`). The
+ * command above loads the test environment from `scripts/ops/s4_env.sh` first; with the variables already set,
+ * `npx tsx --test --test-concurrency=1 test/services/d1d8_s4_d4_integrated.test.ts` runs just this file.
+ *
+ * @module test/services/d1d8_s4_d4_integrated.test
  */
 process.env['OTK_DB_URL'] = '';
 process.env['OTK_RECEIPT_LOG'] = '';

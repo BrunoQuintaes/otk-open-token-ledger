@@ -2,6 +2,19 @@
  * Phase 10 reconciliation — matcher classifications, timezone boundary, no amount-only matching,
  * aggregation awareness and idempotence. Provider statements are SYNTHETIC fixtures; OTK records are
  * SYNTHETIC (source 'fixture').
+ *
+ * Module under test: the matcher and report of `src/reconciliation/index.ts`.
+ *
+ * Strategy / partitions: each classification produced by at least one fixture, per provider; the price-version
+ * evidence rule; the zero rule; the timing tolerance and the statement edge; an unknown model; the Pacific-time
+ * day boundary with the right and a wrong declared zone; no match on amount alone; aggregate, per-request and
+ * non-USD statements; the same input in any record order gives the same bytes and digest.
+ *
+ * Needs: reads fixtures under `test/fixtures/reconciliation/` (relative to the repository root); no network.
+ *
+ * Run just this file: `npx tsx --test test/unit/reconciliation_match.test.ts`
+ *
+ * @module test/unit/reconciliation_match.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

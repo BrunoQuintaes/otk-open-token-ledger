@@ -3,6 +3,22 @@
  *
  * Tests PriceStore, PriceScraper (mock), PriceScheduler, CostBridge live/seed fallback.
  * No live HTTP calls — all scrapers mocked via module injection.
+ *
+ * Modules under test (imported dynamically inside each test): `src/pricing/PriceStore.ts`,
+ * `src/pricing/PriceScraper.ts`, `src/pricing/PriceScheduler.ts` and `src/pricing/economics/CostBridge.ts`;
+ * also the committed price seed file.
+ *
+ * Strategy / partitions: the store without Redis (writes ignored, reads fall back to the seed); the scraper and
+ * a scrape run (result shape only, success or failure both accepted); the scheduler disabled when
+ * `OTK_PRICE_SCRAPE_ENABLED` is unset; the cost bridge with the seed, an unknown provider and an unknown model;
+ * the seed file structure.
+ *
+ * Needs: no Redis. Note: the scraper is not mocked; the scraper and scrape-run cases call the real provider
+ * pricing pages over HTTPS when the machine is online and accept a failure when it is offline.
+ *
+ * Run just this file: `npx tsx --test test/unit/w7_price_intelligence.test.ts`
+ *
+ * @module test/unit/w7_price_intelligence.test
  */
 
 import { describe, it } from 'node:test';

@@ -3,6 +3,23 @@
  *
  * Validates that SDK-generated receipts are compatible with metering_v1.circom.
  * This test ensures the Dual Receipt Model binding is correct.
+ *
+ * Modules under test: `src/sdk/OTKSDK.ts` (`buildRawReceipt`) and `src/types/receipt.ts` (`deriveUsage`,
+ * `deriveEpoch`), checked against the inputs the v1 circuit expects (`userId`, `usage`, `nonce`, `epoch`,
+ * `maxUsage`).
+ *
+ * Strategy / partitions: prerequisites present; the derived inputs have the circuit's shape; a real witness is
+ * generated from SDK-derived inputs; the documented commitment and public-input order; field edge cases (very
+ * large user id, zero usage, the `usage <= maxUsage` constraint); epoch derivation for several timestamps. The
+ * circuit-dependent cases are skipped when the compiled circuit or the witness script is missing.
+ *
+ * Needs: for the witness case, the compiled `zk/build/metering_v1_js/metering_v1.wasm` and
+ * `scripts/zk/generate_witness.cjs`; it runs `node` as a child process and writes `zk/build/test_input.json` and
+ * `zk/build/test_witness.wtns` (left in place). Paths are relative, so run from the repository root. No network.
+ *
+ * Run just this file: `npx tsx --test test/integration/CircuitBinding.test.ts`
+ *
+ * @module test/integration/CircuitBinding.test
  */
 
 import { describe, it } from 'node:test';

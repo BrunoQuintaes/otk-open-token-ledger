@@ -8,6 +8,17 @@
  * recorded author) and listByCreator from a second pool (another replica); PgSubjectStatusStore shared by two pools
  * (two replicas), monotonic "not before" instants, and two subjectStatus module instances over the same table.
  * A small non-gated case checks the row mapping of PgSubjectStatusStore with a fake pool (BIGINT as string).
+ *
+ * Modules under test: `src/infra/pg/PgApiKeyMetadataStore.ts`, `src/infra/pg/PgSubjectStatusStore.ts` and
+ * `src/auth/subjectStatus.ts` (loaded twice with different query strings to get two independent module instances).
+ *
+ * Needs: for the PostgreSQL suite, the environment variable `OTK_TEST_PG_URL` pointing at a disposable database;
+ * it drops and recreates the tables `otk_api_keys` and `otk_subject_status` (never point it at real data). The
+ * fake-pool case needs nothing external.
+ *
+ * Run just this file: `npx tsx --test test/integration/h1_laneb_pg_identity.test.ts`
+ *
+ * @module test/integration/h1_laneb_pg_identity.test
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

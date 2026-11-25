@@ -4,6 +4,24 @@
  * "Replica A" writes straight to the shared registry (an in-memory RegistryTokenSource); this process plays replica B.
  * The same contract runs against two real server processes and PostgreSQL in
  * test/integration/stopgate01_r13b_tenant_tokens_two_replicas_pg.test.ts.
+ *
+ * Strategy / partitions: a token created on the other replica is learned at its first request; revoked and suspended
+ * rows drop the token, while environment-configured tokens without a row keep working; store outage (503 on strict
+ * requests, local snapshot on plain reads, unknown tokens never learned); lookups of unknown values throttled per
+ * source; tenant CRUD queues ordered changes and a failed write keeps them for a retry; the shared registry stores
+ * only a hash, never the token; a queued revocation is not undone by an older active row; a token bound to another
+ * tenant is never moved; the dynamic-key prefix is refused for registry tokens and unknown roles are not admitted;
+ * without an authority nothing is queued.
+ *
+ * Modules under test: `src/auth/registryTokenAuthority.ts`, `src/auth/credentialAuthority.ts`,
+ * `src/auth/authMiddleware.ts`, `src/api/tenantKeyRegistry.ts` and `src/api/tenantCrud.ts`.
+ *
+ * Needs: nothing external (the shared registry is the in-memory `MemRegistry` below, with switchable read and write
+ * failures).
+ *
+ * Run just this file: `npx tsx --test test/security/stopgate01_r13b_registry_authority.test.ts`
+ *
+ * @module test/security/stopgate01_r13b_registry_authority.test
  */
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

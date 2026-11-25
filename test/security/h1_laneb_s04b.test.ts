@@ -16,6 +16,21 @@
  *     restoreKeys:true; the registry token is restored; a key minted after the reactivation works; the policy also
  *     holds when the reactivation is made by the other replica.
  * In-memory stores only; no network.
+ *
+ * Also covered: a SCIM user deprovisioning on replica B makes replica A refuse a JWT carrying that user's id.
+ *
+ * Modules under test: the route handlers of `src/api/routes.ts` called in process, with `src/auth/subjectStatus.ts`
+ * (two instances), `src/api/tenantKeyRegistry.ts`, `src/auth/jwt.ts`, `src/api/tenantCrud.ts`,
+ * `src/api/apiKeyManager.ts` and the memory key, token and user stores.
+ *
+ * Needs: nothing external. Before importing it empties `OTK_RECEIPT_LOG`, `OTK_DB_URL` and `OTK_TENANT_LOG`, sets
+ * `PROVER_URL=disabled` and `OTK_SUBJECT_STATUS_TTL_MS=50` (so the staleness bound is 50 ms) and removes
+ * `OTK_REDIS_URL` and `OTK_TENANTS`; `OTK_ADMIN_KEY` and `OTK_JWT_SECRET` get fixture values and are restored after
+ * the run. Short real-time waits (tens of ms) let the TTL expire.
+ *
+ * Run just this file: `npx tsx --test test/security/h1_laneb_s04b.test.ts`
+ *
+ * @module test/security/h1_laneb_s04b.test
  */
 import { describe, it, before, after, mock } from 'node:test';
 import assert from 'node:assert/strict';
@@ -64,14 +79,23 @@ async function call(method: string, url: string, headers: Record<string, string>
   return { status: res.statusCode, body: res.body, json };
 }
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-/** a time later than "now" by more than one second (iat/createdAt have second granularity) */
+/**
+ * a time later than "now" by more than one second (iat/createdAt have second granularity)
+ *
+ * @param fn - Work to run while `Date.now` is mocked 2000 ms ahead; the mock is restored when it settles.
+ * @returns The result of `fn`.
+ */
 function later<T>(fn: () => Promise<T>): Promise<T> {
   const now = Date.now();
   const m = mock.method(Date, 'now', () => now + 2000);
   return fn().finally(() => m.mock.restore());
 }
 
-/** tenant with registry token, a dynamic key, an access JWT and a refresh token bound to a member user */
+/**
+ * tenant with registry token, a dynamic key, an access JWT and a refresh token bound to a member user
+ *
+ * @param tag - Short label that makes the tenant, user and token names unique within the run.
+ */
 async function tenantWithCredentials(tag: string) {
   const T = `lb-s04-${tag}-${RUN}`; const regTok = tok(tag);
   assert.equal((await call('POST', '/admin/tenants', platform, j({ tenantId: T, token: regTok, role: 'OWNER' }))).status, 201);

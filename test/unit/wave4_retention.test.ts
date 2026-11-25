@@ -18,6 +18,18 @@
  *  14.  migration SQL contains archived_at column
  *
  * @since Wave 4 (4B-PACK-4B03 / E5.3+E5.4)
+ *
+ * Module under test: `src/infra/retention/RetentionWorker.ts`; the load-test scripts, the chaos script and the
+ * migration SQL are checked as text (none of them is run).
+ *
+ * Strategy / partitions: as listed above; retention days with the variables unset (defaults 90 and 365) and set;
+ * a run, start and stop without a database.
+ *
+ * Needs: no database. Changes `OTK_RECEIPT_RETENTION_DAYS` and `OTK_AUDIT_RETENTION_DAYS` and restores them.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave4_retention.test.ts`
+ *
+ * @module test/unit/wave4_retention.test
  */
 
 import { describe, it, before, after } from 'node:test';

@@ -1,6 +1,18 @@
 /**
  * RUN-M1-24H (ADV-M24-05): scripts/ops/review_tenant_log.mjs lists the active OTK_TENANT_LOG records that predate the
  * M24-SEC-01 fix, never prints a token and never changes the file.
+ *
+ * Module under test: the script `scripts/ops/review_tenant_log.mjs`, run as a child process.
+ *
+ * Strategy / partitions: a log with an active old record, an active new record, a revoked record and a
+ * malformed line; with and without the cutoff option; usage errors (exit 64). Each case checks that no
+ * token is printed and the file is unchanged.
+ *
+ * Needs: Node only; fixture logs with fake tokens are written in temporary directories (removed in `after`).
+ *
+ * Run just this file: `npx tsx --test test/unit/review_tenant_log.test.ts`
+ *
+ * @module test/unit/review_tenant_log.test
  */
 import { describe, it, after } from 'node:test';
 import assert from 'node:assert/strict';

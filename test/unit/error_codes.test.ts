@@ -3,6 +3,21 @@
  *
  * Verifies the OTK error code registry, envelope format, backward compatibility,
  * and integration with routes.
+ *
+ * Module under test: `src/api/errors.ts` (`sendJson`, `sendError`, `sendRbacDenial`,
+ * `ERROR_REGISTRY`, `getErrorStatus`), called with a mock response object.
+ *
+ * Strategy / partitions: a plain JSON answer (status, headers, body); the error envelope with
+ * and without details, request id and retry delay; the HTTP status taken from the registry; the
+ * legacy error string kept per major code and overridable; an unknown code (falls back to the
+ * generic 500 code); access denials for 401, 403 and 429 (with the retry delay forwarded); the
+ * registry contains every documented code.
+ *
+ * Needs: nothing external.
+ *
+ * Run just this file: `npx tsx --test test/unit/error_codes.test.ts`
+ *
+ * @module test/unit/error_codes.test
  */
 
 import { describe, it } from 'node:test';

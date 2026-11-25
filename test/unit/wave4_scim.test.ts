@@ -17,6 +17,20 @@
  *  13.  POST /scim/v2/Groups creates group, returns 201
  *
  * @since Wave 4 (4D-PACK-4D02 / NEW-4.04)
+ *
+ * Modules under test: `src/auth/scim/ScimRouter.ts` and `src/auth/scim/ScimUserAdapter.ts`, with a new
+ * in-memory test user store passed to the router in each case; the route list in `src/api/routes.ts` is checked
+ * as text.
+ *
+ * Strategy / partitions: the adapter mappings, list response and filter parsing; the router for a non-SCIM
+ * path, user list, create, duplicate, unknown id, filter, update and delete, and group list and create.
+ *
+ * Needs: nothing external. At load time it sets the SCIM token variable read by the router to a fixed test
+ * value, and every mock request carries that token.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave4_scim.test.ts`
+ *
+ * @module test/unit/wave4_scim.test
  */
 
 import { describe, it } from 'node:test';

@@ -1,3 +1,28 @@
+/**
+ * Tests the blocking input guard: when the input measured by the provider exceeds the input bound of the
+ * reservation, the executor stops and sends nothing more, also after a restart.
+ *
+ * Modules under test: `scripts/h2eval/core/runner.ts` (`createExecutor`), `scripts/h2eval/core/ledger.ts`,
+ * `scripts/h2eval/core/journal.ts` and `scripts/h2eval/core/ids.ts`, with a programmable egress and the doubles in
+ * `../support/double.ts`.
+ *
+ * Strategy / partitions: a reproduction of the earlier defect (measured input above the bound while the cost stays
+ * under the cap, so the next operation must not be sent); the exact boundary (equal passes, one more stops); a
+ * control within the bound; ten scenarios (input and cost both above, insufficient reservation, unknown price, a
+ * local tokenizer that underestimates, provider counts below or far above the estimate, uncertain send, timeout,
+ * incomplete response, network reset, restart after a crash after sending, restart after a guard stop); a pre-send
+ * gate with a bound below the local count; restart after a cost-cap stop; a caller that ignores the stop; crash
+ * windows between settlement and the stop line; restart after uncertain operations; the stop shown on reopen; and
+ * human acknowledgements (accepted ones release the next operations without re-sending; malformed or misdirected
+ * ones are refused).
+ *
+ * Needs: a writable temporary directory. It sets `H2EVAL_TEST_KEY` to a fake canary value. Doubles only: no network,
+ * no credential, no real call, no GO file.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/core/g7.test.ts`
+ *
+ * @module test/h2eval/core/g7.test
+ */
 // SYNTHETIC — OFFLINE. C158 §3 (PRIORIDADE ZERO): gatilho G7 bloqueante. Quando a ENTRADA MEDIDA pelo provedor excede o limite de entrada da RESERVA, o executor tem de
 // parar: nenhuma nova operacao pode ser enviada (falha segura), tambem depois de um reinicio. Aqui estao a reproducao do comportamento antigo (o primeiro teste FALHA no
 // codigo de 63907b29: a operacao seguinte foi enviada) e os dez cenarios de C158 §3.1. Doubles apenas; sem rede, sem credencial, sem chamada real, sem GO.
@@ -20,7 +45,13 @@ type Egress = (req: BuiltRequest) => Promise<EgressResponse>;
 type RunnerResult = { operationId: string; state: string; stop: string | null; replayed: boolean };
 const bodyOf = (s: ScriptedBody): EgressResponse => { const r = rawBodyOf(s); return { httpStatus: r.status, body: r.body }; };
 
-/** monta um executor com egress programavel; devolve tambem o registro do que foi ENVIADO (sent) */
+/**
+ * monta um executor com egress programavel; devolve tambem o registro do que foi ENVIADO (sent)
+ *
+ * @param over - Scenario: batch directory (a new temporary one when absent), the egress factory that receives the
+ *   `sent` list, the reserve input bound per plan, cap overrides, price categories to omit, a simulated crash point
+ *   and a send timeout in ms.
+ */
 function build(over: { dir?: string; egress: (sent: BuiltRequest[]) => Egress; bound?: (p: ReturnType<typeof plan>, L0: unknown) => number; caps?: Partial<ExecutorConfig['ledger']>; omitPrices?: string[]; crashAt?: ExecutorConfig['crashAt']; timeoutMs?: number }) {
   const dir = over.dir ?? tmp('g7'); const store = memoryContentStore(TEXTS); const sent: BuiltRequest[] = [];
   const cfg: ExecutorConfig = {
@@ -33,7 +64,12 @@ function build(over: { dir?: string; egress: (sent: BuiltRequest[]) => Egress; b
   return { dir, store, sent, cfg, ex: createExecutor(cfg) };
 }
 const P = (store: { sha: Record<string, string> }, n: string, rep = 1) => plan({ promptSha256: store.sha[n]!, promptId: n.toUpperCase(), rep });
-/** o laco do lote (cli/run.ts): para na primeira operacao que devolve `stop` */
+/**
+ * o laco do lote (cli/run.ts): para na primeira operacao que devolve `stop`
+ *
+ * @param ex - Executor to run the plans with.
+ * @param plans - Operations in batch order.
+ */
 async function serial(ex: { run: (p: ReturnType<typeof plan>) => Promise<RunnerResult> }, plans: Array<ReturnType<typeof plan>>) {
   const results: RunnerResult[] = []; for (const p of plans) { const r = await ex.run(p); results.push(r); if (r.stop) break; } return results;
 }

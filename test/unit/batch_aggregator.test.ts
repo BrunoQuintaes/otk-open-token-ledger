@@ -3,6 +3,21 @@
  *
  * Validates batch creation, Merkle proofs, privacy properties, and error cases.
  * ADR-0100: Batch Settlement via Merkle Root
+ *
+ * Modules under test: `src/batch/BatchAggregator.ts`, checked against `MerkleTree` from
+ * `src/crypto/merkle.ts`.
+ *
+ * Strategy / partitions: batch size 0 (finalize throws), 1 (root equals the tree root), N and
+ * 100 (every inclusion proof verifies); a receipt not in the batch (proof fails); the bucketed
+ * CU total (not below the exact sum, a multiple of the bucket step); receipts from the same and
+ * from a different epoch; adding after finalize (throws) and finalizing twice (same root);
+ * `inspect()` before and after finalize.
+ *
+ * Needs: nothing external (receipts built in memory by `makeReceipt`).
+ *
+ * Run just this file: `npx tsx --test test/unit/batch_aggregator.test.ts`
+ *
+ * @module test/unit/batch_aggregator.test
  */
 
 import { describe, it } from 'node:test';

@@ -6,6 +6,17 @@
  *
  * All inputs are deterministic (nowEpoch/nowIso/prevAuditHash injected).
  * No network, no filesystem, no wall-clock calls.
+ *
+ * Module under test: `src/enterprise/EnterpriseEvaluator.ts` (`evaluateEnterprise`), with billing tokens from
+ * `src/economics/BillingToken.ts`.
+ *
+ * Strategy / scenarios (C1–C5): happy path (all gates pass, balance debited, no budget alert); quota policy denied
+ * (no debit, denial audited); allowed but the usage crosses the budget warning threshold; determinism (same inputs,
+ * identical outputs); policy allows but the billing token balance is insufficient.
+ *
+ * Run just this file: `npx tsx --test test/integration/enterprise_plumbing.test.ts`
+ *
+ * @module test/integration/enterprise_plumbing.test
  */
 
 import { describe, it } from 'node:test';
@@ -18,7 +29,12 @@ const GENESIS_HASH = '0'.repeat(64);
 const NOW_ISO = '2026-01-01T00:00:00Z';
 const NOW_EPOCH = 1_000_000;
 
-/** Build a base valid request for reuse across tests */
+/**
+ * Build a base valid request for reuse across tests
+ *
+ * @param overrides - Fields that replace the defaults (shallow spread).
+ * @returns A request that passes every gate: 1000-CU token and quota, 500 CU consumed, cost 100 CU.
+ */
 function baseRequest(overrides: Partial<EnterpriseRequest> = {}): EnterpriseRequest {
   const token = createBillingToken('tenant-1', 1000n, 0, {
     nowIso: NOW_ISO,

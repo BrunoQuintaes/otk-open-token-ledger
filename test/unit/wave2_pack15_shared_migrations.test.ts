@@ -10,6 +10,19 @@
  *   - Backup script existence
  *
  * @since Wave 2 Pack 15 (2026-03-15)
+ *
+ * Module under test: `src/infra/redis/sharedState.ts` (in-memory fallback); also the presence of
+ * `scripts/ops/migrate.js`, `scripts/ops/backup.sh` and the first migration SQL file.
+ *
+ * Strategy / partitions: key-value round trip, missing key, delete present and missing, TTL expiry; lock free,
+ * held and released; session present and missing; worker claim, list and release; the singleton and its reset;
+ * one existence check per script.
+ *
+ * Needs: no Redis. The TTL case waits a short real time.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave2_pack15_shared_migrations.test.ts`
+ *
+ * @module test/unit/wave2_pack15_shared_migrations.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

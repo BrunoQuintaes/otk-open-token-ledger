@@ -1,3 +1,25 @@
+/**
+ * Integration tests of the public evaluation executor: the core runner and records, the real per-API adapters with
+ * the tiered price table, and the hash-addressed content store with rendered dialogs, wired together.
+ *
+ * Modules under test: `scripts/h2eval/index.ts` (`createH2EvalExecutor`, `priceTableFromModal`, `ADAPTERS`,
+ * `MATRIX_MODELS`, and the re-exported helpers), `scripts/h2eval/modal/index.ts` (`bodyOf`),
+ * `scripts/h2eval/cache/contentStore.ts` and the canonical JSON helpers.
+ *
+ * Strategy / partitions: one text call through the real adapter with a documented response fixture (exact cost,
+ * snapshot fields, no prompt text outside the content store); the four matrix models (two run, Google not run, a 429
+ * without usage uncertain and possibly charged); the tiered price table adapted to the core (tier by prompt length,
+ * `null` never 0, a model outside the matrix unknown); an image resolved by hash only for the adapter (local count
+ * `UNKNOWN`, exploratory estimate recorded); and the request body produced by the adapter, the reference renderer and
+ * the core canonical form being identical for all models and arms.
+ *
+ * Needs: a writable temporary directory; reads the documented response fixtures. It sets
+ * `H2EVAL_ANTHROPIC_API_KEY` to a fake canary value that OFFLINE mode never reads. No network, no credential.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/integration/executor.test.ts`
+ *
+ * @module test/h2eval/integration/executor.test
+ */
 // SYNTHETIC — OFFLINE. B2 integration: core/record (BOT-02) + modal adapters and tiered price table (MET-02) + cache ContentStore and
 // dialogs (E2E-01). The egress double answers with MET-02's documented response fixtures. No network, no credential.
 import { test } from 'node:test';
@@ -23,7 +45,12 @@ process.env['H2EVAL_ANTHROPIC_API_KEY'] = CANARY; // the R16 name itself; OFFLIN
 type Fx = { httpStatus: number; body: unknown };
 const fixture = (file: string, key: string): Fx => (JSON.parse(readFileSync(path.join(FIX, 'responses', `${file}.json`), 'utf8')) as Record<string, Fx>)[key]!;
 const tmp = (p: string) => mkdtempSync(path.join(tmpdir(), `h2eval-int-${p}-`));
-/** Everything the executor writes EXCEPT content/<sha256> (the hash-addressed store holds the text by design; journal/ledger/snapshots/records never do). */
+/**
+ * Everything the executor writes EXCEPT content/<sha256> (the hash-addressed store holds the text by design; journal/ledger/snapshots/records never do).
+ *
+ * @param dir - Batch directory to read recursively.
+ * @returns The concatenated text of every file found outside the content store.
+ */
 const allText = (dir: string) => readdirSync(dir, { recursive: true, withFileTypes: true }).filter((e) => e.isFile()).filter((e) => !String(e.parentPath ?? (e as unknown as { path: string }).path).split(/[\\/]/).includes('content')).map((e) => readFileSync(path.join(e.parentPath ?? (e as unknown as { path: string }).path, e.name), 'utf8')).join('\n');
 
 const PARAMS = {

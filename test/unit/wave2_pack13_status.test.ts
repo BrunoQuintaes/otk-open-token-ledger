@@ -10,6 +10,18 @@
  *   - Does not crash on missing dependencies
  *
  * @since Wave 2 Pack 13 (2026-03-15)
+ *
+ * Module under test: `src/api/routes.ts` (the system status route).
+ *
+ * Strategy / partitions: one case per field of the payload, with the prover disabled and no Redis or PostgreSQL
+ * configured.
+ *
+ * Needs: nothing external; requests and responses are in-memory mocks. Sets `PROVER_URL` to disabled before
+ * each test; the Redis case removes `OTK_REDIS_URL`.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave2_pack13_status.test.ts`
+ *
+ * @module test/unit/wave2_pack13_status.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

@@ -8,6 +8,17 @@
  *   M3 globalBudgetId: a tenant with its own budget but outside the operator-wide budget → refused; member → admitted;
  *   M4 global ceiling under concurrency: 3 tenants × 4 parallel requests of US$ 0.40 against a US$ 1.00 global budget
  *      → exactly 2 admitted across ALL tenants (the shared row lock serialises them), held = US$ 0.80.
+ *
+ * Module under test: the admission of `src/operations/PgOperationStore.ts` with the money-budget requirement and the
+ * operator-wide budget options, using operations built from `test/fixtures/d1d8/c/builders.ts`.
+ *
+ * Strategy: the four cases M1 to M4 listed above, including a positive control for M1.
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`).
+ *
+ * Run just this file: `npx tsx --test test/services/h1_s07_money_required.test.ts`
+ *
+ * @module test/services/h1_s07_money_required.test
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

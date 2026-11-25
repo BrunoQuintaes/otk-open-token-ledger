@@ -3,6 +3,22 @@
  * SSE fixtures are synthetic and follow the documented event shapes (usageDocRefs.ts); they do
  * not prove a live integration. Every stream is replayed with several chunkings, including one
  * byte at a time, and must give the same usage and the same text.
+ *
+ * Modules under test: `src/providers/usage/streamUsageAccumulator.ts` (with `recoverUsageFromTail`)
+ * and, for the counting case, `src/tokenization/localCounter.ts`.
+ *
+ * Strategy / partitions: per API (OpenAI Chat Completions and Responses, Anthropic Messages,
+ * Gemini, Cohere) a complete stream, a stream without usage or cut early (missing or partial,
+ * never zero) and non-text output (tool calls, thinking, thought parts); framing with LF, CRLF and
+ * lone CR; split UTF-8 characters; events larger than the buffer (usage recovered from the
+ * bounded tail, or left missing); unparseable lines; a final event without a trailing blank
+ * line; null fields in cumulative Anthropic deltas; pushing after `finish()` is refused.
+ *
+ * Needs: nothing external (synthetic server-sent event text built in the test).
+ *
+ * Run just this file: `npx tsx --test test/unit/d1d8_b_stream.test.ts`
+ *
+ * @module test/unit/d1d8_b_stream.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

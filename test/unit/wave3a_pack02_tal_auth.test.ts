@@ -9,6 +9,22 @@
  * - storeBootstrap: no-env fallback does not set tal/planStore
  *
  * @since Wave 3A (PACK 3A-02)
+ *
+ * Modules under test: `src/security/talRuntime.ts` (with `src/security/RedisTAL.ts`),
+ * `src/auth/authMiddleware.ts` (with `src/api/tenantKeyRegistry.ts`), `src/api/receiptStore.ts` writing to
+ * `src/security/IAuditStore.ts`, and `src/infra/storeBootstrap.ts`.
+ *
+ * Strategy / partitions: the default, replaced and reset accounting layer; the Redis layer without a client;
+ * authentication disabled, enabled without a token, enabled with a valid token, and the result shape; audit
+ * entries for a new receipt, a duplicate (none), a batch flush and the head hash; bootstrap without the Redis
+ * and database URLs.
+ *
+ * Needs: no Redis, no PostgreSQL and no network. Sets `PROVER_URL` to disabled for the audit cases and removes
+ * `OTK_REDIS_URL` / `OTK_DB_URL` for the bootstrap cases.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave3a_pack02_tal_auth.test.ts`
+ *
+ * @module test/unit/wave3a_pack02_tal_auth.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

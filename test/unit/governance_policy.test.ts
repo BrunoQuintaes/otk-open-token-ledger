@@ -7,6 +7,20 @@
  *   - circuit_upgrade and emergency_pause are rejected
  *   - Stale proposals are deferred
  *   - DEFAULT_GOVERNANCE_POLICY has expected values
+ *
+ * Module under test: `src/governance/governancePolicy.ts`.
+ *
+ * Strategy / partitions: the default policy values (quorum, kinds needing an emergency
+ * override, maximum proposal age of 7 days); each regular proposal kind (approved); each kind
+ * that needs an override (rejected); a proposal older than the maximum age (deferred); the
+ * decision echoes the injected evaluation time and the proposal id.
+ *
+ * Needs: nothing external (the current time is passed in, so the result never depends on the
+ * clock).
+ *
+ * Run just this file: `npx tsx --test test/unit/governance_policy.test.ts`
+ *
+ * @module test/unit/governance_policy.test
  */
 
 import { describe, it } from 'node:test';

@@ -1,5 +1,18 @@
 /**
  * H-PACK-07 Tests — H5.1-H5.4 Observability
+ *
+ * Module under test: `src/observability/tracing.ts` (W3C trace context ids and spans).
+ *
+ * Strategy / partitions: id formats and uniqueness; a span's ids, end time, attributes and the
+ * trace id of a child span; tracing off by default and on after `initTracing` with an endpoint;
+ * one JSON line on stderr per finished span when tracing is on (stderr is captured during that
+ * test).
+ *
+ * Needs: nothing external. The endpoint given to `initTracing` is only stored; no request is sent.
+ *
+ * Run just this file: `npx tsx --test test/unit/h5_observability.test.ts`
+ *
+ * @module test/unit/h5_observability.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

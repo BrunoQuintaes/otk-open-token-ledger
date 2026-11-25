@@ -3,6 +3,22 @@
  *
  * Tests all store interfaces with their Memory implementations.
  * PG/Redis implementations tested separately when infrastructure is available.
+ *
+ * Modules under test: `src/billing/PlanRegistry.ts` with `src/billing/IPlanStore.ts`,
+ * `src/security/ApiKeyRing.ts`, `src/security/IAuditStore.ts`, `src/security/IPolicyStore.ts` and
+ * `src/economics/IBudgetTracker.ts`, each through its in-memory implementation.
+ *
+ * Strategy / partitions: per store, write then read, an unknown key (`null` or 0), listing (with
+ * action filter, limit and offset for the audit chain), delete and clear; plan defaults, the three
+ * tiers, quota unlimited vs exceeded and the per-plan rate limit; audit chain growth, head, count
+ * and integrity check; budget check with no budget, under the thresholds, above the warning and
+ * above the critical threshold.
+ *
+ * Needs: nothing external (in-memory stores, reset in the hooks of each block).
+ *
+ * Run just this file: `npx tsx --test test/unit/h2_storage.test.ts`
+ *
+ * @module test/unit/h2_storage.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

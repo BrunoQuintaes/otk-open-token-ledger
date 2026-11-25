@@ -4,6 +4,20 @@
  * signed a JWT whose tenant was the NameID chosen by the sender. Outside production (staging has a public ingress in
  * the Helm values) anyone could obtain a MEMBER token of any tenant. Until real validation exists the endpoint refuses
  * every assertion and never issues a token, in every environment.
+ *
+ * Module under test: `src/api/routes.ts` (the SAML assertion consumer, the OIDC callback and the SP metadata),
+ * with `src/api/tenantKeyRegistry.ts`.
+ *
+ * Strategy / partitions: a forged unsigned assertion in development, test, staging and production; the
+ * explicit not-implemented refusal; the OIDC callback with a configured issuer in three environments; the SP
+ * metadata still served.
+ *
+ * Needs: nothing external (the configured issuer is a non-resolvable `.invalid` host). Changes `NODE_ENV`,
+ * `OTK_JWT_SECRET`, `OTK_OIDC_ISSUER` and `OTK_OIDC_CLIENT_ID` and restores them.
+ *
+ * Run just this file: `npx tsx --test test/unit/sso_fail_closed.test.ts`
+ *
+ * @module test/unit/sso_fail_closed.test
  */
 import { describe, it, before, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

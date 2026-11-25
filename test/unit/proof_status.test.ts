@@ -13,6 +13,18 @@
  * Avoids starting a real ProverDaemon; controls job status per-test.
  *
  * @since PA-02 (2026-03-12)
+ *
+ * Modules under test: `src/api/receiptStore.ts` (`getProofStatus` and the prover dispatch) and
+ * `src/api/routes.ts` (the receipt read route that returns the proof status).
+ *
+ * Strategy / partitions: prover disabled; prover unreachable or no job recorded (unknown); stub prover
+ * reporting pending, processing, done and dead letter; attempts reported; receipt fields unchanged.
+ *
+ * Needs: a stub prover HTTP server on a random port of 127.0.0.1; sets and deletes `PROVER_URL`.
+ *
+ * Run just this file: `npx tsx --test test/unit/proof_status.test.ts`
+ *
+ * @module test/unit/proof_status.test
  */
 
 import { describe, it, before, after, beforeEach } from 'node:test';

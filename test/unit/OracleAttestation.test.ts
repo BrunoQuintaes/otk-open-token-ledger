@@ -8,6 +8,24 @@
  *
  * Verifies the Oracle Level C mitigation: client-side token counting using
  * tiktoken can detect provider overcounting/undercounting.
+ *
+ * Modules under test: `src/tokenization/TokenizerRegistry.ts`,
+ * `src/metering/OracleAttestationEngine.ts`, `src/receipt/canonicalReceiptV2.ts` (compared with
+ * `hashCanonicalReceiptV1` from `src/receipt/canonicalReceiptV1.ts`).
+ *
+ * Strategy / partitions: tokenizer counts for empty and non-empty text and both encodings
+ * (cl100k_base, o200k_base); provider-to-tokenizer resolution, including the unknown-provider
+ * fallback; discrepancy detection when counts match, stay within the threshold, or the provider
+ * inflates by more than 20%, plus a custom threshold; Level A (no client counts) vs Level C
+ * attestations; V2 receipt encoding, domain prefix, hash format, determinism, difference from
+ * V1, sensitivity to the discrepancy flag, and errors when the oracle block or prompt hash is
+ * missing.
+ *
+ * Needs: nothing external (the tiktoken encoders are local; no network).
+ *
+ * Run just this file: `npx tsx --test test/unit/OracleAttestation.test.ts`
+ *
+ * @module test/unit/OracleAttestation.test
  */
 
 import { describe, it } from 'node:test';

@@ -1,6 +1,25 @@
 /**
  * W8 Enterprise AI Proxy tests
  * Covers: PROXY-01, PROXY-02, VAULT-01, VAULT-08, TEAM-01, TEAM-06, TEAM-09
+ *
+ * Modules under test: `src/proxy/UsageExtractor.ts`, `src/proxy/ProxyForwarder.ts`,
+ * `src/security/ProviderKeyVault.ts`, `src/users/TeamModel.ts` (in-memory team store),
+ * `src/users/TeamBudgetMonitor.ts`, `src/providers/strategies/GlobalKeyStrategy.ts`,
+ * `src/dashboard/indexer.ts` (usage per team) and `src/proxy/StreamTapper.ts`.
+ *
+ * Strategy / partitions: usage extraction per provider format and with missing fields; the vault (round trip,
+ * unknown key, case of the provider name, masking, tenant separation, delete, singleton, random IV); team
+ * membership; daily and monthly budgets under and over the limit; the global key per provider with the key
+ * variable missing and set; usage per team; the stream tapper before data, with usage, with zero usage, the end
+ * marker and pass-through.
+ *
+ * Needs: no network. If `OTK_VAULT_MASTER_KEY` is unset the vault falls back to its development key and logs a
+ * warning. Removes and restores `OPENAI_API_KEY`, `GEMINI_API_KEY` and `GOOGLE_API_KEY`, and sets
+ * `COHERE_API_KEY` to a fake value for one case.
+ *
+ * Run just this file: `npx tsx --test test/unit/w8_enterprise_proxy.test.ts`
+ *
+ * @module test/unit/w8_enterprise_proxy.test
  */
 
 import assert from 'node:assert/strict';

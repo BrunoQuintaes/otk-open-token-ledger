@@ -2,6 +2,22 @@
  * Phase 10 reconciliation — OTK side: the REAL pilot ledgers (read-only copies, OTK computed cost, not
  * provider data), the PostgreSQL loader (fake pool), an offline run of the real ledger against a clearly
  * labelled FIXTURE statement, and the CLI (deterministic output, guards for REAL data).
+ *
+ * Modules under test: the OTK-side loaders of `src/reconciliation/index.ts` (pilot ledger, fixture JSON and
+ * PostgreSQL through a fake pool) and the command-line script `scripts/reconciliation/reconcile.ts`.
+ *
+ * Strategy / partitions: the three pilot ledgers (settled calls, excluded reservation, exact totals, cached
+ * input, consistency with their price tables); an offline run against a FIXTURE statement; the PostgreSQL
+ * loader query result mapping; the script output is byte-identical across two runs, every documented fixture
+ * scenario reproduces its classification, and REAL runs refuse fixture inputs.
+ *
+ * Needs: no database and no network. Reads the pilot ledgers and fixtures under `test/fixtures/reconciliation/`
+ * and the price tables under `scripts/pilot/`; spawns the script with Node and `tsx` (from `node_modules`)
+ * writing into temporary directories.
+ *
+ * Run just this file: `npx tsx --test test/unit/reconciliation_otk_side.test.ts`
+ *
+ * @module test/unit/reconciliation_otk_side.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

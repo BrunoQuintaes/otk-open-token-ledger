@@ -1,5 +1,25 @@
 /**
  * H-PACK-05 Tests — H3.1-H3.4 JWT Auth
+ *
+ * Checks JSON Web Token issuing, verification and revocation, and how the request
+ * authentication middleware chooses between no auth, a JWT and an API key.
+ *
+ * Modules under test: `src/auth/jwt.ts` and `authenticateRequest` from
+ * `src/auth/authMiddleware.ts`.
+ *
+ * Strategy / partitions: a valid token, a wrong secret, an expired token and a malformed one; the
+ * expiry default and the value from `OTK_JWT_EXPIRY_S`; revocation list for an unknown id, a
+ * revoked id (also rejected by verification) and an already expired entry; the middleware with
+ * auth off, with no tenants configured in production, with no credential header, with a valid
+ * JWT, with invalid claims (blank subject, unknown role, refresh type), falling back to an API
+ * key, and with a dynamic API key that is valid or expired.
+ *
+ * Needs: nothing external. Sets and deletes `OTK_JWT_EXPIRY_S`, `OTK_JWT_SECRET` and (in one test)
+ * `NODE_ENV`, restoring them after use.
+ *
+ * Run just this file: `npx tsx --test test/unit/h3_jwt_auth.test.ts`
+ *
+ * @module test/unit/h3_jwt_auth.test
  */
 
 import { describe, it, beforeEach, afterEach } from 'node:test';

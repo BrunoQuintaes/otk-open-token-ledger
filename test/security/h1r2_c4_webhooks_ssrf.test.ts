@@ -7,6 +7,26 @@
  *   goes through it. Negative tests use a fake DNS resolver and local HTTP servers only: no external network.
  * S21-F03: OTK_STRICT_VERSIONING=1 answers 308 (method and body preserved) for methods other than GET/HEAD; GET/HEAD
  *   keep 301. A real fetch that follows the redirect delivers the POST body to /v1/...
+ *
+ * In plain terms: before outgoing webhooks can be enabled, their destinations must not reach internal addresses
+ * (server-side request forgery). Partitions: address classes (loopback, private, link-local and cloud metadata,
+ * carrier-grade NAT, multicast, reserved, documentation, IPv6 equivalents and IPv4-in-IPv6 forms) against public
+ * addresses; URL rules (HTTPS only, no user info, port rules, internal host names, IP literals in any notation); DNS
+ * answers (every answer must be public; failure refuses); DNS rebinding between deliveries; redirects not followed;
+ * timeout, response-size and payload-size limits; HMAC signature of the payload; the default transport; and the
+ * guarded management service (roles, refusal, per-tenant limit, isolation, secret shown once).
+ *
+ * Modules under test: `src/webhooks/WebhookDelivery.ts`, `src/webhooks/WebhookRegistry.ts` and the webhook and
+ * versioning paths of `src/api/routes.ts` (served by a local HTTP server inside this process).
+ *
+ * Needs: local HTTP servers on 127.0.0.1 only (no external network). Before importing it empties `OTK_RECEIPT_LOG`,
+ * `OTK_DB_URL` and `OTK_TENANT_LOG`, sets `PROVER_URL=disabled` and removes `OTK_REDIS_URL`, `OTK_TENANTS` and
+ * `OTK_STRICT_VERSIONING`; the versioning cases set `OTK_STRICT_VERSIONING=1` and remove it again. The timeout case
+ * waits for a short delivery timeout.
+ *
+ * Run just this file: `npx tsx --test test/security/h1r2_c4_webhooks_ssrf.test.ts`
+ *
+ * @module test/security/h1r2_c4_webhooks_ssrf.test
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -61,7 +81,12 @@ async function receiver(handler: (req: http.IncomingMessage, res: http.ServerRes
   const port = (server.address() as AddressInfo).port;
   return { server, hits, port, close: () => new Promise<void>((r) => { server.closeAllConnections(); server.close(() => r()); }) };
 }
-/** Test policy for a local plain-HTTP receiver: only 127.0.0.1 is allowed (everything else is classified normally). */
+/**
+ * Test policy for a local plain-HTTP receiver: only 127.0.0.1 is allowed (everything else is classified normally).
+ *
+ * @param a - Resolved IP address, as text.
+ * @returns `true` only for `127.0.0.1`.
+ */
 const localOnly = (a: string) => a === '127.0.0.1';
 
 describe('C4 S21-F01 destination policy: address classification', () => {

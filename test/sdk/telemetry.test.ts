@@ -9,6 +9,19 @@
  *   5. errorRate is correct
  *   6. getSnapshot() always returns a valid structure
  *   7. resetTelemetry() clears all state
+ *
+ * Module under test: `src/sdk/telemetry.ts` (in-process counters only).
+ *
+ * Partitions: no variable set, enabled, enabled plus opt-out, explicitly disabled; recording while disabled (no-op);
+ * zero, odd and larger numbers of latency samples (p50/p95 are `null` with no samples); all, half and no calls in
+ * error.
+ *
+ * Needs: nothing external. Each case saves and restores `OTK_TELEMETRY_ENABLED` and `OTK_TELEMETRY_OPT_OUT` in
+ * `process.env` and resets the telemetry state, so cases do not leak into each other.
+ *
+ * Run just this file: `npx tsx --test test/sdk/telemetry.test.ts`
+ *
+ * @module test/sdk/telemetry.test
  */
 
 import { describe, it, beforeEach, afterEach } from 'node:test';

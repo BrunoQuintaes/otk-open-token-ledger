@@ -5,6 +5,21 @@
  * The expected digests are the ones recorded when the profile was frozen (FINAL CLOSURE 07/10/2026,
  * docs/_ops/FINAL_CLOSURE_20261007/evidence/cu_profile_digests.txt) and carried by the signed recomputation statements of
  * the campaign. This file adds no formula, weight or runtime behaviour: the proxy still records the legacy CU.
+ *
+ * Module under test: `src/economics/cuReference.ts` (`digestCuReferenceProfile`,
+ * `validateCuReferenceProfile`, `computeCuReference`).
+ *
+ * Strategy / partitions: the final and the candidate profile each match their frozen digest;
+ * the pinned values equal the recorded digest list and the campaign statements; a computed
+ * reference CU names the formula, the profile and the digest; repeated loads give the same
+ * digest and CU; any edit to the final profile, even a note, changes the digest.
+ *
+ * Needs: read access to `config/cu_reference/` and to the frozen evidence under
+ * `docs/_ops/FINAL_CLOSURE_20261007/evidence/`; no network.
+ *
+ * Run just this file: `npx tsx --test test/unit/cu_reference_digest_pin.test.ts`
+ *
+ * @module test/unit/cu_reference_digest_pin.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

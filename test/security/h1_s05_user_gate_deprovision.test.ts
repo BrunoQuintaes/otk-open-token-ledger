@@ -7,6 +7,18 @@
  *       minting route re-reads the user store, so it refuses even without the in-process cache (other replica).
  *       SCIM PUT active=true re-provisions: login works again, JWTs issued before the deprovisioning stay invalid.
  * In-memory stores only; no network.
+ *
+ * Modules under test: the route handlers of `src/api/routes.ts` called in process (signup, login, key minting and
+ * rotation, e-mail verification, SCIM), with `src/auth/subjectStatus.ts`, `src/auth/emailVerification.ts`,
+ * `src/auth/jwt.ts`, `src/api/tenantKeyRegistry.ts`, `src/api/tenantCrud.ts` and the memory user and key stores.
+ *
+ * Needs: nothing external. Before importing it empties `OTK_RECEIPT_LOG`, `OTK_DB_URL` and `OTK_TENANT_LOG`, sets
+ * `PROVER_URL=disabled` and removes `OTK_REDIS_URL` and `OTK_TENANTS`; `OTK_ADMIN_KEY`, `OTK_JWT_SECRET` and
+ * `OTK_SCIM_BEARER_TOKEN` get fixture values and are restored after the run.
+ *
+ * Run just this file: `npx tsx --test test/security/h1_s05_user_gate_deprovision.test.ts`
+ *
+ * @module test/security/h1_s05_user_gate_deprovision.test
  */
 import { describe, it, before, after, mock } from 'node:test';
 import assert from 'node:assert/strict';

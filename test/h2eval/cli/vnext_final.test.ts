@@ -1,3 +1,26 @@
+/**
+ * Tests an exact 33-operation pilot built from one design file with conditions, including the pause at the probe
+ * gate, the inherited opening balance and the campaign identity pinned in the GO file.
+ *
+ * Modules under test: `scripts/h2eval/cli/plan.ts`, `scripts/h2eval/cli/run.ts` (`runAuthorized`,
+ * `realPreconditions`, `selectBatch`), `scripts/h2eval/cli/campaign.ts` (`writeGateP1`, `canonicalPath`),
+ * `scripts/h2eval/cli/status.ts`, `scripts/h2eval/core/ledger.ts`, `scripts/h2eval/core/journal.ts`,
+ * `scripts/h2eval/record/snapshot.ts` and `scripts/h2eval/design/designParams.ts`.
+ *
+ * Strategy / scenarios: the plan (one model, five blocks in order, distinct operation ids per condition, the probe
+ * first); the run (the probe runs alone and the series pauses, a signed probe gate lets the remaining 32 calls run,
+ * every record has a stop reason, a truncated low-cap condition is recorded without stopping); and negatives
+ * (thinking-off rejected at the probe halts everything, a missing stop reason halts after settlement, a byte copy of
+ * the study directory is refused, a GO pinned to another canonical path is refused, the `MSYSTEM` launch variable is
+ * accepted).
+ *
+ * Needs: a writable temporary directory and a synthetic corpus freeze in the `setup` test (allow several minutes);
+ * sets `H2EVAL_CONTROL_DIR` to a temporary folder when unset. The opening balance is synthetic. No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cli/vnext_final.test.ts`
+ *
+ * @module test/h2eval/cli/vnext_final.test
+ */
 // SYNTHETIC — OFFLINE. VNEXT-F (C151 final round): the EXACT SC1 of R4 rev. 2 from ONE design file with conditions (33 operations: B1 OFF1024 x6,
 // B2 ON1024 x6, B3 ON256 x6, B4 S2 x6, B5 S3 x9), P1 probe first and alone, pause until the signed P1 gate, D7 option A on the 6 eligible B5 calls,
 // stop_reason in every record, inherited opening 0.01200928 + 0.003662 (synthetic, signed) pinned in the GO, campaign identity + machine control

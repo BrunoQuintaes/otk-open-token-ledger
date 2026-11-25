@@ -8,6 +8,17 @@
  *   - handleLoginRequest route handler
  *
  * @since Wave 2 Pack 20 (2026-03-15)
+ *
+ * Module under test: `src/dashboard/login.ts` (`getLoginHtml`, `handleLoginRequest`).
+ *
+ * Strategy / partitions: the page has the form, the client-side token check, the error message and the redirect
+ * logic (checked as text); the route handler answers the login page with HTML.
+ *
+ * Needs: nothing external; the request and response are built on unconnected sockets and never sent.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave2_pack20_login.test.ts`
+ *
+ * @module test/unit/wave2_pack20_login.test
  */
 
 import { describe, it } from 'node:test';
@@ -18,6 +29,9 @@ import { Socket } from 'node:net';
 
 /**
  * Create a minimal mock IncomingMessage for route testing.
+ * @param method - HTTP method set on the request.
+ * @param url - Request path set on the request.
+ * @returns A request bound to an unconnected socket.
  */
 function mockReq(method: string, url: string): IncomingMessage {
   const socket = new Socket();

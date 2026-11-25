@@ -2,6 +2,22 @@
  * Wave 3E Pack 01 — Signup + Login + Email Verification Tests (P3.1)
  *
  * Tests password hashing, email verification tokens, signup/login endpoints.
+ *
+ * Modules under test: `src/auth/password.ts`, `src/auth/emailVerification.ts`, the signup, login and e-mail
+ * verification routes of `src/api/routes.ts` (with the in-memory user store of `src/users/MemoryUserStore.ts`)
+ * and the input types of `src/api/schemas.ts`.
+ *
+ * Strategy / partitions: password hashing (format, right and wrong password, invalid hash, salt uniqueness);
+ * verification tokens (valid, expired, tampered, malformed); signup (created, duplicate e-mail, missing e-mail,
+ * short password); login (valid, wrong password, unknown e-mail); e-mail verification (valid and invalid
+ * token); the presence of the source files; the input types compile.
+ *
+ * Needs: nothing external. Sets `OTK_JWT_SECRET` to a test value when it is not already set. Password hashing
+ * uses scrypt, so the hashing cases take a moment of CPU.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave3e_pack01_signup.test.ts`
+ *
+ * @module test/unit/wave3e_pack01_signup.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

@@ -3,6 +3,19 @@
  *
  * Tests MemoryUserStore CRUD for organizations, users, memberships, invites.
  * No PG required — all tests use in-memory implementation.
+ *
+ * Module under test: `src/users/MemoryUserStore.ts` (types from `src/users/types.ts`).
+ *
+ * Strategy / partitions: organizations (create, by slug found and missing, list with limit and offset); users
+ * (create, by e-mail found and missing, partial update, unknown user); memberships (add, list, remove present
+ * and missing); invites (create, list per organization, status change, unknown invite); clear; the presence of
+ * the source files; the role and status types compile.
+ *
+ * Needs: nothing external (a new in-memory store per test).
+ *
+ * Run just this file: `npx tsx --test test/unit/wave3c_pack03_user_model.test.ts`
+ *
+ * @module test/unit/wave3c_pack03_user_model.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

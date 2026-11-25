@@ -8,6 +8,18 @@
  * Before the fix (c6937c7 and every commit before F-P2-01) this test file dies with "Unhandled 'error' event".
  *
  *   . docs/_ops/OVERNIGHT_20261005_MASTER/tools/ovn_env.sh && npx tsx --test test/services/d1d8_ovn_pg_client_guard.test.ts
+ *
+ * Module under test: `src/operations/PgOperationStore.ts` (and its guard for errors on checked-out clients), with
+ * the TCP relay from `./d1d8_c_proc.ts` cutting the database connection.
+ *
+ * Strategy: one scenario; the paused transaction fails normally, the process survives, and the pool serves again
+ * after the outage.
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`). The command above first
+ * sources an environment script that is not part of this repository; with `OTK_TEST_PG_URL` already set,
+ * `npx tsx --test test/services/d1d8_ovn_pg_client_guard.test.ts` runs just this file.
+ *
+ * @module test/services/d1d8_ovn_pg_client_guard.test
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

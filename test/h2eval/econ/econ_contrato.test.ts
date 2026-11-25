@@ -2,6 +2,28 @@
  * EXEC-ECON C160: teste de CONTRATO com cada formato real de resposta dos 3 provedores (texto, recusa, filtro, limite length/max_tokens,
  * campo ausente, zero, null) pelo executor inteiro (runner do E3G5 + delta), e testes de ponta a ponta dos itens 3, 4, 8, 11 e 12.
  * Tudo OFFLINE: o transporte é falso (egress OFFLINE com dublê), nenhuma rede, nenhuma credencial, US$ 0.
+ *
+ * English summary: contract and end-to-end tests of the economic-study executor through the whole shared executor,
+ * with a fake transport.
+ *
+ * Modules under test: `scripts/h2eval/econ/econ.ts` (`runEcon`, `createEconExecutor`, `ECON_TIMEOUT_MS`), using the
+ * fixture in `./econ_fixture.ts`.
+ *
+ * Strategy / partitions: every study model against seven response shapes (text, refusal, content filter, output
+ * limit, usage missing, zero output, null field); provider-specific refusal and filter signals recorded as refusals
+ * with usage; the schedule consumer (five models mixed per block, sent in sequence order, one send per attempt);
+ * no start without the attested price table; order guard (out-of-order attempt refused before reserving, resume from
+ * the first non-terminal sequence, a stop leaves only a prefix, a reservation that does not fit stops before
+ * sending); response persistence (a failure leaves the attempt uncertain and never re-sent; the response hash comes
+ * before settlement); the per-attempt timeout with a fake clock and the same timeout for all models; and the Google
+ * reserve changing with its configuration input.
+ *
+ * Needs: a writable temporary directory; the timeout test uses `mock.timers` from `node:test` (no real waiting). No
+ * network, no credential, no spending.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/econ/econ_contrato.test.ts`
+ *
+ * @module test/h2eval/econ/econ_contrato.test
  */
 import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';

@@ -8,6 +8,17 @@
  *   - Dashboard app route handler
  *
  * @since Wave 2 Pack 19 (2026-03-15)
+ *
+ * Modules under test: `src/dashboard/indexer.ts` (`ReceiptIndexer`) and `src/dashboard/app.ts` (the HTML page).
+ *
+ * Strategy / partitions: empty indexer; one receipt indexed and read back; recent receipts order; per-tenant
+ * filter and summary; system overview; eviction past the maximum size; the default tenant; the page structure.
+ *
+ * Needs: nothing external (in-memory indexer).
+ *
+ * Run just this file: `npx tsx --test test/unit/wave2_pack19_dashboard.test.ts`
+ *
+ * @module test/unit/wave2_pack19_dashboard.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

@@ -1,3 +1,24 @@
+/**
+ * Tests for the cache-outcome classifier that labels each provider call HIT, CREATION, NO_HIT or UNKNOWN from the
+ * returned usage alone.
+ *
+ * Module under test: `scripts/h2eval/cache/classify.ts` (`classifyCache`, `diagnose`, `resolveArm`,
+ * `summarizeDialog`).
+ *
+ * Strategy / partitions: one block per provider usage shape (OpenAI `prompt_tokens_details.cached_tokens`,
+ * Anthropic cache read and write including the 5-minute and 1-hour write split, Gemini `cachedContentTokenCount`
+ * present, absent and absent in strict mode); missing, unreadable or inconsistent usage (always UNKNOWN, never 0);
+ * an OpenAI cached count that is not a multiple of 128; independence from the planned arm and the cache directive;
+ * final arm resolution (planned arm against observed outcome, contaminated controls kept and flagged); diagnosis
+ * reasons; and the per-dialog summary (only calls 2 and 3 are eligible for a hit). The usage fixtures copy the
+ * token numbers of real calls from an earlier evaluation campaign; the content is synthetic.
+ *
+ * Needs: nothing external (pure functions, no I/O).
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cache/classify.test.ts`
+ *
+ * @module test/h2eval/cache/classify.test
+ */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { classifyCache, diagnose, resolveArm, summarizeDialog } from '../../../scripts/h2eval/cache/classify.js';

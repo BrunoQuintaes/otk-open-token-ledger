@@ -7,6 +7,19 @@
  * cancellation after a new subscription, same-second cancellation/payment (R-11), concurrency from two connections,
  * a failure between steps (nothing partially applied: plan, audit, event, subscription rows) and reprocessing after a
  * restart (new pool, new store) being idempotent.
+ *
+ * In plain terms: a tenant's plan must end in the state the latest legitimate decision implies, whatever order
+ * the billing webhooks (checkout completed, subscription deleted) and manual admin changes arrive in, and each
+ * event must be applied at most once.
+ *
+ * Module under test: `src/billing/IPlanStore.ts` (`PgPlanStore`: plan, audit, billing-event and subscription rows).
+ *
+ * Needs: `OTK_TEST_PG_URL` pointing at a disposable PostgreSQL database; without it every case is skipped.
+ * Timestamps are relative to the wall clock (seconds since the Unix epoch).
+ *
+ * Run just this file: `npx tsx --test test/integration/h1r2_a2_pg_plan_ordering.test.ts`
+ *
+ * @module test/integration/h1r2_a2_pg_plan_ordering.test
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

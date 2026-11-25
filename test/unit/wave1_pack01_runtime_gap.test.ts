@@ -8,6 +8,21 @@
  *   - Integration: dead-letter capture at validation boundary
  *
  * @since Wave 1 Pack 1 (2026-03-15)
+ *
+ * Modules under test: `src/api/deadLetterStore.ts`, `src/api/tenantCrud.ts` (with
+ * `src/api/tenantKeyRegistry.ts`) and `src/security/rbac.ts`.
+ *
+ * Strategy / partitions: dead letters (add, get known and unknown id, list with each filter and a limit, retry
+ * and discard of known and unknown ids, counters, reset); tenants (create valid, default role, each invalid
+ * input, duplicate, read, list with filters, update role and token, invalid role, unknown tenant, soft delete,
+ * audit status, token no longer resolvable after delete); the two admin permissions for each role, and the
+ * older permissions unchanged.
+ *
+ * Needs: nothing external (in-memory stores, reset before each test).
+ *
+ * Run just this file: `npx tsx --test test/unit/wave1_pack01_runtime_gap.test.ts`
+ *
+ * @module test/unit/wave1_pack01_runtime_gap.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

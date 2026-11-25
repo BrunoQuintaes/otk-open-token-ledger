@@ -1,7 +1,23 @@
 /**
  * ZK Batching Module — unit tests (no live proving)
  * Tests the interface contract, types, and gas savings model.
+ *
+ * Modules under test: `src/zk/batch/IBatchProver.ts` (constants, `computeGasSavings`,
+ * `BatchError`), `src/zk/batch/SequentialBatchProver.ts` and
+ * `src/zk/batch/PlaceholderBatchProver.ts`.
+ *
+ * Strategy / partitions: stable constants and error codes; gas savings for a sequential batch
+ * (none), an aggregated batch, a single receipt and 100 receipts; the sequential prover's limits
+ * (empty input and more than 100 inputs are rejected before any proving); the placeholder prover
+ * (empty input checked before `NOT_IMPLEMENTED`, savings estimate above 80% at N=10 and growing
+ * with N); the result object's fields.
+ *
+ * Needs: nothing external. No proof is generated, so no circuit files or prover binaries are used.
+ *
+ * Run just this file: `npx tsx --test test/unit/ZKBatching.test.ts`
+ *
  * @since U12.1
+ * @module test/unit/ZKBatching.test
  */
 
 import { describe, it } from 'node:test';

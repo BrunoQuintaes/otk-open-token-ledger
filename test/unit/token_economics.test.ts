@@ -7,6 +7,18 @@
  *   - DEFAULT_VALUATION_POLICY is fixed-mode (no oracle dependency)
  *   - assertCUInvariant enforces non-negativity
  *   - convertValuation applies rate correctly
+ *
+ * Modules under test: `src/economics/tokenEconomicsPolicy.ts` and `src/economics/tokenEconomicsTypes.ts`.
+ *
+ * Strategy / partitions: the default policy mode; the valuation for several amounts (linear, exact rate,
+ * reference rate kept); the CU invariant on zero, positive and negative amounts; currency conversion with a
+ * positive and a non-positive rate.
+ *
+ * Needs: nothing external (pure functions).
+ *
+ * Run just this file: `npx tsx --test test/unit/token_economics.test.ts`
+ *
+ * @module test/unit/token_economics.test
  */
 
 import { describe, it } from 'node:test';

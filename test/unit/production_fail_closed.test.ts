@@ -8,6 +8,22 @@
  *   2. if the API is reached anyway in production A0, every route except the liveness probes answers 503;
  *   3. the legacy POST /proxy answers 503 in production A0 (same rule as the MITM path);
  *   4. development and test keep their permissive A0 mode (characterized, not changed).
+ *
+ * Modules under test: `src/api/routes.ts`, `src/api/tenantKeyRegistry.ts`, the legacy gateway of
+ * `src/proxy/ProxyGateway.ts` and the start-up checks of `src/api/server.ts`.
+ *
+ * Strategy / partitions: in-process routes in production and staging without authentication (closed),
+ * liveness probe (still open) and development (open, characterized); the legacy gateway in production
+ * without authentication; server start without tenants, without admin key, in staging, with a valid
+ * configuration, with an in-memory plan store, with the public demo key and with a key shorter than 32
+ * characters.
+ *
+ * Needs: changes `NODE_ENV` and `OTK_ADMIN_KEY` and restores them. Starts the gateway on a random port of
+ * 127.0.0.1 and spawns `src/api/server.ts` with the `tsx` loader (each child killed after at most 40 s).
+ *
+ * Run just this file: `npx tsx --test test/unit/production_fail_closed.test.ts`
+ *
+ * @module test/unit/production_fail_closed.test
  */
 import { describe, it, before, after, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

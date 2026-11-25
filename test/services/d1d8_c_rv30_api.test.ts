@@ -3,6 +3,24 @@
  * with real PostgreSQL and Redis of the C stack. Outages are controlled TCP cuts (TcpRelay), and
  * restarts are abrupt kills. Expected values are hand vectors (gpt-4o/openai weights 1.0 × 1.0:
  * CU = input + output tokens). "Before" observations: C/C2_rv30/before/.
+ *
+ * Modules under test: the API entry point `src/api/server.ts`, started as child processes through
+ * `./d1d8_c_proc.ts`, with PostgreSQL and Redis reached through TCP relays that the test cuts and restores.
+ *
+ * Strategy / scenarios: PostgreSQL down at start-up (no volatile acknowledgement; the same receipt stored once the
+ * database returns) and memory mode when nothing is configured; the server, not the client's declared CU, decides
+ * the debit; 20 concurrent receipts of 3,000 CU against a 10,000 CU quota on one and on two instances (4 admitted);
+ * the legacy profile reading real consumption and backfilling older receipts once; Redis cut during a write with the
+ * writer killed, then another instance converging on the same total in PostgreSQL and Redis; and rebuilding a lost
+ * Redis aggregate from the ledger without double counting.
+ *
+ * Needs: the test PostgreSQL and Redis from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`, `OTK_TEST_REDIS_URL`)
+ * and permission to spawn `tsx` child processes. Optional `OTK_TEST_DUMP_LOGS=1` prints the child API logs on
+ * failure. No network beyond loopback.
+ *
+ * Run just this file: `npx tsx --test test/services/d1d8_c_rv30_api.test.ts`
+ *
+ * @module test/services/d1d8_c_rv30_api.test
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

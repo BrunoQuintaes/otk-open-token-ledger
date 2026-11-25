@@ -1,3 +1,28 @@
+/**
+ * Tests the executor changes for the engineering pilots of the two larger comparison models: catalog ids, price
+ * table version 2, request bodies, the closed pilot prompt list, cost caps and an offline run of a pilot batch.
+ *
+ * Modules under test: `scripts/h2eval/cli/plan.ts`, `scripts/h2eval/cli/pilot.ts`, `scripts/h2eval/cli/run.ts`,
+ * `scripts/h2eval/cli/main.ts`, `scripts/h2eval/design/designParams.ts`, `scripts/h2eval/modal/index.ts`
+ * (`bodyOf`, `loadPriceTable`), `scripts/h2eval/modal/contract_r2.ts` and `scripts/h2eval/core/ledger.ts`.
+ *
+ * Strategy / partitions: catalog defaults (adaptive thinking, low effort, 1024-token reasoning allowance); price
+ * table version 2 keeps version 1 byte for byte and sets the new prices, with cache, image and audio prices `null`
+ * (never 0); the pilot list (hashes recomputed, foreign hash and tampering refused, at most 10 prompts); the pilot
+ * plan (one 10-call batch per model, per-prompt output cap plus allowance in the cost cap); request bodies and the
+ * refused "thinking disabled" request; older design files still load but cannot plan these models; the batch-cap
+ * flag can only lower the rule; an offline end-to-end batch; the CLI writing the plan and pilot corpus (and refusing
+ * a wrong list hash before writing); and the ledger cap raise (exactly 2x, once, signed, at most 25% of the
+ * sub-ledger, replayed on reopen).
+ *
+ * Needs: a writable temporary directory; reads the pilot list fixtures under `test/h2eval/fixtures/pilot/`, the
+ * pilot design file and the price tables under `scripts/h2eval/modal/pricing/`. Allow up to 2 minutes for the
+ * offline runs. No network, no secret, no real call.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cli/pilot_sonnet_opus.test.ts`
+ *
+ * @module test/h2eval/cli/pilot_sonnet_opus.test
+ */
 // SYNTHETIC — OFFLINE. C157 §9.2 / E2E-01: delta of the executor for the Sonnet 5.5 / Opus 5.5 engineering pilots.
 // Covers: ids in the closed types, price table v2 (v1 entries untouched; Sonnet 2/10, Opus 4/20 USD/MTok; reasoning = output; cache/image/audio null),
 // adapter (thinking ADAPTIVE effort low, NEVER thinking disabled, no cache, standard tier, stream false), `plan --pilot-prompts` (closed list, hashes

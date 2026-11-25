@@ -1,3 +1,22 @@
+/**
+ * Tests that the two split gates of a campaign (training frozen, validation selected) are revalidated in full on
+ * every use, so forged or later-edited gate files are refused.
+ *
+ * Module under test: `scripts/h2eval/cli/campaign.ts` (`gateFor`, `validateTrainFrozen`,
+ * `validateValidationSelected`).
+ *
+ * Strategy / partitions: a valid training-frozen file gives a digest; refused variants: wrong schema, another
+ * protocol hash, a tampered batch list (recomputed sha256), a batch outside the plan, terminal rows that do not
+ * match the operations, a forecast table that read the holdout. A valid validation-selected file gives a digest and
+ * the selection; refused variants: unsigned, a parameters hash that does not match the parameters, a training-frozen
+ * file changed after the selection, and a missing or invalid training-frozen file.
+ *
+ * Needs: a writable temporary directory for synthetic gate files. No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cli/gates.test.ts`
+ *
+ * @module test/h2eval/cli/gates.test
+ */
 // SYNTHETIC — OFFLINE. R15-D-1 / R15-D-2 (G15 delta on 26854a80): the split gates are revalidated WHOLE at every use. Forged or later-edited
 // TRAIN_FROZEN / VALIDATION_SELECTED artifacts are refused: wrong schema, other protocolHash, tampered batch list (recomputed sha256),
 // rows outside the plan, forecast table that read holdout, unsigned selection, paramsSha256 != sha256(params), TRAIN_FROZEN changed after

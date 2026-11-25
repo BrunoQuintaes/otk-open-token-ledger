@@ -4,6 +4,24 @@
  * every tenant, and admin:tal-summary returned the CU balance of any tenantId given in the query. A tenant role now
  * sees and acts only on its own tenant (another tenant's entry is answered like a missing one); asking explicitly for
  * another tenant is 403; global counters are not shown to tenant roles. The platform credential still sees all.
+ *
+ * Modules under test: `handleRequest` in `src/api/routes.ts` for the dead-letter and accounting
+ * summary admin routes, with `src/api/deadLetterStore.ts` and `src/security/talRuntime.ts` used
+ * to seed and inspect state, and the key manager and `signToken` to create credentials.
+ *
+ * Strategy / partitions: dead letters listed, counted, read, retried and discarded by an
+ * OPERATOR of tenant A for its own and for tenant B's entries; an entry with no tenant; an OWNER
+ * JWT and an ADMIN API key; the platform key; a MEMBER (403) and no credential (401). Accounting
+ * summary for another tenant (403), for the own tenant, the global counter hidden from tenant
+ * roles, and the platform key reading everything.
+ *
+ * Needs: no server (mock request/response objects). Sets `OTK_ADMIN_KEY` and `OTK_JWT_SECRET`
+ * to per-run test values in `before` and restores them in `after`; stores are reset before
+ * every test.
+ *
+ * Run just this file: `npx tsx --test test/unit/deadletters_tal_tenant.test.ts`
+ *
+ * @module test/unit/deadletters_tal_tenant.test
  */
 import { describe, it, beforeEach, before, after } from 'node:test';
 import assert from 'node:assert/strict';

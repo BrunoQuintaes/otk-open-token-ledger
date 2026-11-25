@@ -14,6 +14,22 @@
  * 4. Invalid JSON on unauthenticated routes (S08-F04): /signup, /login and /verify-email answer 500 and add a dead-letter
  *    entry per request (todo; files owned by another lane, patch proposed in the matrix document).
  * In-memory stores only: no network, no database, no Redis.
+ *
+ * Also covered: a VIEWER of tenant A is refused on the writes of its own tenant (role check, not only tenant binding),
+ * and a path outside the keys prefix that ends in the rotate suffix is not treated as a key rotation.
+ *
+ * Under test: the route handlers of `src/api/routes.ts` (called in process, and also read as text to find the
+ * handler conditions), the route extractor `scripts/ops/extract_routes.mjs` (run as a child `node` process), and the
+ * stores the probed routes use (API keys, tokens, webhooks, teams, dead letters, provider key vault, feature flags,
+ * receipts).
+ *
+ * Needs: nothing external. Before importing it empties `OTK_RECEIPT_LOG`, `OTK_DB_URL` and `OTK_TENANT_LOG`, sets
+ * `PROVER_URL=disabled` and removes `OTK_REDIS_URL` and `OTK_TENANTS`; `OTK_ADMIN_KEY` gets a fixture value and is
+ * restored after the run.
+ *
+ * Run just this file: `npx tsx --test test/security/h1_s08_route_matrix_gaps.test.ts`
+ *
+ * @module test/security/h1_s08_route_matrix_gaps.test
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

@@ -7,6 +7,22 @@
  *   - sliding window expiry (injectable clock)
  *   - reset per-key and all keys
  *   - GET /ratelimit/status route
+ *
+ * Modules under test: the rate-limit exports of `src/security/index.ts` (`buildRateLimitKey`,
+ * `AdaptiveRateLimiter`) and, for the status route, `handleRequest` from `src/api/routes.ts`.
+ *
+ * Strategy / partitions: key with all fields and with absent optional fields (wildcards); request
+ * counts in each zone of a 5-request window (empty, below the soft limit, at the soft limit, at or
+ * above the hard limit with a positive retry delay); requests that fall out of the sliding window
+ * (driven by an injected clock, not real time); reset of one key and of all keys; one smoke call
+ * of the status route.
+ *
+ * Needs: nothing external. The route is called in-process with mock request/response objects;
+ * no server is started.
+ *
+ * Run just this file: `npx tsx --test test/unit/adaptive_rate_limit.test.ts`
+ *
+ * @module test/unit/adaptive_rate_limit.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

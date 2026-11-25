@@ -19,6 +19,18 @@
  *  15.  StreamManager: Last-Event-ID preserved on connection
  *
  * @since Wave 4 (4F-PACK-4F01 / P5.2)
+ *
+ * Modules under test: `src/streaming/StreamManager.ts` and `src/streaming/SseRouter.ts`; the route list in
+ * `src/api/routes.ts` is checked as text.
+ *
+ * Strategy / partitions: as listed above (the numbering is the original plan, not the test order); one tenant
+ * with one and several connections, several tenants, the broadcast target, and the last event id.
+ *
+ * Needs: nothing external; responses are in-memory mocks that record the written frames.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave4_sse_stream.test.ts`
+ *
+ * @module test/unit/wave4_sse_stream.test
  */
 
 import { describe, it } from 'node:test';

@@ -10,6 +10,23 @@
  *   malformed hash file / manifest mismatch / unsafe tar · K signal · L cleanup failure.
  * For each case: exit code != 0, the failed step is named, no PASS line, evidence kept, cleanup only of the run's own
  * projects, no process left behind.
+ *
+ * Under test: `tools/academic_demo/run_from_package.sh` (the script that verifies, extracts and runs a release
+ * package end to end) together with `tools/academic_demo/check_outcomes.mjs`.
+ *
+ * Further scenarios beyond A–L: the all-pass baseline; a failure declared in advance by exact name is reported as
+ * declared-pass, never as plain pass; a declaration that does not happen fails; an expected-outcomes file edited
+ * after packaging is caught by the manifest; an existing work or report folder is refused; a Docker subnet already
+ * in use is skipped; a container left by the demo is removed by the runner's cleanup (own project only).
+ *
+ * Needs: `bash`, `tar` and `sha256sum` (the suites are skipped without them); temporary directories (removed after
+ * the run); child processes; several cases run concurrently. No network, no real Docker and no real test suite:
+ * every external tool is a fake placed first on `PATH`. The signal case sends SIGTERM to the runner. Each runner
+ * call is bounded at 240 s, after which the runner is signalled.
+ *
+ * Run just this file: `npx tsx --test test/release/academic_runbook_runner.test.ts`
+ *
+ * @module test/release/academic_runbook_runner.test
  */
 import { describe, it, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -144,7 +161,14 @@ echo "DEMO DONE"
 function writeTree(dir: string, files: Record<string, string | Buffer>) {
   for (const [rel, body] of Object.entries(files)) { const p = path.join(dir, rel); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, body); }
 }
-/** builds <dir>/pkg.tar (+ .sha256); `mutate` may change the source tree after the manifest is written */
+/**
+ * builds <dir>/pkg.tar (+ .sha256); `mutate` may change the source tree after the manifest is written
+ *
+ * @param dir - Temporary directory that receives the staging tree, the tar and its hash file.
+ * @param opts - `mutate`: edits the source tree after the manifest is written (to create a manifest mismatch);
+ *   `steps`: overrides passed to the fake source (expected outcomes of the steps).
+ * @returns Path of the tar file.
+ */
 function buildPackage(dir: string, opts: { mutate?: (src: string) => void; steps?: Record<string, unknown> } = {}) {
   const stage = path.join(dir, 'stage'); const src = path.join(stage, TOP, 'source');
   const files = fakeSource(opts.steps); writeTree(src, files);
@@ -191,7 +215,14 @@ function read(dir: string) {
   const dl = path.join(dir, 'docker_calls.log');
   return { result: res, steps: fs.existsSync(sf) ? fs.readFileSync(sf, 'utf-8') : '', docker: fs.existsSync(dl) ? fs.readFileSync(dl, 'utf-8') : '' };
 }
-/** runs the real runner; on timeout the runner itself is signalled (its own trap cleans up and kills its step tree) */
+/**
+ * runs the real runner; on timeout the runner itself is signalled (its own trap cleans up and kills its step tree)
+ *
+ * @param extra - Extra environment variables for the runner (e.g. fault injections for the fake tools).
+ * @param opts - Overrides: `tar` and `shaFile` (default: a freshly built package and its hash file), `dir` (default:
+ *   a new temporary directory) and `args` (default: the standard tar, hash, work and output arguments).
+ * @returns Exit status, combined output, the parsed result file, the step log, the fake docker call log and paths.
+ */
 async function runner(extra: Record<string, string> = {}, opts: { tar?: string; shaFile?: string; dir?: string; args?: string[] } = {}): Promise<Run> {
   const dir = opts.dir ?? tmp('otk-rb-');
   const tar = opts.tar ?? buildPackage(dir);
@@ -218,7 +249,11 @@ function assertFail(r: Run, step: RegExp) {
   assert.doesNotMatch(r.steps, /runbook done/);
   assert.match(r.steps, /RUNBOOK_RESULT=FAIL/);
 }
-/** only compose projects of this run were touched, and none is left */
+/**
+ * only compose projects of this run were touched, and none is left
+ *
+ * @param r - Result of {@link runner}.
+ */
 function assertOwnDockerOnly(r: Run) {
   const id = r.result.rb_id;
   for (const line of r.docker.split('\n').filter(Boolean)) {

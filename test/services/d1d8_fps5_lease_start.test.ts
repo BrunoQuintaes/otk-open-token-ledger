@@ -8,6 +8,18 @@
  * for longer than the lease; when the provider receives the call, the lease must still be valid.
  *
  *   . scripts/ops/fps5_env.sh && npx tsx --test --test-concurrency=1 test/services/d1d8_fps5_lease_start.test.ts
+ *
+ * Module under test: the in-process API proxy path of `src/operations/runtime.ts` (lease handling around the first
+ * counter use), with the fake provider from `./d1d8_c_provider.ts` and a blocking counter built on the local-counter
+ * double from `test/fixtures/d1d8/c/doubles.ts`.
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`). Before importing the server it
+ * sets fixture values in the test process for the API's variables (tenants, a fake provider key, the upstream
+ * override, `PROVER_URL=disabled`). The command above loads the test environment from `scripts/ops/fps5_env.sh`
+ * first; with the variables already set, `npx tsx --test test/services/d1d8_fps5_lease_start.test.ts` runs just this
+ * file.
+ *
+ * @module test/services/d1d8_fps5_lease_start.test
  */
 process.env['OTK_DB_URL'] = '';
 process.env['OTK_RECEIPT_LOG'] = '';

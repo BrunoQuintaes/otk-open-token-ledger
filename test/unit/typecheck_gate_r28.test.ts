@@ -4,6 +4,20 @@
  * Each case copies the real gate script and known list into a temporary root and places a
  * fake compiler at node_modules/typescript/bin/tsc (or none). No installed package is touched.
  * Before RV06 a missing compiler produced "0 diagnostic(s)" and exit 0.
+ *
+ * Module under test: the script `scripts/ops/typecheck-gate.mjs` (copied into each temporary root and run
+ * there with Node).
+ *
+ * Strategy / partitions: compiler absent; crashing without diagnostics; hanging until the timeout; not
+ * TypeScript (no version banner); exit 0 with diagnostics; a new error; only a known error; a known error at
+ * another position; a clean compilation.
+ *
+ * Needs: temporary directories (removed in `after`); each gate run has a 30 s limit and the hang case gives the
+ * gate a 500 ms compiler timeout. No network.
+ *
+ * Run just this file: `npx tsx --test test/unit/typecheck_gate_r28.test.ts`
+ *
+ * @module test/unit/typecheck_gate_r28.test
  */
 import { describe, it, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -17,7 +31,11 @@ const KNOWN = "src/auth/sso/OidcProvider.ts(75,20): error TS2307: Cannot find mo
 const NEW = "src/api/routes.ts(10,5): error TS2322: Type 'string' is not assignable to type 'number'.";
 const roots: string[] = [];
 
-/** Build a temp root with the gate and, optionally, a fake tsc whose body is `compiler`. */
+/**
+ * Build a temp root with the gate and, optionally, a fake tsc whose body is `compiler`.
+ * @param compiler - Source of the fake compiler script, or `null` to leave the compiler absent.
+ * @returns The temporary root; it is registered for removal in `after`.
+ */
 function makeRoot(compiler: string | null): string {
   const root = mkdtempSync(path.join(tmpdir(), 'otk-gate-r28-'));
   roots.push(root);
@@ -39,7 +57,11 @@ function makeRoot(compiler: string | null): string {
   return root;
 }
 
-/** Fake compiler: answers --version like tsc, otherwise runs `body`. */
+/**
+ * Fake compiler: answers --version like tsc, otherwise runs `body`.
+ * @param body - Script run for a normal compile.
+ * @param version - Script run for the version query; prints a TypeScript banner by default.
+ */
 const fake = (body: string, version = "process.stdout.write('Version 5.9.3\\n');") =>
   `if (process.argv.includes('--version')) { ${version} process.exit(0); }\n${body}\n`;
 

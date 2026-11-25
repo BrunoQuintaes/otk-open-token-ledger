@@ -2,6 +2,24 @@
  * D1–D8 front B — usage normalization per API (D4 §6, D5-G02/G03, U2-04/U2-05).
  * Expected values come from test/fixtures/d1d8/common_vectors.json (hand-computed) or are
  * written inline with their arithmetic; none is produced by the code under test.
+ *
+ * Modules under test: `src/providers/usage/normalizeUsage.ts` (with the document references in
+ * `src/providers/usage/usageDocRefs.ts`) and, for the historical case, the legacy
+ * `extractUsage` in `src/proxy/UsageExtractor.ts`.
+ *
+ * Strategy / partitions: the shared vectors per API; how each provider's categories combine
+ * (separate addends vs subsets for Anthropic, Gemini, OpenAI, DeepSeek, Cohere); raw usage
+ * digest and unknown fields; origin kept verbatim; invalid, absent and zero values kept distinct
+ * (`null`, never a count); an absent base field, an invalid subset, a subset larger than its
+ * base, a total that disagrees with the rule, a Gemini field derived from the total, an
+ * undocumented Gemini field, a usage object of the wrong API, and an API outside the scope.
+ *
+ * Needs: must be run from the repository root (reads `test/fixtures/d1d8/common_vectors.json` by
+ * relative path). No network.
+ *
+ * Run just this file: `npx tsx --test test/unit/d1d8_b_usage.test.ts`
+ *
+ * @module test/unit/d1d8_b_usage.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

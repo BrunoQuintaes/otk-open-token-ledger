@@ -8,6 +8,22 @@
  *       (HTTP 200, full body delivered, receipt missing).
  *
  * Upstream = fetch stub returning a ReadableStream (no network, no paid call).
+ *
+ * Modules under test: `src/proxy/ProxyGateway.ts` and `src/proxy/StreamTapper.ts`, checked through
+ * `src/api/receiptStore.ts` and the accounting layer of `src/security/talRuntime.ts`; the expected cost units
+ * come from `src/operations/knownCu.ts`.
+ *
+ * Strategy / partitions: one streamed call per provider format (OpenAI, Anthropic, Gemini); 256 chunks of
+ * about 1 KB; a usage event split across chunks with multi-byte text; a slow client (backpressure); a slow
+ * client that aborts while the gateway waits; the tapper used as a parser with no consumer.
+ *
+ * Needs: no external network. The gateway listens on a random port of 127.0.0.1; the global `fetch` is
+ * replaced for https URLs and restored in `after`. Sets the receipt log and database URL to empty, the prover
+ * to disabled and the three provider key variables to fixture values before importing; uses short real waits.
+ *
+ * Run just this file: `npx tsx --test test/unit/proxy_stream_metering_rv02_rv03.test.ts`
+ *
+ * @module test/unit/proxy_stream_metering_rv02_rv03.test
  */
 import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -78,7 +94,10 @@ beforeEach(() => {
   registry.loadTenantsFromString(`${TENANT}/MEMBER:${TOKEN}`);
 });
 
-/** Upstream SSE response made of the given byte chunks. */
+/**
+ * Upstream SSE response made of the given byte chunks.
+ * @param chunks - Byte chunks enqueued in order, each one delivered as a separate read.
+ */
 const sseFrom = (chunks: Uint8Array[]) => new Response(new ReadableStream({
   start(c) { for (const ch of chunks) c.enqueue(ch); c.close(); },
 }), { status: 200, headers: { 'content-type': 'text/event-stream' } });
@@ -91,7 +110,13 @@ const call = (provider: string, model: string) => fetch(`${base}/v1/chat/complet
 
 const entries = () => talRuntime.getAccountingLayer().entries(TENANT, nowEpoch());
 
-/** The single receipt of this test, checked through receipt store and accounting layer. */
+/**
+ * The single receipt of this test, checked through receipt store and accounting layer.
+ * @param provider - Expected provider name on the receipt.
+ * @param model - Expected model name on the receipt.
+ * @param input - Expected input tokens on the receipt and the accounting entry.
+ * @param output - Expected output tokens on the receipt and the accounting entry.
+ */
 function assertOneReceipt(provider: string, model: string, input: number, output: number): void {
   const es = entries();
   assert.equal(es.length, 1, 'exactly one accounting entry');
@@ -110,7 +135,11 @@ function assertOneReceipt(provider: string, model: string, input: number, output
 }
 
 const frame = (obj: unknown) => `data: ${JSON.stringify(obj)}\n\n`;
-/** Provider-native streaming usage events for `inp` input and `out` output tokens. */
+/**
+ * Provider-native streaming usage events for `inp` input and `out` output tokens.
+ * @param inp - Input tokens reported by the usage event.
+ * @param out - Output tokens reported by the final usage event.
+ */
 const usageFrames = (inp: number, out: number): Record<string, { model: string; text: string }> => ({
   openai: { model: 'gpt-4o', text: frame({ choices: [], usage: { prompt_tokens: inp, completion_tokens: out } }) },
   anthropic: {

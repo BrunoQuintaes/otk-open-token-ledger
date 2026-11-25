@@ -1,3 +1,21 @@
+/**
+ * Tests the absolute per-batch cost ceiling of pilot plans and the single, signed doubling of a pilot batch cap.
+ *
+ * Modules under test: `scripts/h2eval/cli/plan.ts` (`buildPlan`, `PILOT_INITIAL_BATCH_CAP_USD`,
+ * `PILOT_ABSOLUTE_BATCH_CAP_USD`), `scripts/h2eval/cli/pilot.ts`, `scripts/h2eval/cli/run.ts` (`runBatch`) and the
+ * CLI entry point `scripts/h2eval/cli/main.ts`.
+ *
+ * Strategy / partitions: the constants and the default initial cap of a pilot plan (USD 0.30); a doubling that
+ * stays at or under the absolute ceiling (USD 0.60), an explicit higher cap that is lowered, and a doubling above the
+ * ceiling that is refused with an exit code; and a campaign plan, which has no pilot list and cannot be doubled.
+ *
+ * Needs: a writable temporary directory; reads the pilot prompt list fixture
+ * `test/h2eval/fixtures/pilot/pilot_prompts.v3.json` and the pilot design file. No network, no secret.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cli/pilot_ceiling.test.ts`
+ *
+ * @module test/h2eval/cli/pilot_ceiling.test
+ */
 // SYNTHETIC — OFFLINE. C157 §9.2 absolute ceiling per pilot batch (US$ 0.60 after the single duplication) enforced IN CODE (MET-02 W3), and what the duplication
 // permits (W4): only to record exactly 2x of the batch cap, once, never above US$ 0.60, with a signature that cites the order. No network, no secret.
 import { test } from 'node:test';

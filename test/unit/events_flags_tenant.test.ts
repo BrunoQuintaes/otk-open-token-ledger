@@ -5,6 +5,22 @@
  * of any tenantId given in the query, also without a credential. With authentication enabled both now need a
  * credential and are scoped to the caller tenant; the platform credential sees all. The auth-disabled development
  * mode (A0) is unchanged (the historical devex/event tests run there and are not modified).
+ *
+ * Modules under test: `handleRequest` in `src/api/routes.ts` for the latest-events and flag
+ * evaluation routes, with events seeded through `src/publisher/runtime.ts` and credentials from
+ * the token registry and the API key manager.
+ *
+ * Strategy / partitions: latest events with no credential (401), as a VIEWER of tenant A (only
+ * A's events) and with the platform key (all); flag evaluation with no credential (401), for
+ * another tenant (403) and for the own tenant given explicitly or implicitly; key lifecycle
+ * events hidden from a VIEWER and shown to an OWNER of the same tenant.
+ *
+ * Needs: no server (mock request/response objects). Sets `OTK_ADMIN_KEY` in `before` and
+ * restores the previous value in `after`; stores and dispatcher are reset before every test.
+ *
+ * Run just this file: `npx tsx --test test/unit/events_flags_tenant.test.ts`
+ *
+ * @module test/unit/events_flags_tenant.test
  */
 import { describe, it, beforeEach, before, after } from 'node:test';
 import assert from 'node:assert/strict';

@@ -13,6 +13,20 @@
  *   - it stays Windows PowerShell 5.1 compatible (no pwsh-7-only operators);
  *   - the README keeps the status pending_author_evidence (no PASS claimed from here).
  * Nothing here runs the PA-03 tests or touches any key.
+ *
+ * Files under test (read as text only): `tools/academic_demo/windows/run_pa03_v1.ps1`,
+ * `run_pa03_v1.sh` and `README_PA03_V1.md` in the same folder, `tools/hardhat/test/PA03Closeout.test.js`,
+ * `scripts/ops/repro_contracts.sh` and `docs/academic_release/expected_outcomes.json`.
+ *
+ * Strategy / partitions: one check per bullet above, applied to the executable lines of each
+ * script (comment lines are dropped first), plus the override variable `OTK_PA03_V1_ZKEY` being
+ * honoured by the Hardhat test with its default path and skip kept.
+ *
+ * Needs: read access to those files only; PowerShell and bash are not run.
+ *
+ * Run just this file: `npx tsx --test test/unit/h1r2_pa03_windows_script.test.ts`
+ *
+ * @module test/unit/h1r2_pa03_windows_script.test
  */
 
 import { describe, it } from 'node:test';
@@ -39,12 +53,22 @@ const ENV_VAR = 'OTK_PA03_V1_ZKEY';
 
 const read = (f: string) => fs.readFileSync(f, 'utf8');
 
-/** Executable PowerShell lines only: drops <# ... #> blocks and whole-line # comments. */
+/**
+ * Executable PowerShell lines only: drops <# ... #> blocks and whole-line # comments.
+ *
+ * @param src - PowerShell script text.
+ * @returns The non-empty, non-comment lines.
+ */
 function psCode(src: string): string[] {
   const noBlocks = src.replace(/<#[\s\S]*?#>/g, '');
   return noBlocks.split(/\r?\n/).filter((l) => l.trim() !== '' && !l.trim().startsWith('#'));
 }
-/** Executable bash lines only (whole-line # comments dropped, shebang included in the drop). */
+/**
+ * Executable bash lines only (whole-line # comments dropped, shebang included in the drop).
+ *
+ * @param src - Bash script text.
+ * @returns The non-empty, non-comment lines.
+ */
 function shCode(src: string): string[] {
   return src.split(/\r?\n/).filter((l) => l.trim() !== '' && !l.trim().startsWith('#'));
 }

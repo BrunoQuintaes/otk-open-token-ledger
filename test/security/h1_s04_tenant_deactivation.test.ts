@@ -6,6 +6,19 @@
  *     issued BEFORE the deactivation stay invalid (dynamic keys: H1 lane B POLICY PENDING D4, unless restoreKeys:true);
  *     a JWT issued after the reactivation works (positive control).
  * In-memory stores only; no network.
+ *
+ * Also covered: a tenant role cannot reactivate its own tenant; the platform can.
+ *
+ * Modules under test: the route handlers of `src/api/routes.ts` called in process, with `src/api/tenantKeyRegistry.ts`,
+ * `src/auth/jwt.ts`, `src/api/tenantCrud.ts` and the memory key metadata, token and user stores.
+ *
+ * Needs: nothing external. Before importing it empties `OTK_RECEIPT_LOG`, `OTK_DB_URL` and `OTK_TENANT_LOG`, sets
+ * `PROVER_URL=disabled` and removes `OTK_REDIS_URL` and `OTK_TENANTS`; `OTK_ADMIN_KEY` and `OTK_JWT_SECRET` get
+ * fixture values and are restored after the run.
+ *
+ * Run just this file: `npx tsx --test test/security/h1_s04_tenant_deactivation.test.ts`
+ *
+ * @module test/security/h1_s04_tenant_deactivation.test
  */
 import { describe, it, before, after, mock } from 'node:test';
 import assert from 'node:assert/strict';

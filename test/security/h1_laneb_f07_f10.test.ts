@@ -9,6 +9,19 @@
  *   F-H1-10: /auth/refresh minted a MEMBER JWT from a refresh token bound only to a tenant; a refresh token must now carry
  *            a userId of an existing, provisioned member of the tenant, and the access JWT carries that userId.
  * In-memory stores only; no network.
+ *
+ * Modules under test: the route handlers of `src/api/routes.ts` called in process, with `src/api/tenantKeyRegistry.ts`,
+ * `src/auth/jwt.ts`, `src/auth/subjectStatus.ts`, `src/security/IDistributedRateLimiter.ts`, `src/users/IUserStore.ts`
+ * (memory user store) and `src/api/tenantCrud.ts`.
+ *
+ * Needs: nothing external. Before importing the modules it empties `OTK_RECEIPT_LOG`, `OTK_DB_URL` and
+ * `OTK_TENANT_LOG`, sets `PROVER_URL=disabled` and removes `OTK_REDIS_URL`, `OTK_TENANTS`, `OTK_AUTH_FAIL_MAX` and
+ * `OTK_PROXY_TRUSTED_HOPS`; it sets `OTK_ADMIN_KEY`, `OTK_JWT_SECRET` and `OTK_SCIM_BEARER_TOKEN` to fixture values
+ * for the run and restores them afterwards.
+ *
+ * Run just this file: `npx tsx --test test/security/h1_laneb_f07_f10.test.ts`
+ *
+ * @module test/security/h1_laneb_f07_f10.test
  */
 import { describe, it, before, after, beforeEach, mock } from 'node:test';
 import assert from 'node:assert/strict';

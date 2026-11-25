@@ -9,6 +9,19 @@
  * - Multi-instance store sharing contract (6 tests)
  *
  * @since Wave 3A (Pack 04+05)
+ *
+ * Modules under test: `src/proxy/ProxySlice.ts` (proxy mode), `src/proxy/ProxyGateway.ts` (module load),
+ * `src/api/routes.ts` (instance id on health and status routes) and the store singletons shared by two
+ * simulated instances (idempotency, rate limiter, dead letters, audit chain, accounting layer).
+ *
+ * Strategy / partitions: as listed above; "two instances" are two references to the same in-process singletons.
+ *
+ * Needs: nothing external. Reads `OTK_PROXY_MODE` (default case expects it unset) and changes and restores
+ * `OTK_INSTANCE_ID`.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave3a_pack04_05_ha_proxy.test.ts`
+ *
+ * @module test/unit/wave3a_pack04_05_ha_proxy.test
  */
 
 import { describe, it, beforeEach, afterEach } from 'node:test';

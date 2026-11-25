@@ -3,6 +3,23 @@
  * Decision of the author: an ADMIN is the administrator of ITS tenant, not of the platform. Cross-tenant is denied by
  * default; the body (or the path) can never replace the tenant of the credential. No platform role exists yet.
  * Negative tests for IDOR/BOLA on every route guarded by admin:tenants.
+ *
+ * Modules under test: `handleRequest` in `src/api/routes.ts`, with the token registry
+ * (`src/api/tenantKeyRegistry.ts`), the plan registry (`src/billing/PlanRegistry.ts`) and tenant
+ * CRUD (`src/api/tenantCrud.ts`) used to set up and inspect state.
+ *
+ * Strategy / partitions: for plan assignment, an ADMIN on its own tenant (allowed) and on another
+ * tenant (403, target unchanged), an OWNER on another tenant, a MEMBER, a missing/empty/non-string
+ * tenant id, and no credential (401); the assignment list and tenant list show only the caller's
+ * tenant; create/read/update/delete of another tenant is refused while the own tenant stays
+ * readable; an encoded path cannot reach another tenant.
+ *
+ * Needs: nothing external. Requests are mock objects passed to the router in-process; the token
+ * registry is cleared after every test.
+ *
+ * Run just this file: `npx tsx --test test/unit/admin_cross_tenant.test.ts`
+ *
+ * @module test/unit/admin_cross_tenant.test
  */
 import { describe, it, before, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

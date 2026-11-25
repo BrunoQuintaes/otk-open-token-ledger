@@ -14,6 +14,20 @@
  *  10.  OidcProvider result.sub is derived from code
  *
  * @since Wave 4 (4D-PACK-4D01 / NEW-4.03)
+ *
+ * Module under test: `src/auth/sso/OidcProvider.ts` (a stub relying party); the route list in
+ * `src/api/routes.ts` is checked as text.
+ *
+ * Strategy / partitions: not configured (from the environment) and configured (from options); code exchange and
+ * login redirect URL in both states; the issuer read from `OTK_OIDC_ISSUER`; the subject derived from the code.
+ *
+ * Needs: no network (the provider never contacts the issuer). Removes `OTK_OIDC_ISSUER` and
+ * `OTK_OIDC_CLIENT_ID` for the group and restores them. The stub exchange refuses deployed environments, so
+ * `NODE_ENV` must not be a deployed value.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave4_sso_oidc.test.ts`
+ *
+ * @module test/unit/wave4_sso_oidc.test
  */
 
 import { describe, it, before, after } from 'node:test';

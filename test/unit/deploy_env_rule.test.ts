@@ -4,6 +4,22 @@
  * string 'production': PostgreSQL TLS (4 places), the CSRF secret requirement, test-only registry/store resets, the CW
  * runtime reset and the SSO stubs. With NODE_ENV=staging (the Helm staging value) PostgreSQL connected without TLS and
  * the CSRF secret fell back to a random per-process value. All of them now use src/infra/deployEnv.ts.
+ *
+ * Modules under test: `isDeployedEnv` from `src/infra/deployEnv.ts`, `isProductionEnv` from
+ * `src/api/productionGuard.ts`, and the test-only resets in `src/api/tenantKeyRegistry.ts` and
+ * `src/economics/cwRuntime.ts`; two cases are static scans of source text under `src/`.
+ *
+ * Strategy / partitions: no file under `src/` compares the environment name with one exact
+ * string; both rules agree for production, staging, mixed case, short names, development, test
+ * and empty values; the resets refuse in staging; each database pool factory takes its TLS
+ * setting from the shared rule.
+ *
+ * Needs: read access to `src/`. Changes `NODE_ENV` in `process.env` and restores the original
+ * value after each test. No network or database.
+ *
+ * Run just this file: `npx tsx --test test/unit/deploy_env_rule.test.ts`
+ *
+ * @module test/unit/deploy_env_rule.test
  */
 import { describe, it, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

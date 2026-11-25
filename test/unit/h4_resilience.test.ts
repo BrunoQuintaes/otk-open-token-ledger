@@ -1,5 +1,20 @@
 /**
  * H-PACK-06 Tests — H4.1-H4.4 Rate Limiting & Resilience
+ *
+ * Modules under test: `CircuitBreaker` from `src/infra/circuitBreaker.ts` and
+ * `MemoryDistributedRateLimiter` from `src/security/IDistributedRateLimiter.ts`.
+ *
+ * Strategy / partitions: circuit breaker states (closed on success, open after the failure
+ * threshold, fast failure while open, half-open after the reset timeout, back to open when the
+ * probe fails), the state-change callback, reset, and the retry delay on the open error; rate
+ * limiter within and over the limit, after the window expires, with independent keys, and after
+ * a reset of one key.
+ *
+ * Needs: real timers (short waits of about 60 ms for the timeout and window cases); nothing else.
+ *
+ * Run just this file: `npx tsx --test test/unit/h4_resilience.test.ts`
+ *
+ * @module test/unit/h4_resilience.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

@@ -16,6 +16,18 @@
  *  12.  Strategy hot-switch: env var change takes effect without process restart
  *
  * @since Wave 4 (4A-PACK-4A02 / S5.3)
+ *
+ * Modules under test: `src/economics/ICUStrategy.ts`, `src/economics/CUEngine.ts` (`computePublishedCU`) and
+ * `src/pricing/CostUnits.ts` (the linear reference).
+ *
+ * Strategy / partitions: as listed above; the strategy selected with `OTK_CU_STRATEGY` unset, `nonlinear` and
+ * `linear`, and switched within the same process.
+ *
+ * Needs: nothing external. Changes `OTK_CU_STRATEGY` and restores it after each group.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave4_cu_strategy.test.ts`
+ *
+ * @module test/unit/wave4_cu_strategy.test
  */
 
 import { describe, it, before, after } from 'node:test';

@@ -7,6 +7,20 @@
  *
  * Note: the vault and webhook routers match `routePath` against a `/v1/...` prefix after the `/v1` strip, so they are
  * reached at `/v1/v1/...` (pre-existing routing; recorded, not changed here).
+ *
+ * Module under test: `src/api/routes.ts` (tenant scoping of routes that take a tenant or resource id from the
+ * path), with `src/security/ProviderKeyVault.ts`, `src/webhooks/WebhookRegistry.ts`, `src/users/teamStore.ts`
+ * and `src/api/tenantKeyRegistry.ts` as fixtures.
+ *
+ * Strategy / partitions: for the vault, GDPR, export job, webhook endpoint and team routes, a caller of tenant
+ * A acting on tenant B (refused, B unchanged) and, where relevant, on its own tenant (allowed); feature flags
+ * refused to every tenant role.
+ *
+ * Needs: nothing external; requests and responses are in-memory mocks.
+ *
+ * Run just this file: `npx tsx --test test/unit/tenant_boundary_sweep.test.ts`
+ *
+ * @module test/unit/tenant_boundary_sweep.test
  */
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

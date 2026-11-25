@@ -1,3 +1,25 @@
+/**
+ * Tests the explicit split plan for corpus freezing and the per-condition operations of the confirmatory phase,
+ * including the offline pause at the probe gate.
+ *
+ * Modules under test: `scripts/h2eval/corpus/split.ts` (`assignSplitsCounts`), `scripts/h2eval/corpus/manifest.ts`
+ * (`validateSplitPlan`), `scripts/h2eval/cli/freeze.ts`, `scripts/h2eval/cli/plan.ts`, `scripts/h2eval/cli/run.ts`
+ * (`runAuthorized`) and `scripts/h2eval/cli/campaign.ts` (`writeGateP1`, `writeGateG17`).
+ *
+ * Strategy / partitions: exact, seed-deterministic split counts; a split plan with requested counts per cell and
+ * dialog arm (0 means left out), capped repetitions and pilot groups, against no plan (byte-identical corpus); the
+ * confirmatory design with two conditions for one arm (one operation per condition, the probe first, an offline run
+ * that pauses at the probe gate and continues only after that gate is written) against no conditions (unchanged
+ * plan); and golden regressions against earlier plans.
+ *
+ * Needs: a writable temporary directory; sets `H2EVAL_CONTROL_DIR` to a temporary folder when unset; uses the local
+ * text counters. The golden regression tests read files from fixed local folders and are skipped, visibly, when
+ * they are absent. No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cli/cycle2prep2.test.ts`
+ *
+ * @module test/h2eval/cli/cycle2prep2.test
+ */
 // SYNTHETIC — OFFLINE. C154 / R5 rev. 3: (1) `freeze-corpus --split-plan`: composicao EXPLICITA por celula e por braco de dialogo (grupos por
 // split; celula/braco com soma 0 fora; pilotGroupsPerCell; --repeats-per-cell); sem o plano o corpus e byte-identico ao de antes (corpus_c2_candidate
 // gerado por abf16a01). (2) `conditions` do desenho na fase CONFIRMATORY: cada operacao S1 dos bracos listados vai UMA vez por condicao, com

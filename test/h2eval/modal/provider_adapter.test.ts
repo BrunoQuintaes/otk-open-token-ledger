@@ -1,4 +1,24 @@
-/** R14: the ProviderAdapter surface published by BOT-02 (INTERFACES.md §2, §9), exercised with a plan and resolved content. Offline, pure. */
+/**
+ * R14: the ProviderAdapter surface published by BOT-02 (INTERFACES.md §2, §9), exercised with a plan and resolved content. Offline, pure.
+ *
+ * Tests the provider adapter interface as the executor uses it: the adapter registry, request building from a plan
+ * and resolved content, and usage and refusal parsing.
+ *
+ * Module under test: `scripts/h2eval/modal/index.ts` (`ADAPTERS`, `adapterForModel`, `AdapterError`).
+ *
+ * Strategy / partitions: the registry (three APIs, official hosts, model catalog); request building per API (plan
+ * parameters applied and nothing invented, no credential in the built headers, image parts listed with unknown units
+ * and requiring resolved bytes, the Anthropic cache mark only when the plan asks and only on the last prefix block,
+ * reasoning settings per model, Gemini audio parts); and parsing per API (the total input definition, cache
+ * observation from usage, sanitized raw usage, refusal codes, `UNKNOWN` never 0, Gemini thoughts and modality
+ * units, a blocked prompt that keeps its usage).
+ *
+ * Needs: the response fixtures in `test/h2eval/modal/fixtures/`. Pure functions otherwise; no network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/modal/provider_adapter.test.ts`
+ *
+ * @module test/h2eval/modal/provider_adapter.test
+ */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

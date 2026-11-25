@@ -9,6 +9,17 @@
  *   - OTKApiError structure
  *
  * @since Wave 1 Pack 10 (2026-03-15)
+ *
+ * Module under test: the TypeScript SDK entry point `sdk/src/index.ts` (`OTKMeteringClient`, `OTKApiError`).
+ *
+ * Strategy / partitions: a valid and a missing base URL; trailing slash; optional key and timeout; the public
+ * methods exist and return promises; the error object; the type exports.
+ *
+ * Needs: no server. The promise case points the client at `localhost:9999` and ignores the rejections.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave1_pack10_sdk.test.ts`
+ *
+ * @module test/unit/wave1_pack10_sdk.test
  */
 
 import { describe, it } from 'node:test';

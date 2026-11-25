@@ -8,6 +8,20 @@
  * Now these are platform operations (x-admin-key); reproject is allowed to a tenant role only for its own tenant.
  * A0 (auth disabled) keeps the legacy admin-key path. Also covers RV-RUNS-07 (the platform key alone is enough on the
  * D4 and PF-NEW-02 routes) and RV-RUNS-14 (pending dead-letter count awaited in /admin/health/full).
+ *
+ * Module under test: `src/api/routes.ts` (who may call the platform operations), with the token registry
+ * of `src/api/tenantKeyRegistry.ts` and tokens signed by `src/auth/jwt.ts`.
+ *
+ * Strategy / partitions: every platform operation called by a tenant OWNER and OPERATOR (403); the platform
+ * key alone (200); a wrong platform key (401); reproject for another tenant, for every tenant and for the
+ * caller's own tenant; reproject with a body that is not an object (400).
+ *
+ * Needs: no network and no database (the own-tenant reproject case expects the refusal caused by the missing
+ * PostgreSQL). Sets `OTK_ADMIN_KEY` and `OTK_JWT_SECRET` for the run and restores them afterwards.
+ *
+ * Run just this file: `npx tsx --test test/unit/platform_ops_tenant.test.ts`
+ *
+ * @module test/unit/platform_ops_tenant.test
  */
 import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

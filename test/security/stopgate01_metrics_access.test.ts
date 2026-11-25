@@ -2,6 +2,21 @@
  * STOPGATE-01 P1.2 (R2-D8 / H1R2 review LOW-4): /metrics, /metrics?format=json and /metrics/prover are restricted in
  * deployed environments (OTK_METRICS_TOKEN bearer or platform credential) and stay open locally. Real HTTP server over
  * the API router.
+ *
+ * Strategy / partitions: local/test environment (open); deployed with a metrics token (only that token or the
+ * platform credential, a tenant token is refused); deployed without a metrics token (fail closed except for the
+ * platform credential); and the metrics token opens no other route.
+ *
+ * Under test: `handleRequest` of `src/api/routes.ts` behind a local HTTP server on 127.0.0.1, with the secrets cache of
+ * `src/infra/secretsBootstrap.ts` reset between cases.
+ *
+ * Needs: a free local port; no external network. Switches `NODE_ENV` between `test` and `production` and sets
+ * `OTK_METRICS_TOKEN` and `OTK_ADMIN_KEY` to fixture values; the saved values are restored at the end, after which
+ * `NODE_ENV` is left as `test`.
+ *
+ * Run just this file: `npx tsx --test test/security/stopgate01_metrics_access.test.ts`
+ *
+ * @module test/security/stopgate01_metrics_access.test
  */
 import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

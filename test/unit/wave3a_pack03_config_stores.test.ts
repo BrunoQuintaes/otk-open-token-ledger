@@ -13,6 +13,23 @@
  * - escapeHtml applied in dashboard HTML
  *
  * @since Wave 3A (PACK 3A-03)
+ *
+ * Modules under test: `src/infra/redis/RedisTokenStore.ts`, `src/infra/redis/RedisPolicyStore.ts`,
+ * `src/infra/redis/RedisBudgetTracker.ts`, `src/infra/pg/PgGovernanceStore.ts`, `src/infra/pg/PgIndexerStore.ts`,
+ * `src/auth/csrf.ts`, `src/observability/tracing.ts`, `src/api/securityHeaders.ts`, `src/dashboard/sanitize.ts`,
+ * `src/dashboard/app.ts` and `src/infra/storeBootstrap.ts`.
+ *
+ * Strategy / partitions: each store with a mock client or pool (miss, round trip, delete, clear, client absent,
+ * bigint values, per-tenant isolation, empty store); CSRF token for the right and a wrong session and its
+ * escaping in the page; span ids, structure, end and parent; the security headers per route kind; HTML escaping
+ * of special characters and a script payload; bootstrap without the Redis and database URLs.
+ *
+ * Needs: no Redis and no PostgreSQL (mock clients and pools). Removes `OTK_REDIS_URL` / `OTK_DB_URL` for the
+ * bootstrap case.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave3a_pack03_config_stores.test.ts`
+ *
+ * @module test/unit/wave3a_pack03_config_stores.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

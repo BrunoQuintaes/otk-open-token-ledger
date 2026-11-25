@@ -3,6 +3,21 @@
  * explicit metering outcomes (usage missing, client abort, upstream error).
  *
  * Upstream provider = fetch stub returning a ReadableStream (no network, no paid call).
+ *
+ * Modules under test: `src/proxy/ProxyGateway.ts` and `src/proxy/StreamTapper.ts`, with
+ * `src/api/receiptStore.ts` and `src/security/talRuntime.ts`.
+ *
+ * Strategy / partitions: the first chunk arrives before the upstream ends; the rewritten body has no stale
+ * content length; a stream and a plain response without usage; a client disconnect; an upstream error mid
+ * stream; the tapper on Anthropic, Gemini and OpenAI usage events.
+ *
+ * Needs: no external network. The gateway listens on a random port of 127.0.0.1; the global `fetch` is
+ * replaced for https URLs and restored in `after`. Sets `OTK_RECEIPT_LOG` and `OTK_DB_URL` to empty,
+ * `PROVER_URL` to disabled and `OPENAI_API_KEY` to a fixture value before importing; uses short real waits.
+ *
+ * Run just this file: `npx tsx --test test/unit/proxy_streaming_r10.test.ts`
+ *
+ * @module test/unit/proxy_streaming_r10.test
  */
 import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

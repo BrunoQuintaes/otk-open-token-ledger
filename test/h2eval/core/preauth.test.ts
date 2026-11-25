@@ -1,3 +1,22 @@
+/**
+ * Tests the 80% sub-ledger checkpoint at executor level, the signed pre-approval to continue up to 100%, and the
+ * study-wide attempt budget.
+ *
+ * Modules under test: `scripts/h2eval/core/runner.ts` (`createExecutor`), `scripts/h2eval/core/ledger.ts` and the
+ * journal verifier, with the doubles in `../support/double.ts`.
+ *
+ * Strategy / scenarios: a base batch settles 20 operations on a shared study ledger; another batch then pauses at 80%
+ * without pre-approval (the spend reaches it only through the shared ledger); with a signed pre-approval it
+ * continues while the committed amount plus every future reservation of the remaining scope fits (the pause is
+ * journaled once) and stops when it would not; an unsigned pre-approval counts for nothing; and an exhausted
+ * attempt budget stops before planning, counted at every SENT line.
+ *
+ * Needs: a writable temporary directory. No network, no credential.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/core/preauth.test.ts`
+ *
+ * @module test/h2eval/core/preauth.test
+ */
 // SYNTHETIC — OFFLINE. C144 D144-06 / D144-04 at the executor level: the 80 % checkpoint without pre-authorisation stops (PAUSE_REVIEW_AT_80PCT);
 // a SIGNED preAuthorizeTo100pct continues ONLY while committed + every future reservation of the remaining scope fits the sub-ledger
 // (journaled PAUSE_PREAUTHORIZED once); when the future scope would overflow, it stops even though pre-authorised; an unsigned

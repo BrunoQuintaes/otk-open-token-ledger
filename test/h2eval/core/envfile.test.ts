@@ -1,3 +1,27 @@
+/**
+ * Tests the credential loader that reads one variable from an env file given by path, and proves the value goes
+ * only into the outgoing credential header.
+ *
+ * Modules under test: `scripts/h2eval/core/envFile.ts` (`checkEnvFileLocation`, `readEnvFileVar`,
+ * `EnvFileRefused`, `defaultInsideGitTree`, `defaultInsideSyncFolder`), `scripts/h2eval/core/egress.ts`
+ * (`createEgress`, `EgressRefused`, `H2EVAL_ENV_NAMES`) and `scripts/h2eval/core/runner.ts`.
+ *
+ * Strategy / partitions: file location (only an absolute, existing path outside a Git tree and a sync folder, with
+ * no broad group access; fixed codes; the file is not opened by this check); file format (only the requested line is
+ * read; missing, duplicated, quoted, spaced or too short values give a fixed code that never echoes the value;
+ * forbidden names and other lines ignored); egress setup (variable and file both set is ambiguous and refused,
+ * OFFLINE never opens the file, the preflight checks only the location); and a REAL rehearsal with an injected fetch
+ * (the decoy value reaches only the header, never the process environment, journal, ledger, snapshot or record; a
+ * 599 status gives an uncertain outcome).
+ *
+ * Needs: a writable temporary directory for synthetic env files. It sets and then deletes
+ * `H2EVAL_ENVFILE_TEST_VAR`, and asserts `H2EVAL_ANTHROPIC_API_KEY` is never set. No socket, no real credential.
+ * Importing `syntheticGo` from `./go.test.ts` also registers that file's tests in this run.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/core/envfile.test.ts`
+ *
+ * @module test/h2eval/core/envfile.test
+ */
 // SYNTHETIC — OFFLINE. R16 gap: credential loader by PATH. Only synthetic files in temporary directories; the canary value must never
 // reach process.env, journal, ledger, snapshot, record, error text or the (injected) fetch except as the credential header.
 // REAL mode is exercised ONLY with an injected fetch (returns 599) — no socket is ever opened.

@@ -8,6 +8,24 @@
  * every request that STARTS after the registry change committed sees it on every replica; unknown tokens are never
  * admitted; OTK_TENANTS deployments without registry rows keep working; a store outage never admits a token whose state
  * is unknown on a privileged or spending request.
+ *
+ * Strategy / scenarios (numbered as in the test names): a tenant created on A is valid on B; rotation on A; tenant
+ * deletion on A (and deletion through B of a tenant created on A); unknown and cross-tenant tokens; a reload on A
+ * propagating to B while an environment-configured token stays valid; a token already bound to one tenant cannot be
+ * bound to another through the other replica; restart of B and a registry store outage on B (fail closed), then
+ * recovery. Replica B reaches PostgreSQL through a TCP relay owned by the test so the outage hits B only.
+ *
+ * Under test: the API server entrypoint `src/api/server.ts` as a black box over HTTP, with its PostgreSQL-backed
+ * tenant registry.
+ *
+ * Needs: `OTK_TEST_PG_URL` (disposable database); two API child processes started with `node_modules/tsx`, each on
+ * a free 127.0.0.1 port, with a minimal environment built here (random admin, JWT and token values generated per
+ * run; only `PATH`, `HOME` and `SYSTEMROOT` come from the caller's environment); up to 300 s. Optional
+ * `SG01_EVIDENCE_OUT`: a file path where the run's measurements are written as JSON.
+ *
+ * Run just this file: `npx tsx --test test/integration/stopgate01_r13b_tenant_tokens_two_replicas_pg.test.ts`
+ *
+ * @module test/integration/stopgate01_r13b_tenant_tokens_two_replicas_pg.test
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

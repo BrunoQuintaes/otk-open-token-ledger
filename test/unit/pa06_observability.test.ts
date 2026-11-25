@@ -9,6 +9,19 @@
  * API /metrics is tested via the same in-process mock pattern used in observability_smoke.test.ts.
  *
  * @since PA-06 (2026-03-13)
+ *
+ * Modules under test: `src/prover/proverMetrics.ts`, `src/api/routes.ts` (the metrics route) and
+ * `src/observability/runtime.ts` (the in-process collector).
+ *
+ * Strategy / partitions: one proof recorded for each status (done, failed, dead letter), several recordings
+ * accumulating, the gauge names present in the Prometheus text; the API metrics JSON keeps its old fields
+ * and adds the receipts counter.
+ *
+ * Needs: nothing external; requests and responses are in-memory mocks, no socket is opened.
+ *
+ * Run just this file: `npx tsx --test test/unit/pa06_observability.test.ts`
+ *
+ * @module test/unit/pa06_observability.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

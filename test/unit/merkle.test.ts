@@ -3,6 +3,20 @@
  *
  * Validates determinism, correctness of proofs, and edge cases.
  * Cross-platform test (positional hashing scheme matches BatchReceiptRegistry.sol).
+ *
+ * Module under test: `MerkleTree`, `hashLeaf` and `hashNode` from `src/crypto/merkle.ts` (the
+ * batch tree; the v3 tree is tested in `d1d8_a_merkle_v3.test.ts`).
+ *
+ * Strategy / partitions: no leaves (throws), one leaf, two leaves, same leaves twice and a
+ * different order; proofs for single indices and for every index of a 4-leaf tree; a wrong leaf,
+ * a tampered proof and an out-of-range index; odd sizes 3 and 5; a fixed root for two known
+ * leaves; a 1000-leaf tree built in under 5 s, with 10 sampled proofs that verify.
+ *
+ * Needs: nothing external. The 1000-leaf case depends on machine speed, with a wide margin.
+ *
+ * Run just this file: `npx tsx --test test/unit/merkle.test.ts`
+ *
+ * @module test/unit/merkle.test
  */
 
 import { describe, it } from 'node:test';

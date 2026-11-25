@@ -9,6 +9,18 @@
  * No network I/O, no server socket.
  *
  * @since P1.2 (2026-03-13)
+ *
+ * Module under test: `src/api/routes.ts` (the public OpenAPI document and documentation page routes).
+ *
+ * Strategy / partitions: the JSON document (status, content type, valid JSON, OpenAPI version, title, no
+ * credential needed); the HTML page (status, content type, link to the JSON document, viewer element and
+ * script, no credential needed); regression of the other public routes (health, version, unknown path 404).
+ *
+ * Needs: nothing external; requests and responses are in-memory mocks.
+ *
+ * Run just this file: `npx tsx --test test/unit/product_p1_2.test.ts`
+ *
+ * @module test/unit/product_p1_2.test
  */
 
 import { describe, it } from 'node:test';

@@ -6,6 +6,19 @@
  *   - PublishPolicy window_k: production config, integration readiness
  *
  * @since Wave 1 Pack 4 (2026-03-15)
+ *
+ * Modules under test: `src/security/RedisTAL.ts` (local fallback and a mock Redis client) and
+ * `src/publisher/PublishPolicy.ts`.
+ *
+ * Strategy / partitions: the accounting layer without Redis (debit sync and async, balance, idempotent debit,
+ * entries, reconcile with and without a delta) and with a mock client (distributed flag); the publish policy
+ * from the environment, off mode, both window conditions, flush, inspect, and invalid window and batch size.
+ *
+ * Needs: no Redis and no network. One case sets `CU_PUBLISH_POLICY` and deletes it afterwards.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave1_pack04_tal_policy.test.ts`
+ *
+ * @module test/unit/wave1_pack04_tal_policy.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

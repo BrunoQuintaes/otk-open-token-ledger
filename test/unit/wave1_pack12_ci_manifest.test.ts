@@ -8,6 +8,19 @@
  *   - Manifest archival (A11.3 absorbed into A6.6)
  *
  * @since Wave 1 Pack 12 (2026-03-15)
+ *
+ * Under test: the scripts `scripts/ops/generate_manifest.js`, `scripts/ops/hash_proof.js` and the canonical lint
+ * script, read as text (none of them is run).
+ *
+ * Strategy / partitions: each script exists and contains the expected exports, output paths and checks. The
+ * SHA-256 case only checks the shape of a digest computed with `node:crypto`; it does not call `hash_proof.js`
+ * and writes no file.
+ *
+ * Needs: only the file system (read only), from the repository root found from this file's location.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave1_pack12_ci_manifest.test.ts`
+ *
+ * @module test/unit/wave1_pack12_ci_manifest.test
  */
 
 import { describe, it } from 'node:test';

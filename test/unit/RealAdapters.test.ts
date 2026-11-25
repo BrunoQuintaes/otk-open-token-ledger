@@ -9,6 +9,22 @@
  * - CU determinism: same weights as U11.1 stubs (just different input shape)
  * - Error handling: MISSING_MODEL, MISSING_USAGE, INVALID_TOKENS
  * - ProviderRegistry fallback: stub when no API key, real when key present
+ *
+ * Modules under test: `src/providers/adapters/GeminiAdapter.ts`,
+ * `src/providers/adapters/DeepSeekAdapter.ts` and `src/providers/ProviderRegistry.ts`.
+ *
+ * Strategy / partitions: a native response per provider; each missing or invalid field (model,
+ * usage block, negative tokens); the fallback request id when the response id is absent;
+ * DeepSeek cache fields that must not change the CU; registry built with the API key variables
+ * unset vs set to a fake value, with the same CU either way.
+ *
+ * Needs: no network (only response parsing). The fallback block temporarily sets or deletes
+ * `GEMINI_API_KEY` and `DEEPSEEK_API_KEY` in `process.env` and restores the previous values in
+ * its `after` hook.
+ *
+ * Run just this file: `npx tsx --test test/unit/RealAdapters.test.ts`
+ *
+ * @module test/unit/RealAdapters.test
  */
 
 import { describe, it, before, after } from 'node:test';

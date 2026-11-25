@@ -1,6 +1,25 @@
 /**
  * CU Strategy Pattern + CU Bucketing — unit tests
+ *
+ * Checks how a Compute Unit (CU) amount is computed per provider family and how CU values are
+ * rounded into privacy buckets.
+ *
+ * Modules under test: `src/economics/strategies/TokenBasedStrategy.ts`,
+ * `src/economics/strategies/InferenceBasedStrategy.ts`, `src/economics/CUStrategyFactory.ts` and
+ * `bucketCU` from `src/pricing/CostUnits.ts`.
+ *
+ * Strategy / partitions: token strategy (supported and unknown provider/model, bigint result,
+ * `CUError` on an unknown model); latency-based inference strategy (supported provider, missing
+ * `latencyMs`, unsupported provider); factory dispatch per provider and unknown provider;
+ * `bucketCU` at exact multiples, just below, at and above half a bucket, zero, small values,
+ * custom and default bucket size, negative CU and zero bucket size (both throw).
+ *
+ * Needs: nothing external (pure computation).
+ *
+ * Run just this file: `npx tsx --test test/unit/CUStrategy.test.ts`
+ *
  * @since U5.2 / U8.6.3
+ * @module test/unit/CUStrategy.test
  */
 
 import { describe, it } from 'node:test';

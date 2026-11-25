@@ -1,3 +1,23 @@
+/**
+ * Tests resuming a partial batch after a consecutive-failure stop: the stop stays terminal and visible, settled
+ * operations are not re-sent, and money and uncertainty stops still block.
+ *
+ * Modules under test: `scripts/h2eval/core/runner.ts` (`createExecutor`), `scripts/h2eval/core/journal.ts`
+ * (`openJournal`, `verifyJournalText`) and `scripts/h2eval/cli/status.ts` (`status`), with the doubles in
+ * `../support/double.ts`.
+ *
+ * Strategy / scenarios: a journal shaped like a real partial batch (two settled operations, the third stopped
+ * before planning) resumes without re-sending the settled ones and without marking the stopped one as settled (the
+ * gap shows in the status); resuming a completed batch again sends nothing and moves no money; a sub-ledger without
+ * balance stops before any send, also after a restart; and an uncertain operation is not re-sent on resume and
+ * blocks new ones.
+ *
+ * Needs: a writable temporary directory. It sets `H2EVAL_TEST_KEY` to a fake canary value. No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/core/e1prime_resume.test.ts`
+ *
+ * @module test/h2eval/core/e1prime_resume.test
+ */
 // SYNTHETIC — OFFLINE. E1' (C158/C159, 2026-11-12), parte 2: retomada de lote PARCIAL depois de STOP_CONSECUTIVE_FAILURES. O STOP e gravado antes de planejar/reservar/enviar (a operacao parada nunca foi enviada nem cobrada).
 // ESCOPO MINIMO (coordenadora 20:28Z): o E1' NAO muda a retomada. A linha STOP_GLOBAL(STOP_CONSECUTIVE_FAILURES) continua TERMINAL (caso real: lote 2 do Haiku, operacao f43f5a1c = desvio de execucao, lote fecha em <= 59/60, sem reenvio).
 // Aqui: (1) as liquidadas NAO sao reenviadas; (2) a operacao parada NAO e reenviada e NAO aparece como liquidada (o buraco e visivel no status); (3) idempotencia; (4) STOP financeiro e incerta continuam travando.

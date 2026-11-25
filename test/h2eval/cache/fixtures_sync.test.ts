@@ -2,6 +2,22 @@
  * Fixtures de diálogos sintéticos para as outras frentes do B2 (INTERFACES.md §9): `fixtures/dialogs.testseed.json` guarda 1 diálogo S3 e 1 S2
  * gerados com a semente de TESTE e prefixo parametrizável. Este teste regenera e exige igualdade (a fixture não pode ficar velha);
  * `H2C_WRITE_FIXTURES=1 tsx --test .../fixtures_sync.test.ts` reescreve o arquivo (só quando o gerador muda de propósito).
+ *
+ * English summary: guards the shared dialog fixture `test/h2eval/cache/fixtures/dialogs.testseed.json` (one
+ * hit-attempt dialog and one no-hit control dialog built with the test seed). The test rebuilds the fixture from
+ * the dialog generator and fails when the file on disk differs, so other test folders never read a stale fixture.
+ *
+ * Module under test: `scripts/h2eval/cache/dialogs.ts` (`makeDialog`, `contentOf`, `renderCall`).
+ *
+ * Strategy: a single regenerate-and-compare check (canonical-JSON sha256 of the rebuilt fixture against the file),
+ * plus the arms and the minimum prefix length of the stored dialogs.
+ *
+ * Needs: read access to the fixture file. Environment variable read: `H2C_WRITE_FIXTURES` (when `1`, the test first
+ * rewrites the fixture file, so only set it when the generator changed on purpose).
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cache/fixtures_sync.test.ts`
+ *
+ * @module test/h2eval/cache/fixtures_sync.test
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

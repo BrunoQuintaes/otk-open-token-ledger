@@ -2,6 +2,25 @@
  * NF-05 (RUN-S 2026-10-09, S-07): scripts/ops/backup.sh finished with exit 0 after copying zero files, treated a failed
  * or missing pg_dump as a warning, skipped configured sources that did not exist and wrote no checksum. A backup that
  * saved nothing must not look successful. Runs the real script in disposable directories with fake data.
+ *
+ * Script under test: `scripts/ops/backup.sh`, run with `bash` as a child process.
+ *
+ * Strategy / partitions: nothing configured; a configured source that does not exist; a database
+ * URL that cannot be dumped; one real source (exit 0 and a SHA256SUMS that verifies); an empty
+ * file as the only content; secondary logs without a primary source (database or receipt log);
+ * failed and aborted runs (directory renamed `.FAILED`); a destination that cannot be created; a
+ * run stopped by SIGTERM during the copy; a good backup whose file or checksum line is changed
+ * afterwards (detected).
+ *
+ * Needs: `bash` on the PATH (every block is skipped when it is missing) and the local file system
+ * (temporary directories removed in the `after` hook). The child gets a reduced environment: only
+ * a few system variables plus `OTK_BACKUP_DIR` and the variables each test sets; the OTK storage
+ * variables of the parent are never passed on. `sha256sum` is used to verify manifests. No real
+ * database is needed: the failing-dump case points at a closed local port (127.0.0.1:1).
+ *
+ * Run just this file: `npx tsx --test test/unit/backup_script.test.ts`
+ *
+ * @module test/unit/backup_script.test
  */
 import { describe, it, after } from 'node:test';
 import assert from 'node:assert/strict';

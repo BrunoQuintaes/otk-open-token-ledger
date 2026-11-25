@@ -1,4 +1,12 @@
-/** Synthetic multi-batch GO (h2eval.go.multi.v1) builder for OFFLINE tests. Never a real GO: campaign ids, nonces and signatures are test values. */
+/**
+ * Synthetic multi-batch GO (h2eval.go.multi.v1) builder for OFFLINE tests. Never a real GO: campaign ids, nonces and signatures are test values.
+ *
+ * A GO file is the signed go-ahead that the multi-batch runner (`runAuthorized` in `scripts/h2eval/cli/run.ts`)
+ * requires before it runs any batch. Side effect on import: when `H2EVAL_CONTROL_DIR` is unset, this module sets
+ * it to a new temporary directory, so tests never write the machine's real campaign control registry.
+ *
+ * @module test/h2eval/support/gomulti
+ */
 import { createHash } from 'node:crypto';
 import { sha256Canon } from '../../../scripts/h2eval/core/canon.js';
 import { GO_REQUIRED_STOPS, type GoFileMultiV1 } from '../../../scripts/h2eval/core/egress.js';
@@ -12,8 +20,30 @@ process.env['H2EVAL_CONTROL_DIR'] ??= mkdtempSync(path.join(tmpdir(), 'h2eval-te
 /** Synthetic identity sha used by pure-validator tests that have no directory. */
 export const SYNTHETIC_IDENTITY_SHA = '1'.repeat(64);
 
+/**
+ * Derives a deterministic batch nonce for a synthetic GO file.
+ *
+ * @param seed - Test-chosen seed; a different seed gives a different nonce for the same batch.
+ * @param batchId - Batch the nonce is for.
+ * @returns The first 32 hex characters of sha256(`seed|batchId`).
+ */
 export function nonceFor(seed: string, batchId: string): string { return createHash('sha256').update(`${seed}|${batchId}`).digest('hex').slice(0, 32); }
 
+/**
+ * Builds the JSON text of a synthetic multi-batch GO file for a plan and a set of its batches.
+ *
+ * Defaults: providers and models are those of the batches in scope; caps are the 5/3/3 USD provider sub-ledgers
+ * and an 11 USD campaign total with a pause at 80%; the attempt limit is the sum of the batches' calls; the time
+ * window runs from 60 s before to 1 h after `nowMs`; one nonce per batch from {@link nonceFor}. The digest field is
+ * the canonical sha256 of the other fields unless `over` sets it.
+ *
+ * @param plan - The batch plan the GO refers to (its study id, protocol hash, preregistration and corpus).
+ * @param batchIds - Batches in scope.
+ * @param o - Options: `executorCodeSha` (required), optional overrides of the defaults above, `campaignDir` (the
+ *   campaign identity in that directory is created if absent and pinned, together with its canonical path and
+ *   ledger opening digest), `pilotProtocolHash`, and `over` (raw fields merged last, to build invalid GO files).
+ * @returns The GO file content as a JSON string, ready to write to disk.
+ */
 export function syntheticMultiGo(plan: BatchPlan, batchIds: string[], o: { executorCodeSha: string; prereg?: string; nonceSeed?: string; maxAttempts?: number; windowMs?: number; notBeforeMs?: number; providers?: GoFileMultiV1['providers']; pauseAck?: GoFileMultiV1['pauseAck80pct']; preAuth?: GoFileMultiV1['preAuthorizeTo100pct']; over?: Partial<GoFileMultiV1>; nowMs?: number; /** VNEXT-3: the campaign directory this GO is bound to (identity created if absent); else a synthetic sha */ campaignDir?: string; pilotProtocolHash?: string; /** VNEXT-F: override of the pinned opening digest (default: the file's digest when present, else 'none') */ ledgerOpeningDigest?: string }): string {
   const now = o.nowMs ?? Date.now();
   const identitySha = o.campaignDir ? initCampaignIdentity(o.campaignDir, { studyId: plan.studyId, corpusSha256: plan.corpus.corpusSha256, createdBy: 'human:SYNTHETIC' }).sha256 : SYNTHETIC_IDENTITY_SHA;

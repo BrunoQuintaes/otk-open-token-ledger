@@ -2,6 +2,25 @@
  * NF-01 (RUN-S 2026-10-09): Gate R0 CHECK 1b must catch secret env reads outside the canonical boundaries in every
  * notation, keep configuration variables out of scope, and print names only. Fixtures are disposable directories
  * with fake values; the real repository must pass with the dated allowlist.
+ *
+ * In plain terms: secret environment variables may be read only by the modules allowed to hold secrets, and the
+ * detector must see every way of reading them.
+ *
+ * Under test: `scripts/ops/secret_env_boundary.mjs`, run as a child `node` process on a temporary fixture tree (and
+ * once on the repository itself).
+ *
+ * Strategy / partitions: dot and bracket notation and destructuring outside the boundary; the two allowed boundaries
+ * and a look-alike folder that is not one; configuration names, paths and public certificates (out of scope); the
+ * allowlist rules (finding id and date required, exact per file, maximum count per file, stale entries rejected);
+ * reads a regular-expression detector would miss (computed names, optional chaining, `.tsx` files and similar); and
+ * other routes to the process object (aliases, `globalThis`, imports and re-exports of `node:process`, `require`,
+ * reflection). The first case also checks that the fake value never appears in the detector's output.
+ *
+ * Needs: temporary directories (removed after the run) and a child `node` process per case; no network.
+ *
+ * Run just this file: `npx tsx --test test/security/secret_env_boundary.test.ts`
+ *
+ * @module test/security/secret_env_boundary.test
  */
 import { describe, it, after } from 'node:test';
 import assert from 'node:assert/strict';

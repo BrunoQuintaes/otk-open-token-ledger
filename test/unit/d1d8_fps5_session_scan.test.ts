@@ -2,6 +2,19 @@
  * RV2-03 (fechamento pós-S5) — the session-cookie scanner detects SYNTHETIC session credentials and
  * reports only path:line (never the value). The cookies below are fabricated for this test; they are
  * built at runtime so this file itself does not contain a cookie-shaped literal.
+ *
+ * Script under test: `scripts/ops/session_secret_scan.sh`, run with `bash`.
+ *
+ * Strategy / partitions: a file with synthetic session values (flagged, output shows locations
+ * only); a file with short placeholders and unrelated text (exit 0); the scan of the whole
+ * repository tree (no hit).
+ *
+ * Needs: `bash` on the PATH, and must be run from the repository root (the script path is
+ * relative). Writes its sample files to a temporary directory that is not removed.
+ *
+ * Run just this file: `npx tsx --test test/unit/d1d8_fps5_session_scan.test.ts`
+ *
+ * @module test/unit/d1d8_fps5_session_scan.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,3 +1,24 @@
+/**
+ * Tests four safeguards of multi-batch runs (campaign identity, nonce timing, the pilot protocol hash and a
+ * cumulative attempt limit) and the check of the launch environment's variable names in REAL mode.
+ *
+ * Modules under test: `scripts/h2eval/cli/run.ts` (`runAuthorized`, `realPreconditions`, `selectBatch`),
+ * `scripts/h2eval/cli/campaign.ts` (`initCampaignIdentity`, `campaignIdentitySha256`, `checkNonce`,
+ * `countSentInScope`, `freezeTrain`, `writeGateG17`) and `scripts/h2eval/core/egress.ts` (`validateGoMultiV1`).
+ *
+ * Strategy / scenarios: a GO file pinned to one campaign identity is refused in another directory, or where no
+ * identity exists; a batch halted by a split gate does not consume its nonce and runs later under a new GO; the
+ * pilot protocol hash is required outside the pilot block and must agree with the GO; the attempt limit counts SENT
+ * lines across processes; and REAL mode refuses launch-environment variable names outside the documented allowlist
+ * (case-insensitive; `H2EVAL_*` names allowed; values never read).
+ *
+ * Needs: a writable temporary directory and a synthetic corpus frozen in the `setup` test (allow up to 5 minutes);
+ * sets `H2EVAL_CONTROL_DIR` to a temporary folder when unset. No network, no credential.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cli/reserves.test.ts`
+ *
+ * @module test/h2eval/cli/reserves.test
+ */
 // SYNTHETIC — OFFLINE. VNEXT-3 (C151 item 3): the four reserves of the final G15 on d2c60a98.
 //  R15-G-1 the multi GO pins an immutable campaign identity (CAMPAIGN_IDENTITY.json): the same GO in a second directory is refused;
 //  R15-G-2 the GO nonce is committed only after the batch's first PLANNED: a batch halted by a split gate leaves no row and runs later under a new GO;

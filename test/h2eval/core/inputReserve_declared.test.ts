@@ -1,3 +1,21 @@
+/**
+ * Tests that in REAL mode the input-reserve choice must be declared explicitly (a policy or a deliberate `none`) and
+ * that every RESERVED journal line records it.
+ *
+ * Modules under test: `scripts/h2eval/cli/run.ts` (`inputReservePolicyFromArgs`, `requireDeclaredReservePolicy`),
+ * `scripts/h2eval/core/inputReserve.ts` (`reservePolicyMismatches`) and `scripts/h2eval/core/runner.ts`.
+ *
+ * Strategy / partitions: REAL without any declaration refused, `none` and a policy accepted, the CLI accepting
+ * `none` and refusing `none` combined with an exemption option; the check of RESERVED lines (all `none`; the policy
+ * id on covered models and `NOT_APPLICABLE` on exempt ones; a missing or wrong value reported); and the executor
+ * writing each of these values.
+ *
+ * Needs: a writable temporary directory. It sets `H2EVAL_TEST_KEY` to a fake canary value. No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/core/inputReserve_declared.test.ts`
+ *
+ * @module test/h2eval/core/inputReserve_declared.test
+ */
 // SYNTHETIC — OFFLINE. MET-02 R4(a) (C158 §3.2): a policy that is only an optional flag is silently off when forgotten => in REAL the choice is explicit (a policy or a deliberate `none`)
 // and every RESERVED line carries it.
 import { test } from 'node:test';

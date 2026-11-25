@@ -11,6 +11,22 @@
  *   7. Concurrent multi-tenant assignment: no data leakage
  *
  * @since Wave 5 (W5-5D / NEW-5.04)
+ *
+ * Note: item 4 of the list above has no test in this file (the indexer is not imported); per-tenant receipt
+ * isolation through the API is covered by `route_surface.test.ts` and `m24_tenant_sweep.test.ts` in this folder.
+ *
+ * Modules under test: `src/security/TenantIsolation.ts` (`requireTenantId`, `ns`) and `src/billing/PlanRegistry.ts`
+ * (`assignPlan`, `getTenantPlan`, `getPlan`, `getSLAForTier`).
+ *
+ * Partitions: missing, empty and whitespace-only tenant ids, trimming and optional user id; namespaced keys for
+ * different and equal tenants, their format, and 10 tenants with the same base key; default plan, assignment without
+ * bleeding, SLA by plan, 20 concurrent assignments; plan quotas; rate-limit keys per tenant.
+ *
+ * Needs: nothing external (in memory; plan assignments are cleared before each plan case).
+ *
+ * Run just this file: `npx tsx --test test/security/tenant_isolation_audit.test.ts`
+ *
+ * @module test/security/tenant_isolation_audit.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

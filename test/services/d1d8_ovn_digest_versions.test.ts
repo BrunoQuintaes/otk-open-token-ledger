@@ -13,6 +13,23 @@
  * run (58609db^ → c6937c7 → fix) is docs/_ops/OVERNIGHT_20261005_MASTER/probes/p3_upgrade.
  *
  *   . docs/_ops/OVERNIGHT_20261005_MASTER/tools/ovn_env.sh && npx tsx --test test/services/d1d8_ovn_digest_versions.test.ts
+ *
+ * Modules under test: the request digest and its version handling in the admission path of
+ * `src/operations/runtime.ts`, the runtime schema step `ensureD1D8Schema`, and the in-process API with the fake
+ * provider from `./d1d8_c_provider.ts`.
+ *
+ * Strategy / partitions: new operations (recorded as v2; an identical retry is the same operation; the digest does
+ * not depend on the injected tier; a different request under the same id conflicts); rows left by earlier releases
+ * (both v1 forms recognized on an identical retry; a different request conflicts; a v1 value on a row recorded as v2
+ * is not accepted; 10 concurrent retries still give one call and one debit; recognition survives a restart); and the
+ * schema step adding the version column on a database that already had every table.
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`). Before importing the server it sets fixture values in the test process for the API's variables (tenants, a
+ * fake OpenAI key, the upstream override, `PROVER_URL=disabled`). The command above first sources an environment
+ * script that is not part of this repository; with `OTK_TEST_PG_URL` already set,
+ * `npx tsx --test test/services/d1d8_ovn_digest_versions.test.ts` runs just this file.
+ *
+ * @module test/services/d1d8_ovn_digest_versions.test
  */
 process.env['OTK_DB_URL'] = '';
 process.env['OTK_RECEIPT_LOG'] = '';
@@ -45,7 +62,11 @@ const call = (opId: string, b: unknown) => fetch(`${base}/v1/chat/completions`, 
   headers: { 'content-type': 'application/json', authorization: 'Bearer tokdv', 'x-otk-provider': 'openai', 'x-otk-operation-id': opId, 'x-test-script': 'ok', 'x-test-model': 'gpt-4o-mini-2024-07-18', 'x-test-tokens': '100,50' },
   body: JSON.stringify(b),
 });
-/** v1 exactly as earlier releases computed it for a non-stream OpenAI chat request with max_tokens 64. */
+/**
+ * v1 exactly as earlier releases computed it for a non-stream OpenAI chat request with max_tokens 64.
+ *
+ * @param forwarded - The body as the gateway forwarded it (with or without the injected service tier).
+ */
 const v1Of = (forwarded: Record<string, unknown>) => requestDigest({
   provider: 'openai', api: 'openai.chat_completions', path: '/v1/chat/completions', modelRequested: 'gpt-4o-mini',
   maxOutputTokens: 64n, stream: false, bodyBytes: Buffer.byteLength(JSON.stringify(forwarded)),
@@ -56,7 +77,12 @@ const ledger = async (op: string) => Number((await db.pool.query<{ n: string }>(
 async function settled(op: string): Promise<void> {
   assert.ok(await eventually(async () => (await rt.store.get({ tenantId: T, operationId: op }))?.reservation.state === 'settled'), `${op} settled`);
 }
-/** Turn an operation admitted now into what an earlier release left in the table. */
+/**
+ * Turn an operation admitted now into what an earlier release left in the table.
+ *
+ * @param op - Operation id to rewrite.
+ * @param digest - v1 digest to store; the digest version column is set to NULL.
+ */
 const makeV1Row = (op: string, digest: string) => db.pool.query(
   'UPDATE otk_operations SET request_digest = $3, request_digest_version = NULL WHERE tenant_id = $1 AND operation_id = $2', [T, op, digest]);
 

@@ -12,6 +12,21 @@
  *
  * The PostgreSQL part runs against a REAL database when OTK_TEST_PG_URL is set (lane C2: otk_c2); it only inserts and
  * deletes rows whose request_id starts with this run's prefix.
+ *
+ * Also covered: an unknown export format → 400; a CSV export job also carries the CSV text; the minimum role for
+ * creating an export job (current behaviour pinned, a stricter role set kept as a pending proposal); and the changed
+ * responses are listed in `docs/api/openapi.json`.
+ *
+ * Modules under test: `src/api/routes.ts` (called in process), `src/api/gdpr.ts`, `src/api/dataExport.ts`,
+ * `src/api/receiptStore.ts` and, with a database, `src/api/PostgresReceiptStore.ts` (keyset pagination).
+ *
+ * Needs: nothing external for the memory cases. Before importing it empties `OTK_RECEIPT_LOG`, `OTK_DB_URL` and
+ * `OTK_TENANT_LOG`, sets `PROVER_URL=disabled` and removes `OTK_REDIS_URL` and `OTK_TENANTS`; the PostgreSQL case
+ * needs `OTK_TEST_PG_URL` (skipped without it) and sets `OTK_EXPORT_PAGE_SIZE=5`, removed afterwards.
+ *
+ * Run just this file: `npx tsx --test test/security/h1r2_c2_privacy_export.test.ts`
+ *
+ * @module test/security/h1r2_c2_privacy_export.test
  */
 import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

@@ -6,6 +6,19 @@
  *      raised it as unhandled and the API process exited with code 1.
  * N11: with RedisTAL the quota read this process's memory only; after a restart (or on a
  *      second replica) consumption was 0 although Redis held the total.
+ *
+ * Modules under test: `src/api/PostgresReceiptStore.ts` (pool error listener), `src/security/RedisTAL.ts`
+ * with `src/security/talRuntime.ts`, and `src/billing/meteringQuota.ts` (quota check and reservation).
+ *
+ * Strategy / partitions: an idle-client error emitted on the pool; a quota check with empty memory and a
+ * shared total above the FREE limit; the in-memory accounting layer; 5 concurrent reservations on FREE.
+ *
+ * Needs: no PostgreSQL and no Redis (a fake Redis object and an unconnected pool). Sets `OTK_DB_URL` and
+ * `OTK_RECEIPT_LOG` to empty and `PROVER_URL` to disabled before the modules are imported.
+ *
+ * Run just this file: `npx tsx --test test/unit/services_durability_n11_n12.test.ts`
+ *
+ * @module test/unit/services_durability_n11_n12.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

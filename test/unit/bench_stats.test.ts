@@ -8,7 +8,19 @@
  *   4. Edge cases (empty array, single element, n=2)
  *   5. CSV header / row format matches Stats field order
  *
+ * Module under test: `src/bench/Stats.ts` (summary statistics used in benchmark reports).
+ *
+ * Strategy / partitions: for each statistic (mean, median, sample standard deviation,
+ * percentiles, 95% confidence interval) the empty input (zeros), one element, odd and even
+ * lengths, identical values and larger samples; `computeStats` does not mutate its input and
+ * rounds deterministically; CSV header and row have the same column count and numeric values.
+ *
+ * Needs: nothing external (pure computation).
+ *
+ * Run just this file: `npx tsx --test test/unit/bench_stats.test.ts`
+ *
  * @since U9.3.1
+ * @module test/unit/bench_stats.test
  */
 
 import { describe, it } from 'node:test';

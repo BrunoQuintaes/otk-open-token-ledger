@@ -6,6 +6,15 @@
  * Env (set by the parent): OTK_RECEIPT_LOG, PROVER_URL=disabled, OTK_DB_URL=''.
  * Args: tenant ids and epoch as JSON in argv[2].
  * Prints one JSON object on stdout.
+ *
+ * The argument object has `tenants` (tenant ids to bill), `epochId` (billing epoch, decimal string), `batchTenant`
+ * (tenant whose receipts are reconciled) and `externalUsd` (synthetic invoice amount in USD). The output has the
+ * per-tenant billing summary (CU as decimal strings), the reconciliation line, the result of verifying an
+ * ephemeral signed weights table and a tampered copy, the number of restored receipts and the balance of the
+ * `default` tenant. Billing runs with `dryRun: true`, so no usage is submitted to an external billing service.
+ * Not a test file; it is started by the parent test with `node --import tsx`.
+ *
+ * @module test/integration/fixtures/core_flow_worker
  */
 import { Wallet } from 'ethers';
 

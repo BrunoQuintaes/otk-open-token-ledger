@@ -1,6 +1,19 @@
 /**
  * PILOTO_V3 — canonical ledger settlement: only a provider-reported usage settles; a partial or absent
  * measurement, a missing category or a non-200 status keeps the reservation (uncertain).
+ *
+ * Modules under test: `scripts/pilot/anthropic/pilotV3Settlement.ts` (which usage settles a reservation) and
+ * `scripts/pilot/anthropic/budgetLedger.ts` (the settlement it feeds).
+ *
+ * Strategy / partitions: complete response; deliberate disconnect with a final, partial or unsettled OTK
+ * measurement; an absent category; a stream without its final event and a non-200 status; the OpenAI and the
+ * Gemini usage shapes, including missing and malformed fields.
+ *
+ * Needs: nothing external; ledgers are written in temporary directories.
+ *
+ * Run just this file: `npx tsx --test test/unit/pilot_v3_settlement.test.ts`
+ *
+ * @module test/unit/pilot_v3_settlement.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

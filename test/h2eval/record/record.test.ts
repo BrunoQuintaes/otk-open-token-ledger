@@ -1,3 +1,25 @@
+/**
+ * Tests the record layer of the evaluation harness: immutable pre-call snapshots, the hash-chained journal, the
+ * ledger with independent provider sub-ledgers, cost rules, cache classification by usage and canonical JSON.
+ *
+ * Modules under test: `scripts/h2eval/record/snapshot.ts`, `scripts/h2eval/core/journal.ts`,
+ * `scripts/h2eval/core/ledger.ts`, `scripts/h2eval/record/cost.ts` (`computeCost`, `computeCostCap`),
+ * `scripts/h2eval/record/usage.ts` (`cacheObservedOf`, `validateUsage`) and `scripts/h2eval/core/canon.ts`.
+ *
+ * Strategy / partitions: snapshots (canonical hash, second write of the same operation refused, one changed byte or
+ * hash detected as tampered); journal (append with hash chain; gaps, reordering, edits, false hashes and long or
+ * multi-line bodies refused); ledger (reserve before settle, settlement not above the reservation, no transfer
+ * between sub-ledgers, batch and campaign caps, uncertain money kept as possibly charged); cost (`UNKNOWN` never 0,
+ * `CALCULATED` only with every billed category counted and priced, worst-case cap, cache interval); cache
+ * classification from usage rather than from the request flag; and canonical JSON and price lookup (`null` on
+ * ambiguity or absence).
+ *
+ * Needs: a writable temporary directory (through `../support/double.ts`). No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/record/record.test.ts`
+ *
+ * @module test/h2eval/record/record.test
+ */
 // SYNTHETIC — OFFLINE. R12: snapshot immutability (overwrite refused; one changed byte detected), journal integrity (gap, reorder,
 // edit), ledger sub-ledgers, cost UNKNOWN ≠ 0, cache classification by use, cap arithmetic, price table reader.
 import { test } from 'node:test';

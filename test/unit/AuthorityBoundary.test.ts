@@ -1,5 +1,20 @@
 /**
  * AuthorityBoundary — Unit Tests
+ *
+ * Checks the tenant isolation rule: an actor may only touch resources of its own tenant.
+ *
+ * Module under test: `src/security/AuthorityBoundary.ts` (`checkTenantBoundary`,
+ * `assertTenantBoundary`, `AuthorityBoundaryError`, `systemContext`).
+ *
+ * Strategy / partitions: same tenant (allowed), different tenant (denied), empty actor or
+ * resource tenant id (denied); the asserting variant returns silently or throws an error that
+ * carries the context; a system context is checked with the same same-tenant logic.
+ *
+ * Needs: nothing external (pure functions, no network, no files).
+ *
+ * Run just this file: `npx tsx --test test/unit/AuthorityBoundary.test.ts`
+ *
+ * @module test/unit/AuthorityBoundary.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

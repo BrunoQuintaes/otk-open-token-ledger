@@ -1,6 +1,20 @@
 /**
  * S0 (run 20260930-1625): the shared D1–D8 contract compiles, exposes no operational stub and
  * every tracked path has exactly one owner under the frozen ownership rules.
+ *
+ * Modules under test: the contract module `src/types/d1d8/index.ts` and the ownership tool
+ * `scripts/ops/d1d8_ownership.mjs` (run with the current Node binary).
+ *
+ * Strategy / partitions: the contract exports only constants (no functions); the quota rule
+ * constant; representative paths map to their documented owner; every tracked path (more than
+ * 1000) has a known owner and a matching rule.
+ *
+ * Needs: a git checkout with `git` on the PATH (the tool lists tracked files with git). No
+ * network.
+ *
+ * Run just this file: `npx tsx --test test/unit/d1d8_s0_contract.test.ts`
+ *
+ * @module test/unit/d1d8_s0_contract.test
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

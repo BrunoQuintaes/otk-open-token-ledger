@@ -7,6 +7,20 @@
  *   - DEFAULT_ORACLE_CONFIG is source='fixed'
  *   - getOracleConfig / setOracleConfig / resetOracleConfig singleton works
  *   - evaluateCurrentRate convenience wrapper works
+ *
+ * Modules under test: `src/oracle/referenceOracle.ts` and the configuration singleton in
+ * `src/oracle/oracleRuntime.ts`.
+ *
+ * Strategy / partitions: a snapshot inside and outside the staleness window, and exactly at the
+ * snapshot time (age 0); source and rate copied from the configuration; a non-positive rate
+ * (throws); the singleton at its default, after an override, after reset, and used by the
+ * current-rate wrapper.
+ *
+ * Needs: nothing external (the current time is passed in).
+ *
+ * Run just this file: `npx tsx --test test/unit/oracle_surface.test.ts`
+ *
+ * @module test/unit/oracle_surface.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

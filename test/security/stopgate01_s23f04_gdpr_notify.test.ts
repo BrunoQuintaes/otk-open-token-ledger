@@ -2,6 +2,19 @@
  * STOPGATE-01 P1.4 (S23-F04): the GDPR export notification (tenant id, instant, receipt count) went to the fixed
  * external address gdpr-notifications@otk.io whenever an e-mail adapter was configured. It now goes only to the
  * operator's OTK_GDPR_NOTIFY_EMAIL and is not sent without it.
+ *
+ * Module under test: `handleGdprExport` in `src/api/gdpr.ts`, with a recording e-mail adapter installed through
+ * `src/email/IEmailAdapter.ts` (nothing is actually sent).
+ *
+ * Partitions: the notification variable unset (export answers 200, no message at all) and set (exactly one message, to
+ * that address only, none to the former fixed domain).
+ *
+ * Needs: nothing external. Sets and removes `OTK_GDPR_NOTIFY_EMAIL` (a reserved example domain) and restores the
+ * caller's value at the end.
+ *
+ * Run just this file: `npx tsx --test test/security/stopgate01_s23f04_gdpr_notify.test.ts`
+ *
+ * @module test/security/stopgate01_s23f04_gdpr_notify.test
  */
 import { describe, it, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';

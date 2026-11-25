@@ -4,6 +4,26 @@
  * exist only to exercise the runtime path; the pilot profiles (real historical data) are calibrated=false.
  *
  *   node node_modules/tsx/dist/cli.mjs --test test/unit/ovn_p8_calibration_profile.test.ts
+ *
+ * Modules under test: `src/tokenization/calibrationProfile.ts` (parse, seal, registry and compatibility
+ * check of a versioned calibration profile), `src/tokenization/conferenceReport.ts` (the conference report
+ * that uses the selected profile), `src/operations/bootstrapD1D8.ts` (`OTK_CALIBRATION_PROFILES_DIR` at
+ * startup) and the offline fitting scripts `scripts/calibration/fitProfile.ts`, `corpus.ts`, `messageCorpus.ts`.
+ *
+ * Strategy / partitions: the heuristic threshold stays labelled HEURISTIC; each loader state (ABSENT,
+ * COMPATIBLE, CORRUPT by changed hash, by tampered parameter, by unparseable file, INCOMPATIBLE by vocabulary,
+ * encoding, counter version, synthetic not allowed or duplicate profile, NOT_CALIBRATED for the pilot
+ * profiles); the conference verdict with and without a profile, for an approximate and an exact tokenizer;
+ * restart from files gives the same digest; holdout metrics never feed the fit; splits are by group; a
+ * configured directory that does not exist is a startup error.
+ *
+ * Needs: no network and no database (the Postgres URL passed to the bootstrap is never reached). Reads the
+ * synthetic fixture under `test/fixtures/calibration/` and the pilot profiles under `docs/_ops/`, and writes
+ * temporary directories under the OS temp folder.
+ *
+ * Run just this file: `npx tsx --test test/unit/ovn_p8_calibration_profile.test.ts`
+ *
+ * @module test/unit/ovn_p8_calibration_profile.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

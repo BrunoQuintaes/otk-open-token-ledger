@@ -13,6 +13,18 @@
  *   3. DEMO_RECEIPTS seed correctness (7 days, required fields)
  *   4. getDemoStats() aggregation math
  *   5. getDemoHtml() renders expected content
+ *
+ * Modules under test: `src/dashboard/analytics.ts` (`getAnalyticsHtml`) and `src/dashboard/demo.ts` (demo
+ * receipts, statistics and page).
+ *
+ * Strategy / partitions: the analytics page content and links; the demo seed (dates, fields, providers); the
+ * statistics totals per day and per provider add up; the demo page content.
+ *
+ * Needs: nothing external (pure functions).
+ *
+ * Run just this file: `npx tsx --test test/unit/wave5_analytics.test.ts`
+ *
+ * @module test/unit/wave5_analytics.test
  */
 
 import { describe, it } from 'node:test';

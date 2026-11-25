@@ -22,6 +22,18 @@
  *  18.  renderPricingPage() HTML is parseable (no unescaped < > in attributes)
  *
  * @since Wave 4 (4C-PACK-4C01 / P4.1+P4.7)
+ *
+ * Modules under test: `src/pricing/PricingEngineV2.ts` and `src/dashboard/pricing.ts`; the route list in
+ * `src/api/routes.ts` is checked as text.
+ *
+ * Strategy / partitions: as listed above; the tier margins, the totals for several usages including zero, and
+ * the price read from `OTK_PRICE_PER_CU_USD`.
+ *
+ * Needs: nothing external. Changes `OTK_PRICE_PER_CU_USD` and restores it after the engine group.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave4_pricing.test.ts`
+ *
+ * @module test/unit/wave4_pricing.test
  */
 
 import { describe, it, before, after } from 'node:test';

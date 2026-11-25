@@ -7,6 +7,20 @@
  *   - Python setup.py: metadata is present
  *
  * @since Wave 1 Pack 11 (2026-03-15)
+ *
+ * Under test: committed files read as text, with no module imported: `docs/site/index.html` and the Python SDK
+ * under `sdk/python/` (`otk_metering/__init__.py`, `setup.py`, `README.md`).
+ *
+ * Strategy / partitions: each file exists; the page has a doctype and the expected navigation links; the Python
+ * client class and its methods are declared; the SDK imports only the standard library; the package metadata
+ * is present.
+ *
+ * Needs: only the file system (read only), from the repository root found from this file's location. Python is
+ * not run.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave1_pack11_docs_python.test.ts`
+ *
+ * @module test/unit/wave1_pack11_docs_python.test
  */
 
 import { describe, it } from 'node:test';

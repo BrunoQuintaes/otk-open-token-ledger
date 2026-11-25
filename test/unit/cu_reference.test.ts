@@ -5,6 +5,28 @@
  *   haiku-4-5: in 1_000_000 · cache_write 1_250_000 · cache_read 100_000 · out 5_000_000
  *   gpt-4o-mini: in 150_000 · cache_read 75_000 · out 600_000
  *   gemini-3.5-flash-lite: in 300_000 · cache_read 30_000 · out 2_500_000 · reasoning 2_500_000
+ *
+ * Modules under test: `src/economics/cuReference.ts` (profile validation, digest, usage
+ * decomposition, reference CU, ratios), with `computeCu`/`developmentCuConfig` for the legacy
+ * formula, `src/pricing/priceUsage.ts` for money quotes and `src/zk/v3/index.ts` for the signed
+ * statement bound to a receipt.
+ *
+ * Strategy / partitions: the candidate profile (valid, no normalization chosen, every entry
+ * traceable to an archived source) and the final profile (reference, scale, derived weights,
+ * alias resolution, no caller override); invariants: determinism, decimal rounding, independence
+ * from current prices, monotonicity, category sensitivity, no double counting of cached input,
+ * profile versioning, legacy immutability, replay, rescaling keeps ratios; "not computable,
+ * never zero" cases (no reference, unknown model, unpriced category, audio, partial stream,
+ * missing base); invalid profiles (no reference on a final profile, zero or float prices,
+ * tampered weights, bad scale); statements that verify and refuse a swapped receipt or a
+ * tampered quantity, leaving the receipt bytes unchanged.
+ *
+ * Needs: read access to the two profiles in `config/cu_reference/` and to the archived source
+ * files the candidate profile names; signing uses in-memory test keys. No network.
+ *
+ * Run just this file: `npx tsx --test test/unit/cu_reference.test.ts`
+ *
+ * @module test/unit/cu_reference.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

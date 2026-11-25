@@ -1,5 +1,19 @@
 /**
  * OVERNIGHT 20261005 / F-P1-04 — AdmissionGate: bound, arrival order, bounded wait, release on error.
+ *
+ * Module under test: `AdmissionGate` and `AdmissionQueueTimeout` from
+ * `src/operations/admissionGate.ts` (a concurrency limiter with a bounded waiting queue).
+ *
+ * Strategy / partitions: more jobs than the limit (never more than the limit run at once, waiters
+ * served in arrival order, peak queue length recorded); a waiter that waits longer than the queue
+ * timeout (refused and removed from the queue); a job that throws (its slot is released); a limit
+ * of zero (refused with `RangeError`).
+ *
+ * Needs: real timers (waits of a few milliseconds and a 30 ms queue timeout).
+ *
+ * Run just this file: `npx tsx --test test/unit/ovn_admission_gate.test.ts`
+ *
+ * @module test/unit/ovn_admission_gate.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

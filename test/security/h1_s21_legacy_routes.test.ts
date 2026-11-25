@@ -14,6 +14,19 @@
  *  - legacy POST /proxy of the gateway: same auth as the MITM path; GET /proxy is 404; '/proxy/' is a MITM path;
  *    a non-numeric userId is refused with 400 (S21-F04, fixed in H1).
  * In-memory stores, provider fetch stubbed (no network, no paid call).
+ *
+ * Modules under test: `src/api/routes.ts` (called in process), the legacy proxy route of `src/proxy/ProxyGateway.ts`,
+ * with `src/api/tenantKeyRegistry.ts`, `src/webhooks/WebhookRegistry.ts`, `src/api/receiptStore.ts` and
+ * `src/security/authFailureLimiter.ts`.
+ *
+ * Needs: nothing external. Before importing it empties `OTK_RECEIPT_LOG`, `OTK_DB_URL` and `OTK_TENANT_LOG`, sets
+ * `PROVER_URL=disabled` and `OPENAI_API_KEY` to a fixture value, and removes `OTK_REDIS_URL`, `OTK_TENANTS`,
+ * `OTK_STRICT_VERSIONING` and `OTK_PROXY_ALLOW_UNAUTHENTICATED`; the strict-versioning cases set
+ * `OTK_STRICT_VERSIONING=1` and remove it again; `OTK_ADMIN_KEY` gets a fixture value and is restored after the run.
+ *
+ * Run just this file: `npx tsx --test test/security/h1_s21_legacy_routes.test.ts`
+ *
+ * @module test/security/h1_s21_legacy_routes.test
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

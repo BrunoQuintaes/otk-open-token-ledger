@@ -11,6 +11,20 @@
  * Cases marked `todo` reproduce an OPEN finding (INF05-Fxx): they run, assert the SECURE behaviour, and report the
  * failure without failing the suite; when the finding is fixed the todo must be removed.
  * The upstream provider is a fetch stub (no network, no real key, no paid call); in-memory stores only.
+ *
+ * Modules under test: `src/api/routes.ts` (called in process) and `src/proxy/ProxyGateway.ts`, with
+ * `src/api/tenantKeyRegistry.ts`, `src/auth/jwt.ts`, `src/security/talRuntime.ts` (ledger),
+ * `src/billing/PlanRegistry.ts`, `src/api/tenantCrud.ts`, `src/security/authFailureLimiter.ts` and the memory key,
+ * token and user stores.
+ *
+ * Needs: nothing external. Before importing it empties `OTK_RECEIPT_LOG`, `OTK_DB_URL` and `OTK_TENANT_LOG`, sets
+ * `PROVER_URL=disabled` and `OPENAI_API_KEY` to a fixture value, and removes `OTK_REDIS_URL`, `OTK_TENANTS` and
+ * `OTK_PROXY_ALLOW_UNAUTHENTICATED`; `OTK_ADMIN_KEY`, `OTK_JWT_SECRET` and `OTK_SCIM_BEARER_TOKEN` get fixture
+ * values and are restored after the run. Proxy receipts are written after the response, so some cases poll briefly.
+ *
+ * Run just this file: `npx tsx --test test/security/inf05_multitenant_invariants.test.ts`
+ *
+ * @module test/security/inf05_multitenant_invariants.test
  */
 import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';

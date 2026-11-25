@@ -16,6 +16,25 @@
  *   tenant-b: 1 receipt of a model with CU weight but absent from the price seed (o3, weight 3.0):
  *   100 + 100 tokens → 600 CU computed by the server (D5-G04: the declared 500 is not debited;
  *   before D5-G04 the client value 500 was the debit and an unknown model was accepted).
+ *
+ * Strategy / scenarios, run in order and sharing state: (1) authenticated metering while the prover stub answers
+ * 503 (an unauthenticated post is rejected, a duplicate receipt is reported as duplicate, a tenant claimed in the
+ * body loses to the authenticated tenant, and after the circuit-breaker cooldown every receipt reaches the prover
+ * exactly once); (2) the JSONL receipt log holds each receipt once with its tenant, plus one proof-job line per
+ * receipt; (3) after
+ * restarting the API process, tenant, balance and tenant isolation are preserved and nothing is sent to the prover
+ * again; (4) a separate process (`fixtures/core_flow_worker.ts`) computes billing and reconciliation from the
+ * persisted files and must match the hand-computed values above.
+ *
+ * Needs: two free 127.0.0.1 ports (API child process and prover stub), a temporary directory for the receipt
+ * log, `tsx` to start the children, and time (each API start waits for readiness; polling every 200 ms). The
+ * children get `NODE_ENV`, `OTK_TENANTS`, `OTK_ADMIN_KEY`, `OTK_RECEIPT_LOG`, `PROVER_URL`,
+ * `PROVER_CB_THRESHOLD` and `PROVER_CB_COOLDOWN_MS` set to fixture values; `OTK_DB_URL` and `OTK_REDIS_URL` are
+ * removed so no database is used. No external network.
+ *
+ * Run just this file: `npx tsx --test test/integration/core_flow_restart.test.ts`
+ *
+ * @module test/integration/core_flow_restart.test
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

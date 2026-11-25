@@ -1,3 +1,24 @@
+/**
+ * Tests the optional per-model, per-arm `enabled` switch of the design parameters and checks that it changes
+ * nothing for designs that do not use it.
+ *
+ * Modules under test: `scripts/h2eval/cli/plan.ts` (`buildPlan`), `scripts/h2eval/cli/freeze.ts` (`freezeCorpus`)
+ * and `scripts/h2eval/design/designParams.ts` (`armOf`, `loadDesignParams`, validation).
+ *
+ * Strategy / partitions: invariance (explicit `enabled: true` and an absent field give byte-identical plans apart
+ * from `generatedUtc`); one arm disabled for one model (no operation of that arm for that model, others untouched,
+ * the exclusion recorded in the plan); validator errors (non-boolean flag, reason length outside 1..200 characters,
+ * a disabled arm that still carries conditions or expected operations, exit code 4); and a golden regression
+ * against plans produced earlier by the frozen executor.
+ *
+ * Needs: a writable temporary directory and a synthetic corpus frozen in the `setup` test (allow up to 5 minutes).
+ * The golden regression tests read plan, design and preregistration files from fixed local folders and are
+ * skipped, visibly, when those files are absent on the machine. No network.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cli/armfilter.test.ts`
+ *
+ * @module test/h2eval/cli/armfilter.test
+ */
 // SYNTHETIC — OFFLINE. C153 (P4 signed 2026-11-11T18:56Z: T3 = option C, NOT_EVALUATED): minimal delta of the executor — the optional boolean
 // `perModel.<model>.arms.<Tn>.enabled` (default true) in h2eval.design_params.v1. When false, `plan` emits NO operation of that arm for that
 // model (S1 via armOf(structure, task); T4/T5 dialogues likewise), the design opsCheck expects 0 and matches, and the plan records the exclusion

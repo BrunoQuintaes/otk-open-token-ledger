@@ -1,5 +1,17 @@
 /**
  * Tests — PolicyEngine (RB-056)
+ *
+ * Module under test: `src/security/PolicyEngine.ts`.
+ *
+ * Strategy / partitions: for quota and rate limit, under, at and over the limit and no recorded use; for the
+ * latency SLA, within, breached, exactly at the limit (allowed, the comparison is strict) and no observation;
+ * evaluating a list, all passing, first violation, and an empty list; the denial reasons carry the numbers.
+ *
+ * Needs: nothing external (pure functions).
+ *
+ * Run just this file: `npx tsx --test test/unit/policy_engine.test.ts`
+ *
+ * @module test/unit/policy_engine.test
  */
 
 import { describe, it } from 'node:test';

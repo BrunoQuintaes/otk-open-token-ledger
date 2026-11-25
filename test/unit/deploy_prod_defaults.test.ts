@@ -5,6 +5,26 @@
  * OTK_JWT_SECRET / OTK_CSRF_SECRET with NODE_ENV=production. Production deployment files must not carry a default
  * credential and must stop when one is missing. Compose interpolation is checked with `docker compose config` when
  * the Docker CLI is available (skipped otherwise, and the skip is reported); no value printed here is a real secret.
+ *
+ * Files under test: `docker-compose.prod.yml`, the Helm chart under `infra/helm/otk/` and the API
+ * smoke compose `docker/api/docker-compose.api.yml`, checked as text and, when possible, by
+ * rendering them.
+ *
+ * Strategy / partitions: compose text has no fixed token or placeholder and marks each
+ * credential mandatory; `docker compose config` with all values, with each one missing, with an
+ * empty tenant list and without the database URL; the Helm secret template refuses empty
+ * credentials in production and staging; real Helm renders with default values, with all but the
+ * database URL, with full credentials, with an existing secret, in development, with a
+ * credential made of spaces and with a credential set to null; other deployment files carry no
+ * example credential, and a usage comment keeps its line continuation.
+ *
+ * Needs: read access to the deployment files. Optional: the Docker CLI with the compose plugin,
+ * and the local image `alpine/helm:3.16.4` for the real Helm renders (those cases are skipped
+ * when missing; the image is never pulled by the test). Only obviously fake values are used.
+ *
+ * Run just this file: `npx tsx --test test/unit/deploy_prod_defaults.test.ts`
+ *
+ * @module test/unit/deploy_prod_defaults.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

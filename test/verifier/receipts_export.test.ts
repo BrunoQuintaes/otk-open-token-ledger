@@ -1,6 +1,23 @@
 /**
  * `otk receipts export` com um PostgreSQL SIMULADO em memória (nenhum banco real, nenhuma variável
  * de ambiente lida: o openPool é injetado) e `otk keyring export --history`.
+ *
+ * In English: tests the `otk receipts export` and `otk keyring export --history` subcommands of `scripts/verify/otk.ts`
+ * (`runCli` with an injected database pool), against an in-memory database double that answers only the exporter's
+ * two queries with the same filter (admission time window and tenant).
+ *
+ * Strategy / scenarios: period and tenant filtering, the `.jsonl` plus manifest output, and the verify command
+ * accepting the exported folder (a tampered stored receipt is caught); the database option must be a variable NAME,
+ * and a connection string is never accepted nor printed; a database error, including one while opening the
+ * connection, exits with code 1 without echoing the driver message; an empty period yields an empty file and a
+ * "no receipts" warning; the keyring history export includes retired and revoked keys, drops annotations and lets
+ * `--key` override a key's status.
+ *
+ * Needs: temporary directories; no real database, no environment variable, no network.
+ *
+ * Run just this file: `npx tsx --test test/verifier/receipts_export.test.ts`
+ *
+ * @module test/verifier/receipts_export.test
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -20,7 +37,14 @@ interface RRow { tenant_id: string; operation_id: string; receipt_digest: string
 interface CRow { tenant_id: string; operation_id: string; report_digest: string; report: unknown; envelope: unknown }
 const asJsonb = (v: unknown) => JSON.parse(encodeJson(v)) as Record<string, unknown>;
 
-/** Banco simulado: só as duas consultas do exportador, com o mesmo filtro (admittedAt, tenant). */
+/**
+ * Banco simulado: só as duas consultas do exportador, com o mesmo filtro (admittedAt, tenant).
+ *
+ * @param receipts - Stored receipt rows.
+ * @param confs - Stored conference rows (returned for the receipts the receipt query selects).
+ * @param opts - `failWith`: every query throws this error.
+ * @returns The pool double, the list of query texts received and whether `end` was called.
+ */
 function fakePg(receipts: RRow[], confs: CRow[], opts: { failWith?: Error } = {}) {
   const calls: string[] = [];
   let ended = false;

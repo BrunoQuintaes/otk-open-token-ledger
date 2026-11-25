@@ -1,6 +1,26 @@
 /**
  * D1–D8 / C — PgOperationStore against real PostgreSQL (C1; D7-G07 store part, D3-G03/G06 for
  * operations, RV30-01 for admission). Two "instances" = two stores on two independent pools.
+ *
+ * Modules under test: `src/operations/PgOperationStore.ts` (`PgOperationStore`, `RevisionConflictError`), with
+ * `src/operations/PgEffectOutbox.ts`, `src/operations/accounting.ts`, `src/operations/ledger.ts` and
+ * `src/operations/transitions.ts`.
+ *
+ * Strategy / partitions: durable, idempotent, tenant-scoped admission (read from another pool; same id and digest
+ * gives the existing operation, a different digest a conflict; the same id in another tenant is another operation;
+ * 20 concurrent same-key admissions on two pools give one admission); quota contention (20 concurrent reservations
+ * of 3,000 CU against 10,000 CU on one and on two instances: exactly 4 admitted); settlement moving held to confirmed
+ * once, with the ledger identity and outbox row in the same transaction (excess flagged, a failed transition writes
+ * nothing, uncertain holds kept, rebuild reproduces the counters); the money ceiling separate from the CU quota;
+ * every admitting budget settled and released; an unreachable database answering "persistence unavailable"; and
+ * leases hiding operations from recovery until they expire.
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`); each run creates and drops its
+ * own database.
+ *
+ * Run just this file: `npx tsx --test test/services/d1d8_c_operation_store.test.ts`
+ *
+ * @module test/services/d1d8_c_operation_store.test
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

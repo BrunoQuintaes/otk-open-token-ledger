@@ -8,6 +8,20 @@
  *   - evmVersion for ibft-local is 'berlin' (ADR-EVM-0002)
  *   - getChainRegistry() / resetChainRegistry() singleton works
  *   - addDeployment() operator injection works
+ *
+ * Modules under test: `src/infra/chainRegistry.ts` and the singleton accessors in
+ * `src/infra/multichainRuntime.ts`.
+ *
+ * Strategy / partitions: a known chain id (local IBFT network, 1337) and an unknown one (999);
+ * required fields on every listed chain; deployment lookup for known and unknown contract names
+ * and per chain; an operator-added deployment overriding the default; the singleton returned
+ * twice, replaced and reset.
+ *
+ * Needs: nothing external (static registry data; no RPC calls).
+ *
+ * Run just this file: `npx tsx --test test/unit/chain_registry.test.ts`
+ *
+ * @module test/unit/chain_registry.test
  */
 
 import { describe, it, beforeEach } from 'node:test';

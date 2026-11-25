@@ -7,6 +7,19 @@
  * provider-reported usage; and the canonical cumulative ledger must not be created.
  *
  *   . scripts/ops/fps5_env.sh && npx tsx --test --test-concurrency=1 --test-timeout=600000 test/services/d1d8_pilot_v3_synthetic.test.ts
+ *
+ * Module under test: the pilot runner `scripts/pilot/anthropic/runPilotV3.ts`, run as a child process in synthetic
+ * mode against the real API entry point in the durable profile, for the Anthropic and the OpenAI profiles.
+ *
+ * Strategy / scenarios: the eight planned cases of each profile are consistent and a restart adds no duplicates;
+ * no paid-API path is used and the canary key never leaks; and two positive controls make the run fail (a response
+ * served on a non-Standard tier, and the real key reaching the child environment).
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`), a writable temporary directory,
+ * permission to spawn Node child processes, and up to about 9 minutes per runner call (hence the larger test
+ * timeout in the command above). The canary key is a fake value set only for the runner.
+ *
+ * @module test/services/d1d8_pilot_v3_synthetic.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

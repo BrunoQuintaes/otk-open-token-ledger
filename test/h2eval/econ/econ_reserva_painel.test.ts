@@ -2,6 +2,27 @@
  * EXEC-ECON C160 delta 7 (OPÇÃO (c) para o autor): reserva de entrada do painel (`resposta`, Anthropic) pelo T MEDIDO no smoke (86 880 tokens
  * para 178 793 caracteres) + 2 %, só para o painel do corpus f7832807. Offline, transporte falso, US$ 0.
  * Os testes com o corpus/cronograma REAIS do kit v3.5 leem os arquivos fora do repositório (só leitura) e são pulados se o kit faltar.
+ *
+ * English summary: tests the input reservation of one long system prompt in the economic study, sized from a frozen
+ * measurement (tokens measured for that exact text plus a 2% margin) instead of the worst-case characters-per-token
+ * ratio.
+ *
+ * Modules under test: `scripts/h2eval/econ/econ.ts` (`ECON_RESERVA_PAINEL_MEDIDA`, `boundByMeasure`,
+ * `econCapPolicy`, `corpusContentStore`, `corpusIdentity`, `readCronograma`, `runEcon`, `somaCostCap`,
+ * `loadEconPriceTable`, `planOf`), `scripts/h2eval/econ/goEcon.ts` (`validateGoEconV1`) and
+ * `scripts/h2eval/record/cost.ts` (`computeCostCap`).
+ *
+ * Strategy / partitions: the frozen measurement and formula; the policy applies only to Anthropic and only to the
+ * measured system prompt; a different parameter or a different corpus refused; the GO must carry the same parameter
+ * as the executor; and, with the real external corpus, its identity and total Anthropic cost cap, an attempt exactly
+ * at the bound (settles), one token above (stops and latches), and altered copies of the corpus (refused).
+ *
+ * Needs: a writable temporary directory. The tests that use the real corpus and schedule read a fixed folder outside
+ * the repository and are skipped, visibly, when it is absent. No network, no spending.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/econ/econ_reserva_painel.test.ts`
+ *
+ * @module test/h2eval/econ/econ_reserva_painel.test
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -19,6 +40,12 @@ const temKit = existsSync(path.join(V35, 'CORPUS', 'itens.jsonl')) && existsSync
 const R = ECON_RESERVA_PAINEL_MEDIDA;
 const ctx = { studyId: 'econ-teste', protocolHash: 'a'.repeat(64), manifestSha256: 'b'.repeat(64) };
 /** Sonnet 5 a 2/10 (DR-310) só como fixture de teste; o executor real usa a tabela atestada injetada */
+/**
+ * Writes the test-only price table with that model priced at 2 USD (input) and 10 USD (output) per million tokens
+ * and loads it.
+ *
+ * @param dir - Directory where the fixture price table is written.
+ */
 function prices2_10(dir: string) { const t = JSON.parse(readFileSync(writeSonnet5Fixture(dir), 'utf8')); t.models['claude-sonnet-5'].tiers[0].prices = { ...t.models['claude-sonnet-5'].tiers[0].prices, input: '2000000', output: '10000000', reasoning: '10000000' }; const p = path.join(dir, 's5_2_10.json'); writeFileSync(p, JSON.stringify(t)); return loadEconPriceTable({ sonnet5TablePath: p }); }
 
 test('[DELTA7] medida congelada e fórmula: o pedido medido (178 793 caracteres) dá ceil(86 880 × 1,02) = 88 618; margem 2 % ≈ 2,018 caracteres/token', () => {

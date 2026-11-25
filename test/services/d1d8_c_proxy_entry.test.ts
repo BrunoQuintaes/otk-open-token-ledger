@@ -4,6 +4,22 @@
  * Real PostgreSQL 16; local controllable provider reached through OTK_PROXY_UPSTREAM_OPENAI with
  * OTK_PROXY_ALLOW_UPSTREAM_OVERRIDE=1 (no network, no paid call; the provider key is a fixture).
  * Also D7-G07 with two proxy processes and D7-G04/INT-04 kill of the streaming process.
+ *
+ * Modules under test: the API entry point `src/api/server.ts` started as a child process (via `./d1d8_c_proc.ts`)
+ * in the durable proxy profile, with the fake provider from `./d1d8_c_provider.ts`.
+ *
+ * Strategy / scenarios: start-up refusals (proxy enabled without a database URL; without the full durable profile,
+ * naming what is missing); HTTP access control (no token, viewer and operator) and a durable, queryable operation;
+ * quota contention across two proxy processes (4 of 20 admitted); and a streaming process killed mid-stream, after
+ * which another instance marks the operation lost and uncertain once its lease expires, without re-sending.
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`), a writable temporary directory,
+ * and permission to spawn `tsx` child processes (start-up can take up to the readiness bound of `./d1d8_c_proc.ts`).
+ * A throwaway operator key is generated per run. No network.
+ *
+ * Run just this file: `npx tsx --test test/services/d1d8_c_proxy_entry.test.ts`
+ *
+ * @module test/services/d1d8_c_proxy_entry.test
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

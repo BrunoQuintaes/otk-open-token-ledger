@@ -3,6 +3,24 @@
  * deploy then hit a closed RPC. tools/besu/wait_ready.mjs must report READY only on observed evidence (right chain id,
  * block >= minimum and advancing, expected validator count) and always print one JSON status line; every other outcome
  * is a non-zero exit. Runs the real script against an in-process fake JSON-RPC server (no Docker, no network).
+ *
+ * Script under test: `tools/besu/wait_ready.mjs`, run with the current Node binary as a child
+ * process.
+ *
+ * Strategy / partitions: all evidence present (READY); another chain id (exit 3); a block number
+ * that never advances, a block below the minimum, or too few validators (TIMEOUT, exit 2); RPC
+ * errors and non-JSON answers (keeps waiting, reports the last error); a malformed chain id that
+ * later becomes valid; the peer-count method disabled; a chain that stops after one advance; a
+ * closed port; requests or response bodies that never finish, and a fetch that ignores abort
+ * (TIMEOUT, process still exits); invalid arguments (usage error, exit 64). The hanging cases
+ * replace `fetch` inside the child through a `--import` data URL module.
+ *
+ * Needs: a free loopback port for the fake server (bound to 127.0.0.1 on a random port and
+ * closed in the `after` hook); short polling intervals keep each case to a few seconds.
+ *
+ * Run just this file: `npx tsx --test test/unit/besu_wait_ready.test.ts`
+ *
+ * @module test/unit/besu_wait_ready.test
  */
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

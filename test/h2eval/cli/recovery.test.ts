@@ -1,3 +1,24 @@
+/**
+ * Tests ledger integrity and idempotent recovery of `runAuthorized` after crashes simulated on disk.
+ *
+ * Modules under test: `scripts/h2eval/cli/run.ts` (`runAuthorized`), `scripts/h2eval/cli/status.ts` (`status`),
+ * `scripts/h2eval/core/ledger.ts` (`openLedger`), `scripts/h2eval/core/journal.ts` and the campaign control registry
+ * in `scripts/h2eval/cli/campaign.ts`.
+ *
+ * Strategy / scenarios: a reference batch is run to completion once, then copies of its study directory are cut the
+ * way a crash leaves them (append-only files cut at a line boundary, later snapshots and records removed): a crash
+ * between reservation and send (reservation released, nothing re-sent, the rest runs); between send and response
+ * (operation isolated as uncertain, the series stops, the next run skips it and continues); a truncated ledger and a
+ * ledger or journal with a partial last line (refused to open, nothing sent); and a byte-stable replay. Across all
+ * cases an operation that already has a SENT line never gets another.
+ *
+ * Needs: a writable temporary directory (each copy gets its own control registry and a GO file re-pinned to its
+ * path); allow up to 5 minutes per test. No network, no credential.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cli/recovery.test.ts`
+ *
+ * @module test/h2eval/cli/recovery.test
+ */
 // SYNTHETIC — OFFLINE. CYCLE2-C (C147 task 3): ledger integrity and IDEMPOTENT recovery through `run-authorized`, with crashes simulated ON
 // DISK exactly as a crash leaves them (append-only files cut at a line boundary; snapshots/records of later operations removed):
 //   1. crash between RESERVED and SENT  => next run releases the reservation (ABORTED_BEFORE_SEND), nothing resent, the rest of the batch runs;
@@ -40,7 +61,14 @@ const lines = (dir: string) => verifyJournalText(readFileSync(jpath(dir), 'utf8'
 const led = (dir: string) => { const s = openLedger(lpath(dir), CAPS).state().providers.anthropic; return { spent: s.spentUsd, possiblyCharged: s.possiblyChargedUsd, reserved: s.reservedUsd, ops: s.operations }; };
 const sentCount = (dir: string, op: string) => lines(dir).filter((l) => l.operationId === op && l.kind === 'SENT').length;
 const rawLines = (p: string) => readFileSync(p, 'utf8').split('\n').filter(Boolean);
-/** Cut the study of a DONE batch to the state a crash leaves right after journal line `cutKind` of operation #n (1-based). */
+/**
+ * Cut the study of a DONE batch to the state a crash leaves right after journal line `cutKind` of operation #n (1-based).
+ *
+ * @param src - Study directory of a completed batch; it is copied, never modified.
+ * @param n - 1-based position of the operation, in journal PLANNED order, at which the crash happens.
+ * @param cutKind - Last journal kind that survives for that operation.
+ * @returns The crashed copy's directory and the id of the cut operation.
+ */
 function crashAfter(src: string, n: number, cutKind: 'RESERVED' | 'SENT'): { dir: string; op: string } {
   const dir = tmp(`crash-${cutKind}-${n}`); cpSync(src, dir, { recursive: true });
   const all = lines(dir); const planned = all.filter((l) => l.kind === 'PLANNED'); const op = planned[n - 1]!.operationId;

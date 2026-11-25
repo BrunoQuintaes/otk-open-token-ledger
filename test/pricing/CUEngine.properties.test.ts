@@ -10,6 +10,19 @@
  * 6. Version tag: CU_VERSION is frozen
  * 7. Error propagation: unknown provider/model throw CUError with stable code
  * 8. CU_VERSION = 'CU_MODEL_v1'
+ *
+ * Module under test: `src/economics/CUEngine.ts` (CU = integer cost units under the CU_MODEL_v1 formula).
+ *
+ * Strategy: "property-based" here means fixed, hand-chosen inputs checked against general properties, not
+ * randomly generated inputs: one valid gpt-4o input repeated 100 times for determinism, increasing total tokens
+ * and heavier model or provider weights for monotonicity, zero tokens for the lower bound, unknown provider and
+ * unknown model for the error codes, and a few golden values computed by hand.
+ *
+ * Needs: nothing external (pure functions).
+ *
+ * Run just this file: `npx tsx --test test/pricing/CUEngine.properties.test.ts`
+ *
+ * @module test/pricing/CUEngine.properties.test
  */
 
 import { describe, it } from 'node:test';

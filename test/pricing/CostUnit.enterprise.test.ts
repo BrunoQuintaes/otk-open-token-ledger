@@ -2,6 +2,20 @@
  * Enterprise Cost Unit Tests (U5)
  *
  * Tests for multi-provider, multi-model weighted cost calculation.
+ *
+ * Module under test: `src/pricing/CostWeights.ts` (`calculateCostUnits`, the provider and model weight tables and
+ * the support helpers). Cost units = (input + output tokens) × provider weight × model weight.
+ *
+ * Strategy / partitions: the baseline (both weights 1.0), provider weight, model weight, a discount provider
+ * (weight below 1), rounding to integer units, case-insensitive names, unknown provider or model (throws), zero
+ * and very large token counts; supported and unsupported providers and models; the lists of supported providers
+ * and models; and a few realistic request sizes. Expected values are worked out by hand in the comments of each case.
+ *
+ * Needs: nothing external (pure functions).
+ *
+ * Run just this file: `npx tsx --test test/pricing/CostUnit.enterprise.test.ts`
+ *
+ * @module test/pricing/CostUnit.enterprise.test
  */
 
 import { describe, it } from 'node:test';

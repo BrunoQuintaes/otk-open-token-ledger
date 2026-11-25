@@ -1,6 +1,21 @@
 /**
  * D1–D8 / C — measurement spool (D7 §4, D7-G09): fsync'd JSONL, bounded, torn tail ignored,
  * records appended during a replay are kept, only numbers are written. No database here.
+ *
+ * Modules under test: `MeasurementSpool` from `src/operations/spool.ts`, with `decodeFacts` from
+ * `src/operations/proxyDurable.ts` and `encodeJson` from `src/operations/codec.ts`.
+ *
+ * Strategy / partitions: appends up to and past `maxEntries` (the next one is refused with
+ * `SpoolFullError`); a facts round trip with bigint usage and no text in the file; a replay whose
+ * handler answers applied, already applied and retry, with a record appended during the replay
+ * and a torn last line.
+ *
+ * Needs: the local file system (each test creates its own directory in the OS temporary folder;
+ * the directories are not removed). No database or network.
+ *
+ * Run just this file: `npx tsx --test test/unit/d1d8_c_spool.test.ts`
+ *
+ * @module test/unit/d1d8_c_spool.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

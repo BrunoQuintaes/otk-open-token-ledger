@@ -2,6 +2,19 @@
  * W7-B — USD Dashboard Tests (USD-01 through USD-07)
  *
  * Tests USD fields in ReceiptIndexer, InvoiceService, CuTrendData, and ReconciliationSystem.
+ *
+ * Modules under test: `src/dashboard/indexer.ts` (USD cost per receipt, system overview, usage per provider,
+ * CU trend) and `src/economics/ReconciliationSystem.ts` (USD expectation and discrepancy flag).
+ *
+ * Strategy / partitions: a known and an unknown provider/model (USD cost 0 for the unknown); totals in the
+ * overview and per provider; reconciliation with a known model, with missing provider/model (`null`
+ * expectation) and with a delta under 5 %; the trend points carry USD.
+ *
+ * Needs: nothing external (in-memory indexer).
+ *
+ * Run just this file: `npx tsx --test test/unit/w7_usd_dashboard.test.ts`
+ *
+ * @module test/unit/w7_usd_dashboard.test
  */
 
 import { describe, it } from 'node:test';

@@ -1,5 +1,22 @@
 /**
  * H-PACK-04 Tests — H2.6-H2.9 Storage Migration
+ *
+ * Checks the in-memory implementations of four more storage interfaces.
+ *
+ * Modules under test: `MemoryGovernanceStore` (`src/security/IGovernanceStore.ts`),
+ * `MemoryTokenStore` (`src/api/ITokenStore.ts`), `MemoryDeadLetterStore`
+ * (`src/api/IDeadLetterStore.ts`) and `MemoryIndexerStore` (`src/dashboard/IIndexerStore.ts`).
+ *
+ * Strategy / partitions: governance trail append, head, count, integrity, pagination and clear;
+ * token register, resolve, unknown hash, revoke and clear; dead letters add, get, filter by
+ * status, pagination, retried and discarded states and counters; indexer newest-first order,
+ * tenant filter, per-tenant summary, eviction at the maximum size and pagination.
+ *
+ * Needs: nothing external.
+ *
+ * Run just this file: `npx tsx --test test/unit/h2_storage_pack04.test.ts`
+ *
+ * @module test/unit/h2_storage_pack04.test
  */
 
 import { describe, it } from 'node:test';

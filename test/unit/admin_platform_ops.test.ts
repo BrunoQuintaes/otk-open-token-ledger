@@ -3,6 +3,22 @@
  * tenant administration. A tenant OWNER or ADMIN cannot replace the tenant registry (which could switch auth off for
  * every tenant) nor read the global finance view. With auth enabled these need the platform operator credential that
  * already exists (OTK_ADMIN_KEY in x-admin-key); no new role is introduced.
+ *
+ * Modules under test: `handleRequest` in `src/api/routes.ts` for the registry reload and the
+ * global finance endpoints, with `src/api/tenantKeyRegistry.ts` to set up tokens and to check
+ * that the registry survived.
+ *
+ * Strategy / partitions: registry reload by a tenant OWNER (empty registry, its own entries, a
+ * wrong platform key), with no platform key configured, with no credential at all, and with the
+ * platform key (a reload that would load nothing is refused); finance view by tenant roles
+ * (403, no data) and by the platform key.
+ *
+ * Needs: no server (mock request/response objects). Sets or deletes `OTK_ADMIN_KEY` per test and
+ * restores the original value after each test.
+ *
+ * Run just this file: `npx tsx --test test/unit/admin_platform_ops.test.ts`
+ *
+ * @module test/unit/admin_platform_ops.test
  */
 import { describe, it, before, afterEach } from 'node:test';
 import assert from 'node:assert/strict';

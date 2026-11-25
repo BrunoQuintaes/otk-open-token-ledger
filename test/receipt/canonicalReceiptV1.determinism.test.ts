@@ -6,6 +6,20 @@
  *
  * Runs via: npm test (tsx --test)
  * CI: Node 24 / ubuntu-latest (see .github/workflows/ci.yml)
+ *
+ * Module under test: `src/receipt/canonicalReceiptV1.ts` (`encodeCanonicalReceiptV1Bytes`,
+ * `hashCanonicalReceiptV1`, `RECEIPT_DOMAIN_V1`, `FIELD_SEPARATOR`).
+ *
+ * Strategy / partitions: every frozen vector must reproduce its hash and byte length; the same input hashed and
+ * encoded 100 times gives identical results; the encoding starts with the domain tag, the hash is a 0x-prefixed
+ * 32-byte hex string and two different receipts hash differently; invalid receipts (empty provider, total tokens
+ * not equal to input + output, a negative integer field) throw.
+ *
+ * Needs: only the vector file named above (read-only); no network.
+ *
+ * Run just this file: `npx tsx --test test/receipt/canonicalReceiptV1.determinism.test.ts`
+ *
+ * @module test/receipt/canonicalReceiptV1.determinism.test
  */
 
 import { describe, it } from 'node:test';

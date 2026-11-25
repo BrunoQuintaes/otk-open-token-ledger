@@ -13,6 +13,22 @@
  * warm-up (the same block happens in create, before any request) Y completes and settles.
  *
  *   . docs/_ops/OVERNIGHT_20261005_MASTER/tools/ovn_env.sh && npx tsx --test test/services/d1d8_ovn_tokenizer_warmup.test.ts
+ *
+ * Modules under test: the tokenizer warm-up of the measurement ports (`warmUp`) and the lease and recovery logic of
+ * `src/operations/runtime.ts`, with instance A in process and instance B started as a child process from
+ * `./d1d8_ovn_recovery_child.ts`, the fake provider from `./d1d8_c_provider.ts` and a local-counter double.
+ *
+ * Strategy / scenarios: without warm-up the blocking load orphans the other live operation (B declares it lost
+ * while its call runs); with warm-up at creation the same block happens before serving and the live operation
+ * settles; and the product ports warm every local encoding, so the first count afterwards loads nothing.
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`) and permission to spawn a Node
+ * child process with `tsx`. Before importing the server it sets fixture values in the test process for the API's variables (tenants, a
+ * fake OpenAI key, the upstream override, `PROVER_URL=disabled`). The command above first sources an environment
+ * script that is not part of this repository; with `OTK_TEST_PG_URL` already set,
+ * `npx tsx --test test/services/d1d8_ovn_tokenizer_warmup.test.ts` runs just this file.
+ *
+ * @module test/services/d1d8_ovn_tokenizer_warmup.test
  */
 process.env['OTK_DB_URL'] = '';
 process.env['OTK_RECEIPT_LOG'] = '';
@@ -44,7 +60,12 @@ let db: TestDb;
 const provider = new ControllableProvider();
 let recovery: ChildProcess | null = null;
 
-/** Two "encodings": 'warm' is cheap; 'cold' blocks the event loop for 2 × lease on its first load. */
+/**
+ * Two "encodings": 'warm' is cheap; 'cold' blocks the event loop for 2 × lease on its first load.
+ *
+ * @param withWarmUp - When true, the ports expose a warm-up step that performs the blocking load at runtime
+ *   creation, before any request.
+ */
 function measurement(withWarmUp: boolean): MeasurementPorts {
   let coldLoaded = false;
   const loadCold = () => { if (!coldLoaded) { const end = Date.now() + 2 * LEASE_MS; while (Date.now() < end) { /* synchronous, like a rank file parse */ } coldLoaded = true; } };
@@ -72,7 +93,12 @@ const call = (base: string, op: string, model: string, script: string) => fetch(
 });
 const exec = async (op: string) => (await db.pool.query<{ e: string; st: string }>("SELECT execution AS e, reservation->>'state' AS st FROM otk_operations WHERE tenant_id = 'tW' AND operation_id = $1", [op])).rows[0] ?? null;
 
-/** Y streams and is held at the provider; then X triggers the cold load in the same process. */
+/**
+ * Y streams and is held at the provider; then X triggers the cold load in the same process.
+ *
+ * @param base - Base URL of instance A's in-process API.
+ * @param tag - Label that makes the operation ids of this scenario unique.
+ */
 async function scenario(base: string, tag: string): Promise<{ y: { e: string; st: string } | null; x: number }> {
   const fb = new Barrier(); provider.finalBarriers.push(fb);
   try {

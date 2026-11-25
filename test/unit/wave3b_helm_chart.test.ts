@@ -5,6 +5,17 @@
  * All checks are fs-based: file existence, YAML key presence, template markers.
  *
  * Covers: E5.7 (Helm Charts), NEW-3.04 (ConfigMaps + Secrets), NEW-3.05 (Probes)
+ *
+ * Under test: the Helm chart under `infra/helm/otk/` (chart metadata, values files and templates), read as text.
+ *
+ * Strategy / partitions: one group per chart concern as named in each `describe`; each case checks the presence
+ * of a file, key or template marker. The chart is not rendered and nothing is deployed.
+ *
+ * Needs: only the file system (read only), from the repository root found from this file's location.
+ *
+ * Run just this file: `npx tsx --test test/unit/wave3b_helm_chart.test.ts`
+ *
+ * @module test/unit/wave3b_helm_chart.test
  */
 
 import { describe, it } from 'node:test';

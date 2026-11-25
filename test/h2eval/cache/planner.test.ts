@@ -1,3 +1,21 @@
+/**
+ * Tests for the cache-arm planner that turns a pilot hit rate into the number of dialogs to run.
+ *
+ * Module under test: `scripts/h2eval/cache/planner.ts` (`planCacheArm`, `dialogsFor`, `wilsonLower`, the planning
+ * table and the 80% z constants).
+ *
+ * Strategy / partitions: the dialog-count formula reproduces the published table; the Wilson lower bound against an
+ * independent algebraic reference for several (k, n, z), at the 0 and 1 limits and for monotonicity; a full pilot
+ * (6 of 6 hits) giving a planned arm; a lower bound under 0.3 or zero hits giving `NOT_RUN` (exactly 0.3 is not
+ * `NOT_RUN`); no observed attempts giving `INSUFFICIENT_PILOT` with an `UNKNOWN` rate (never 0 or 1); and a budget
+ * cap on dialogs that is flagged instead of hidden.
+ *
+ * Needs: nothing external (pure arithmetic).
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cache/planner.test.ts`
+ *
+ * @module test/h2eval/cache/planner.test
+ */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { dialogsFor, planCacheArm, R07_TABLE, wilsonLower, Z80_ONE_SIDED, Z80_TWO_SIDED } from '../../../scripts/h2eval/cache/planner.js';

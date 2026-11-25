@@ -2,6 +2,18 @@
  * Wave 3E Pack 02 — Onboarding Wizard + Keys UI Tests (P3.2+P3.3+P3.4)
  *
  * Tests dashboard HTML structure for onboarding and key management.
+ *
+ * Modules under test: `src/dashboard/app.ts` (onboarding wizard and key management in the page) and
+ * `src/dashboard/login.ts` (login and signup forms), both checked as generated HTML text.
+ *
+ * Strategy / partitions: as listed in each `describe`; the presence of each element, form, script function and
+ * request target in the generated page.
+ *
+ * Needs: nothing external (no browser; the page scripts are not run).
+ *
+ * Run just this file: `npx tsx --test test/unit/wave3e_pack02_onboarding.test.ts`
+ *
+ * @module test/unit/wave3e_pack02_onboarding.test
  */
 
 import { describe, it } from 'node:test';

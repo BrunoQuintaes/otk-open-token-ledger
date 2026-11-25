@@ -9,6 +9,21 @@
  * Hand values: gpt-4o-mini weights 1000 × 400 → 400 000 micro-CU per token; prices (µUSD/MTok) input 150 000,
  * output 600 000. Worst case max_tokens 64: 128 000 × 150 000 + 64 × 600 000 = 19 238 400 000 pico-USD.
  * Usage 100/50: 100 × 150 000 + 50 × 600 000 = 45 000 000 pico-USD.
+ *
+ * Module under test: the durable gateway (`src/operations/runtime.ts` and the proxy routes) for OpenAI Chat
+ * Completions, against the fake provider from `./d1d8_c_provider.ts`.
+ *
+ * Strategy / partitions: the Standard tier is requested explicitly before any spend (an omitted tier is sent as
+ * "default"; strict policies refuse other client tiers before the provider and still inject "default"); and the tier
+ * actually served decides the settlement (a JSON answer on another tier, an SSE answer read to the end after the
+ * client left, a missing tier that holds the worst case without freezing the budget, and the non-strict mode).
+ *
+ * Needs: the test PostgreSQL from `test/services/d1d8_c_env.ts` (`OTK_TEST_PG_URL`); run with
+ * `--test-concurrency=1`. Before importing the server it sets fixture values in the test process for the API's
+ * variables (tenants, a fake OpenAI key, the upstream override, `PROVER_URL=disabled`). With the variables already
+ * set, `npx tsx --test --test-concurrency=1 test/services/d1d8_gem_openai_tier.test.ts` runs just this file.
+ *
+ * @module test/services/d1d8_gem_openai_tier.test
  */
 process.env['OTK_DB_URL'] = '';
 process.env['OTK_RECEIPT_LOG'] = '';

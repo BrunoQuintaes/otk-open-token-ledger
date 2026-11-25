@@ -2,6 +2,22 @@
  * PILOTO_V3 (OpenAI) — money bound policy v3: v2 unchanged and still the default; v3 adds OpenAI Chat
  * Completions with gpt-4o-mini (documented limits 128K / 16,384) and refuses every field that may add cost
  * outside the token bound. The combined pilot price table prices both models (worst case per side).
+ *
+ * Modules under test: `src/operations/moneyBound.ts`, `parsePriceTableV1`/`worstCaseSidePrices`
+ * from `src/pricing/priceUsage.ts`, and `d1d8ProfileFromEnv` from `src/operations/bootstrapD1D8.ts`.
+ *
+ * Strategy / partitions: v2 unchanged and default; the model by alias and by dated snapshot
+ * within its documented limits; each cost-adding body field or header (refused); a message with an
+ * audio reference (outside the bound); the policy name from the environment unset, exact, blank,
+ * a prototype name or unknown; the pilot price table and its per-side worst case.
+ *
+ * Needs: must be run from the repository root (reads
+ * `scripts/pilot/price_table_pilot_v3_20261003.json` by relative path). The bootstrap case passes
+ * its own environment object and a database URL on a closed local port; no database or network.
+ *
+ * Run just this file: `npx tsx --test test/unit/d1d8_pv3_money_bound_v3.test.ts`
+ *
+ * @module test/unit/d1d8_pv3_money_bound_v3.test
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';

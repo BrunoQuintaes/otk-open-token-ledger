@@ -1,3 +1,27 @@
+/**
+ * Tests the connectivity preflight that must pass before a REAL run: injected TLS and HTTP probes, the journal
+ * line it writes, the environment fingerprint and the REAL-mode gate.
+ *
+ * Modules under test: `scripts/h2eval/cli/preflight.ts` (`preflightConnectivity`, `preflightGate`,
+ * `latestPreflight`, `envFingerprint`, `campaignJournalPath`, `PROVIDER_PROBES`, `PREFLIGHT_MAX_AGE_MS`),
+ * `scripts/h2eval/cli/run.ts` (`realPreconditions`, `runAuthorized`) and the journal verifier.
+ *
+ * Strategy / partitions: PASS (verified TLS and the expected "unauthenticated" HTTP status) appends a hash-chained
+ * line with issuer and fingerprints and no credential; TLS failure (the HTTP probe is never attempted; an exception
+ * code is recorded, its message never); unexpected HTTP status or a throwing probe; a forbidden environment
+ * variable present (its name recorded, never its value); fingerprint sensitivity (names and CA policy only); the
+ * gate states missing, failed, stale, environment mismatch and pass; a REAL run listing the missing preflight for
+ * every provider in scope; and source guards that read `scripts/h2eval/cli/preflight.ts` as text (TLS checks never
+ * turned off, no credential variable or env file referenced, default HTTP probe without credential headers, no
+ * redirects followed).
+ *
+ * Needs: a writable temporary directory; probes are injected, so no socket, no network and no credential. The
+ * environment passed to the code under test is a synthetic object, not the process environment.
+ *
+ * Run just this file: `npx tsx --test test/h2eval/cli/preflight.test.ts`
+ *
+ * @module test/h2eval/cli/preflight.test
+ */
 // SYNTHETIC — OFFLINE. CYCLE2-B (proposal C147): `preflight-connectivity` with INJECTED probes (no socket, no credential). PASS appends a
 // hash-chained PREFLIGHT_CONNECTIVITY line to the campaign journal (issuer, leaf fingerprint, HTTP 401, env fingerprint); TLS verification
 // failure => FAIL with the non-secret code and the HTTP probe is never attempted; unexpected HTTP status => FAIL; probe exception => FAIL with

@@ -2,6 +2,19 @@
  * SignatureManager Unit Tests
  *
  * Tests for ECDSA signing and verification of raw receipts.
+ *
+ * Module under test: `src/metering/SignatureManager.ts`.
+ *
+ * Strategy / partitions: canonical hash for equal inputs, different inputs and reordered fields;
+ * sign then verify with the right signer, with a corrupted signature and with a different
+ * signer; the shape of the signature components; test signers derived from the same seed and
+ * from different seeds.
+ *
+ * Needs: nothing external (deterministic in-memory test keys, no network).
+ *
+ * Run just this file: `npx tsx --test test/unit/SignatureManager.test.ts`
+ *
+ * @module test/unit/SignatureManager.test
  */
 
 import { describe, it } from 'node:test';

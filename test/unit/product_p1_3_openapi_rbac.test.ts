@@ -12,6 +12,19 @@
  * No server process required.
  *
  * @since P1.3 (2026-03-14)
+ *
+ * Under test: the committed specification `docs/api/openapi.json` (no source module is imported).
+ *
+ * Strategy / partitions: the two security schemes (token and legacy admin key); for the balance route, three
+ * admin routes, the tenant reload route and the receipt routes, the declared security options and the 401
+ * and 403 responses; the OWNER-only restriction in the reload description; the access model in the info
+ * description.
+ *
+ * Needs: reads `docs/api/openapi.json` relative to the current directory, so run it from the repository root.
+ *
+ * Run just this file: `npx tsx --test test/unit/product_p1_3_openapi_rbac.test.ts`
+ *
+ * @module test/unit/product_p1_3_openapi_rbac.test
  */
 
 import { describe, it, before } from 'node:test';
