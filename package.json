@@ -6,6 +6,8 @@
   "scripts": {
     "reproduzir-tudo": "node --import ./reproducao/ferramentas/sem_rede.mjs reproducao/reproduzir_tudo.mjs",
     "testes-banca": "node reproducao/testes_banca.mjs",
+    "reproduzir-ao-vivo": "node --import ./reproducao/ferramentas/sem_rede.mjs reproducao/ao_vivo/reproduzir_ao_vivo.mjs",
+    "test:ao-vivo": "node --import ./reproducao/ferramentas/sem_rede.mjs --test --test-concurrency=1 \"test/reproducao_ao_vivo/*.test.mjs\"",
     "demo-banca": "node --import tsx demo/demo_banca.mts",
     "test": "tsx --test test/unit/*.test.ts test/pricing/*.test.ts test/sdk/*.test.ts test/security/*.test.ts test/integration/*.test.ts test/receipt/*.test.ts test/zk/*.test.ts",
     "test:tap": "tsx --test --test-reporter=tap test/unit/*.test.ts test/pricing/*.test.ts test/sdk/*.test.ts test/security/*.test.ts test/integration/*.test.ts test/receipt/*.test.ts test/zk/*.test.ts",

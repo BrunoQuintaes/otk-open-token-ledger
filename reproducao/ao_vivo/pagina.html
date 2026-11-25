@@ -1,0 +1,510 @@
+<!doctype html>
+<!--
+  Live reproduction page of `npm run reproduzir-ao-vivo` (served by reproducao/ao_vivo/servidor.mjs).
+  One file, no external resources: the server sends a Content-Security-Policy that forbids anything outside
+  this machine. Data comes from the same local server: /api/dias (summaries of the stored records of the two
+  collection days) and /eventos (Server-Sent Events with the progress of each step). The tests action is a
+  POST /api/testes without parameters. Every value is inserted with textContent, never as HTML.
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>OTK ao vivo</title>
+<style>
+:root {
+  --fundo: #f6f6f3; --superficie: #ffffff; --texto: #1b1b1b; --suave: #4a4a4a; --borda: #c9c9c4; --foco: #0b57d0;
+  --verde-fundo: #e6f4ea; --verde-texto: #0f5323; --verde-borda: #1e7b3a;
+  --amarelo-fundo: #fff4d6; --amarelo-texto: #5c3d00; --amarelo-borda: #a06b00;
+  --vermelho-fundo: #fde7e7; --vermelho-texto: #8a1111; --vermelho-borda: #b3261e;
+  --azul-fundo: #e8f0fe; --azul-texto: #0b3d91; --azul-borda: #0b57d0;
+  --cinza-fundo: #eeeeea;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html { scroll-padding-top: 64px; }
+body { margin: 0; background: var(--fundo); color: var(--texto); font: 15px/1.45 system-ui, "Segoe UI", Roboto, Arial, sans-serif; }
+nav.indice { position: sticky; top: 0; z-index: 10; background: var(--superficie); border-bottom: 1px solid var(--borda); }
+nav.indice .faixa { max-width: 1240px; margin: 0 auto; padding: 8px 16px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+nav.indice strong { margin-right: 8px; }
+nav.indice a { color: var(--azul-texto); text-decoration: none; padding: 4px 10px; border: 1px solid var(--borda); border-radius: 999px; font-size: 14px; }
+nav.indice a:hover, nav.indice a:focus-visible { background: var(--azul-fundo); outline: none; border-color: var(--azul-borda); }
+main { max-width: 1240px; margin: 0 auto; padding: 12px 16px 48px; }
+.aviso-topo { background: var(--azul-fundo); color: var(--azul-texto); border: 1px solid var(--azul-borda); border-radius: 8px; padding: 10px 14px; font-weight: 600; }
+section.parte { background: var(--superficie); border: 1px solid var(--borda); border-radius: 10px; padding: 14px 18px; margin-top: 16px; }
+section.parte > h2 { margin: 0 0 6px; font-size: 21px; }
+h3 { font-size: 16px; margin: 14px 0 6px; }
+p { margin: 6px 0; }
+.suave { color: var(--suave); }
+.mono { font-family: ui-monospace, Consolas, "Cascadia Mono", monospace; font-size: 13px; word-break: break-all; }
+.selo { display: inline-block; min-width: 64px; text-align: center; font-weight: 700; border-radius: 4px; padding: 1px 6px; border: 1px solid; font-size: 13px; }
+.selo.ok, .selo.verde { background: var(--verde-fundo); color: var(--verde-texto); border-color: var(--verde-borda); }
+.selo.falhou, .selo.vermelho { background: var(--vermelho-fundo); color: var(--vermelho-texto); border-color: var(--vermelho-borda); }
+.selo.amarelo, .selo.espera { background: var(--amarelo-fundo); color: var(--amarelo-texto); border-color: var(--amarelo-borda); }
+.selo.cinza { background: var(--cinza-fundo); color: var(--suave); border-color: var(--borda); }
+.estado { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 6px 0 10px; }
+.veredito { font-size: 20px; font-weight: 800; padding: 8px 14px; border-radius: 8px; border: 2px solid; }
+.veredito.ok { background: var(--verde-fundo); color: var(--verde-texto); border-color: var(--verde-borda); }
+.veredito.falhou { background: var(--vermelho-fundo); color: var(--vermelho-texto); border-color: var(--vermelho-borda); }
+.veredito.espera { background: var(--amarelo-fundo); color: var(--amarelo-texto); border-color: var(--amarelo-borda); }
+.blocos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.bloco { border: 1px solid var(--borda); border-radius: 8px; padding: 8px 10px; }
+.bloco h3 { margin: 0 0 4px; }
+ol.itens { list-style: none; margin: 0; padding: 0; }
+ol.itens li { display: grid; grid-template-columns: 74px 1fr 64px; gap: 8px; padding: 4px 0; border-top: 1px dashed var(--borda); align-items: start; }
+ol.itens li:first-child { border-top: 0; }
+ol.itens li > span { min-width: 0; overflow-wrap: anywhere; }
+ol.itens .tempo { text-align: right; color: var(--suave); font-size: 13px; }
+ol.itens .vazio { color: var(--suave); font-style: italic; grid-column: 1 / -1; }
+.diagrama { display: flex; flex-wrap: wrap; gap: 4px; align-items: stretch; margin: 8px 0; }
+.etapa { flex: 1 1 120px; border: 1px solid var(--borda); border-radius: 8px; padding: 6px 8px; background: var(--cinza-fundo); font-size: 13px; transition: background .15s; }
+.etapa b { display: block; font-size: 13px; }
+.etapa.acesa { background: var(--verde-fundo); border-color: var(--verde-borda); }
+.etapa.alerta { background: var(--amarelo-fundo); border-color: var(--amarelo-borda); }
+.etapa.erro { background: var(--vermelho-fundo); border-color: var(--vermelho-borda); }
+.seta { align-self: center; color: var(--suave); font-weight: 700; }
+.fatos { border-left: 4px solid var(--azul-borda); background: var(--azul-fundo); padding: 6px 10px; border-radius: 0 6px 6px 0; margin: 8px 0; font-size: 14px; }
+.fatos.forte { border-left-color: var(--amarelo-borda); background: var(--amarelo-fundo); color: var(--amarelo-texto); font-weight: 600; }
+.controles { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
+button, select { font: inherit; padding: 5px 12px; border-radius: 6px; border: 1px solid var(--borda); background: var(--superficie); color: var(--texto); cursor: pointer; }
+button:hover { border-color: var(--azul-borda); }
+button:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid var(--foco); outline-offset: 2px; }
+button.principal { background: var(--azul-borda); color: #fff; border-color: var(--azul-borda); font-weight: 600; }
+button:disabled { opacity: .55; cursor: not-allowed; }
+.progresso { flex: 1 1 200px; height: 10px; background: var(--cinza-fundo); border-radius: 5px; overflow: hidden; border: 1px solid var(--borda); }
+.progresso > div { height: 100%; width: 0; background: var(--azul-borda); }
+.dupla { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 14px; }
+.cartao-chamada { border: 1px solid var(--borda); border-radius: 8px; padding: 8px 10px; }
+.cartao-chamada dl { display: grid; grid-template-columns: 150px 1fr; gap: 2px 8px; margin: 0; font-size: 14px; }
+.cartao-chamada dt { color: var(--suave); }
+.cartao-chamada dd { margin: 0; font-weight: 600; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { border-bottom: 1px solid var(--borda); padding: 4px 6px; text-align: left; vertical-align: top; }
+th { background: var(--cinza-fundo); font-weight: 700; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+tr.total td { font-weight: 800; border-top: 2px solid var(--texto); }
+.rolagem { max-height: 300px; overflow: auto; border: 1px solid var(--borda); border-radius: 6px; }
+.cartoes { display: flex; gap: 10px; flex-wrap: wrap; margin: 8px 0; }
+.cartao { min-width: 140px; border: 2px solid; border-radius: 8px; padding: 6px 12px; }
+.cartao .n { font-size: 26px; font-weight: 800; display: block; }
+.cartao.verde { background: var(--verde-fundo); color: var(--verde-texto); border-color: var(--verde-borda); }
+.cartao.amarelo { background: var(--amarelo-fundo); color: var(--amarelo-texto); border-color: var(--amarelo-borda); }
+.cartao.vermelho { background: var(--vermelho-fundo); color: var(--vermelho-texto); border-color: var(--vermelho-borda); }
+iframe.verificador { width: 100%; height: 640px; border: 1px solid var(--borda); border-radius: 8px; background: #fff; }
+pre.registro { background: #1e1e1e; color: #e6e6e6; padding: 8px 10px; border-radius: 6px; max-height: 260px; overflow: auto; font-size: 12.5px; white-space: pre-wrap; margin: 6px 0; }
+details > summary { cursor: pointer; color: var(--azul-texto); }
+ol.passos { margin: 4px 0; padding-left: 22px; }
+@media (max-width: 900px) { .blocos, .dupla { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<nav class="indice" aria-label="Índice">
+  <div class="faixa">
+    <strong>OTK ao vivo</strong>
+    <a href="#refazendo">1. Refazendo agora</a>
+    <a href="#dia07">2. 7 de outubro</a>
+    <a href="#dia23">3. 23 de novembro</a>
+    <a href="#recibos">4. Conferindo os recibos</a>
+    <a href="#testes">5. Testes automáticos</a>
+  </div>
+</nav>
+<main>
+  <p class="aviso-topo" data-testid="aviso-topo">Replay dos registros gravados nas coletas: nenhuma chamada nova é feita e nada sai do seu computador</p>
+
+  <!-- Part 1 -->
+  <section class="parte" id="refazendo" aria-labelledby="t-refazendo">
+    <h2 id="t-refazendo">1. Refazendo agora</h2>
+    <p class="suave">O mesmo comando de <span class="mono">npm run reproduzir-tudo</span>, rodando agora no seu computador, sem internet. Cada item aparece quando termina.</p>
+    <div class="estado">
+      <span class="veredito espera" id="rep-veredito" data-testid="rep-veredito" role="status" aria-live="polite">Rodando…</span>
+      <span class="suave">Tempo decorrido: <b id="rep-tempo">0 s</b></span>
+      <span class="suave" id="rep-codigo"></span>
+    </div>
+    <div class="blocos">
+      <div class="bloco"><h3>A. Coleta de 7 de outubro (H1) e calibração Anthropic</h3><ol class="itens" id="parte-A"><li><span class="vazio">aguardando…</span></li></ol></div>
+      <div class="bloco"><h3>B. Tabela dos 8 modelos (23 de novembro)</h3><ol class="itens" id="parte-B"><li><span class="vazio">aguardando…</span></li></ol></div>
+      <div class="bloco"><h3>C. Estimado pelo OTK × declarado, e registro gravado antes</h3><ol class="itens" id="parte-C"><li><span class="vazio">aguardando…</span></li></ol></div>
+      <div class="bloco"><h3>D. Verificador, chaveiro e página</h3><ol class="itens" id="parte-D"><li><span class="vazio">aguardando…</span></li></ol></div>
+    </div>
+    <details><summary>Ver a saída completa do terminal</summary><pre class="registro" id="rep-log" data-testid="rep-log"></pre></details>
+  </section>
+
+  <!-- Part 2 -->
+  <section class="parte" id="dia07" aria-labelledby="t-dia07">
+    <h2 id="t-dia07">2. O caminho do OTK em 7 de outubro de 2026</h2>
+    <p class="suave">Cada chamada real da coleta, refeita a partir do registro gravado. Sem texto de conversa e sem identificador do provedor.</p>
+    <div class="diagrama" id="d07-diagrama" aria-label="Caminho de uma chamada">
+      <div class="etapa" data-etapa="texto"><b>Texto</b>o pedido do cliente</div><span class="seta">→</span>
+      <div class="etapa" data-etapa="conta"><b>OTK conta os tokens</b>antes do envio</div><span class="seta">→</span>
+      <div class="etapa" data-etapa="provedor"><b>Provedor</b>responde</div><span class="seta">→</span>
+      <div class="etapa" data-etapa="declarado"><b>Uso declarado</b>pelo provedor</div><span class="seta">→</span>
+      <div class="etapa" data-etapa="comparacao"><b>Comparação</b>veredito</div><span class="seta">→</span>
+      <div class="etapa" data-etapa="custo"><b>Custo</b>tabela pública</div><span class="seta">→</span>
+      <div class="etapa" data-etapa="recibo"><b>Recibo assinado</b>assinatura conferida</div>
+    </div>
+    <div class="fatos">No proxy, a contagem do OTK é calculada antes do envio e gravada no fim da chamada, junto com o uso declarado. Em 7 de outubro, a assinatura de cada recibo foi conferida na hora, mas o recibo inteiro não foi guardado: o que está no repositório é o resultado dessa checagem.</div>
+    <div class="controles" data-replay="d07">
+      <button type="button" data-acao="pausar" data-testid="d07-pausar">Pausar</button>
+      <label>Velocidade <select data-acao="velocidade" data-testid="d07-velocidade"><option value="5">1×</option><option value="20" selected>4×</option><option value="80">16×</option></select></label>
+      <button type="button" data-acao="fim" data-testid="d07-fim">Pular para o fim</button>
+      <button type="button" data-acao="reiniciar">Recomeçar</button>
+      <div class="progresso" aria-hidden="true"><div id="d07-barra"></div></div>
+      <span id="d07-posicao" class="suave" data-testid="d07-posicao">0 de 0</span>
+    </div>
+    <div class="dupla">
+      <div class="cartao-chamada"><h3>Chamada atual</h3><dl id="d07-atual"></dl></div>
+      <div><h3>Últimas chamadas</h3>
+        <table><thead><tr><th>Provedor · modelo</th><th class="num">OTK</th><th class="num">Declarado</th><th class="num">Dif.</th><th>Veredito</th><th>Assinatura</th></tr></thead><tbody id="d07-ultimas"></tbody></table>
+      </div>
+    </div>
+    <h3>Contadores (até a chamada atual)</h3>
+    <table data-testid="d07-contadores"><thead><tr><th>Provedor · modelo</th><th class="num">Chamadas</th><th class="num">Assinatura conferida: sim</th><th class="num">não</th><th class="num">Sem a checagem</th></tr></thead><tbody id="d07-contadores"></tbody></table>
+    <p class="suave" id="d07-nota"></p>
+  </section>
+
+  <!-- Part 3 -->
+  <section class="parte" id="dia23" aria-labelledby="t-dia23">
+    <h2 id="t-dia23">3. O caminho do OTK em 23 de novembro de 2026</h2>
+    <p class="fatos forte" data-testid="d23-aviso">Nesta coleta, o programa de coleta não passou pelo proxy e não gerou recibo.</p>
+    <p class="suave">Cada envio refeito a partir do diário encadeado (cada registro leva o hash do anterior) do programa de coleta à parte (<span class="mono">scripts/h2eval/</span>). Sem texto de conversa e sem identificador do provedor.</p>
+    <div class="diagrama" id="d23-diagrama" aria-label="Etapas do registro de um envio">
+      <div class="etapa" data-etapa="planejado"><b>Planejado</b>&nbsp;</div><span class="seta">→</span>
+      <div class="etapa" data-etapa="registro"><b>Registro gravado antes do envio</b><span id="d23-registro-sub">com ou sem contagem</span></div><span class="seta">→</span>
+      <div class="etapa" data-etapa="enviado"><b>Enviado</b>&nbsp;</div><span class="seta">→</span>
+      <div class="etapa" data-etapa="resposta"><b>Resposta</b>&nbsp;</div><span class="seta">→</span>
+      <div class="etapa" data-etapa="uso"><b>Uso lido</b>declarado</div><span class="seta">→</span>
+      <div class="etapa" data-etapa="custo"><b>Custo</b>calculado</div><span class="seta">→</span>
+      <div class="etapa" data-etapa="fechado"><b>Fechado</b>&nbsp;</div>
+    </div>
+    <div class="controles" data-replay="d23">
+      <button type="button" data-acao="pausar" data-testid="d23-pausar">Pausar</button>
+      <label>Velocidade <select data-acao="velocidade" data-testid="d23-velocidade"><option value="10">1×</option><option value="40" selected>4×</option><option value="160">16×</option></select></label>
+      <button type="button" data-acao="fim" data-testid="d23-fim">Pular para o fim</button>
+      <button type="button" data-acao="reiniciar">Recomeçar</button>
+      <div class="progresso" aria-hidden="true"><div id="d23-barra"></div></div>
+      <span id="d23-posicao" class="suave" data-testid="d23-posicao">0 de 0</span>
+    </div>
+    <div class="dupla">
+      <div class="cartao-chamada"><h3>Envio atual</h3><dl id="d23-atual"></dl></div>
+      <div><h3>Últimos envios</h3>
+        <table><thead><tr><th>Modelo</th><th>Registro antes</th><th class="num">OTK</th><th class="num">Declarado</th><th class="num">Dif.</th><th>Fechamento</th></tr></thead><tbody id="d23-ultimas"></tbody></table>
+      </div>
+    </div>
+    <h3>Contadores por modelo (até o envio atual)</h3>
+    <table data-testid="d23-contadores"><thead><tr><th>Modelo</th><th class="num">Envios</th><th class="num">Registro gravado antes</th><th class="num">Com a contagem do OTK</th><th class="num">Sem contagem</th><th class="num">Com uso declarado</th></tr></thead><tbody id="d23-contadores"></tbody></table>
+    <p class="suave" id="d23-nota"></p>
+    <p class="suave" data-testid="d23-fonte-declarado">De onde vem o declarado: do uso bruto que o provedor devolveu, gravado em <span class="mono">TENTATIVAS_CMP8.jsonl</span>, pela mesma regra da parte C (OpenAI <span class="mono">prompt_tokens</span>; Anthropic <span class="mono">input_tokens</span> mais o cache; Google <span class="mono">promptTokenCount</span>). No diário do Google, o uso lido ficou como desconhecido (UNKNOWN); por isso o declarado do Google vem só desse uso bruto.</p>
+  </section>
+
+  <!-- Part 4 -->
+  <section class="parte" id="recibos" aria-labelledby="t-recibos">
+    <h2 id="t-recibos">4. Conferindo os recibos</h2>
+    <p class="suave">Depois da reprodução, o comando roda o verificador pelo terminal, sem internet, sobre os recibos de exemplo, com o chaveiro de teste e a impressão digital dele:</p>
+    <p class="mono" id="rec-comando">aguardando o fim da reprodução…</p>
+    <div class="estado"><span class="veredito espera" id="rec-estado" data-testid="rec-estado" role="status" aria-live="polite">Aguardando…</span></div>
+    <div class="cartoes" data-testid="rec-cartoes">
+      <div class="cartao verde"><span class="n" id="rec-verde" data-testid="rec-verde">–</span>OK (verde)</div>
+      <div class="cartao amarelo"><span class="n" id="rec-amarelo" data-testid="rec-amarelo">–</span>Atenção (amarelo)</div>
+      <div class="cartao vermelho"><span class="n" id="rec-vermelho" data-testid="rec-vermelho">–</span>Falhou (vermelho)</div>
+    </div>
+    <p>sha256 do relatório: <span class="mono" id="rec-sha" data-testid="rec-sha">–</span> <span id="rec-sha-igual"></span></p>
+    <p class="fatos">Nos exemplos, vermelho é o esperado: eles foram alterados de propósito para testar o verificador, e só alguns são íntegros. Os cartões contam itens, e não arquivos: um arquivo pode trazer vários recibos, e um recibo pode gerar mais de um item.</p>
+    <details><summary>Ver a tabela por recibo, com o motivo</summary>
+      <div class="rolagem"><table data-testid="rec-tabela"><thead><tr><th>Resultado</th><th>Recibo</th><th>Arquivo:linha</th><th>Motivo</th></tr></thead><tbody id="rec-linhas"></tbody></table></div>
+    </details>
+    <h3>Conferir você mesmo, na página original do verificador</h3>
+    <p>A página abaixo é o arquivo <span class="mono" id="rec-pagina-caminho">web/verificador/verificador-otk.html</span>, servido sem mudar nenhum byte (sha256 <span class="mono" id="rec-pagina-sha" data-testid="rec-pagina-sha">–</span>; o item D da parte 1 confere esse valor com o registrado). Nela:</p>
+    <ol class="passos">
+      <li>em <b>Recibos</b>, clique em <b>Escolher pasta</b> e escolha a pasta <span class="mono">test\verifier\vetores\recibos</span>, dentro da pasta do repositório (se o navegador perguntar se quer carregar os arquivos, pode aceitar: a página roda só no seu computador);</li>
+      <li>em <b>Chaveiro</b>, clique em <b>Escolher chaveiro</b> e escolha o arquivo <span class="mono">test\verifier\vetores\chaveiro.json</span>;</li>
+      <li>no campo <b>Impressão digital do chaveiro</b>, cole <span class="mono" id="rec-impressao">–</span>;</li>
+      <li>clique em <b>Conferir recibos</b>: os cartões devem dar os mesmos números de cima.</li>
+    </ol>
+    <p><a id="rec-pagina-link" href="/verificador/verificador-otk.html" target="_blank" rel="noopener">Abrir a página do verificador numa aba à parte</a> (se a escolha de pasta não funcionar dentro do quadro).</p>
+    <iframe class="verificador" id="rec-iframe" title="Página original do verificador de recibos" src="/verificador/verificador-otk.html" loading="lazy"></iframe>
+  </section>
+
+  <!-- Part 5 -->
+  <section class="parte" id="testes" aria-labelledby="t-testes">
+    <h2 id="t-testes">5. Testes automáticos (opcional)</h2>
+    <p>Os testes conferem o programa, peça por peça. São opcionais para quem só quer os números: a parte 1 já refaz os números da dissertação.</p>
+    <div class="controles">
+      <button type="button" class="principal" id="tes-botao" data-testid="tes-botao">Rodar os testes (2 a 5 minutos)</button>
+      <span class="veredito espera" id="tes-estado" data-testid="tes-estado" role="status" aria-live="polite" hidden></span>
+      <span class="suave" id="tes-tempo"></span>
+    </div>
+    <p class="mono" id="tes-resultado" data-testid="tes-resultado"></p>
+    <pre class="registro" id="tes-log" data-testid="tes-log" hidden></pre>
+  </section>
+</main>
+<script>
+'use strict';
+/* Small DOM helpers: every value from the server goes in through textContent. */
+const $ = (id) => document.getElementById(id);
+const el = (tag, attrs = {}, ...children) => {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) { if (k === 'class') node.className = v; else node.setAttribute(k, v); }
+  for (const c of children) node.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  return node;
+};
+const fmtInt = (n) => (n === null || n === undefined ? 'não informado' : Number(n).toLocaleString('pt-BR'));
+const fmtDiff = (n) => (n === null || n === undefined ? '–' : (n > 0 ? '+' : '') + Number(n).toLocaleString('pt-BR'));
+const fmtUsd = (n) => (n === null || n === undefined ? 'não informado' : 'US$ ' + Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 7, maximumFractionDigits: 7 }));
+const fmtSeconds = (ms) => (ms / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' s';
+
+/* ---------- Part 1: live reproduction ---------- */
+const reproduction = { startedAt: Date.now(), finished: false, clearedParts: new Set() };
+setInterval(() => { if (!reproduction.finished) $('rep-tempo').textContent = fmtSeconds(Date.now() - reproduction.startedAt); }, 250);
+
+function addItem({ ok, part, text, elapsedMs }) {
+  const list = $('parte-' + part);
+  if (!list) return;
+  if (!reproduction.clearedParts.has(part)) { list.textContent = ''; reproduction.clearedParts.add(part); }
+  list.append(el('li', { 'data-testid': 'item', 'data-ok': String(ok) },
+    el('span', { class: 'selo ' + (ok ? 'ok' : 'falhou') }, ok ? 'OK' : 'FALHOU'),
+    el('span', {}, text),
+    el('span', { class: 'tempo' }, fmtSeconds(elapsedMs))));
+}
+function showFinal({ ok, passed, total }) {
+  const box = $('rep-veredito');
+  box.className = 'veredito ' + (ok ? 'ok' : 'falhou');
+  box.textContent = (ok ? 'TUDO OK' : 'ALGO FALHOU') + ': ' + passed + ' de ' + total;
+}
+
+/* ---------- Parts 2 and 3: replays ---------- */
+const VERDICTS_07 = {
+  within_threshold: ['dentro do limite', 'ok'],
+  over_threshold: ['acima do limite', 'falhou'],
+  not_applicable: ['sem veredito (régua aproximada)', 'cinza'],
+  not_produced: ['comparação não produzida', 'cinza'],
+  refused: ['recusada pelo provedor', 'amarelo'],
+};
+const verdict07 = (v) => VERDICTS_07[v] || [String(v), 'cinza'];
+const signatureText = (s) => (s === true ? 'conferida: sim' : s === false ? 'conferida: não' : 'sem checagem');
+
+function makeReplay(key, records, opts) {
+  const state = { index: 0, rate: Number(document.querySelector('[data-replay="' + key + '"] [data-acao="velocidade"]').value), paused: false, carry: 0, counters: new Map(), total: {} };
+  const controls = document.querySelector('[data-replay="' + key + '"]');
+  const pauseButton = controls.querySelector('[data-acao="pausar"]');
+  const reset = () => { state.index = 0; state.counters = new Map(); state.total = {}; $(key + '-ultimas').textContent = ''; render(null); };
+  const step = (record) => {
+    const group = opts.groupOf(record);
+    if (!state.counters.has(group)) state.counters.set(group, {});
+    const bucket = state.counters.get(group);
+    for (const [k, v] of Object.entries(opts.countersOf(record))) { bucket[k] = (bucket[k] || 0) + v; state.total[k] = (state.total[k] || 0) + v; }
+  };
+  const renderCounters = () => {
+    const body = $(key + '-contadores');
+    body.textContent = '';
+    const groups = [...state.counters.entries()].sort(([a], [b]) => a.localeCompare(b));
+    for (const [group, c] of groups) body.append(el('tr', { 'data-grupo': group }, el('td', {}, group), ...opts.counterNames.map((n) => el('td', { class: 'num' }, fmtInt(c[n] || 0)))));
+    body.append(el('tr', { class: 'total', 'data-testid': key + '-total' }, el('td', {}, 'Total'), ...opts.counterNames.map((n) => el('td', { class: 'num', 'data-contador': n }, fmtInt(state.total[n] || 0)))));
+  };
+  const render = (record) => {
+    $(key + '-posicao').textContent = fmtInt(state.index) + ' de ' + fmtInt(records.length);
+    $(key + '-barra').style.width = (records.length ? (100 * state.index) / records.length : 0) + '%';
+    renderCounters();
+    const card = $(key + '-atual');
+    card.textContent = '';
+    if (record) for (const [label, value] of opts.cardOf(record, state.index)) card.append(el('dt', {}, label), el('dd', {}, value));
+    opts.lightDiagram(record);
+    pauseButton.textContent = state.index >= records.length ? 'Terminado' : state.paused ? 'Continuar' : 'Pausar';
+  };
+  const pushRecent = (record) => {
+    const body = $(key + '-ultimas');
+    body.prepend(opts.rowOf(record));
+    while (body.children.length > 8) body.lastChild.remove();
+  };
+  const advance = (n) => {
+    let last = null;
+    for (let i = 0; i < n && state.index < records.length; i++) { last = records[state.index++]; step(last); }
+    if (last) { pushRecent(last); render(last); }
+  };
+  setInterval(() => {
+    if (state.paused || state.index >= records.length) return;
+    state.carry += state.rate / 10;
+    const n = Math.floor(state.carry);
+    state.carry -= n;
+    if (n > 0) advance(n);
+  }, 100);
+  controls.addEventListener('click', (ev) => {
+    const action = ev.target.getAttribute('data-acao');
+    if (action === 'pausar') { state.paused = !state.paused; render(records[state.index - 1] || null); }
+    if (action === 'fim') advance(records.length);
+    if (action === 'reiniciar') { reset(); state.paused = false; }
+  });
+  controls.querySelector('[data-acao="velocidade"]').addEventListener('change', (ev) => { state.rate = Number(ev.target.value); });
+  reset();
+}
+
+function lightStages(diagramId, lit) {
+  for (const node of document.querySelectorAll('#' + diagramId + ' .etapa')) {
+    const stage = node.getAttribute('data-etapa');
+    node.className = 'etapa' + (lit[stage] ? ' ' + lit[stage] : '');
+  }
+}
+
+function startDay07(day) {
+  const names = ['calls', 'signatureYes', 'signatureNo', 'withoutCheck'];
+  const statuses = Object.entries(day.refusedHttpStatuses).map(([s, n]) => n + ' com HTTP ' + s).join(', ');
+  $('d07-nota').textContent = 'Total nos registros: ' + fmtInt(day.counters.total.calls) + ' chamadas reais (' + day.sources.length + ' arquivos; as pastas de ensaio sintético ficam de fora). As chamadas sem a checagem foram recusadas pelo provedor (' + statuses + '), e por isso não têm recibo.';
+  makeReplay('d07', day.calls, {
+    counterNames: names,
+    groupOf: (c) => c.provider + ' · ' + (c.model || 'sem modelo devolvido'),
+    countersOf: (c) => ({ calls: 1, signatureYes: c.signatureVerified === true ? 1 : 0, signatureNo: c.signatureVerified === false ? 1 : 0, withoutCheck: c.signatureVerified === null ? 1 : 0 }),
+    cardOf: (c, n) => [
+      ['Chamada', fmtInt(n) + ' de ' + fmtInt(day.calls.length)],
+      ['Provedor e modelo', c.provider + ' · ' + (c.model || 'sem modelo devolvido')],
+      ['Resposta HTTP', String(c.httpStatus ?? 'não informado')],
+      ['Contagem do OTK', c.otkInput === null ? 'não informado' : fmtInt(c.otkInput) + ' de entrada, ' + fmtInt(c.otkOutput) + ' de saída'],
+      ['Declarado', c.declaredInput === null ? 'não informado' : fmtInt(c.declaredInput) + ' de entrada, ' + fmtInt(c.declaredOutput) + ' de saída'],
+      ['Diferença (entrada)', fmtDiff(c.inputDifference)],
+      ['Veredito', verdict07(c.verdict)[0]],
+      ['Custo', fmtUsd(c.costUsd)],
+      ['Assinatura', signatureText(c.signatureVerified)],
+    ],
+    rowOf: (c) => el('tr', {}, el('td', {}, c.provider + ' · ' + (c.model || 'sem modelo')), el('td', { class: 'num' }, fmtInt(c.otkInput)), el('td', { class: 'num' }, fmtInt(c.declaredInput)), el('td', { class: 'num' }, fmtDiff(c.inputDifference)),
+      el('td', {}, el('span', { class: 'selo ' + verdict07(c.verdict)[1] }, verdict07(c.verdict)[0])), el('td', {}, el('span', { class: 'selo ' + (c.signatureVerified === true ? 'ok' : c.signatureVerified === false ? 'falhou' : 'amarelo') }, signatureText(c.signatureVerified)))),
+    lightDiagram: (c) => {
+      if (!c) return lightStages('d07-diagrama', {});
+      const refused = c.signatureVerified === null;
+      lightStages('d07-diagrama', {
+        texto: 'acesa', conta: 'acesa', provedor: refused ? 'alerta' : 'acesa', declarado: refused ? '' : 'acesa',
+        comparacao: refused ? '' : c.verdict === 'within_threshold' ? 'acesa' : 'alerta', custo: refused ? '' : 'acesa',
+        recibo: c.signatureVerified === true ? 'acesa' : c.signatureVerified === false ? 'erro' : '',
+      });
+    },
+  });
+}
+
+function startDay23(day) {
+  const names = ['sent', 'recordedBefore', 'withOtkCount', 'withoutOtkCount', 'withDeclared'];
+  const linked = Object.values(day.chainLinked).every(Boolean);
+  $('d23-nota').textContent = 'Total nos registros: ' + fmtInt(day.counters.total.sent) + ' envios de ' + day.counters.groups.length + ' modelos, em ' + Object.keys(day.chainLinked).length + ' diários (corrente prevHash → hash ' + (linked ? 'ligada do começo ao fim' : 'COM QUEBRA') + '; o hash de cada linha é recalculado no item C da parte 1). Sem contagem quer dizer que o contador da versão avaliada não sabe contar aquele modelo (UNSUPPORTED_FOR_ESTIMATION).';
+  const closingClass = (op) => (op.closing === 'fechado' ? 'ok' : 'amarelo');
+  makeReplay('d23', day.operations, {
+    counterNames: names,
+    groupOf: (op) => op.model || 'modelo desconhecido',
+    countersOf: (op) => { const b = op.recordedBeforeSend ? 1 : 0; return { sent: 1, recordedBefore: b, withOtkCount: b && op.estimateStatus === 'ESTIMATED' ? 1 : 0, withoutOtkCount: b && op.estimateStatus !== 'ESTIMATED' ? 1 : 0, withDeclared: op.declaredInput !== null ? 1 : 0 }; },
+    cardOf: (op, n) => [
+      ['Envio', fmtInt(n) + ' de ' + fmtInt(day.operations.length)],
+      ['Provedor e modelo', (op.provider || '?') + ' · ' + (op.model || '?')],
+      ['Registro antes do envio', op.recordedBeforeSend ? 'sim, ' + (op.estimateStatus === 'ESTIMATED' ? 'com a contagem do OTK' : 'sem contagem (' + op.estimateStatus + ')') : 'não'],
+      ['Contagem do OTK', fmtInt(op.otkCount)],
+      ['Resposta', op.responseKind === 'RESPONSE_RECEIVED' ? 'HTTP ' + op.httpStatus : op.responseKind === 'ERROR_WITH_USAGE' ? 'recusa do modelo, com uso (HTTP ' + op.httpStatus + ')' : op.responseKind === 'ERROR_NO_USAGE' ? 'erro sem uso (HTTP ' + op.httpStatus + ')' : 'não registrada'],
+      ['Uso declarado (entrada)', fmtInt(op.declaredInput)],
+      ['Diferença (entrada)', fmtDiff(op.inputDifference)],
+      ['Custo', fmtUsd(op.costUsd)],
+      ['Fechamento', op.closing],
+    ],
+    rowOf: (op) => el('tr', {}, el('td', {}, op.model || '?'), el('td', {}, el('span', { class: 'selo ' + (op.recordedBeforeSend ? (op.estimateStatus === 'ESTIMATED' ? 'ok' : 'amarelo') : 'falhou') }, op.recordedBeforeSend ? (op.estimateStatus === 'ESTIMATED' ? 'com contagem' : 'sem contagem') : 'não')),
+      el('td', { class: 'num' }, fmtInt(op.otkCount)), el('td', { class: 'num' }, fmtInt(op.declaredInput)), el('td', { class: 'num' }, fmtDiff(op.inputDifference)), el('td', {}, el('span', { class: 'selo ' + closingClass(op) }, op.closing))),
+    lightDiagram: (op) => {
+      $('d23-registro-sub').textContent = op ? (op.estimateStatus === 'ESTIMATED' ? 'com contagem' : 'sem contagem') : 'com ou sem contagem';
+      if (!op) return lightStages('d23-diagrama', {});
+      lightStages('d23-diagrama', {
+        planejado: 'acesa', registro: op.recordedBeforeSend ? (op.estimateStatus === 'ESTIMATED' ? 'acesa' : 'alerta') : 'erro', enviado: 'acesa',
+        resposta: op.responseKind === 'RESPONSE_RECEIVED' ? 'acesa' : 'alerta', uso: op.declaredInput === null ? 'alerta' : 'acesa',
+        custo: op.costUsd === null ? 'alerta' : 'acesa', fechado: op.closing === 'fechado' ? 'acesa' : 'alerta',
+      });
+    },
+  });
+}
+
+/* ---------- Part 4: receipts ---------- */
+const RECEIPT_LABELS = { verde: 'OK', amarelo: 'Atenção', vermelho: 'Falhou' };
+function showReceipts(r) {
+  $('rec-comando').textContent = r.command;
+  $('rec-impressao').textContent = r.fingerprint;
+  $('rec-pagina-sha').textContent = r.verifierPageSha256;
+  $('rec-pagina-caminho').textContent = r.verifierPagePath;
+  const t = r.totals || {};
+  $('rec-verde').textContent = t.verde ?? '?';
+  $('rec-amarelo').textContent = t.amarelo ?? '?';
+  $('rec-vermelho').textContent = t.vermelho ?? '?';
+  $('rec-sha').textContent = r.reportSha256;
+  const same = r.reportSha256 === r.expectedReportSha256 && r.exitCode === r.expectedExitCode;
+  $('rec-sha-igual').textContent = same ? '(igual ao esperado, código de saída ' + r.exitCode + ')' : '(DIFERENTE do esperado ' + r.expectedReportSha256 + ')';
+  const status = $('rec-estado');
+  status.className = 'veredito ' + (same && !r.error ? 'ok' : 'falhou');
+  status.textContent = r.error ? 'Erro: ' + r.error : same ? 'Conferido: o relatório é o esperado' : 'O relatório não é o esperado';
+  const body = $('rec-linhas');
+  body.textContent = '';
+  for (const item of r.items) body.append(el('tr', {}, el('td', {}, el('span', { class: 'selo ' + item.verdict }, RECEIPT_LABELS[item.verdict] || item.verdict)), el('td', { class: 'mono' }, item.id), el('td', { class: 'mono' }, (item.file || '?') + ':' + (item.line ?? '?')), el('td', {}, item.reasonPt || item.code)));
+}
+
+/* ---------- Part 5: tests ---------- */
+const tests = { startedAt: null, timer: null };
+function testsStatus(text, cls) { const s = $('tes-estado'); s.hidden = false; s.className = 'veredito ' + cls; s.textContent = text; }
+function testsStarted() {
+  $('tes-botao').disabled = true;
+  $('tes-log').hidden = false;
+  tests.startedAt = Date.now();
+  testsStatus('Rodando…', 'espera');
+  clearInterval(tests.timer);
+  tests.timer = setInterval(() => { $('tes-tempo').textContent = fmtSeconds(Date.now() - tests.startedAt); }, 500);
+}
+function testsLine(text) {
+  const log = $('tes-log');
+  log.textContent += text + '\n';
+  if (log.textContent.length > 200000) log.textContent = log.textContent.slice(-150000);
+  log.scrollTop = log.scrollHeight;
+}
+function testsFinished(r) {
+  clearInterval(tests.timer);
+  $('tes-tempo').textContent = fmtSeconds(r.elapsedMs);
+  $('tes-resultado').textContent = r.resultLine || 'A linha "Resultado:" não apareceu na saída.';
+  testsStatus(r.ok ? 'TESTES OK' : 'HOUVE FALHA', r.ok ? 'ok' : 'falhou');
+}
+$('tes-botao').addEventListener('click', async () => {
+  $('tes-botao').disabled = true;
+  try {
+    const res = await fetch('/api/testes', { method: 'POST' });
+    if (res.status === 403) {
+      $('tes-botao').disabled = false;
+      testsStatus('Recusado: abra a página pelo endereço http://127.0.0.1:' + location.port + '/ que o terminal mostrou.', 'falhou');
+      return;
+    }
+    const body = await res.json();
+    if (!body.started) { testsStatus(body.message, 'espera'); }
+  } catch (err) {
+    $('tes-botao').disabled = false;
+    testsStatus('O comando já terminou; rode de novo com --com-testes ou clique enquanto ele estiver no ar.', 'falhou');
+  }
+});
+
+/* ---------- Event stream ---------- */
+function connectEvents() {
+  const source = new EventSource('/eventos');
+  const on = (type, fn) => source.addEventListener(type, (ev) => fn(JSON.parse(ev.data)));
+  on('linha', (d) => {
+    const log = $('rep-log');
+    log.textContent += d.text + '\n';
+    if (d.kind === 'item') addItem(d);
+    if (d.kind === 'final') showFinal(d);
+  });
+  on('fim', (d) => {
+    reproduction.finished = true;
+    $('rep-tempo').textContent = fmtSeconds(d.elapsedMs);
+    $('rep-codigo').textContent = 'Código de saída: ' + d.exitCode;
+    const box = $('rep-veredito');
+    if (box.classList.contains('espera')) { box.className = 'veredito falhou'; box.textContent = 'FALHOU (código de saída ' + d.exitCode + ')'; }
+    else if (d.exitCode !== 0 && box.classList.contains('ok')) { box.className = 'veredito falhou'; box.textContent += ' — mas o código de saída foi ' + d.exitCode; }
+  });
+  on('recibos-inicio', () => { $('rec-estado').textContent = 'Rodando o verificador…'; });
+  on('recibos', showReceipts);
+  on('testes-inicio', testsStarted);
+  on('testes-linha', (d) => testsLine(d.text));
+  on('testes-fim', testsFinished);
+  source.addEventListener('error', () => {
+    // When the command ends, the server closes and the browser would retry forever; stop and keep the page as is.
+    if (reproduction.finished) source.close();
+  });
+}
+
+fetch('/api/dias').then((r) => r.json()).then((days) => { startDay07(days.oct07); startDay23(days.nov23); });
+connectEvents();
+</script>
+</body>
+</html>

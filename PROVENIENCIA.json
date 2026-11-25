@@ -18,8 +18,8 @@
    "src/verifier/types.ts"
   ]
  },
- "totalArquivos": 3264,
- "totalBytes": 69413017,
+ "totalArquivos": 3278,
+ "totalBytes": 69537721,
  "porOrigem": {
   "H1 7606bc9b (= b0ec6f24)": 1052,
   "b0ec6f24 com mudança": 17,
@@ -33,7 +33,7 @@
   "pacote da banca 20261111 (ZIP sha256 3943637b…)": 166,
   "executor b0ec6f24": 188,
   "verificador 535ac19c (feat/verificador-f4-20261123)": 59,
-  "novo (README bilíngue e imagens, 25/11/2026)": 19,
+  "novo (README bilíngue e imagens, 25/11/2026)": 33,
   "H1 7606bc9b com mudança (só o link do repositório)": 1
  },
  "arquivos": [
@@ -582,8 +582,8 @@
   },
   {
    "arquivo": "package.json",
-   "bytes": 3071,
-   "sha256": "cc42b2478be7b3d397c19092246a0b291e9136a75c97fac48bd3338f319e5097",
+   "bytes": 3336,
+   "sha256": "1eb362c7c0b3462a812f57093b9d80b0631678e4326d62d0221657f5b265d81b",
    "origem": "b0ec6f24 com mudança",
    "mudanca": "scripts do verificador (535ac19c) e reproduzir-tudo, testes-banca, demo-banca"
   },
@@ -598,6 +598,42 @@
    "bytes": 412,
    "sha256": "5bf5fe6885220f4c79191bbce1b69052850b5fb27b88353a362fefd4a084f30b",
    "origem": "H1 7606bc9b com mudança (só o link do repositório)"
+  },
+  {
+   "arquivo": "reproducao/ao_vivo/LEIA-ME.md",
+   "bytes": 4083,
+   "sha256": "0b7fd62ca48473241b5801d141372d34c65fc6654cc919fb8141d1e889ed42a6",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
+   "arquivo": "reproducao/ao_vivo/dados_dias.mjs",
+   "bytes": 18464,
+   "sha256": "ddd742d9c6b7db7ec75783403e8ac5bdd17c5d1867dc3046148adbf90d34d040",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
+   "arquivo": "reproducao/ao_vivo/etapas.mjs",
+   "bytes": 8863,
+   "sha256": "e1b4b5a64d0a78abe9079381cc3510525ea83b4ccf322b18c364c8e699ec70c4",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
+   "arquivo": "reproducao/ao_vivo/pagina.html",
+   "bytes": 37006,
+   "sha256": "917d3d5d9d6a9fcaa3f64d7425791548fe268872ddaea08d2fbeaad5b7176dce",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
+   "arquivo": "reproducao/ao_vivo/reproduzir_ao_vivo.mjs",
+   "bytes": 15751,
+   "sha256": "611c7ecda58a6ef9626460dddb2a75c916a046e3ba91b78148cf276a8942bbac",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
+   "arquivo": "reproducao/ao_vivo/servidor.mjs",
+   "bytes": 9782,
+   "sha256": "ae5b9ff8852c7067bea5c5a418e4a954f28922a97840563ade85de359801d9fa",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
   },
   {
    "arquivo": "reproducao/cmp8/PROVENIENCIA_CMP8.json",
@@ -18571,6 +18607,54 @@
    "bytes": 27334,
    "sha256": "2823ebc33bec87723232d5fca4a69bb356ce127af60f31688d93be41f43fd8e5",
    "origem": "H1 7606bc9b (= b0ec6f24)"
+  },
+  {
+   "arquivo": "test/reproducao_ao_vivo/ajuda.mjs",
+   "bytes": 4693,
+   "sha256": "39ae99ef30b499978b0a4dab6da3464ea7aa84672576175ed7496e9928b9ba2d",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
+   "arquivo": "test/reproducao_ao_vivo/comando.test.mjs",
+   "bytes": 5216,
+   "sha256": "a0abd6649e28f07513e3ee32aa5ee5a5b14947b421164955136e01fe92de95f5",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
+   "arquivo": "test/reproducao_ao_vivo/dados_dias.test.mjs",
+   "bytes": 5013,
+   "sha256": "65b8fc4b99a290022185e2129d4faff65169ca8b17550d22d06926bf46a443fd",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
+   "arquivo": "test/reproducao_ao_vivo/fixtures/reproducao_falha.mjs",
+   "bytes": 718,
+   "sha256": "272c5020fd168ec65cb1d633594803e34a3f6fd12bd5e30393abacb84c1d698d",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
+   "arquivo": "test/reproducao_ao_vivo/fixtures/reproducao_ok.mjs",
+   "bytes": 628,
+   "sha256": "f4f4c8fd32260d176348cad8814e313d4032664480711245c910fe5b579c5b9c",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
+   "arquivo": "test/reproducao_ao_vivo/fixtures/testes_banca_duble.mjs",
+   "bytes": 767,
+   "sha256": "1f20897052a69d6130278648db3f0815f65a7b87a763ae67f946e1a3978934c1",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
+   "arquivo": "test/reproducao_ao_vivo/pagina.test.mjs",
+   "bytes": 6716,
+   "sha256": "7996dbf7c0b84c79a46c6871b992822c507a048b5d6cb16cc0c3da616184f77b",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
+   "arquivo": "test/reproducao_ao_vivo/servidor.test.mjs",
+   "bytes": 6739,
+   "sha256": "0f50f744b3413b266d4b070114fa6b08fe62c61dcf07caccb31d1e4a28ee3525",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
   },
   {
    "arquivo": "test/sdk/NonceModel.test.ts",
