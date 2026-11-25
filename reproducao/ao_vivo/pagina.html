@@ -120,7 +120,7 @@ button.ao-vivo[hidden] { display: none; }
 @media (max-width: 900px) { .blocos, .dupla { grid-template-columns: 1fr; } }
 </style>
 </head>
-<body data-seguindo="true">
+<body data-seguindo="true" data-rolando="false">
 <nav class="indice" aria-label="Índice">
   <div class="faixa">
     <strong>OTK ao vivo</strong>
@@ -276,25 +276,43 @@ const fmtUsd = (n) => (n === null || n === undefined ? 'não informado' : 'US$ '
 const fmtSeconds = (ms) => (ms / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' s';
 
 /* ---------- Follow mode: the page scrolls by itself to the step that is running or just changed ---------- */
-/* Same idea as a comments column that "follows the newest": it moves only forward, never scrolls when the target
-   is already in view, pauses as soon as the person scrolls by hand (wheel, touch, keyboard or scrollbar) and
-   offers a fixed "voltar ao vivo" button to resume. With prefers-reduced-motion it jumps instead of gliding. */
-const follow = { active: true, target: null };
+/* Same idea as a comments column that "follows the newest". It aims at the current item: when the item is out of
+   the window, above or below, it scrolls to it (part 1 has two columns, so the next item can sit higher up, in the
+   column to the right). It never goes back to a part that already finished, never scrolls when the target is
+   already in view, pauses as soon as the person scrolls by hand (wheel, touch, keyboard or scrollbar) and offers a
+   fixed "Voltar ao vivo" button to resume. With prefers-reduced-motion it jumps instead of gliding. While a
+   smooth scroll is moving, <body data-rolando="true"> says so. */
+const follow = { active: true, target: null, part: 1 };
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const navHeight = () => document.querySelector('nav.indice').getBoundingClientRect().height;
+/** Longest time a smooth scroll is assumed to take, in milliseconds, in case the browser sends no scrollend. */
+const SMOOTH_SCROLL_MAX_MS = 1500;
+let scrollingTimer = 0;
+function markScrolling(isScrolling) {
+  clearTimeout(scrollingTimer);
+  document.body.setAttribute('data-rolando', String(isScrolling));
+  if (isScrolling) scrollingTimer = setTimeout(() => markScrolling(false), SMOOTH_SCROLL_MAX_MS);
+}
+window.addEventListener('scrollend', () => markScrolling(false));
 function isInView(node) {
   const r = node.getBoundingClientRect();
   return r.top >= navHeight() && r.bottom <= window.innerHeight;
 }
-function followTo(node, allowBackward) {
-  if (!node) return;
+function scrollToNode(node) {
+  const top = Math.max(0, Math.round(window.scrollY + node.getBoundingClientRect().top - navHeight() - 12));
+  if (Math.abs(top - window.scrollY) < 2) return;
+  const smooth = !reduceMotion.matches;
+  if (smooth) markScrolling(true);
+  window.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' });
+}
+/** Marks `node` (in part `part`, 1 to 5) as the current target and scrolls to it unless it is already in view. */
+function followTo(node, part) {
+  if (!node || part < follow.part) return;
+  follow.part = part;
   if (follow.target && follow.target !== node) follow.target.classList.remove('foco-ao-vivo');
   follow.target = node;
   node.classList.add('foco-ao-vivo');
-  if (!follow.active || isInView(node)) return;
-  const top = Math.max(0, Math.round(window.scrollY + node.getBoundingClientRect().top - navHeight() - 12));
-  if (top <= window.scrollY && !allowBackward) return;
-  window.scrollTo({ top, behavior: reduceMotion.matches ? 'auto' : 'smooth' });
+  if (follow.active && !isInView(node)) scrollToNode(node);
 }
 function pauseFollow() {
   if (!follow.active) return;
@@ -306,11 +324,7 @@ function resumeFollow() {
   follow.active = true;
   document.body.setAttribute('data-seguindo', 'true');
   $('ao-vivo-botao').hidden = true;
-  if (follow.target) {
-    const node = follow.target;
-    follow.target = null;
-    followTo(node, true);
-  }
+  if (follow.target && !isInView(follow.target)) scrollToNode(follow.target);
 }
 const SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ']);
 window.addEventListener('wheel', pauseFollow, { passive: true });
@@ -328,8 +342,8 @@ $('ao-vivo-botao').addEventListener('click', resumeFollow);
 const flow = { daysDone: false, receipts: false, testsRunning: false };
 function followAfterDays() {
   flow.daysDone = true;
-  if (flow.receipts) followTo($('recibos'));
-  if (flow.testsRunning) followTo($('testes'));
+  if (flow.receipts) followTo($('recibos'), 4);
+  if (flow.testsRunning) followTo($('testes'), 5);
 }
 
 /* ---------- States: pendente ("para rodar"), rodando, ok ("conferido"), falhou, nao-rodou ---------- */
@@ -388,7 +402,7 @@ function moveRunningMarker() {
   const next = reproduction.slots.find((s) => !isDone(s));
   for (const s of reproduction.slots) if (s.state === 'rodando' && s !== next) setSlotState(s, 'pendente');
   if (next && next.state !== 'rodando') setSlotState(next, 'rodando');
-  if (next) followTo(next.node);
+  if (next) followTo(next.node, 1);
 }
 function reproductionStarted() {
   reproduction.startedAt = Date.now();
@@ -420,7 +434,7 @@ function reproductionFinished(d) {
   else if (d.exitCode !== 0 && box.getAttribute('data-estado') === 'ok') { box.setAttribute('data-estado', 'falhou'); box.textContent += ' — mas o código de saída foi ' + d.exitCode; }
   const allOk = d.exitCode === 0 && reproduction.slots.every((s) => s.state === 'ok');
   setPartState(1, allOk ? 'ok' : 'falhou');
-  days.then((loaded) => { replays.d07.start(); followTo($('dia07')); return loaded; });
+  days.then((loaded) => { replays.d07.start(); followTo($('dia07'), 2); return loaded; });
 }
 
 /* ---------- Parts 2 and 3: replays, started only after the reproduction ends ---------- */
@@ -524,7 +538,7 @@ function setupDay07(day) {
     unit: 'chamadas refeitas',
     expectedTotal: day.counters.total,
     counterNames: ['calls', 'signatureYes', 'signatureNo', 'withoutCheck'],
-    onFinish: () => { replays.d23.start(); followTo($('dia23')); $('d07-nota').textContent = 'Total nos registros: ' + fmtInt(day.counters.total.calls) + ' chamadas reais (' + day.sources.length + ' arquivos; as pastas de ensaio sintético ficam de fora). As chamadas sem a checagem foram recusadas pelo provedor (' + statuses + '), e por isso não têm recibo.'; },
+    onFinish: () => { replays.d23.start(); followTo($('dia23'), 3); $('d07-nota').textContent = 'Total nos registros: ' + fmtInt(day.counters.total.calls) + ' chamadas reais (' + day.sources.length + ' arquivos; as pastas de ensaio sintético ficam de fora). As chamadas sem a checagem foram recusadas pelo provedor (' + statuses + '), e por isso não têm recibo.'; },
     groupOf: (c) => c.provider + ' · ' + (c.model || 'sem modelo devolvido'),
     countersOf: (c) => ({ calls: 1, signatureYes: c.signatureVerified === true ? 1 : 0, signatureNo: c.signatureVerified === false ? 1 : 0, withoutCheck: c.signatureVerified === null ? 1 : 0 }),
     cardOf: (c, n) => [
@@ -612,7 +626,7 @@ function showReceipts(r) {
   status.textContent = r.error ? 'FALHOU: ' + r.error : same ? 'CONFERIDO: o relatório é o esperado' : 'FALHOU: o relatório não é o esperado';
   setPartState(4, same ? 'ok' : 'falhou');
   flow.receipts = true;
-  if (flow.daysDone) followTo($('recibos'));
+  if (flow.daysDone) followTo($('recibos'), 4);
   const body = $('rec-linhas');
   body.textContent = '';
   for (const item of r.items) body.append(el('tr', {}, el('td', {}, el('span', { class: 'selo ' + item.verdict }, RECEIPT_LABELS[item.verdict] || item.verdict)), el('td', { class: 'mono' }, item.id), el('td', { class: 'mono' }, (item.file || '?') + ':' + (item.line ?? '?')), el('td', {}, item.reasonPt || item.code)));
@@ -628,7 +642,7 @@ function testsStarted() {
   testsStatus('RODANDO…', 'rodando');
   setPartState(5, 'rodando');
   flow.testsRunning = true;
-  if (flow.daysDone) followTo($('testes'));
+  if (flow.daysDone) followTo($('testes'), 5);
   clearInterval(tests.timer);
   tests.timer = setInterval(() => { $('tes-tempo').textContent = fmtSeconds(Date.now() - tests.startedAt); }, 500);
 }

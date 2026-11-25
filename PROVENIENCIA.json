@@ -18,8 +18,8 @@
    "src/verifier/types.ts"
   ]
  },
- "totalArquivos": 3284,
- "totalBytes": 71094520,
+ "totalArquivos": 3285,
+ "totalBytes": 71102467,
  "porOrigem": {
   "H1 7606bc9b (= b0ec6f24)": 1052,
   "b0ec6f24 com mudança": 17,
@@ -33,7 +33,7 @@
   "pacote da banca 20261111 (ZIP sha256 3943637b…)": 166,
   "executor b0ec6f24": 188,
   "verificador 535ac19c (feat/verificador-f4-20261123)": 59,
-  "novo (README bilíngue e imagens, 25/11/2026)": 35,
+  "novo (README bilíngue e imagens, 25/11/2026)": 36,
   "H1 7606bc9b com mudança (só o link do repositório)": 1,
   "novo (documentação do código, 25/11/2026)": 4
  },
@@ -626,8 +626,8 @@
   },
   {
    "arquivo": "reproducao/ao_vivo/LEIA-ME.md",
-   "bytes": 5416,
-   "sha256": "7d089cec8714252c292bdecf9e9baab4d542c941e9405f8f3b4f0f8eb072afa0",
+   "bytes": 5613,
+   "sha256": "7d6136cce43956a1ab86debc39aeb63e2ff239e621f4ef95e64b5a19e98775d8",
    "origem": "novo (README bilíngue e imagens, 25/11/2026)"
   },
   {
@@ -644,8 +644,8 @@
   },
   {
    "arquivo": "reproducao/ao_vivo/pagina.html",
-   "bytes": 49525,
-   "sha256": "58952c8ae5118d14541f7aa22f93b35f21e3f224e7b6c5287fff420178bee875",
+   "bytes": 50563,
+   "sha256": "e543262134214a699a381e0c4bc4a9c668cb1cc367582f47dbb4f2b0fc54fef9",
    "origem": "novo (README bilíngue e imagens, 25/11/2026)"
   },
   {
@@ -19286,8 +19286,8 @@
   },
   {
    "arquivo": "test/reproducao_ao_vivo/estados.test.mjs",
-   "bytes": 11001,
-   "sha256": "269858f56dd86a4d3d614bdeaa746d6418f02ecb5a878dc284eb01bceb520b78",
+   "bytes": 14331,
+   "sha256": "072268fd11f107df1b1091270c955fe8775b36ecf8234e2df31d5faa1a861fb0",
    "origem": "novo (README bilíngue e imagens, 25/11/2026)"
   },
   {
@@ -19306,6 +19306,12 @@
    "arquivo": "test/reproducao_ao_vivo/fixtures/reproducao_ok.mjs",
    "bytes": 628,
    "sha256": "f4f4c8fd32260d176348cad8814e313d4032664480711245c910fe5b579c5b9c",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
+   "arquivo": "test/reproducao_ao_vivo/fixtures/reproducao_tamanho_real.mjs",
+   "bytes": 3382,
+   "sha256": "149a0f5a65cd0fee75887813336f317f0d68e348519bf9a665e8e0c1e4670415",
    "origem": "novo (README bilíngue e imagens, 25/11/2026)"
   },
   {

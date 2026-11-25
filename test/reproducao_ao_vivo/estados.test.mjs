@@ -9,6 +9,8 @@
  *   after the other in the fixed order; a failing item turns "falhou" in red;
  * - follow mode: the running item and then part 2 stay inside the window; a manual wheel scroll pauses it and shows
  *   "Voltar ao vivo", and the button resumes it on the current part; no horizontal bar at 1366 and 1280 px wide.
+ * - real-size lines (copied from a real run): the running item is inside the window in every sample taken outside a
+ *   smooth scroll, at 1366x768 and 1280x720, and in every sample with reduced motion (instant scroll);
  * Needs: `npm ci` done, Edge or Chrome installed; no internet. Skipped (with the reason) when no browser starts.
  *
  * @module test/reproducao_ao_vivo/estados.test
@@ -157,6 +159,61 @@ test('slow run: each item goes para rodar -> rodando -> conferido in order; the 
     assert.deepEqual(errors, []);
   } finally {
     live.child.kill();
+    await browser.close();
+  }
+});
+
+/**
+ * Runs the stand-in with real-size lines and samples, every 100 ms, whether the "rodando" item is inside the window
+ * (below the fixed index bar and above the bottom edge). Samples taken while a smooth scroll is still moving
+ * (`<body data-rolando="true">`) are counted apart: the item is on its way into view.
+ *
+ * @param browser - Playwright browser.
+ * @param viewport - `{ width, height }`.
+ * @param reducedMotion - `'reduce'` or `'no-preference'`.
+ * @returns A promise of `{ inView, outOfView, whileScrolling, offenders }`.
+ */
+async function sampleRunningItem(browser, viewport, reducedMotion) {
+  const live = startLiveCommand(['--sem-navegador', '--esperar-pagina', '30', '--manter-segundos', '30', '--reproducao', path.join(FIXTURES, 'reproducao_tamanho_real.mjs'), '--atraso-ms', '600']);
+  try {
+    const context = await browser.newContext({ viewport, reducedMotion });
+    const page = await context.newPage();
+    await page.goto(await live.url);
+    const result = { inView: 0, outOfView: 0, whileScrolling: 0, offenders: [] };
+    while (!(await page.getByTestId('rep-veredito').textContent()).startsWith('TUDO OK')) {
+      const s = await page.evaluate(() => {
+        const running = document.querySelector('[data-testid="item"][data-estado="rodando"]');
+        if (!running) return null;
+        const nav = document.querySelector('nav.indice').getBoundingClientRect().height;
+        const r = running.getBoundingClientRect();
+        return { index: [...document.querySelectorAll('[data-testid="item"]')].indexOf(running), top: Math.round(r.top), bottom: Math.round(r.bottom), nav, height: window.innerHeight, scrolling: document.body.getAttribute('data-rolando') === 'true' };
+      });
+      if (s) {
+        if (s.scrolling) result.whileScrolling++;
+        else if (s.top >= s.nav - 1 && s.bottom <= s.height + 1) result.inView++;
+        else { result.outOfView++; result.offenders.push(s); }
+      }
+      await page.waitForTimeout(100);
+    }
+    await context.close();
+    return result;
+  } finally {
+    live.child.kill();
+  }
+}
+
+test('real-size lines: the "rodando" item is inside the window in 100% of the samples, at 1366x768 and 1280x720 (smooth and reduced motion)', { timeout: 240_000 }, async (t) => {
+  const browser = await launchSystemBrowser();
+  if (!browser) { t.skip('nem o Edge nem o Chrome puderam ser abertos pelo Playwright'); return; }
+  try {
+    for (const [width, height, motion] of [[1366, 768, 'no-preference'], [1280, 720, 'no-preference'], [1280, 720, 'reduce']]) {
+      const r = await sampleRunningItem(browser, { width, height }, motion);
+      t.diagnostic(`${width}x${height} ${motion}: ${r.inView} amostras dentro, ${r.outOfView} fora, ${r.whileScrolling} durante a rolagem suave`);
+      assert.ok(r.inView >= 40, `poucas amostras a ${width}x${height}`);
+      assert.deepEqual(r.offenders, [], `item rodando fora da janela a ${width}x${height} (${motion})`);
+      if (motion === 'reduce') assert.equal(r.whileScrolling, 0, 'with reduced motion the scroll must be instant');
+    }
+  } finally {
     await browser.close();
   }
 });
