@@ -40,6 +40,7 @@ The details of each step, what you should see and what to do if there is an erro
 | run the automated tests | section 7 (they are optional; the start of the section says how they differ from section 6) |
 | check a receipt | section 8 |
 | see the OTK working, with no key | section 9.2 (needs Docker) |
+| see everything on one browser page, with no key | section 6, live mode |
 | know what the OTK proves and what it does not | the summary below and section 11 |
 | add a model or provider (requires programming) | section 12 |
 
@@ -408,6 +409,60 @@ These files were written during the work and so still carry internal project lab
 **If you see** `Falta instalar as dependências` (dependencies are missing), run section 5.
 
 **If you see** `FALHOU ... sha256 ...` only on the keyring or page lines, Git converted the line endings of those files when downloading, so delete the folder `C:\otk` and download again (section 4), since this repository's `.gitattributes` file prevents that conversion in a fresh clone.
+
+#### To recompute the numbers and see everything on one browser page (optional)
+
+**Where to run:** in **PowerShell**, inside `C:\otk`, with the line starting with `PS C:\otk>` (if you just opened PowerShell again, first run `cd C:\otk`). On a Mac, in the Terminal, inside `~/otk`, with the line at `otk %` (otherwise, `cd ~/otk`).
+
+```
+npm run reproduzir-ao-vivo
+```
+
+This command does the same reproduction as `npm run reproduzir-tudo` and, besides, opens by itself, in the default browser, a local page at `127.0.0.1`, offline, with everything in a single tab. That page has five parts: what is being redone right now, the OTK path on October 7, the path on November 23, the receipt check and the automated tests, which run with a button.
+
+The October 7 and November 23 parts are a replay of the records written during the collections, call by call, so no new call is made to any provider. Besides, for those who cannot open the browser, the terminal shows everything the page shows, in the lines that start with `[ao vivo]`.
+
+To not open the browser and only print the address, use `npm run reproduzir-ao-vivo -- --sem-navegador`.
+
+To run the automated tests right after the receipts, without the button, use `npm run reproduzir-ao-vivo -- --com-testes`.
+
+![Part 1 of the page, with the 13 items in green and TUDO OK: 13 de 13](docs/imagens/06b_ao_vivo_topo.png)
+
+*Part 1, at the end of the reproduction, with the index of the five parts at the top.*
+
+![Part 2 of the page, with the last of the 662 calls of October 7 and the counters](docs/imagens/06c_ao_vivo_dia07.png)
+
+*Part 2, the OTK path on October 7, after the 662 calls.*
+
+![Part 3 of the page, with the last of the 1,720 sends of November 23 and the per-model counters](docs/imagens/06d_ao_vivo_dia23.png)
+
+*Part 3, the path of the collection program on November 23, after the 1,720 sends.*
+
+![Part 4 of the page, with the cards 9, 11 and 33 and the original verifier page below](docs/imagens/06e_ao_vivo_recibos.png)
+
+*Part 4, the example receipts checked, with the original verifier page below.*
+
+![Part 5 of the page, with the tests run by the button and TESTES OK](docs/imagens/06f_ao_vivo_testes.png)
+
+*Part 5, the automated tests run by the button, ending in TESTES OK.*
+
+**What you should see:** in the terminal, first the line `[ao vivo] página da reprodução: http://127.0.0.1:...` (reproduction page), in which the port number changes each time, and the counters of the two days; then, the same lines as the reproduction of section 6, ending in `TUDO OK: 13 de 13 itens`, and the receipt check. In the browser, the page shows the 13 items in green, the counters of October 7 (662 calls, 658 signatures checked) and of November 23 (1,720 sends, 1,505 with the OTK count) and the receipt cards 9, 11 and 33.
+
+**How to read the page, part by part.**
+
+1. **Refazendo agora** (redoing now). Items A to D appear as they finish, with OK in green or FALHOU in red and the time of each, and at the end the verdict and the exit code appear. Each line is the same as in the output of section 6, so the table *How to read the output, line by line* also applies here.
+2. **October 7.** The page redoes, from the records of the committee package, each of the 662 real calls, in the order of the OTK path (count before sending, answer, declared usage, comparison, cost and receipt). For each call it shows the OTK count, the declared value, the difference, the verdict and whether the signature was checked, and the counters add up 658 checked signatures and 4 calls refused by the provider (1 with HTTP 400 and 3 with HTTP 429), which for that reason had no check.
+3. **November 23.** The same, for the 1,720 sends of the separate collection program (`scripts/h2eval/`), which did not go through the proxy and therefore produced no receipt, as the page itself warns. The per-model counters show the entry written before each send (1,720), the OTK count (1,505, in every model except gpt-6-luna) and the declared usage (1,719, because one gpt-6-luna send had none).
+4. **Conferindo os recibos** (checking the receipts). The verifier runs on the example receipts, and so the page shows the cards, the sha256 of the report and the per-receipt table, with the reason. Besides, right below, the original verifier page, identical byte for byte, lets you repeat the check by hand, as in section 8.1.
+5. **Testes automáticos** (automated tests). The *Rodar os testes* (run the tests) button runs the same suite as section 7 and shows the line *Resultado* and the verdict, and these tests remain optional, as section 7 explains.
+
+In parts 2 and 3, the buttons *Velocidade* (speed), *Pular para o fim* (skip to the end) and *Recomeçar* (restart) control the replay.
+
+**If the browser does not open by itself**, the terminal writes `abra este endereço no navegador:` (open this address in the browser) with the address, and it is enough to copy it and paste it into the browser's address bar.
+
+**If the page stops responding**, that is on purpose, because it stays up only for 2 minutes after the end (or while the tests run), and to see it again just run the command again.
+
+**If the tests button gives 403**, the page was opened at an address different from the one the terminal showed, so open it at the address with `127.0.0.1` shown in the terminal.
 
 ## 7. Run the automated tests
 
@@ -959,6 +1014,7 @@ To copy the terminal output on Windows, select the text with the mouse (drag fro
 | `reproducao/cmp8/` | sanitized data of the November 23 collection (attempts, journal without the provider identifier, prior counts), synthetic texts, applied corrections, expected values and the analysis scripts |
 | `reproducao/reproduzir_tudo.mjs`, `reproducao/testes_banca.mjs`, `reproducao/ferramentas/sem_rede.mjs` | the commands of sections 6 and 7 and the network lock |
 | `demo/demo_banca.mts` | the command of section 9 |
+| `reproducao/ao_vivo/` and `test/reproducao_ao_vivo/` | the live mode of section 6 (`npm run reproduzir-ao-vivo`) and its tests (`npm run test:ao-vivo`), which are not counted in `npm run testes-banca` |
 | `docs/` | only the public product documents the tests read (API contract, guides) and the images of this README |
 | `PROVENIENCIA.json` | where each file came from (commit and sha256) and what was changed relative to the origin, without listing itself or `zk/ceremony/LEIA-ME.md`, which is new in this repository |
 

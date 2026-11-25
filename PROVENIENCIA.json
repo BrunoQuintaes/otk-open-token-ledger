@@ -18,8 +18,8 @@
    "src/verifier/types.ts"
   ]
  },
- "totalArquivos": 3259,
- "totalBytes": 68798369,
+ "totalArquivos": 3264,
+ "totalBytes": 69413017,
  "porOrigem": {
   "H1 7606bc9b (= b0ec6f24)": 1052,
   "b0ec6f24 com mudança": 17,
@@ -33,7 +33,7 @@
   "pacote da banca 20261111 (ZIP sha256 3943637b…)": 166,
   "executor b0ec6f24": 188,
   "verificador 535ac19c (feat/verificador-f4-20261123)": 59,
-  "novo (README bilíngue e imagens, 25/11/2026)": 14,
+  "novo (README bilíngue e imagens, 25/11/2026)": 19,
   "H1 7606bc9b com mudança (só o link do repositório)": 1
  },
  "arquivos": [
@@ -95,14 +95,14 @@
   },
   {
    "arquivo": "README.en.md",
-   "bytes": 97419,
-   "sha256": "59edca37563735e7f2ac0fc1e5b8aadd94e5d3a99547988506ff69ef7e625bd2",
+   "bytes": 103008,
+   "sha256": "45fd80d7c9ba3221ede4df0e47f09ee728ad4caa30e595e6e20ec2960d024e93",
    "origem": "novo (README bilíngue e imagens, 25/11/2026)"
   },
   {
    "arquivo": "README.md",
-   "bytes": 95533,
-   "sha256": "601bacc898f093c3e17b116a864edd34f7f547cdc4f84bda6bf6804881d2f6a5",
+   "bytes": 101162,
+   "sha256": "25ad532f075c3ef68d7bb9e568a77e4421cace5a323f5a4390533f399f84fad1",
    "origem": "novo (REPO_PUBLICO, C160)",
    "mudanca": "substitui o README.md do repositório interno"
   },
@@ -297,6 +297,36 @@
    "bytes": 103906,
    "sha256": "6e186e1e593f6ed16d7a6bf125ab6891e083143e7346d067e003e858654d6505",
    "origem": "novo (REPO_PUBLICO, C160)"
+  },
+  {
+   "arquivo": "docs/imagens/06b_ao_vivo_topo.png",
+   "bytes": 104794,
+   "sha256": "193fd884ba9d1c7bf0d11936b64422d032e10591825080f1022806b941e9ba42",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
+   "arquivo": "docs/imagens/06c_ao_vivo_dia07.png",
+   "bytes": 131974,
+   "sha256": "8593372e1769d55809c68d826e09775c08c27c91c0e2905c8a2ab2e771d60ca0",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
+   "arquivo": "docs/imagens/06d_ao_vivo_dia23.png",
+   "bytes": 122070,
+   "sha256": "07fafce400796626eebee3680c169b8748341eb842dd54c9051e946adf6f2bdf",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
+   "arquivo": "docs/imagens/06e_ao_vivo_recibos.png",
+   "bytes": 164245,
+   "sha256": "c2d649d30f12b464eaaa63497f44b1198dffa7e78aba1010af02f4466d711c79",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
+   "arquivo": "docs/imagens/06f_ao_vivo_testes.png",
+   "bytes": 80347,
+   "sha256": "8e935bc6eaf47ca21a1f425c5e593b242dbf60a5fe62ee1eddf75fa0da4d7cd7",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
   },
   {
    "arquivo": "docs/imagens/08b_verificador_terminal.png",

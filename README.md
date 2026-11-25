@@ -38,6 +38,7 @@ Os detalhes de cada passo, o que deve aparecer e o que fazer se der erro estão 
 | rodar os testes automáticos | seção 7 (são opcionais; o começo da seção diz em que eles diferem da seção 6) |
 | conferir um recibo | seção 8 |
 | ver o OTK funcionando, sem chave | seção 9.2 (precisa do Docker) |
+| ver tudo numa página do navegador, sem chave | seção 6, modo ao vivo |
 | saber o que o OTK prova e o que não prova | o resumo abaixo e a seção 11 |
 | acrescentar um modelo ou provedor (é preciso programar) | seção 12 |
 
@@ -406,6 +407,60 @@ Esses arquivos foram gravados durante o trabalho e por isso ainda guardam rótul
 **Se aparecer** `Falta instalar as dependências`, rode a seção 5.
 
 **Se aparecer** `FALHOU ... sha256 ...` só nas linhas do chaveiro ou da página, o Git converteu o fim de linha desses arquivos ao baixar, e por isso apague a pasta `C:\otk` e baixe de novo (seção 4), já que o arquivo `.gitattributes` deste repositório impede essa conversão num clone novo.
+
+#### Para refazer os números e ver tudo numa página do navegador (opcional)
+
+**Onde rodar:** no **PowerShell**, dentro de `C:\otk`, com a linha começando em `PS C:\otk>` (se acabou de abrir o PowerShell de novo, rode antes `cd C:\otk`). No Mac, no Terminal, dentro de `~/otk`, com a linha em `otk %` (senão, `cd ~/otk`).
+
+```
+npm run reproduzir-ao-vivo
+```
+
+Esse comando faz a mesma reprodução do `npm run reproduzir-tudo` e, além disso, abre sozinho, no navegador padrão, uma página local em `127.0.0.1`, sem internet, com tudo numa aba só. Essa página se divide em cinco partes, que são o que está sendo refeito agora, o caminho do OTK em 7 de outubro, o caminho em 23 de novembro, a conferência dos recibos e os testes automáticos, que rodam com um botão.
+
+As partes de 7 de outubro e de 23 de novembro são um replay dos registros gravados nas coletas, chamada por chamada, e por isso nenhuma chamada nova é feita a nenhum provedor. Além disso, para quem não puder abrir o navegador, o terminal mostra tudo o que a página mostra, nas linhas que começam por `[ao vivo]`.
+
+Para não abrir o navegador e só escrever o endereço, use `npm run reproduzir-ao-vivo -- --sem-navegador`.
+
+Para rodar os testes automáticos logo depois dos recibos, sem precisar do botão, use `npm run reproduzir-ao-vivo -- --com-testes`.
+
+![A parte 1 da página, com os 13 itens em verde e TUDO OK: 13 de 13](docs/imagens/06b_ao_vivo_topo.png)
+
+*Parte 1, no fim da reprodução, com o índice das cinco partes no topo.*
+
+![A parte 2 da página, com a última das 662 chamadas de 7 de outubro e os contadores](docs/imagens/06c_ao_vivo_dia07.png)
+
+*Parte 2, o caminho do OTK em 7 de outubro, depois das 662 chamadas.*
+
+![A parte 3 da página, com o último dos 1.720 envios de 23 de novembro e os contadores por modelo](docs/imagens/06d_ao_vivo_dia23.png)
+
+*Parte 3, o caminho do programa de coleta em 23 de novembro, depois dos 1.720 envios.*
+
+![A parte 4 da página, com os cartões 9, 11 e 33 e a página original do verificador embaixo](docs/imagens/06e_ao_vivo_recibos.png)
+
+*Parte 4, os recibos de exemplo conferidos, com a página original do verificador embaixo.*
+
+![A parte 5 da página, com os testes rodados pelo botão e TESTES OK](docs/imagens/06f_ao_vivo_testes.png)
+
+*Parte 5, os testes automáticos rodados pelo botão, terminando em TESTES OK.*
+
+**O que deve aparecer:** no terminal, primeiro a linha `[ao vivo] página da reprodução: http://127.0.0.1:...`, em que o número da porta muda a cada vez, e os contadores dos dois dias; depois, as mesmas linhas da reprodução da seção 6, terminando em `TUDO OK: 13 de 13 itens`, e a conferência dos recibos. Já no navegador aparece a página com os 13 itens em verde, os contadores de 7 de outubro (662 chamadas, 658 assinaturas conferidas) e de 23 de novembro (1.720 envios, 1.505 com a contagem do OTK) e os cartões 9, 11 e 33 dos recibos.
+
+**Como ler a página, parte por parte.**
+
+1. **Refazendo agora.** Os itens A a D aparecem à medida que terminam, com OK em verde ou FALHOU em vermelho e o tempo de cada um, e no fim aparecem o veredito e o código de saída. Cada linha é a mesma da saída da seção 6, e por isso o quadro *Como ler a saída, linha por linha* vale também aqui.
+2. **7 de outubro.** A página refaz, a partir dos registros do pacote da banca, cada uma das 662 chamadas reais, na ordem do caminho do OTK (contagem antes do envio, resposta, uso declarado, comparação, custo e recibo). Para cada chamada aparecem a contagem do OTK, o declarado, a diferença, o veredito e se a assinatura foi conferida, e os contadores somam 658 assinaturas conferidas e 4 chamadas recusadas pelo provedor (1 com HTTP 400 e 3 com HTTP 429), que por conta disso ficaram sem a checagem.
+3. **23 de novembro.** A mesma coisa, para os 1.720 envios do programa de coleta à parte (`scripts/h2eval/`), que não passou pelo proxy e por isso não gerou recibo, como a própria página avisa. Os contadores por modelo mostram o registro gravado antes de cada envio (1.720), a contagem do OTK (1.505, em todos os modelos menos o gpt-6-luna) e o uso declarado (1.719, pois um envio do gpt-6-luna ficou sem ele).
+4. **Conferindo os recibos.** O verificador roda nos recibos de exemplo, e com isso a página mostra os cartões, o sha256 do relatório e a tabela por recibo, com o motivo. Além disso, logo abaixo, a página original do verificador, idêntica byte a byte, permite repetir a conferência à mão, como na seção 8.1.
+5. **Testes automáticos.** O botão *Rodar os testes* roda a mesma bateria da seção 7 e mostra a linha *Resultado* e o veredito, e esses testes continuam opcionais, como explica a seção 7.
+
+Nas partes 2 e 3, os botões *Velocidade*, *Pular para o fim* e *Recomeçar* controlam o replay.
+
+**Se o navegador não abrir sozinho**, o terminal escreve `abra este endereço no navegador:` com o endereço, e basta copiá-lo e colá-lo na barra de endereços do navegador.
+
+**Se a página parar de responder**, é de propósito, pois ela fica no ar só por 2 minutos depois do fim (ou enquanto os testes rodam), e para vê-la de novo basta rodar o comando outra vez.
+
+**Se o botão dos testes der 403**, a página foi aberta por um endereço diferente do que o terminal mostrou, e por isso abra-a pelo endereço com `127.0.0.1` que aparece no terminal.
 
 ## 7. Rodar os testes automáticos
 
@@ -957,6 +1012,7 @@ Para copiar a saída do terminal no Windows, selecione o texto com o mouse (arra
 | `reproducao/cmp8/` | dados sanitizados da coleta de 23 de novembro (tentativas, journal sem o identificador do provedor, contagens prévias), textos sintéticos, correções aplicadas, valores esperados e os scripts de análise |
 | `reproducao/reproduzir_tudo.mjs`, `reproducao/testes_banca.mjs`, `reproducao/ferramentas/sem_rede.mjs` | os comandos das seções 6 e 7 e a trava de rede |
 | `demo/demo_banca.mts` | o comando da seção 9 |
+| `reproducao/ao_vivo/` e `test/reproducao_ao_vivo/` | o modo ao vivo da seção 6 (`npm run reproduzir-ao-vivo`) e os testes dele (`npm run test:ao-vivo`), que não entram no `npm run testes-banca` |
 | `docs/` | só os documentos públicos do produto que os testes leem (contrato da API, guias) e as imagens deste README |
 | `PROVENIENCIA.json` | de onde veio cada arquivo (commit e sha256) e o que foi mudado em relação à origem, sem listar a si mesmo nem `zk/ceremony/LEIA-ME.md`, que é novo deste repositório |
 
