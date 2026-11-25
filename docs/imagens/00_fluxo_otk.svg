@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 470" width="960" height="470" font-family="Segoe UI, Arial, sans-serif" role="img" aria-labelledby="t d">
+  <title id="t">Como o OTK funciona</title>
+  <desc id="d">O programa manda o pedido ao OTK; o OTK conta os tokens antes de repassar ao provedor; o provedor responde e declara o uso; o OTK grava a contagem e o uso declarado e assina um recibo; o verificador confere o recibo sem internet, com o chaveiro público e a impressão digital.</desc>
+  <defs>
+    <marker id="s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#444"/></marker>
+  </defs>
+  <rect x="0" y="0" width="960" height="470" fill="#ffffff"/>
+  <!-- caixas -->
+  <rect x="20" y="70" width="170" height="90" rx="10" fill="#f2f2f2" stroke="#666"/>
+  <text x="105" y="110" text-anchor="middle" font-size="17" font-weight="600" fill="#222">Seu programa</text>
+  <text x="105" y="134" text-anchor="middle" font-size="13" fill="#444">(que chama a IA)</text>
+
+  <rect x="300" y="40" width="330" height="160" rx="10" fill="#e8f0fb" stroke="#2f62a8" stroke-width="1.5"/>
+  <text x="465" y="68" text-anchor="middle" font-size="18" font-weight="700" fill="#1d3f70">OTK (proxy)</text>
+  <text x="318" y="98" font-size="13.5" fill="#222">1. conta os tokens do pedido ANTES</text>
+  <text x="333" y="116" font-size="13.5" fill="#222">de enviar (em memória)</text>
+  <text x="318" y="144" font-size="13.5" fill="#222">2. grava a contagem e o uso declarado,</text>
+  <text x="333" y="162" font-size="13.5" fill="#222">compara as contagens e calcula o custo*</text>
+  <text x="318" y="188" font-size="13.5" fill="#222">3. assina um recibo da chamada</text>
+
+  <rect x="760" y="70" width="180" height="90" rx="10" fill="#f2f2f2" stroke="#666"/>
+  <text x="850" y="110" text-anchor="middle" font-size="17" font-weight="600" fill="#222">Provedor de IA</text>
+  <text x="850" y="134" text-anchor="middle" font-size="13" fill="#444">OpenAI, Anthropic, Google</text>
+
+  <rect x="300" y="300" width="330" height="80" rx="10" fill="#fff7e0" stroke="#a0781a"/>
+  <text x="465" y="332" text-anchor="middle" font-size="17" font-weight="600" fill="#5a420a">Recibo assinado</text>
+  <text x="465" y="356" text-anchor="middle" font-size="13" fill="#444">um por chamada</text>
+
+  <rect x="20" y="300" width="200" height="130" rx="10" fill="#eaf6ec" stroke="#2e7d3a"/>
+  <text x="120" y="330" text-anchor="middle" font-size="17" font-weight="600" fill="#1f5a28">Verificador</text>
+  <text x="120" y="352" text-anchor="middle" font-size="13" fill="#333">página ou comando,</text>
+  <text x="120" y="370" text-anchor="middle" font-size="13" fill="#333">sem internet</text>
+  <text x="120" y="398" text-anchor="middle" font-size="13" font-weight="600" fill="#333">OK · Atenção · Falhou</text>
+
+  <rect x="720" y="300" width="220" height="80" rx="10" fill="#f2f2f2" stroke="#666" stroke-dasharray="5 4"/>
+  <text x="830" y="332" text-anchor="middle" font-size="15" font-weight="600" fill="#222">Chaveiro público</text>
+  <text x="830" y="354" text-anchor="middle" font-size="13" fill="#444">+ impressão digital (sha256)</text>
+
+  <!-- setas -->
+  <line x1="190" y1="100" x2="298" y2="100" stroke="#444" stroke-width="2" marker-end="url(#s)"/>
+  <text x="244" y="92" text-anchor="middle" font-size="12.5" fill="#333">pedido</text>
+  <line x1="298" y1="135" x2="192" y2="135" stroke="#444" stroke-width="2" marker-end="url(#s)"/>
+  <text x="244" y="152" text-anchor="middle" font-size="12.5" fill="#333">resposta</text>
+
+  <line x1="630" y1="100" x2="758" y2="100" stroke="#444" stroke-width="2" marker-end="url(#s)"/>
+  <text x="694" y="92" text-anchor="middle" font-size="12.5" fill="#333">pedido</text>
+  <line x1="758" y1="135" x2="632" y2="135" stroke="#444" stroke-width="2" marker-end="url(#s)"/>
+  <text x="694" y="152" text-anchor="middle" font-size="12.5" fill="#333">resposta + uso</text>
+
+  <line x1="465" y1="200" x2="465" y2="298" stroke="#444" stroke-width="2" marker-end="url(#s)"/>
+  <line x1="300" y1="340" x2="222" y2="340" stroke="#444" stroke-width="2" marker-end="url(#s)"/>
+  <path d="M720,360 C600,430 320,430 222,400" fill="none" stroke="#444" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#s)"/>
+
+  <text x="20" y="448" font-size="12" fill="#555">* comparar e calcular o custo: só para os modelos indicados na seção 12.</text>
+  <text x="20" y="464" font-size="12" fill="#555">O recibo prova que os números não mudaram depois de assinados; não prova que o provedor contou certo.</text>
+</svg>

@@ -1,10 +1,10 @@
-// Refaz, SEM REDE e sem chave de API, todos os resultados numéricos que entram na dissertação, e compara com os valores auditados.
+// Refaz, SEM REDE e sem chave de API, os resultados numéricos das coletas de 7/10 e 23/11 listados no README (parte 6), e compara com os valores auditados.
 //   npm run reproduzir-tudo                 (ou: node --import ./reproducao/ferramentas/sem_rede.mjs reproducao/reproduzir_tudo.mjs)
 //   opcional: --out <pasta>                 (padrão: pasta temporária nova)
 // Partes:
 //   A. Coleta de 7/10/2026 (H1) e verificação da calibração Anthropic: pacote da banca, ZIP sha256 3943637b…
 //   B. Tabela dos tokens declarados pelos 8 modelos da CMP8 (23/11/2026)
-//   C. Tabela "estimado pelo OTK × declarado" da CMP8, e a prova de que a contagem do OTK foi gravada ANTES do envio
+//   C. Tabela "estimado pelo OTK × declarado" da CMP8, e a prova de que o registro de cada envio foi gravado ANTES dele (com a contagem do OTK quando o modelo é suportado)
 //   D. Conferência dos recibos de exemplo no verificador (e conferência do chaveiro do operador e da página)
 // Saída: uma linha OK/FALHOU por item e RESULTADO_REPRODUCAO.json na pasta de saída. Código de saída 0 só se tudo deu OK.
 import fs from 'node:fs'; import path from 'node:path'; import crypto from 'node:crypto';
@@ -35,9 +35,9 @@ console.log(`Reprodução sem rede. Pasta de saída: ${rel(OUT)}\n`);
 
 // ───── A. 7/10 (pacote da banca)
 const PACOTE = path.join(RAIZ, 'reproducao', 'otk-banca-pack-20261111');
-tenta('A', 'ZIP do pacote da banca tem o sha256 descrito no Apêndice C (3943637b…)', () => {
+tenta('A', 'ZIP do pacote da banca tem o sha256 esperado (3943637b…)', () => {
   const s = shaArq(path.join(RAIZ, 'reproducao', 'otk-banca-pack-20261111.zip'));
-  item('A', 'ZIP do pacote da banca tem o sha256 descrito no Apêndice C (3943637b…)', s === '3943637bef45c2c21a6b143f0cfa8829f22df70b306e85901cbdb23ade738224', s);
+  item('A', 'ZIP do pacote da banca tem o sha256 esperado (3943637b…)', s === '3943637bef45c2c21a6b143f0cfa8829f22df70b306e85901cbdb23ade738224', s);
 });
 tenta('A', 'Pacote: hashes, sanitização, H1 de 7/10 (30 de 30 arquivos) e CAL-ANTH (19 de 20)', () => {
   const r = roda('A_pacote_banca', [path.join(PACOTE, 'tools', 'reproduce_all.mjs'), '--out', path.join(OUT, 'A_pacote_banca')], PACOTE);
@@ -78,7 +78,7 @@ tenta('C', 'Estimado do OTK × declarado (CMP8)', () => {
   const igual = norm(JSON.parse(fs.readFileSync(path.join(o, 'tabela_estimado.json'), 'utf8'))) === norm(JSON.parse(e.toString('utf8')));
   item('C', 'Estimado × declarado: JSON igual ao auditado (tabela_estimado.json V2, sha 685654f6…), fora data e caminhos', igual && sha(e) === '685654f672dd4f3a02d52767133246f75963e7be97fba7e1a85da98acc039119', `esperado ${sha(e).slice(0, 12)}…`);
 });
-tenta('C', 'Contagem do OTK gravada ANTES de cada envio (1.720 de 1.720)', () => {
+tenta('C', 'Registro da contagem gravado ANTES de cada envio', () => {
   const o = path.join(OUT, 'C_prova_previsao_antes.json');
   const r = roda('C_prova_previsao_antes', [TSX, path.join(CMP8, 'scripts', 'prova_previsao_antes_cmp8.mts'), path.join(CMP8, 'dados'), o]);
   const a = JSON.parse(fs.readFileSync(o, 'utf8')); const e = JSON.parse(fs.readFileSync(path.join(ESP, 'prova_previsao_antes_cmp8.json'), 'utf8'));
@@ -86,7 +86,8 @@ tenta('C', 'Contagem do OTK gravada ANTES de cada envio (1.720 de 1.720)', () =>
   const mesmos = prov.every((p) => canon(a.provedores[p]?.porModelo) === canon(e.provedores[p].porModelo) && String(a.provedores[p]?.cadeia).startsWith('OK'));
   const enviadas = prov.reduce((s, p) => s + Object.values(a.provedores[p]?.porModelo ?? {}).reduce((x, m) => x + (m.enviadas ?? 0), 0), 0);
   const antes = prov.reduce((s, p) => s + Object.values(a.provedores[p]?.porModelo ?? {}).reduce((x, m) => x + (m.snapshotAntesDoEnvio ?? 0), 0), 0);
-  item('C', 'Contagem do OTK gravada ANTES de cada envio (cadeia do journal conferida; contagens iguais às auditadas)', r.status === 0 && a.veredito === e.veredito && a.falhas === 0 && mesmos, `${antes} de ${enviadas} envios com a contagem gravada antes`);
+  const comContagem = prov.reduce((s, p) => s + Object.values(a.provedores[p]?.porModelo ?? {}).reduce((x, m) => x + (m.estado_ESTIMATED ?? 0), 0), 0); // só para o texto impresso
+  item('C', 'Registro da contagem gravado ANTES de cada envio (cadeia do journal conferida; contagens iguais às auditadas)', r.status === 0 && a.veredito === e.veredito && a.falhas === 0 && mesmos, `${antes} de ${enviadas} envios com o registro gravado antes; ${comContagem} deles com a contagem do OTK`);
 });
 
 // ───── D. Verificador

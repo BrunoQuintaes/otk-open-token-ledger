@@ -18,8 +18,8 @@
    "src/verifier/types.ts"
   ]
  },
- "totalArquivos": 3245,
- "totalBytes": 68500745,
+ "totalArquivos": 3248,
+ "totalBytes": 68626058,
  "porOrigem": {
   "H1 7606bc9b (= b0ec6f24)": 1053,
   "b0ec6f24 com mudança": 17,
@@ -32,7 +32,8 @@
   "runs/C160/CMP8_ESTIMADO/tools/tex_estimado.mjs": 1,
   "pacote da banca 20261111 (ZIP sha256 3943637b…)": 166,
   "executor b0ec6f24": 188,
-  "verificador 535ac19c (feat/verificador-f4-20261123)": 59
+  "verificador 535ac19c (feat/verificador-f4-20261123)": 59,
+  "novo (README bilíngue e imagens, 25/11/2026)": 3
  },
  "arquivos": [
   {
@@ -92,9 +93,15 @@
    "origem": "novo (REPO_PUBLICO, C160)"
   },
   {
+   "arquivo": "README.en.md",
+   "bytes": 76656,
+   "sha256": "d244bedfe9d676cbc6ec817130f41ace26a6d7f0ea27a60e5f478afa5aa18c6c",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
    "arquivo": "README.md",
-   "bytes": 34971,
-   "sha256": "eae6b22f52e82724068dea6b39e489960ce8364ef3431b53ef711a6d5ced2395",
+   "bytes": 74969,
+   "sha256": "73ab66879adacfaf13e654e457ccc020d2667601c51f15b8489ddfb9a6c42af7",
    "origem": "novo (REPO_PUBLICO, C160)",
    "mudanca": "substitui o README.md do repositório interno"
   },
@@ -207,6 +214,18 @@
    "origem": "H1 7606bc9b (= b0ec6f24)"
   },
   {
+   "arquivo": "docs/imagens/00_fluxo_otk.en.svg",
+   "bytes": 4606,
+   "sha256": "84a4a5c6891d512e71b9f5947276596e6b3fb39ad24b758f2e6510915922b4ab",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
+   "arquivo": "docs/imagens/00_fluxo_otk.svg",
+   "bytes": 4619,
+   "sha256": "e2eb3e01f2f3f2cb37335ea990d515c4e5f89fffac95ccc2ff4ceb0c4fb76aad",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
    "arquivo": "docs/imagens/01_versoes.png",
    "bytes": 9047,
    "sha256": "53eb662fcae6e490417f97ae1be7b0a2185cd4dfdf7737e476d88e2841241ab6",
@@ -214,8 +233,8 @@
   },
   {
    "arquivo": "docs/imagens/02_reproduzir_tudo.png",
-   "bytes": 81191,
-   "sha256": "7b2aeba5c40ba909d2862d7d8ab182ec2f7486812ee2b9cc751707da1ab64139",
+   "bytes": 82216,
+   "sha256": "c6c07596836a9ecbca38fddb9886e793c80b6981f139e76ea903f63e98a25007",
    "origem": "novo (REPO_PUBLICO, C160)"
   },
   {
@@ -232,14 +251,14 @@
   },
   {
    "arquivo": "docs/imagens/05_demo_banca.png",
-   "bytes": 110668,
-   "sha256": "3b50ffdab595aff4b111bff2135ebee2e4c950f496f0655a90f4aa983fba8e89",
+   "bytes": 111828,
+   "sha256": "b847e8fb63b15b5313154a17158501636ce2f95d09d5b4a61e0dc3d3a5106c91",
    "origem": "novo (REPO_PUBLICO, C160)"
   },
   {
    "arquivo": "docs/imagens/06_verificador_recibo_demo.png",
-   "bytes": 103398,
-   "sha256": "1d3895f2a35c4db6436b038e8aec3faa75899a6cfa2f69c92f99b2c1eacc3eea",
+   "bytes": 103906,
+   "sha256": "6e186e1e593f6ed16d7a6bf125ab6891e083143e7346d067e003e858654d6505",
    "origem": "novo (REPO_PUBLICO, C160)"
   },
   {
@@ -13711,8 +13730,8 @@
   },
   {
    "arquivo": "reproducao/reproduzir_tudo.mjs",
-   "bytes": 11237,
-   "sha256": "acbf2c6d46e1321b71e2d2504001c264c3542d20a8947cbf3c7cf5988e3c939a",
+   "bytes": 11518,
+   "sha256": "4b8e86706eec82f6e247f939e231aacea013a6d22c8f98fd983fe62f9460bbd5",
    "origem": "novo (REPO_PUBLICO, C160)"
   },
   {
@@ -15942,15 +15961,15 @@
    "origem": "H1 7606bc9b (= b0ec6f24)"
   },
   {
-   "arquivo": "src/infra/chainRegistry.ts",
-   "bytes": 6125,
-   "sha256": "4c180a532f2151b1235a7408364dbef01a62dd0fd9d0fab1eb144b970d855af9",
-   "origem": "H1 7606bc9b (= b0ec6f24)"
-  },
-  {
    "arquivo": "src/infra/chain/SepoliaConfig.ts",
    "bytes": 1349,
    "sha256": "0fcf69ce83a41b872bb81a0310b5b7d879385f1b3ff8c2809c862f8032d52b8e",
+   "origem": "H1 7606bc9b (= b0ec6f24)"
+  },
+  {
+   "arquivo": "src/infra/chainRegistry.ts",
+   "bytes": 6125,
+   "sha256": "4c180a532f2151b1235a7408364dbef01a62dd0fd9d0fab1eb144b970d855af9",
    "origem": "H1 7606bc9b (= b0ec6f24)"
   },
   {
