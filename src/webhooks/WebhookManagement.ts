@@ -23,13 +23,28 @@ export const WEBHOOK_MANAGEMENT_HTTP_ENABLED = false;
 /** PENDING_HUMAN_POLICY (M24-DYN-09): proposed minimum roles for webhook management. Not the policy in force. */
 export const PROPOSED_WEBHOOK_MANAGER_ROLES: ReadonlySet<string> = new Set(['OWNER', 'ADMIN']);
 
+/**
+ * Maximum number of endpoints one tenant may register.
+ */
 export const MAX_WEBHOOK_ENDPOINTS_PER_TENANT = 10;
+/**
+ * Maximum number of event names one endpoint may subscribe to.
+ */
 export const MAX_WEBHOOK_EVENTS_PER_ENDPOINT = 32;
 
+/**
+ * Authenticated caller: tenant from the credential and its role.
+ */
 export interface WebhookCaller { tenantId: string; role: string }
 
+/**
+ * An endpoint as returned to callers: everything except the signing secret.
+ */
 export type PublicWebhookEndpoint = Omit<WebhookEndpoint, 'secret'>;
 
+/**
+ * Result of a management call: the value, or an HTTP-like status with a stable error code.
+ */
 export type ManagementResult<T> =
   | { ok: true; value: T }
   | { ok: false; status: 400 | 403 | 409 | 422; error: string; detail?: string };
@@ -43,6 +58,13 @@ function roleAllowed(caller: WebhookCaller): boolean {
   return PROPOSED_WEBHOOK_MANAGER_ROLES.has(String(caller.role).toUpperCase());
 }
 
+/**
+ * Lists the caller tenant's endpoints without their secrets.
+ *
+ * @param store - Webhook store.
+ * @param caller - Authenticated caller; its role must be in {@link PROPOSED_WEBHOOK_MANAGER_ROLES}.
+ * @returns The endpoints, or 400 (no tenant) / 403 (role not allowed).
+ */
 export async function listWebhookEndpointsForTenant(store: IWebhookStore, caller: WebhookCaller): Promise<ManagementResult<PublicWebhookEndpoint[]>> {
   if (!caller.tenantId) return { ok: false, status: 400, error: 'tenant_context_required' };
   if (!roleAllowed(caller)) return { ok: false, status: 403, error: 'forbidden' };
@@ -50,6 +72,18 @@ export async function listWebhookEndpointsForTenant(store: IWebhookStore, caller
   return { ok: true, value: eps.filter((e) => e.tenantId === caller.tenantId).map(redact) };
 }
 
+/**
+ * Validates and registers a new endpoint for the caller's tenant.
+ *
+ * Side effects: resolves the URL's host name (DNS, unless `policy.resolver` is given) and writes to the store.
+ *
+ * @param store - Webhook store.
+ * @param caller - Authenticated caller; its role must be in {@link PROPOSED_WEBHOOK_MANAGER_ROLES}.
+ * @param input - Destination URL and event names (all events when absent or empty).
+ * @param policy - Destination policy options (tests only relax them).
+ * @returns The endpoint without its secret plus the secret (shown only here), or 400 / 403 / 409 / 422.
+ * @throws {Error} Unexpected errors other than a refused destination (e.g. store failures).
+ */
 export async function registerWebhookEndpoint(
   store: IWebhookStore,
   caller: WebhookCaller,

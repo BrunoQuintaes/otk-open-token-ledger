@@ -37,15 +37,23 @@
  *
  * Memory is bounded by the number of deactivated subjects (only platform and SCIM operations add entries).
  *
- * @module auth/subjectStatus
+ * Callers: `src/auth/authMiddleware.ts` (`jwtSubjectDenial`, `dynamicKeyDenial`, `isTenantInactive`),
+ * `src/auth/credentialAuthority.ts` (`refreshSubjectsNow`), `src/api/tenantCrud.ts`, `src/api/routes.ts`, SCIM, and
+ * `src/infra/storeBootstrap.ts` (`setSubjectStatusStore`). Environment variable read: OTK_SUBJECT_STATUS_TTL_MS.
+ *
+ * @module src/auth/subjectStatus
  */
 
+/** Kind of subject whose status is tracked. */
 export type SubjectKind = 'tenant' | 'user';
 
 /** Durable status of one subject. Instants are epoch seconds; 0 = none. */
 export interface SubjectStatusRecord {
+  /** Kind of subject. */
   kind: SubjectKind;
+  /** Tenant id or user id. */
   id: string;
+  /** `true` while the tenant is deactivated or the user deprovisioned. */
   inactive: boolean;
   /** tokens issued at or before this instant are refused forever */
   notBeforeS: number;
@@ -55,7 +63,9 @@ export interface SubjectStatusRecord {
 
 /** Durable store shared by replicas. `put` never lowers notBeforeS / keysNotBeforeS (monotonic max). */
 export interface ISubjectStatusStore {
+  /** Upserts a row; must never lower `notBeforeS` or `keysNotBeforeS`. */
   put(rec: SubjectStatusRecord): Promise<void>;
+  /** Every row in the store. */
   listAll(): Promise<SubjectStatusRecord[]>;
   /**
    * H1R2 A3: rows of the given subjects only (absent = never deactivated). Used for the authoritative per-request check
@@ -67,6 +77,11 @@ export interface ISubjectStatusStore {
 /** In-memory store (tests; a single process). Several clients may share one instance as a common backend. */
 export class MemorySubjectStatusStore implements ISubjectStatusStore {
   private readonly _rows = new Map<string, SubjectStatusRecord>();
+  /**
+   * Upserts a row, keeping the larger of the stored and new instants.
+   *
+   * @param rec - Row to write (copied).
+   */
   async put(rec: SubjectStatusRecord): Promise<void> {
     const k = `${rec.kind}\u0000${rec.id}`;
     const prev = this._rows.get(k);
@@ -76,9 +91,20 @@ export class MemorySubjectStatusStore implements ISubjectStatusStore {
       keysNotBeforeS: Math.max(prev?.keysNotBeforeS ?? 0, rec.keysNotBeforeS),
     });
   }
+  /**
+   * Lists every row.
+   *
+   * @returns Copies of all rows.
+   */
   async listAll(): Promise<SubjectStatusRecord[]> {
     return [...this._rows.values()].map((r) => ({ ...r }));
   }
+  /**
+   * Rows of the given subjects.
+   *
+   * @param subjects - Subjects to read.
+   * @returns Copies of the rows that exist (subjects without a row are omitted).
+   */
   async getMany(subjects: ReadonlyArray<{ kind: SubjectKind; id: string }>): Promise<SubjectStatusRecord[]> {
     const out: SubjectStatusRecord[] = [];
     for (const s of subjects) { const r = this._rows.get(`${s.kind}\u0000${s.id}`); if (r) out.push({ ...r }); }
@@ -109,6 +135,7 @@ const _dirty = new Map<string, number>();
 let _seq = 0;
 const _localChangeSeq = new Map<string, number>();
 
+// TTL of the cached snapshot in ms (OTK_SUBJECT_STATUS_TTL_MS; default 2000; 0 disables the background timer).
 function _ttlMs(): number {
   const raw = process.env['OTK_SUBJECT_STATUS_TTL_MS'];
   const v = raw === undefined || raw.trim() === '' ? NaN : Number(raw);
@@ -123,7 +150,14 @@ function _record(kind: SubjectKind, id: string): SubjectStatusRecord {
     : { kind, id, inactive: _deprovisionedUsers.has(id), notBeforeS: _userNotBefore.get(id) ?? 0, keysNotBeforeS: 0 };
 }
 
-/** Write the current local status of a subject to the store (no-op without store). */
+/**
+ * Write the current local status of a subject to the store (no-op without store).
+ *
+ * Asynchronous: the write is tracked in the pending set and its failure is recorded for `flushSubjectStatus`.
+ *
+ * @param kind - Subject kind.
+ * @param id - Subject id.
+ */
 function _persist(kind: SubjectKind, id: string): void {
   const store = _store;
   if (!store) return;
@@ -146,6 +180,7 @@ function _persist(kind: SubjectKind, id: string): void {
   void p.finally(() => _pendingWrites.delete(p));
 }
 
+// Raises the subject's "not before" instant to atMs (in seconds); returns true when the stored value changed.
 function _bumpNotBefore(map: Map<string, number>, id: string, atMs: number): boolean {
   const s = Math.floor(atMs / 1000);
   const prev = map.get(id) ?? 0;
@@ -161,7 +196,12 @@ function _maybeRefresh(): void {
   void syncSubjectStatusNow();
 }
 
-/** Mark a tenant inactive (deactivation). Tokens issued at or before `atMs` stay invalid after reactivation. */
+/**
+ * Mark a tenant inactive (deactivation). Tokens issued at or before `atMs` stay invalid after reactivation.
+ *
+ * @param tenantId - Tenant id.
+ * @param atMs - Deactivation instant, epoch ms (default now).
+ */
 export function markTenantInactive(tenantId: string, atMs: number = Date.now()): void {
   const changed = !_inactiveTenants.has(tenantId) || _unsynced.has(_key('tenant', tenantId));
   _inactiveTenants.add(tenantId);
@@ -171,6 +211,9 @@ export function markTenantInactive(tenantId: string, atMs: number = Date.now()):
 /**
  * Reactivate a tenant. The "not before" instant is kept (old JWTs/refresh tokens stay invalid). POLICY PENDING (D4):
  * unless `opts.restoreKeys` is true, the dynamic keys minted up to the last deactivation stay refused.
+ *
+ * @param tenantId - Tenant id.
+ * @param opts - `restoreKeys: true` lets the dynamic keys minted before the deactivation work again.
  */
 export function markTenantActive(tenantId: string, opts: { restoreKeys?: boolean } = {}): void {
   const wasInactive = _inactiveTenants.delete(tenantId);
@@ -182,29 +225,56 @@ export function markTenantActive(tenantId: string, opts: { restoreKeys?: boolean
   _persist('tenant', tenantId);
 }
 
+/**
+ * Whether a tenant is deactivated, according to the local snapshot (may start a background refresh).
+ *
+ * @param tenantId - Tenant id.
+ * @returns `true` while the tenant is inactive.
+ */
 export function isTenantInactive(tenantId: string): boolean {
   _maybeRefresh();
   return _inactiveTenants.has(tenantId);
 }
 
-/** Mark a user deprovisioned (SCIM DELETE / active=false). */
+/**
+ * Mark a user deprovisioned (SCIM DELETE / active=false).
+ *
+ * @param userId - User id.
+ * @param atMs - Deprovisioning instant, epoch ms (default now).
+ */
 export function markUserDeprovisioned(userId: string, atMs: number = Date.now()): void {
   const changed = !_deprovisionedUsers.has(userId) || _unsynced.has(_key('user', userId));
   _deprovisionedUsers.add(userId);
   if (_bumpNotBefore(_userNotBefore, userId, atMs) || changed) _persist('user', userId);
 }
 
-/** Re-provision a user. The "not before" instant is kept. */
+/**
+ * Re-provision a user. The "not before" instant is kept.
+ *
+ * @param userId - User id.
+ */
 export function markUserActive(userId: string): void {
   if (_deprovisionedUsers.delete(userId) || _unsynced.has(_key('user', userId))) _persist('user', userId);
 }
 
+/**
+ * Whether a user is deprovisioned, according to the local snapshot (may start a background refresh).
+ *
+ * @param userId - User id.
+ * @returns `true` while the user is deprovisioned.
+ */
 export function isUserDeprovisioned(userId: string): boolean {
   _maybeRefresh();
   return _deprovisionedUsers.has(userId);
 }
 
-/** True when a token issued at `iatS` (epoch seconds) predates the last deactivation of the tenant. */
+/**
+ * True when a token issued at `iatS` (epoch seconds) predates the last deactivation of the tenant.
+ *
+ * @param tenantId - Tenant id.
+ * @param iatS - Token issue time in epoch seconds; a missing or non-numeric value counts as "before".
+ * @returns `false` when the tenant was never deactivated.
+ */
 export function issuedBeforeTenantRevocation(tenantId: string, iatS: unknown): boolean {
   _maybeRefresh();
   const nb = _tenantNotBefore.get(tenantId);
@@ -212,7 +282,13 @@ export function issuedBeforeTenantRevocation(tenantId: string, iatS: unknown): b
   return typeof iatS !== 'number' || !Number.isFinite(iatS) || iatS <= nb;
 }
 
-/** True when a token issued at `iatS` (epoch seconds) predates the last deprovisioning of the user. */
+/**
+ * True when a token issued at `iatS` (epoch seconds) predates the last deprovisioning of the user.
+ *
+ * @param userId - User id.
+ * @param iatS - Token issue time in epoch seconds; a missing or non-numeric value counts as "before".
+ * @returns `false` when the user was never deprovisioned.
+ */
 export function issuedBeforeUserRevocation(userId: string, iatS: unknown): boolean {
   _maybeRefresh();
   const nb = _userNotBefore.get(userId);
@@ -223,6 +299,9 @@ export function issuedBeforeUserRevocation(userId: string, iatS: unknown): boole
 /**
  * Reason an otherwise valid access JWT must be refused because of the status of its subject, or null.
  * `sub` is the tenant; `userId` (signup/login tokens) is the user.
+ *
+ * @param p - Verified JWT claims (`sub`, optional `userId`, `iat` in seconds).
+ * @returns A reason code such as `tenant_inactive`, or `null` when the token may be used.
  */
 export function jwtSubjectDenial(p: { sub?: unknown; userId?: unknown; iat?: unknown }): string | null {
   if (typeof p.sub === 'string') {
@@ -244,6 +323,9 @@ export function jwtSubjectDenial(p: { sub?: unknown; userId?: unknown; iat?: unk
  *     the key was minted (the key stays refused after re-provisioning, like the user's old JWTs). SCIM deprovisioning
  *     also revokes those keys durably; this check covers replicas whose hash registry still holds the key.
  * A key without creation instant is treated as minted before any revocation (conservative).
+ *
+ * @param k - Key context: tenant, ISO creation instant and author user id.
+ * @returns A reason code such as `author_deprovisioned`, or `null` when the key may be used.
  */
 export function dynamicKeyDenial(k: { tenantId: string; createdAt?: string; createdBy?: string | null }): string | null {
   _maybeRefresh();
@@ -259,14 +341,24 @@ export function dynamicKeyDenial(k: { tenantId: string; createdAt?: string; crea
   return null;
 }
 
-/** Last deactivation instant of a tenant (epoch seconds), or undefined. */
+/**
+ * Last deactivation instant of a tenant (epoch seconds), or undefined.
+ *
+ * @param tenantId - Tenant id.
+ * @returns Epoch seconds, or `undefined` when never deactivated.
+ */
 export function tenantRevokedAtS(tenantId: string): number | undefined {
   return _tenantNotBefore.get(tenantId);
 }
 
 // ── durable store ──────────────────────────────────────────────────────────
 
-/** Apply one store row to the cache. The store is authoritative for the inactive flag; instants only grow. */
+/**
+ * Apply one store row to the cache. The store is authoritative for the inactive flag; instants only grow.
+ *
+ * @param r - Row read from the store.
+ * @param seqAtStart - Local change sequence number when the read started; newer local changes win.
+ */
 function _apply(r: SubjectStatusRecord, seqAtStart: number): void {
   const k = _key(r.kind, r.id);
   // H1 R-04 (adversarial review): a local change whose write FAILED (_unsynced) is newer than any store row; before,
@@ -285,6 +377,8 @@ function _apply(r: SubjectStatusRecord, seqAtStart: number): void {
 /**
  * Refresh the cache from the store now. Resolves true on success, false on a store error (the last snapshot is kept;
  * see the module doc). Concurrent calls share one refresh.
+ *
+ * @returns Resolves to `true` on success (or without a store), `false` on a store error; never rejects.
  */
 export function syncSubjectStatusNow(): Promise<boolean> {
   const store = _store;
@@ -324,6 +418,9 @@ export function syncSubjectStatusNow(): Promise<boolean> {
  * from the store NOW (not the TTL snapshot) and applies them like a refresh (a local change not yet confirmed by the
  * store still wins). Resolves false when the store does not answer: the caller must then refuse the operation (fail
  * closed) instead of admitting a subject whose status is unknown. Without a store: true (the process is the authority).
+ *
+ * @param subjects - Subjects to read; entries with an empty id are ignored.
+ * @returns Resolves to `true` when the rows were read (or nothing to do), `false` on a store error.
  */
 export async function refreshSubjectsNow(subjects: ReadonlyArray<{ kind: SubjectKind; id: string }>): Promise<boolean> {
   const store = _store;
@@ -348,6 +445,9 @@ export async function refreshSubjectsNow(subjects: ReadonlyArray<{ kind: Subject
 /**
  * Wait for the pending writes to the store. `ok` is false when some write since the previous flush failed (the local
  * cache already holds the change; other replicas do not see it until it is written again).
+ *
+ * @param subject - When given, report only this subject's write outcome instead of the accumulated errors.
+ * @returns `ok` and the write errors since the previous flush (or for the subject).
  */
 export async function flushSubjectStatus(subject?: { kind: SubjectKind; id: string }): Promise<{ ok: boolean; errors: string[] }> {
   while (_pendingWrites.size > 0) await Promise.all([..._pendingWrites]);
@@ -364,6 +464,9 @@ export async function flushSubjectStatus(subject?: { kind: SubjectKind; id: stri
  * Configure the durable store (null = none). Subjects known only locally (e.g. restored from OTK_TENANT_LOG at module
  * load) are written to the store when it has no row for them; then the cache is hydrated from the store. Starts an
  * unref'd refresh timer (TTL). Resolves with the result of the first refresh.
+ *
+ * @param store - The shared store, or `null` to stop using one (the cache is kept).
+ * @returns Resolves to the result of the first refresh (`true` without a store).
  */
 export async function setSubjectStatusStore(store: ISubjectStatusStore | null): Promise<boolean> {
   if (_timer) { clearInterval(_timer); _timer = null; }
@@ -384,27 +487,48 @@ export async function setSubjectStatusStore(store: ISubjectStatusStore | null): 
   return ok;
 }
 
+/**
+ * Returns the configured store.
+ *
+ * @returns The store, or `null`.
+ */
 export function getSubjectStatusStore(): ISubjectStatusStore | null { return _store; }
 
-/** Observability: store configured, last successful refresh, last error. */
+/**
+ * Observability: store configured, last successful refresh, last error.
+ *
+ * @returns Whether a store is set, the epoch ms of the last successful refresh (0 = never) and the last error.
+ */
 export function subjectStatusHealth(): { store: boolean; lastSyncOkMs: number; lastSyncError: string | null } {
   return { store: _store !== null, lastSyncOkMs: _lastSyncOkMs, lastSyncError: _lastSyncError };
 }
 
-/** @internal Test only. */
+/**
+ * Clears every tenant status in the cache (the store is not touched).
+ *
+ * @internal Test only.
+ */
 export function clearTenantStatusForTest(): void {
   _inactiveTenants.clear();
   _tenantNotBefore.clear();
   _tenantKeysNotBefore.clear();
 }
 
-/** @internal Test only. */
+/**
+ * Clears every user status in the cache (the store is not touched).
+ *
+ * @internal Test only.
+ */
 export function clearUserStatusForTest(): void {
   _deprovisionedUsers.clear();
   _userNotBefore.clear();
 }
 
-/** @internal Test only: drop the store (and its timer) without touching the cache. */
+/**
+ * Drops the store (and its timer) without touching the cache; also clears pending-write bookkeeping.
+ *
+ * @internal Test only: drop the store (and its timer) without touching the cache.
+ */
 export function resetSubjectStatusStoreForTest(): void {
   if (_timer) { clearInterval(_timer); _timer = null; }
   _store = null;

@@ -10,7 +10,10 @@
  * See: docs/governance/oracle_governance.md
  * Dissertacao: Cap 5 — Limitações e Trabalhos Futuros
  *
- * @module governance/governancePolicy
+ * Pure types and one pure evaluator; nothing is stored or executed here. Quorum is not counted: an approved
+ * decision assumes the caller already checked it.
+ *
+ * @module src/governance/governancePolicy
  * @since G3
  */
 
@@ -40,9 +43,13 @@ export type GovernanceProposal = {
 
 /** The outcome of evaluating a proposal against a GovernancePolicy. */
 export type GovernanceDecision = {
+  /** Proposal evaluated. */
   proposalId: string;
+  /** `approved`, `rejected` (needs emergency override) or `deferred` (too old). */
   decision: 'approved' | 'rejected' | 'deferred';
+  /** Human-readable explanation of the decision. */
   reason: string;
+  /** Evaluation time, ISO 8601. */
   evaluatedAt: string;
 };
 
@@ -84,6 +91,7 @@ export const DEFAULT_GOVERNANCE_POLICY: GovernancePolicy = {
  * @param proposal  - Proposal to evaluate
  * @param policy    - Governance rules (defaults to DEFAULT_GOVERNANCE_POLICY)
  * @param nowIso    - Current time ISO string (injectable for determinism)
+ * @returns The decision with its reason and evaluation time.
  */
 export function evaluateGovernanceProposal(
   proposal: GovernanceProposal,

@@ -25,7 +25,13 @@
 /** SDK version (matches package.json). */
 export const SDK_VERSION = '0.1.0';
 
-/** Telemetry is opt-in — returns true only when explicitly enabled and not opted out. */
+/**
+ * Telemetry is opt-in — returns true only when explicitly enabled and not opted out.
+ *
+ * Reads `OTK_TELEMETRY_OPT_OUT` and `OTK_TELEMETRY_ENABLED` on every call.
+ *
+ * @returns `true` when `OTK_TELEMETRY_ENABLED=1` and `OTK_TELEMETRY_OPT_OUT` is not `1`.
+ */
 export function isTelemetryEnabled(): boolean {
   if (process.env['OTK_TELEMETRY_OPT_OUT'] === '1') return false;
   return process.env['OTK_TELEMETRY_ENABLED'] === '1';
@@ -87,19 +93,28 @@ export function recordError(op: string): void {
 // Snapshot
 // ---------------------------------------------------------------------------
 
+/**
+ * Aggregated metrics of one operation name.
+ */
 export interface OperationMetrics {
   op: string;
   callCount: number;
   errorCount: number;
   errorRate: number;    // 0–1
+  /** Median latency in milliseconds (nearest-rank); null when no latency was recorded. */
   p50Ms: number | null;
+  /** 95th percentile latency in milliseconds (nearest-rank); null when no latency was recorded. */
   p95Ms: number | null;
 }
 
+/**
+ * Point-in-time view of the in-process telemetry.
+ */
 export interface TelemetrySnapshot {
   sdkVersion: string;
   enabled: boolean;
   operations: OperationMetrics[];
+  /** When the snapshot was taken (ISO-8601 UTC). */
   capturedAt: string;
 }
 
@@ -112,6 +127,10 @@ function percentile(sorted: number[], p: number): number | null {
 /**
  * Return an immutable snapshot of current telemetry.
  * Always returns a valid object regardless of telemetry state.
+ *
+ * Note: this module has no `flush()`; metrics never leave the process through it.
+ *
+ * @returns A new snapshot object (not frozen); `enabled` reflects the environment at call time.
  */
 export function getSnapshot(): TelemetrySnapshot {
   const operations: OperationMetrics[] = [];

@@ -10,6 +10,9 @@
 
 import type { TenantRole } from '../api/tenantKeyRegistry.js';
 
+/**
+ * Permission names checked by the API and the proxy; see `ROLE_PERMISSIONS` below for which role has which.
+ */
 export type Permission =
   | 'receipts:write'
   | 'receipts:read'
@@ -54,6 +57,10 @@ const ROLE_PERMISSIONS: Record<TenantRole, ReadonlySet<Permission>> = {
 /**
  * Returns true if the given role has the requested permission.
  * Unknown roles always return false.
+ *
+ * @param role - Tenant role of the caller.
+ * @param permission - Permission required by the operation.
+ * @returns `true` when the role's set contains the permission.
  */
 export function hasPermission(role: TenantRole, permission: Permission): boolean {
   return (ROLE_PERMISSIONS[role] as Set<Permission> | undefined)?.has(permission) ?? false;

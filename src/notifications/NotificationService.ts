@@ -4,7 +4,12 @@
  * Subscribes to EventDispatcher and routes events to notification channels
  * (email, log) based on configurable rules.
  *
- * @module notifications/NotificationService
+ * Created at startup by `src/infra/storeBootstrap.ts` and stored as a process-wide singleton. Email goes
+ * through the adapter registered in `src/email/IEmailAdapter.ts`; when none is registered, email rules are
+ * skipped with a warning. Sending is fire-and-forget: a failed send is counted and logged, never thrown.
+ * Every enabled rule whose event kind matches is applied (not only the first match).
+ *
+ * @module src/notifications/NotificationService
  * @since Wave 3C (PACK 3C-02)
  */
 
@@ -15,6 +20,11 @@ import { getLogger } from '../infra/logging/StructuredLogger.js';
 import { keyCreatedTemplate, keyRevokedTemplate, keyRotatedTemplate } from '../email/templates.js';
 import { DEFAULT_RULES, type NotificationRule } from './notificationRules.js';
 
+/**
+ * Routes dispatcher events to the log or to email, according to a list of rules.
+ *
+ * Subscribes to the dispatcher in the constructor; call {@link NotificationService.destroy} to stop.
+ */
 export class NotificationService {
   private readonly _rules: NotificationRule[];
   private readonly _unsubscribe: () => void;
@@ -23,6 +33,12 @@ export class NotificationService {
   private _emailErrors = 0;
   private _logsEmitted = 0;
 
+  /**
+   * Subscribes to the dispatcher immediately (side effect).
+   *
+   * @param dispatcher - Event source to subscribe to.
+   * @param rules - Routing rules; defaults to {@link DEFAULT_RULES} when omitted.
+   */
   constructor(dispatcher: EventDispatcher, rules?: NotificationRule[]) {
     this._rules = rules ?? DEFAULT_RULES;
     this._unsubscribe = dispatcher.subscribe((e) => this._handle(e));
@@ -105,7 +121,12 @@ export class NotificationService {
     return null;
   }
 
-  /** Statistics for monitoring. */
+  /**
+   * Statistics for monitoring.
+   *
+   * @returns Counters since construction: rule matches processed, emails sent, email failures, log lines
+   * emitted, and the number of configured rules. `emailsSent` grows only after the async send resolves.
+   */
   get stats() {
     return {
       processed: this._processed,
@@ -123,8 +144,19 @@ export class NotificationService {
 }
 
 let _service: NotificationService | null = null;
+/**
+ * Returns the process-wide notification service.
+ *
+ * @returns The registered service, or `null` when none was set (notifications disabled).
+ */
 export function getNotificationService(): NotificationService | null { return _service; }
+/**
+ * Registers the process-wide notification service, replacing any previous one without destroying it.
+ *
+ * @param svc - The service to register.
+ */
 export function setNotificationService(svc: NotificationService): void { _service = svc; }
+/** Test helper: unsubscribes the registered service (if any) and clears the singleton. */
 export function resetNotificationServiceForTest(): void {
   _service?.destroy();
   _service = null;

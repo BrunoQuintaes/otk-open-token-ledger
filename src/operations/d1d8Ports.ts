@@ -16,7 +16,10 @@
  * Calibration (Phase 8): profiles loaded once at startup (OTK_CALIBRATION_PROFILES_DIR, read in bootstrapD1D8),
  * selected per (provider, api, model) when the conference report is built; HEURISTIC_THRESHOLD_V0 otherwise.
  *
- * @module operations/d1d8Ports
+ * This file reads no environment variable itself: `bootstrapD1D8.ts` reads them and passes paths and lists in.
+ * It does read the weights and price-table files given to it (synchronously, at startup).
+ *
+ * @module src/operations/d1d8Ports
  */
 import { readFileSync } from 'node:fs';
 import type { CuConfig, FrozenConfigRef, Hex32, UsageApi, VersionRef } from '../types/d1d8/index.js';
@@ -41,19 +44,42 @@ export interface FrozenProofConfig {
   chain: FrozenConfigRef['chain'];
 }
 
+/** Placeholder proof configuration when no proof/chain is configured: circuit `none`, no chain destination. */
 export const NO_PROOF_CONFIG: FrozenProofConfig = {
   circuitId: 'none',
   bucketPolicy: { version: 'none', digest: sha256Hex('none') as Hex32 },
   chain: null,
 };
 
+/** Source of CU weight tables: the active one for new operations, and lookup by version for old ones. */
 export interface WeightsSource {
+  /**
+   * The weights for new admissions.
+   *
+   * @returns The active configuration, or `null` when no valid table is loaded (admissions are then refused).
+   */
   active(): CuConfig | null;
+  /**
+   * Resolves the weights an operation was admitted with.
+   *
+   * @param ref - Version and digest frozen into the operation.
+   * @returns The matching configuration, or `null` when unknown.
+   */
   byRef(ref: VersionRef): CuConfig | null;
+  /** Short non-secret label for logs and the startup summary. */
   label: string;
 }
 
-/** Signed weights runtime (B) loaded from a file, with a persisted snapshot. */
+/**
+ * Signed weights runtime (B) loaded from a file, with a persisted snapshot.
+ *
+ * Never throws for a missing or unreadable file: the result then has a non-ok `status`, a `reason`, and
+ * `active()` falls back to the persisted snapshot while it is still valid (else `null`).
+ *
+ * @param o - Weights file path, trusted signer addresses, snapshot directory (`null` = memory only) and an
+ *   optional clock returning ISO time.
+ * @returns The weights source plus the refresh status and reason.
+ */
 export async function signedWeightsFromFile(o: { file: string | null; signers: string[]; snapshotDir: string | null; now?: () => string }): Promise<WeightsSource & { status: string; reason: string | null }> {
   const rt = createCuWeightsRuntime({
     store: o.snapshotDir ? createFileSnapshotStore(o.snapshotDir) : createMemorySnapshotStore(),
@@ -77,6 +103,10 @@ export async function signedWeightsFromFile(o: { file: string | null; signers: s
  * Explicit development profile (static tables, flagged): never chosen silently. `profile` names a versioned
  * development profile (DEVELOPMENT_PROFILES; default the historical `development`). byRef resolves every
  * published development profile, so operations admitted under an earlier one keep resolving their weights.
+ *
+ * @param profile - Development profile name.
+ * @returns A static weights source flagged as development.
+ * @throws {Error} When the profile name is unknown.
  */
 export function developmentWeights(profile = 'development'): WeightsSource {
   const spec = Object.hasOwn(DEVELOPMENT_PROFILES, profile) ? DEVELOPMENT_PROFILES[profile]! : null;
@@ -90,6 +120,13 @@ export function developmentWeights(profile = 'development'): WeightsSource {
   };
 }
 
+/**
+ * Reads and parses price-table files; the first file becomes the table frozen into new operations.
+ *
+ * @param files - Paths of `otk.price_table.v1` JSON files, in priority order (may be empty).
+ * @returns The registry, the parsed tables and the active table reference (`null` when no file is given).
+ * @throws {Error} When a file cannot be read, is not JSON, or is not a valid price table.
+ */
 export function loadPriceTables(files: string[]): { registry: PriceTableRegistry; tables: PriceTableV1[]; active: VersionRef | null } {
   const tables = files.map((f) => parsePriceTableV1(JSON.parse(readFileSync(f, 'utf8'))));
   const registry = createPriceTableRegistry(tables);
@@ -102,9 +139,18 @@ const SUPPORTED: ReadonlySet<UsageApi> = new Set<UsageApi>([
   'deepseek.chat_completions', 'mistral.chat_completions', 'cohere.chat',
 ]);
 
+/**
+ * Composes the measurement ports used by the durable runtime from the weights, prices, proof configuration
+ * and calibration profiles.
+ *
+ * @param o - The configured components.
+ * @returns The ports. Its `estimateInputTokens` throws `RangeError` for inputs with non-text parts (the
+ *   reservation is then refused).
+ */
 export function d1d8MeasurementPorts(o: {
   weights: WeightsSource;
   prices: { registry: PriceTableRegistry; active: VersionRef | null };
+  /** Frozen into each operation; default {@link NO_PROOF_CONFIG}. */
   proofConfig?: FrozenProofConfig;
   /**
    * Phase 8: calibration profiles loaded at startup (bootstrap: OTK_CALIBRATION_PROFILES_DIR). Default: an empty

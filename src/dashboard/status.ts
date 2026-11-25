@@ -4,21 +4,33 @@
  * Renders component health table (API, PG, Redis, ProverDaemon).
  * No authentication required — publicly visible at GET /status.
  *
- * @module dashboard/status
+ * Called by the status route in `src/api/routes.ts`. Environment variables read (presence only, never the value):
+ * `OTK_DB_URL`, `OTK_REDIS_URL`; the version shown comes from `npm_package_version`.
+ *
+ * It does NOT probe any component: at this version the default resolver reports the API as `up` and every other
+ * component as `unknown`, with only "Configured" / "Not configured" as detail.
+ *
+ * @module src/dashboard/status
  * @since Wave 4 (4C-PACK-4C03 / NEW-4.02)
  */
 
 import { escapeHtml as esc } from './sanitize.js';
 
+/** One row of the status table. */
 export interface ComponentStatus {
+  /** Component name shown to the reader. */
   name: string;
   status: 'up' | 'down' | 'degraded' | 'unknown';
+  /** Short free text shown in the details column (escaped on render). */
   detail?: string;
 }
 
+/** Everything the status page shows. */
 export interface StatusPageData {
   components: ComponentStatus[];
+  /** Time of the snapshot, ISO 8601. */
   timestamp: string;
+  /** Application version, when known. */
   version?: string;
 }
 
@@ -38,6 +50,15 @@ function statusBadge(status: ComponentStatus['status']): string {
   return `<span style="background:${color};color:#fff;padding:2px 8px;border-radius:4px;font-size:.85rem">${esc(labels[status] ?? status)}</span>`;
 }
 
+/**
+ * Renders the public status page as a complete HTML document.
+ *
+ * The headline is "Partial Outage" when any component is down, "All Systems Operational" when all are up and
+ * "Degraded Performance" otherwise. Every dynamic value is HTML-escaped.
+ *
+ * @param data - Components, timestamp and version.
+ * @returns The HTML text.
+ */
 export function renderStatusPage(data: StatusPageData): string {
   const rows = data.components.map(c => `
     <tr>
@@ -87,6 +108,11 @@ export function renderStatusPage(data: StatusPageData): string {
 // Default status resolver (reads from runtime state)
 // ──────────────────────────────────────────────────────────
 
+/**
+ * Builds the default status snapshot from the process environment (no network calls).
+ *
+ * @returns The component list, the current time and the package version.
+ */
 export function resolveDefaultStatus(): StatusPageData {
   const components: ComponentStatus[] = [
     { name: 'API Server', status: 'up', detail: 'Responding normally' },

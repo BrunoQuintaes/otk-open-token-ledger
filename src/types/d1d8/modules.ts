@@ -5,6 +5,8 @@
  * C may use explicit test doubles of these contracts in its local tests until S4 wires the real
  * modules. A double must be named *Double* and must not be reachable from a production entry
  * point; S4 rejects any TODO/stub on a mandatory path (02_PROTOCOLO_COMUM.md).
+ *
+ * @module src/types/d1d8/modules
  */
 import type { Hex32, IsoTime, Money, OperationKey, Scaled, VersionRef, ChainDomain } from './common.js';
 import type { ModelSupport, NormalizedUsage, UsageApi, UsageOrigin } from './usage.js';
@@ -18,6 +20,9 @@ import type { CuReferenceStatementV1 } from './cuReference.js';
 
 // ───────────────────────────── B: measurement (D4, D5, D8) ─────────────────────────────
 
+/**
+ * Context copied into a normalized usage: provider, requested model, origin and observation time.
+ */
 export interface UsageContext {
   provider: string;
   modelRequested: string;
@@ -35,8 +40,14 @@ export interface StreamUsageAccumulator {
   finish(): NormalizedUsage;
   readonly bytesSeen: number;
 }
+/**
+ * Creates an accumulator that rebuilds usage from a provider SSE stream.
+ */
 export type CreateStreamUsageAccumulatorFn = (api: UsageApi, ctx: UsageContext, limits: { maxBufferedBytes: number }) => StreamUsageAccumulator;
 
+/**
+ * Resolves local tokenizer coverage for a provider, API and model.
+ */
 export type ResolveModelSupportFn = (provider: string, api: UsageApi, modelRequested: string) => ModelSupport;
 
 /** Validated weights ready for computation (never constructed from silent defaults, D4 §1). */
@@ -46,11 +57,20 @@ export interface CuConfig {
   formula: string;
   developmentProfile: boolean;
 }
+/**
+ * Loads and checks a signed CU weights table; returns the status and, when usable, the configuration.
+ */
 export type LoadCuWeightsFn = (raw: unknown, opts: { now: IsoTime; trustedSigners: readonly string[] }) =>
   { status: CuWeightsLoadStatus; config: CuConfig | null };
 
+/**
+ * Computes CU for a normalized usage with one configuration.
+ */
 export type ComputeCuFn = (usage: NormalizedUsage, cfg: CuConfig) => CuResult;
 
+/**
+ * Prices a normalized usage with the price table in force at `at`.
+ */
 export type PriceUsageFn = (usage: NormalizedUsage, at: IsoTime, tableRef: VersionRef) => PriceQuote;
 
 /** Worst-case reservation for a call whose CU is unknown until the provider answers (D7 §8). */
@@ -69,6 +89,9 @@ export interface AssembledInput {
   body: unknown;
 }
 
+/**
+ * Result of the local (auxiliary) counter for one operation.
+ */
 export interface LocalCountResult {
   counts: Array<{ category: import('./usage.js').TokenCategoryName; count: bigint }>;
   covered: Array<import('./usage.js').TokenCategoryName>;
@@ -79,13 +102,22 @@ export interface LocalCountResult {
   cost: { cpuMicros: bigint | null; peakBufferedBytes: number };
 }
 
+/**
+ * Local token counter for one operation: observe input, observe output text, then finish once.
+ */
 export interface LocalCounter {
   observeInput(input: AssembledInput): void;
   observeOutputText(chunk: string): void;
   finish(): LocalCountResult;
 }
+/**
+ * Creates a local counter for one operation.
+ */
 export type CreateLocalCounterFn = (support: ModelSupport, limits: { maxTextBytes: number }) => LocalCounter;
 
+/**
+ * Builds the conference report of one operation (unsigned).
+ */
 export type BuildConferenceReportFn = (args: {
   key: OperationKey;
   receiptDigest: Hex32;
@@ -110,6 +142,9 @@ export interface ConferenceCalibration {
 
 // ───────────────────────────── A: signatures, commitments, proofs (D1, D2, D3 repr., D6) ───
 
+/**
+ * Digests, signatures and verification of private receipts, conference reports and statements.
+ */
 export interface ReceiptCrypto {
   /** keccak256 over A's canonical encoding of the receipt (spec + cross TS/Solidity vectors). */
   digestReceipt(r: PrivateReceiptV3): Hex32;
@@ -134,6 +169,9 @@ export interface ReceiptCrypto {
 /** CSPRNG inside; never deterministic from public data (D2 §2). */
 export type NewCommitmentOpeningFn = (key: OperationKey, usage: Scaled, circuitId: string, privateInputs: Record<string, string>) => CommitmentOpening;
 
+/**
+ * Builds the public authorization (commitment and bucket, no exact usage) of a signed receipt.
+ */
 export type BuildPublicAuthorizationFn = (args: {
   receipt: PrivateReceiptV3;
   opening: CommitmentOpening;
@@ -141,6 +179,9 @@ export type BuildPublicAuthorizationFn = (args: {
   bucket: PublicBucket;
 }) => Promise<PublicAuthorization>;
 
+/**
+ * Adapter between a public authorization and one proof circuit / contract call.
+ */
 export interface ProofAdapter {
   readonly circuitId: string;
   /** Witness input for the circuit; replaces the input assembly now inside ProverDaemon. */
@@ -151,6 +192,9 @@ export interface ProofAdapter {
   encodeSubmission(auth: PublicAuthorization, bundle: ProofBundle): { abi: string[]; functionName: string; args: unknown[] };
 }
 
+/**
+ * Builds the batch statement of several public authorizations (each with its proof bundle, or null) for one chain domain.
+ */
 export type BuildBatchStatementFn = (args: {
   domain: ChainDomain;
   members: Array<{ auth: PublicAuthorization; bundle: ProofBundle | null }>;
@@ -158,6 +202,9 @@ export type BuildBatchStatementFn = (args: {
 
 // ───────────────────────────── C: operations and effects (D3 storage, D7) ─────────────────
 
+/**
+ * Request to admit a durable operation before the provider is called.
+ */
 export interface AdmitRequest {
   key: OperationKey;
   requestDigest: Hex32;
@@ -191,6 +238,9 @@ export interface AdmitRequest {
   config: DurableOperation['config'];
 }
 
+/**
+ * Durable store of operations.
+ */
 export interface OperationStore {
   /** Durable before returning 'admitted'; returns 'persistence_unavailable' instead of acking. */
   admit(req: AdmitRequest): Promise<AdmitResult>;
@@ -202,6 +252,9 @@ export interface OperationStore {
   listIncomplete(opts: { olderThan: IsoTime; limit: number }): Promise<DurableOperation[]>;
 }
 
+/**
+ * Durable outbox of effects: enqueue (deduplicated), claim with a lease, then complete or fail with an optional retry time.
+ */
 export interface EffectOutbox {
   enqueue(effect: Omit<OutboxEffect, 'state' | 'attempts' | 'lease' | 'createdAt'>): Promise<'enqueued' | 'duplicate'>;
   claim(owner: string, kinds: OutboxEffect['kind'][], leaseMs: number, limit: number): Promise<OutboxEffect[]>;
@@ -209,6 +262,9 @@ export interface EffectOutbox {
   fail(effectId: string, owner: string, reason: string, retryAt: IsoTime | null): Promise<void>;
 }
 
+/**
+ * Durable store of commitment openings (private).
+ */
 export interface OpeningStore {
   /** Must be durable before the dependent public effect is enqueued (D2 §5). */
   put(opening: CommitmentOpening): Promise<void>;

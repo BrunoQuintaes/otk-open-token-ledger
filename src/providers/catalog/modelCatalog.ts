@@ -14,10 +14,18 @@
  * The catalog decides only tokenizer coverage for the auxiliary counter. CU weights come from
  * the signed weights table (cuWeightsV2.ts) and prices from price tables; a model can be
  * unsupported here and still be metered, or the reverse.
+ *
+ * Used through `src/providers/d1d8Measurement.ts` by the local token counter and the conference report.
+ * Pure lookup tables; it reads no configuration and makes no network call.
+ *
+ * @module src/providers/catalog/modelCatalog
  */
 import type { ModelSupport, SupportLevel, UsageApi } from '../../types/d1d8/index.js';
 import { loadEncoding, type LocalEncoding } from '../../tokenization/tokenizerIdentity.js';
 
+/**
+ * Version label of this catalog; copied into every {@link ModelSupport} result so a report names the table it used.
+ */
 export const MODEL_CATALOG_VERSION = 'otk.model_catalog.v1@2026-09-30';
 
 /** Which APIs each provider exposes in the declared text scope. */
@@ -87,7 +95,11 @@ const OPENAI_ALIAS_TO_KEY: ReadonlyMap<string, string> = new Map(
   Object.entries(OPENAI_EXACT).flatMap(([key, e]) => e.aliases.map((a) => [a, key] as [string, string])),
 );
 
-/** Every OpenAI id listed in the catalog (keys and aliases), for tests against tiktoken's table. */
+/**
+ * Every OpenAI id listed in the catalog (keys and aliases), for tests against tiktoken's table.
+ *
+ * @returns A new array with one entry per catalogued OpenAI key and per alias, with its encoding name.
+ */
 export function listedOpenAiIds(): Array<{ id: string; encoding: LocalEncoding }> {
   return Object.entries(OPENAI_EXACT).flatMap(([key, e]) => [
     { id: key, encoding: e.encoding },
@@ -108,7 +120,18 @@ function result(provider: string, api: UsageApi, modelRequested: string, catalog
   };
 }
 
-/** ResolveModelSupportFn. Case-insensitive on provider and model ids; returns ids verbatim. */
+/**
+ * ResolveModelSupportFn. Case-insensitive on provider and model ids; returns ids verbatim.
+ *
+ * Resolves how well the local tokenizer covers a provider/API/model, using the support levels in the
+ * file header. Never throws for unknown input: it returns `support: 'unsupported'` instead.
+ *
+ * @param provider - Provider ID as sent by the caller (trimmed and lowercased for lookup only).
+ * @param api - Usage API name; it must be one of the provider's entries in {@link PROVIDER_APIS}.
+ * @param modelRequested - Model ID as requested (trimmed and lowercased for lookup only).
+ * @returns The support record; `catalogKey` is `null` unless the model is an exact entry or a known alias,
+ *   and `tokenizer` is `null` when no local encoding applies.
+ */
 export function resolveModelSupport(provider: string, api: UsageApi, modelRequested: string): ModelSupport {
   const p = provider.trim().toLowerCase();
   const m = modelRequested.trim().toLowerCase();

@@ -4,6 +4,10 @@
  * Implements Dual Receipt Model (ADR-0003):
  * - RawReceipt: full provider event data (off-chain, signed)
  * - ZKReceipt: minimal proof-compatible receipt (on-chain, proven)
+ *
+ * Types and pure helpers (epoch, usage, buckets) of the dual receipt; no I/O.
+ *
+ * @module src/types/receipt
  */
 
 /**
@@ -192,6 +196,8 @@ export interface DualReceiptV2 {
  * @param usage   Actual usage value (must fit in bucket)
  * @param step    Bucket width (default 300 CU — matches ADR-0101 example)
  * @returns       { minUsageBucket, maxUsageBucket }
+ *   The bounds of the bucket with index floor(usage / step): [index × step + 1, (index + 1) × step].
+ *   Note: a usage that is an exact multiple of `step` (including 0) is below `minUsageBucket`.
  */
 export function deriveBuckets(usage: bigint, step = 300n): { minUsageBucket: bigint; maxUsageBucket: bigint } {
   const bucketIndex = usage / step;               // floor division

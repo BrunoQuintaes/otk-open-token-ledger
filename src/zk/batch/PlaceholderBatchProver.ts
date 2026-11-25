@@ -32,6 +32,9 @@ import {
  */
 const BATCH_OVERHEAD_GAS = 50_000;
 
+/**
+ * Placeholder for aggregated (rollup-style) proving: `prove()` always throws; only the gas estimate works.
+ */
 export class PlaceholderBatchProver implements IBatchProver {
   readonly strategyId = 'placeholder_rollup_v0';
   readonly description =
@@ -40,6 +43,15 @@ export class PlaceholderBatchProver implements IBatchProver {
   readonly maxBatchSize = 1000;
   readonly reducesOnChainCost = true; // will reduce cost when implemented
 
+  /**
+   * Not implemented.
+   *
+   * @param inputs - Circuit inputs (1 to 1000).
+   * @param _wasmPath - Ignored.
+   * @param _zkeyPath - Ignored.
+   * @returns Never returns a value.
+   * @throws {@link BatchError} `BATCH_EMPTY`, `BATCH_TOO_LARGE`, or otherwise `NOT_IMPLEMENTED` (rejected promise).
+   */
   async prove(
     inputs: CircuitInput[],
     _wasmPath: string,
@@ -67,6 +79,9 @@ export class PlaceholderBatchProver implements IBatchProver {
    * Estimate what gas savings would be if implemented.
    * Formula: batchGas = GAS_PER_ZK_RECEIPT + BATCH_OVERHEAD_GAS
    * (one verification + aggregation overhead, independent of N)
+   *
+   * @param batchSize - Number of receipts.
+   * @returns The estimate with one verification plus a fixed placeholder overhead of 50,000 gas.
    */
   estimateGasSavings(batchSize: number): ReturnType<typeof computeGasSavings> {
     const batchGas = GAS_PER_ZK_RECEIPT + BATCH_OVERHEAD_GAS;

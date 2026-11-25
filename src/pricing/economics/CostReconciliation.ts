@@ -12,10 +12,16 @@
  *   Generates usdCostDelta and deltaPercent columns that quantify
  *   the estimation error of the static price table vs actual billing —
  *   a direct empirical contribution for the FGV dissertation.
+ *
+ * The estimate uses the static seed table only (synchronous; no Redis). Floating-point USD; no I/O.
+ * Called by `EconomicReport.ts`.
+ *
+ * @module src/pricing/economics/CostReconciliation
  */
 
 import { calculateUsdCostSync as calculateUsdCost } from "./CostBridge.js";
 
+/** Token usage of one ledger event plus the cost the provider reported, if any. */
 export type ReconciliationInput = {
   provider: string;
   model: string;
@@ -27,6 +33,7 @@ export type ReconciliationInput = {
   currency?: string | null;
 };
 
+/** Estimated vs real cost of one event. */
 export type ReconciliationResult = {
   /** Estimated cost from static price table (CostBridge) */
   usdCostEstimated: number;
@@ -40,6 +47,16 @@ export type ReconciliationResult = {
   deltaPercent: number | null;
 };
 
+/**
+ * Compares the seed-table estimate with the provider-reported cost.
+ *
+ * The real cost is used only when it is a finite number >= 0 in USD (case-insensitive currency).
+ * `deltaPercent` is `null` when the estimate is 0.
+ *
+ * @param input - Usage and optional real cost.
+ * @returns Both costs, the source used and the deltas.
+ * @throws {Error} When the provider or model is not in the seed table.
+ */
 export function reconcileCost(input: ReconciliationInput): ReconciliationResult {
   const usdCostEstimated = calculateUsdCost({
     provider: input.provider,

@@ -63,6 +63,8 @@ export type EventEnvelope = {
  * @param payload       Export-safe payload (no secrets)
  * @param timestampSecs Unix timestamp in seconds (defaults to current time)
  * @param eventId       Event identifier (auto-generated if omitted)
+ * @returns A new envelope with `deliveryStatus: 'pending'`; the generated `eventId` is not cryptographically
+ *   random and not guaranteed unique.
  */
 export function buildEnvelope(
   kind: EventKind,

@@ -31,7 +31,10 @@
  *   - CUEngine remains deterministic given the same CW JSON
  *   - Receipts validated against the CW version at time of issuance
  *
- * @module economics/CUWeightsLoader
+ * Environment variable read once at load: `OTK_TRUSTED_SIGNERS` (comma-separated signer addresses).
+ * `verifyCWSignature` loads `ethers` dynamically. Validation depends on the wall clock (`validFrom`/`validUntil`).
+ *
+ * @module src/economics/CUWeightsLoader
  * @since U12.POST-CLAIM-CLOSURE (ADR-0203 Phase 1)
  */
 
@@ -39,23 +42,31 @@
 // Types
 // ---------------------------------------------------------------------------
 
+/** v1 weights of one model (non-negative ratios, not prices). */
 export type ModelWeights = {
   inputWeight: number;
   outputWeight: number;
   latencyWeight: number;
 };
 
+/** v1 weights of every model of one provider, keyed by model id. */
 export type ProviderWeights = Record<string, ModelWeights>;
 
+/** A v1 CW (CU weights) document as signed by the operator. */
 export type CWJson = {
   version: string;
+  /** Start of validity, ISO 8601. */
   validFrom: string;
+  /** End of validity, ISO 8601. */
   validUntil: string;
   weights: Record<string, ProviderWeights>;
+  /** Address the document claims as signer (`0x…`). */
   signedBy: string;
+  /** EIP-191 signature over `buildSignedMessage(cw)`. */
   signature: string;
 };
 
+/** Result of `validateCWJson`: the typed document, or the first problem found. */
 export type CWLoadResult =
   | { ok: true; cw: CWJson }
   | { ok: false; error: string };
@@ -67,6 +78,10 @@ export type CWLoadResult =
 /**
  * Validate CW JSON structure and temporal validity.
  * Does NOT verify the EIP-191 signature (requires ethers — import at call site).
+ *
+ * @param raw - Parsed JSON value.
+ * @returns `{ ok: true, cw }`, or `{ ok: false, error }` naming the first missing or invalid field, or an
+ *   expired / not-yet-valid window relative to the current time.
  */
 export function validateCWJson(raw: unknown): CWLoadResult {
   if (!raw || typeof raw !== 'object') {
@@ -119,6 +134,8 @@ export function validateCWJson(raw: unknown): CWLoadResult {
  * @param raw - Parsed JSON object (use JSON.parse before calling)
  * @param opts - Options
  * @param opts.strict - If true, throw on validation failure instead of returning null
+ * @returns The validated document, or null when invalid and not strict.
+ * @throws {Error} `CW JSON invalid: <reason>` when invalid and `opts.strict` is true.
  */
 export function loadCWJson(raw: unknown, opts: { strict?: boolean } = {}): CWJson | null {
   const result = validateCWJson(raw);
@@ -130,6 +147,11 @@ export function loadCWJson(raw: unknown, opts: { strict?: boolean } = {}): CWJso
 /**
  * Extract model weights from a loaded CWJson for a given provider+model.
  * Returns null if the provider/model is not in the CW JSON (caller uses static fallback).
+ *
+ * @param cw - Loaded document.
+ * @param provider - Provider id (exact key, case-sensitive).
+ * @param model - Model id (exact key, case-sensitive).
+ * @returns The model's weights, or null.
  */
 export function getModelWeights(cw: CWJson, provider: string, model: string): ModelWeights | null {
   return cw.weights[provider]?.[model] ?? null;
@@ -138,6 +160,10 @@ export function getModelWeights(cw: CWJson, provider: string, model: string): Mo
 /**
  * Deterministic JSON: object keys sorted at every depth, no whitespace.
  * Throws on values JSON cannot represent faithfully (NaN/Infinity → null collision).
+ *
+ * @param value - Value to serialize; `undefined` object properties are skipped.
+ * @returns The canonical JSON text.
+ * @throws {Error} On a non-finite number or an unsupported type (function, bigint, symbol, undefined).
  */
 function canonicalJson(value: unknown): string {
   if (typeof value === 'number') {
@@ -165,6 +191,10 @@ function canonicalJson(value: unknown): string {
  * the weight values; V1 messages are no longer produced or accepted.
  *
  * Note: actual signature verification requires ethers.verifyMessage — do this at integration point.
+ *
+ * @param cw - Document to serialize; `signedBy` is lower-cased in the message.
+ * @returns The exact text that is signed.
+ * @throws {Error} When a weight value is not a finite number.
  */
 export function buildSignedMessage(cw: CWJson): string {
   const body = canonicalJson({

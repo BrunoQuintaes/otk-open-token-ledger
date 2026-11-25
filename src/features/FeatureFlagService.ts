@@ -12,22 +12,31 @@
  *   - Thread-safe: single-process Map access is synchronous and safe.
  *   - Flag keys are lowercase dot-separated strings (e.g. "zk.proof.enabled").
  *
- * @module features/FeatureFlagService
+ * Valid keys match `^[a-z][a-z0-9._-]{1,62}$` (2 to 63 characters). The objects returned by the methods are the
+ * stored ones, not copies.
+ *
+ * @module src/features/FeatureFlagService
  * @since Wave 6 (NEW-6.01)
  */
 
+/** One feature flag with its global default and per-tenant overrides. */
 export interface FeatureFlag {
+  /** Flag key (see the key rule in the module comment). */
   key: string;
   enabled: boolean;               // global default
   description?: string;
   overrides?: Record<string, boolean>; // tenantId → override value
+  /** Creation time, ISO 8601. */
   createdAt: string;
+  /** Last change, ISO 8601. */
   updatedAt: string;
 }
 
+/** Effective value of a flag for one tenant and where it came from. */
 export interface FlagDecision {
   key: string;
   enabled: boolean;
+  /** `override` (tenant value), `global` (flag default) or `default` (unknown flag, false). */
   source: 'override' | 'global' | 'default';
 }
 
@@ -37,12 +46,21 @@ function now(): string {
   return new Date().toISOString();
 }
 
+/** In-memory store and evaluator of feature flags. */
 export class FeatureFlagService {
   private readonly _flags = new Map<string, FeatureFlag>();
 
   /**
    * Set or update a flag's global default.
    * Creates the flag if it does not exist.
+   *
+   * Existing overrides and creation time are kept; the description is kept when `description` is undefined.
+   *
+   * @param key - Flag key.
+   * @param enabled - New global default.
+   * @param description - Optional description.
+   * @returns The stored flag.
+   * @throws {Error} When the key is invalid.
    */
   upsert(key: string, enabled: boolean, description?: string): FeatureFlag {
     if (!FLAG_KEY_RE.test(key)) {
@@ -64,6 +82,12 @@ export class FeatureFlagService {
   /**
    * Set a per-tenant override.
    * Creates the global flag with enabled=false if it does not exist yet.
+   *
+   * @param key - Flag key.
+   * @param tenantId - Tenant the override applies to.
+   * @param enabled - Value for that tenant.
+   * @returns The stored flag.
+   * @throws {Error} When the key is invalid or `tenantId` is empty.
    */
   setOverride(key: string, tenantId: string, enabled: boolean): FeatureFlag {
     if (!FLAG_KEY_RE.test(key)) {
@@ -89,6 +113,10 @@ export class FeatureFlagService {
 
   /**
    * Remove a per-tenant override, falling back to global default.
+   *
+   * @param key - Flag key.
+   * @param tenantId - Tenant whose override is removed.
+   * @returns True when an override existed and was removed.
    */
   clearOverride(key: string, tenantId: string): boolean {
     const flag = this._flags.get(key);
@@ -103,6 +131,9 @@ export class FeatureFlagService {
 
   /**
    * Delete a flag entirely.
+   *
+   * @param key - Flag key.
+   * @returns True when the flag existed.
    */
   delete(key: string): boolean {
     return this._flags.delete(key);
@@ -111,6 +142,10 @@ export class FeatureFlagService {
   /**
    * Evaluate a flag for a given tenant.
    * Returns the effective enabled value and its source.
+   *
+   * @param key - Flag key.
+   * @param tenantId - Tenant; without it only the global default applies.
+   * @returns The decision (an unknown flag is disabled, source `default`).
    */
   evaluate(key: string, tenantId?: string): FlagDecision {
     const flag = this._flags.get(key);
@@ -125,22 +160,39 @@ export class FeatureFlagService {
 
   /**
    * Convenience: returns true if the flag is enabled for the given tenant.
+   *
+   * @param key - Flag key.
+   * @param tenantId - Tenant, optional.
+   * @returns The effective value.
    */
   isEnabled(key: string, tenantId?: string): boolean {
     return this.evaluate(key, tenantId).enabled;
   }
 
-  /** List all flags. */
+  /**
+   * List all flags.
+   *
+   * @returns Every flag, sorted by key.
+   */
   list(): FeatureFlag[] {
     return Array.from(this._flags.values()).sort((a, b) => a.key.localeCompare(b.key));
   }
 
-  /** Get a single flag by key. */
+  /**
+   * Get a single flag by key.
+   *
+   * @param key - Flag key.
+   * @returns The flag, or undefined when unknown.
+   */
   get(key: string): FeatureFlag | undefined {
     return this._flags.get(key);
   }
 
-  /** Total flag count. */
+  /**
+   * Total flag count.
+   *
+   * @returns Number of flags.
+   */
   get size(): number {
     return this._flags.size;
   }
@@ -154,6 +206,11 @@ export class FeatureFlagService {
 // Process-level singleton — lazy initialization to avoid module-load side effects
 // and ensure tests can import without triggering state creation.
 let _service: FeatureFlagService | undefined;
+/**
+ * Returns the process-wide flag service, creating it on first call.
+ *
+ * @returns The shared service.
+ */
 export function getFeatureFlagService(): FeatureFlagService {
   if (!_service) _service = new FeatureFlagService();
   return _service;

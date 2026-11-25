@@ -10,12 +10,27 @@
  * @module reconciliation/parse
  */
 
+/**
+ * Raised when a CSV or JSON export cannot be read losslessly.
+ */
 export class StatementParseError extends Error {
   constructor(message: string) { super(message); this.name = 'StatementParseError'; }
 }
 
+/**
+ * A parsed CSV file: `#` preamble lines (without the `#`), trimmed header names and the raw data rows.
+ */
 export interface CsvTable { preamble: string[]; header: string[]; rows: string[][] }
 
+/**
+ * Parses CSV text (RFC 4180) without converting any value; a leading byte-order mark is ignored.
+ *
+ * @param text - Whole file content.
+ * @param delimiter - Field separator (one character; default comma).
+ * @returns The preamble, header and rows; blank lines are skipped.
+ * @throws {@link StatementParseError} On a stray or unterminated quote, an empty file, a duplicated column or a
+ *   row whose field count differs from the header.
+ */
 export function parseCsv(text: string, delimiter = ','): CsvTable {
   let src = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
   const preamble: string[] = [];
@@ -71,11 +86,26 @@ export function parseCsv(text: string, delimiter = ','): CsvTable {
 /** A JSON number kept as its exact source text. */
 export class JsonNumber {
   constructor(public readonly lexeme: string) {}
+  /**
+   * Returns the number exactly as written in the source.
+   *
+   * @returns The source text of the number.
+   */
   toString(): string { return this.lexeme; }
 }
 
+/**
+ * A JSON value as read by {@link parseJsonLossless}: numbers stay {@link JsonNumber} lexemes.
+ */
 export type JsonValue = null | boolean | string | JsonNumber | JsonValue[] | { [k: string]: JsonValue };
 
+/**
+ * Parses JSON keeping every number as its exact source text; a leading byte-order mark is ignored.
+ *
+ * @param text - JSON text.
+ * @returns The parsed value.
+ * @throws {@link StatementParseError} On invalid syntax, a duplicated object key or trailing data.
+ */
 export function parseJsonLossless(text: string): JsonValue {
   const s = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
   let i = 0;
@@ -132,7 +162,13 @@ export function parseJsonLossless(text: string): JsonValue {
   return v;
 }
 
-/** Value at a dot path ('a.b.c'); keys containing dots are not supported (JSON exports here have none). */
+/**
+ * Value at a dot path ('a.b.c'); keys containing dots are not supported (JSON exports here have none).
+ *
+ * @param obj - JSON value to read.
+ * @param path - Dot-separated member names.
+ * @returns The value found, or `undefined` when a step is missing or not an object.
+ */
 export function getPath(obj: JsonValue | undefined, path: string): JsonValue | undefined {
   let cur: JsonValue | undefined = obj;
   for (const k of path.split('.')) {
@@ -142,7 +178,12 @@ export function getPath(obj: JsonValue | undefined, path: string): JsonValue | u
   return cur;
 }
 
-/** Scalar → its source lexeme; objects/arrays → canonical JSON text; null/undefined → null. */
+/**
+ * Scalar → its source lexeme; objects/arrays → canonical JSON text; null/undefined → null.
+ *
+ * @param v - JSON value.
+ * @returns The text form; numbers inside objects/arrays are written as `#num:<lexeme>` strings.
+ */
 export function lexemeOf(v: JsonValue | undefined): string | null {
   if (v === null || v === undefined) return null;
   if (v instanceof JsonNumber) return v.lexeme;
@@ -151,7 +192,14 @@ export function lexemeOf(v: JsonValue | undefined): string | null {
   return JSON.stringify(v, (_k, x) => (x instanceof JsonNumber ? `#num:${x.lexeme}` : x));
 }
 
-/** Flatten a JSON object to { 'a.b': lexeme } for the audit copy of a row (sorted keys). */
+/**
+ * Flatten a JSON object to { 'a.b': lexeme } for the audit copy of a row (sorted keys).
+ *
+ * @param v - JSON value to flatten (arrays are kept whole as one text value).
+ * @param prefix - Path of `v`; empty at the top level.
+ * @param out - Object that receives the entries (mutated).
+ * @returns `out`.
+ */
 export function flattenForRaw(v: JsonValue, prefix = '', out: Record<string, string | null> = {}): Record<string, string | null> {
   if (v !== null && typeof v === 'object' && !Array.isArray(v) && !(v instanceof JsonNumber)) {
     for (const k of Object.keys(v).sort()) flattenForRaw(v[k]!, prefix ? `${prefix}.${k}` : k, out);

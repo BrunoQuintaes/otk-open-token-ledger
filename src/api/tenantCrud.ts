@@ -5,7 +5,13 @@
  * Env bootstrap (OTK_TENANTS) acts as initial seed; runtime changes persist
  * to JSONL and survive restart.
  *
- * @module api/tenantCrud
+ * Called by the tenant administration routes in `src/api/routes.ts`. Every change updates the in-process token
+ * registry (`src/api/tenantKeyRegistry.ts`), the subject status used at authentication (`src/auth/subjectStatus.ts`)
+ * and queues the change for the shared registry (`src/auth/registryTokenAuthority.ts`); the route flushes the queue.
+ * Environment variable read: OTK_TENANT_LOG (path of the JSONL log; empty disables persistence). Loading the module
+ * replays that log. The CRUD audit chain kept here (`tenantAuditStatus`) is in memory only and restarts from zero.
+ *
+ * @module src/api/tenantCrud
  * @since S1.6 (Wave 1 Pack 1)
  */
 
@@ -23,11 +29,15 @@ import { queueRegistryTokenChange } from '../auth/registryTokenAuthority.js';
 
 /** Tenant record stored in the CRUD layer */
 export interface TenantRecord {
+  /** Tenant id (no `:` or `/`). */
   tenantId: string;
+  /** Role granted to the tenant's registry token. */
   role: TenantRole;
   /** Token is stored but never exposed in list/get responses */
   token: string;
+  /** ISO-8601 creation time. */
   createdAt: string;
+  /** ISO-8601 time of the last change. */
   updatedAt: string;
   /** Whether the tenant is active (soft-delete support) */
   active: boolean;
@@ -47,6 +57,7 @@ export interface TenantView {
   createdAt: string;
   updatedAt: string;
   active: boolean;
+  /** First 8 characters of the token followed by `...` (first 4 for tokens of 8 characters or fewer). */
   tokenPrefix: string; // first 8 chars + "..."
 }
 
@@ -62,6 +73,7 @@ const TENANT_LOG = process.env['OTK_TENANT_LOG'] ?? '';
 let _auditHead = '0000000000000000000000000000000000000000000000000000000000000000';
 let _auditCount = 0;
 
+// Advances the in-memory CRUD audit chain (hash of the previous head and the new record).
 function _appendAudit(action: string, tenantId: string, actor: string, meta?: Record<string, unknown>): void {
   const record: AuditRecord = {
     ts: new Date().toISOString(),
@@ -85,7 +97,11 @@ function _persistAll(): void {
   } catch { /* non-critical */ }
 }
 
-/** Append a single tenant record to JSONL. */
+/**
+ * Append a single tenant record to JSONL.
+ *
+ * @param record - Record to append; write errors are ignored.
+ */
 function _appendTenant(record: TenantRecord): void {
   if (!TENANT_LOG) return;
   try {
@@ -113,6 +129,7 @@ function _toView(r: TenantRecord): TenantView {
  * authority routes that prefix to the key store only, so such a registry token would never be shared between replicas.
  */
 const DYNAMIC_KEY_PREFIX = 'otk_k_';
+/** Error message returned when a registry token starts with the dynamic-key prefix. */
 export const RESERVED_PREFIX_ERROR = 'token prefix otk_k_ is reserved for dynamic keys';
 
 const VALID_ROLES: ReadonlySet<string> = new Set<TenantRole>([
@@ -151,6 +168,10 @@ if (TENANT_LOG) {
  * H1-S06 (INF05-F02): a token already bound to a tenant (registry entry from OTK_TENANTS/registerToken, or the token of
  * any CRUD record, active or deactivated) cannot be bound to another one. registerToken overwrites the binding, so
  * before this check POST /admin/tenants silently moved another tenant's token (and its charges) to the new tenant.
+ *
+ * @param token - Trimmed token to check.
+ * @param exceptTenantId - Tenant allowed to already hold the token (for updates).
+ * @returns Whether another tenant already holds the token.
  */
 function _tokenInUse(token: string, exceptTenantId?: string): boolean {
   if (isTokenRegistered(token)) {
@@ -164,6 +185,13 @@ function _tokenInUse(token: string, exceptTenantId?: string): boolean {
 /**
  * Create a new tenant.
  * Returns the created tenant view or an error string.
+ *
+ * Side effects: registers the token, queues it for the shared registry, appends to the JSONL log and the audit chain.
+ *
+ * @param params - Tenant id, registry token, role (default `OPERATOR`) and actor recorded in the audit (default
+ *   `system`); id and token are trimmed.
+ * @returns The new tenant's safe view, or `ok: false` with a reason (missing field, invalid role, reserved prefix,
+ *   existing tenant, token in use).
  */
 export function createTenant(params: {
   tenantId: string;
@@ -203,6 +231,9 @@ export function createTenant(params: {
 
 /**
  * Get a tenant by tenantId. Returns the safe view or undefined.
+ *
+ * @param tenantId - Tenant id.
+ * @returns The view (active or not), or `undefined`.
  */
 export function getTenant(tenantId: string): TenantView | undefined {
   const rec = _tenants.get(tenantId);
@@ -211,6 +242,9 @@ export function getTenant(tenantId: string): TenantView | undefined {
 
 /**
  * List all tenants (safe view — tokens masked).
+ *
+ * @param filter - Optional `active` and `role` filters.
+ * @returns Safe views of the matching tenants.
  */
 export function listTenants(filter?: {
   active?: boolean;
@@ -225,6 +259,13 @@ export function listTenants(filter?: {
 /**
  * Update a tenant (role or token).
  * Returns the updated view or an error string.
+ *
+ * Also handles deactivation (`active: false`) and reactivation (`active: true`). Side effects: re-registers the token,
+ * updates the subject status, queues registry changes and rewrites the JSONL log.
+ *
+ * @param params - Tenant id plus the fields to change, `restoreKeys` (default false) and actor (default `system`).
+ * @returns The updated view and, after a reactivation, the instant up to which dynamic keys stay refused (`null` when
+ *   restored); or `ok: false` with a reason.
  */
 export function updateTenant(params: {
   tenantId: string;
@@ -289,6 +330,9 @@ export function updateTenant(params: {
 /**
  * Delete (soft-deactivate) a tenant.
  * The tenant record is preserved but marked inactive. Token is revoked.
+ *
+ * @param params - Tenant id and actor (default `system`).
+ * @returns `ok: true`, or `ok: false` when the tenant is unknown.
  */
 export function deleteTenant(params: {
   tenantId: string;
@@ -321,6 +365,9 @@ export function deleteTenant(params: {
  * 404 for them and their credentials could not be cut. The subject status (shared through PostgreSQL) is the only
  * state written: no registry record and no token are created, so the identity of the organization is unchanged. The
  * caller (API route) checks that the tenant exists. Idempotent.
+ *
+ * @param params - Tenant id and actor (default `system`).
+ * @returns `ok: true` and whether the tenant was already inactive.
  */
 export function deactivateExternalTenant(params: { tenantId: string; actor?: string }): { ok: true; alreadyInactive: boolean } {
   const { tenantId, actor = 'system' } = params;
@@ -335,6 +382,10 @@ export function deactivateExternalTenant(params: { tenantId: string; actor?: str
  * H1R2 R-14: reactivate a tenant outside the registry (see deactivateExternalTenant). Same rules as updateTenant:
  * credentials issued before the deactivation stay invalid; POLICY PENDING (D4): unless restoreKeys, dynamic keys minted
  * up to the deactivation stay refused and are revoked by the route. keysRevokedThrough is the deactivation instant.
+ *
+ * @param params - Tenant id, `restoreKeys` (default false) and actor (default `system`).
+ * @returns `reactivated: null` when the tenant was not inactive; otherwise the ISO instant up to which dynamic keys stay
+ *   refused (`null` when restored).
  */
 export function reactivateExternalTenant(params: { tenantId: string; restoreKeys?: boolean; actor?: string }):
   { ok: true; reactivated: { keysRevokedThrough: string | null } | null } {
@@ -348,12 +399,20 @@ export function reactivateExternalTenant(params: { tenantId: string; restoreKeys
   return { ok: true, reactivated: { keysRevokedThrough: through } };
 }
 
-/** Get tenant CRUD audit head and count (for governance trail). */
+/**
+ * Get tenant CRUD audit head and count (for governance trail).
+ *
+ * @returns The in-memory chain head (64 hex characters) and the number of entries.
+ */
 export function tenantAuditStatus(): { auditHead: string; auditCount: number } {
   return { auditHead: _auditHead, auditCount: _auditCount };
 }
 
-/** Total tenant count (all statuses). */
+/**
+ * Total tenant count (all statuses).
+ *
+ * @returns Number of CRUD records, active or not.
+ */
 export function tenantCount(): number {
   return _tenants.size;
 }

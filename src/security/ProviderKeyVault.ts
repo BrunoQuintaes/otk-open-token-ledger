@@ -22,7 +22,12 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import { getVaultMasterKey } from '../infra/secretsBootstrap.js';
 
-/** Unambiguous map key of (tenant, provider): JSON array encoding, no delimiter collision. */
+/**
+ * Unambiguous map key of (tenant, provider): JSON array encoding, no delimiter collision.
+ *
+ * @param tenantId - Tenant ID (exact).
+ * @param provider - Provider name (lowercased in the key).
+ */
 function vaultKey(tenantId: string, provider: string): string {
   return JSON.stringify([tenantId, provider.toLowerCase()]);
 }
@@ -104,6 +109,11 @@ export class ProviderKeyVault {
   /**
    * Encrypt a plaintext API key with AES-256-GCM.
    * Returns base64-encoded encryptedKey, iv, and tag.
+   *
+   * A fresh random 16-byte IV is drawn for every call.
+   *
+   * @param plainKey - Key value to encrypt (UTF-8).
+   * @returns Ciphertext, IV and authentication tag, each base64.
    */
   encrypt(plainKey: string): { encryptedKey: string; iv: string; tag: string } {
     const iv = randomBytes(16);
@@ -120,6 +130,12 @@ export class ProviderKeyVault {
   /**
    * Decrypt a base64-encoded AES-256-GCM ciphertext.
    * Throws if authentication fails (tampered data or wrong key).
+   *
+   * @param encryptedKey - Base64 ciphertext.
+   * @param iv - Base64 IV used at encryption.
+   * @param tag - Base64 GCM authentication tag.
+   * @returns The plaintext key.
+   * @throws {Error} When authentication fails (tampered data, wrong master key or wrong IV/tag).
    */
   decrypt(encryptedKey: string, iv: string, tag: string): string {
     const ivBuf = Buffer.from(iv, 'base64');
@@ -136,6 +152,10 @@ export class ProviderKeyVault {
   /**
    * Encrypt and store an API key for a given tenant+provider.
    * Overwrites any existing key for the same tenant+provider.
+   *
+   * @param tenantId - Tenant ID.
+   * @param provider - Provider name (stored lowercase).
+   * @param plainKey - Key value; only its ciphertext is kept.
    */
   storeKey(tenantId: string, provider: string, plainKey: string): void {
     const { encryptedKey, iv, tag } = this.encrypt(plainKey);
@@ -153,6 +173,11 @@ export class ProviderKeyVault {
   /**
    * Retrieve and decrypt the API key for a given tenant+provider.
    * Returns null if no key exists for the combination.
+   *
+   * @param tenantId - Tenant ID.
+   * @param provider - Provider name (any letter case).
+   * @returns The plaintext key, or `null` when none is stored; callers must never log it.
+   * @throws {Error} When the stored entry cannot be decrypted (e.g. a different vault encryption key is loaded).
    */
   getKey(tenantId: string, provider: string): string | null {
     const entry = this.store.get(vaultKey(tenantId, provider));
@@ -163,6 +188,9 @@ export class ProviderKeyVault {
   /**
    * List all stored providers for a tenant, with keys masked (last 4 chars visible).
    * Safe for display in admin UIs.
+   *
+   * @param tenantId - Tenant ID (exact match).
+   * @returns One item per stored provider, in insertion order, with the key masked.
    */
   listKeys(tenantId: string): { provider: string; maskedKey: string }[] {
     const results: { provider: string; maskedKey: string }[] = [];
@@ -186,6 +214,10 @@ export class ProviderKeyVault {
   /**
    * Delete the key for a given tenant+provider.
    * Returns true if a key was found and deleted, false if not found.
+   *
+   * @param tenantId - Tenant ID.
+   * @param provider - Provider name (any letter case).
+   * @returns `true` when a key was deleted.
    */
   deleteKey(tenantId: string, provider: string): boolean {
     return this.store.delete(vaultKey(tenantId, provider));
@@ -199,6 +231,8 @@ let _vaultInstance: ProviderKeyVault | undefined;
 /**
  * Return the module-level ProviderKeyVault singleton.
  * The instance is created lazily on first call.
+ *
+ * @returns The shared vault (its constructor loads the vault encryption key, and warns when it is absent).
  */
 export function getVault(): ProviderKeyVault {
   if (!_vaultInstance) {

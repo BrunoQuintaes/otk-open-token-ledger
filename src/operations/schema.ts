@@ -10,10 +10,14 @@
  * Units: CU columns use the accounting scale ACCOUNTING_SCALE (10^6, micro-CU); money columns
  * use MONEY_SCALE (10^12, pico-USD). NUMERIC(78,0) holds any uint256.
  *
- * @module operations/schema
+ * Do not edit the SQL text of an existing migration: the `.sql` copies must stay byte-equal and databases
+ * already migrated would not see the change. Add a new migration instead.
+ *
+ * @module src/operations/schema
  */
 import { guardClient } from '../infra/pg/clientGuard.js';
 
+/** Ordered migrations of the durable runtime: version id (also the `.sql` file name) and its idempotent DDL. */
 export const D1D8_MIGRATIONS: ReadonlyArray<{ version: string; sql: string }> = Object.freeze([
   {
     version: '100_d1d8_operations',
@@ -363,7 +367,9 @@ CREATE TABLE IF NOT EXISTS otk_erasure_tombstones (
 export interface PgQueryable {
   query<R extends Record<string, unknown> = Record<string, unknown>>(text: string, params?: unknown[]): Promise<{ rows: R[]; rowCount: number | null }>;
 }
+/** A client checked out of a pool (for transactions); must be released. */
 export interface PgClientLike extends PgQueryable { release(err?: Error | boolean): void }
+/** A pool that can also hand out a dedicated client for a transaction. */
 export interface PgPoolLike extends PgQueryable { connect(): Promise<PgClientLike> }
 
 /** Every relation (table or index) the DDL above creates; kept equal to it by a unit test. */
@@ -400,6 +406,9 @@ export const D1D8_COLUMNS: ReadonlyArray<{ table: string; column: string }> = Ob
  * takes a ShareLock on its table, and a replica booting while others settle operations deadlocked
  * with them (observed in d1d8_c_proxy_durable, 2026-10-01). DDL that does run gives up after
  * `lock_timeout` instead of queueing behind traffic.
+ *
+ * @param pool - PostgreSQL pool (needs DDL rights when the schema is incomplete).
+ * @throws {Error} When a migration fails or a lock is not obtained within 10 s; the transaction is rolled back.
  */
 export async function ensureD1D8Schema(pool: PgPoolLike): Promise<void> {
   const present = await pool.query<{ n: string }>(

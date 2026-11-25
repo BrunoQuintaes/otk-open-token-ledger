@@ -8,6 +8,9 @@
  *   const safe = minimizeEvent(event, COMPLIANCE_PROFILES.STRICT);
  *   const auditRec = toComplianceAuditRecord(safe, tenantId, actor, nowIso);
  *
+ * Re-exports only. The bucketing helpers are imported from their own files.
+ *
+ * @module src/privacy/index
  * @since F2
  */
 

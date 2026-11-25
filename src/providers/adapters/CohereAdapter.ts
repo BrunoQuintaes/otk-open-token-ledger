@@ -53,6 +53,11 @@ export interface CohereChatResponse {
  * @param model      Model name as sent in the request (Cohere doesn't always echo it)
  * @param latencyMs  Request latency in milliseconds
  * @param timestamp  Unix timestamp in seconds
+ * @returns The normalized event; the model is lowercased and `requestId` is a random UUID when the
+ *   response has no `generation_id`.
+ * @throws {@link AdapterParseError} When no model name is available, `meta.tokens`/`meta.billed_units` are both
+ *   missing, or a token count is not a non-negative integer.
+ * @throws {@link CUError} From the cost engine, when the model is not in the weight table.
  */
 export function parseCohereResponse(
   response: CohereChatResponse,
@@ -116,10 +121,22 @@ export function parseCohereResponse(
 /**
  * CohereAdapter — IProviderAdapter implementation for Cohere API responses.
  * Used by ProviderRegistry when COHERE_API_KEY is set.
+ *
+ * Note: `ProviderRegistry.createDefault()` registers this adapter unconditionally; it does not read
+ * `COHERE_API_KEY`.
  */
 export class CohereAdapter implements IProviderAdapter {
   readonly providerId = 'cohere';
 
+  /**
+   * Parses a raw Cohere chat response; when it carries no model name, `command-r` is assumed.
+   *
+   * @param raw - Parsed JSON body of the Cohere response.
+   * @param latencyMs - Round-trip latency in milliseconds.
+   * @param timestamp - Unix timestamp in seconds to put in the event.
+   * @returns The normalized usage event.
+   * @throws {@link AdapterParseError} See {@link parseCohereResponse}.
+   */
   parseResponse(raw: unknown, latencyMs: number, timestamp: number): NormalizedUsageEvent {
     const body = raw as CohereChatResponse;
     const model = typeof body.model === 'string' ? body.model : 'command-r';

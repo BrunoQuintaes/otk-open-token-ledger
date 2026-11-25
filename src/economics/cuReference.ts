@@ -9,6 +9,12 @@
  * read any current price table, so a price change after the base period cannot change a CU computed here.
  * Not computable is never 0: an unknown model, a category without a profile price or an undefined reference
  * returns a status and cu = null.
+ *
+ * Pure: no I/O, no clock, no environment variables. Imported by the campaign analysis script
+ * (`scripts/pilot/campaign/analyzeCampaign.ts`); no runtime path in `src/` imports it at the evaluated version.
+ * The profile types live in `src/types/d1d8/cuReference.ts`.
+ *
+ * @module src/economics/cuReference
  */
 import type { Hex32, NormalizedUsage, Scaled } from '../types/d1d8/index.js';
 import type {
@@ -16,10 +22,13 @@ import type {
 } from '../types/d1d8/cuReference.js';
 import { domainDigest } from '../receipt/v3/canonicalEncoding.js';
 
+/** Domain separator of the profile digest. */
 export const CU_REFERENCE_PROFILE_DOMAIN = 'OTK_CU_REFERENCE_PROFILE_V1' as const;
+/** Formula version a profile must declare and results carry. */
 export const CU_REF_FORMULA = 'CU_REF_SUM_v1' as const;
 /** Label of the historical multiplicative profile (computeCu.ts). Kept for reading old receipts only. */
 export const CU_LEGACY_PROFILE_LABEL = 'development_legacy' as const;
+/** The disjoint usage categories a CU is summed over, in a fixed order. */
 export const CU_CANONICAL_CATEGORIES: readonly CuCanonicalCategory[] = Object.freeze([
   'input_uncached', 'input_cache_read', 'input_cache_write', 'output_visible', 'output_reasoning',
 ]);
@@ -30,7 +39,13 @@ const DEC = /^[0-9]+$/;
 const POS = /^[1-9][0-9]*$/;
 const SCALE = /^[1-9][0-9]*(\/[1-9][0-9]*)?$/;
 
-/** Exact scale as a fraction: "1" → 1/1, "1/1000" → 1/1000. */
+/**
+ * Exact scale as a fraction: "1" → 1/1, "1/1000" → 1/1000.
+ *
+ * @param scale - Positive integer `"n"` or positive fraction `"n/d"`, no leading zeros.
+ * @returns Numerator and denominator.
+ * @throws {@link CuProfileError} When the text is not in that form.
+ */
 export function parseScale(scale: string): { n: bigint; d: bigint } {
   if (typeof scale !== 'string' || !SCALE.test(scale)) throw new CuProfileError('scale must be a positive integer or a positive fraction "n/d"');
   const [n, d = '1'] = scale.split('/');
@@ -38,6 +53,7 @@ export function parseScale(scale: string): { n: bigint; d: bigint } {
 }
 const HEX64 = /^[0-9a-f]{64}$/;
 
+/** A reference profile failed validation; the message starts with `cu reference profile:`. */
 export class CuProfileError extends Error {
   constructor(message: string) { super(`cu reference profile: ${message}`); this.name = 'CuProfileError'; }
 }
@@ -52,7 +68,16 @@ function validateReference(r: CuReferenceDefinition, where: string): void {
   }
 }
 
-/** Structural validation. Throws CuProfileError; returns the profile unchanged when valid. */
+/**
+ * Structural validation. Throws CuProfileError; returns the profile unchanged when valid.
+ *
+ * Checks schema, formula, ids, base period and snapshot date, scale, the reference, every entry's price and
+ * archived source, aliases, and (when present or required by FINAL) that `derivedWeights` equal p / p_ref.
+ *
+ * @param p - Profile to check (not mutated).
+ * @returns The same object.
+ * @throws {@link CuProfileError} At the first rule the profile breaks.
+ */
 export function validateCuReferenceProfile(p: CuReferenceProfileV1): CuReferenceProfileV1 {
   if (!p || p.schema !== 'otk.cu.reference.v1') throw new CuProfileError('schema must be otk.cu.reference.v1');
   if (p.formulaVersion !== CU_REF_FORMULA) throw new CuProfileError(`formulaVersion must be ${CU_REF_FORMULA}`);
@@ -97,16 +122,27 @@ export function validateCuReferenceProfile(p: CuReferenceProfileV1): CuReference
   return p;
 }
 
-/** keccak256 over CE1 of the whole profile, domain OTK_CU_REFERENCE_PROFILE_V1. Any change → another digest. */
+/**
+ * keccak256 over CE1 of the whole profile, domain OTK_CU_REFERENCE_PROFILE_V1. Any change → another digest.
+ *
+ * @param p - Profile; validated first.
+ * @returns The 32-byte digest as hex.
+ * @throws {@link CuProfileError} When the profile is invalid.
+ */
 export function digestCuReferenceProfile(p: CuReferenceProfileV1): Hex32 {
   validateCuReferenceProfile(p);
   return domainDigest(CU_REFERENCE_PROFILE_DOMAIN, p) as Hex32;
 }
 
+/** Usage split into canonical categories, or why it could not be split. */
 export interface Decomposition {
+  /** False when the usage could not be decomposed; `quantities` is then partial. */
   ok: boolean;
+  /** Tokens per canonical category. */
   quantities: Record<CuCanonicalCategory, bigint>;
+  /** Why decomposition failed. */
   detail?: string;
+  /** Raw category with a non-zero count and no canonical mapping. */
   unsupportedCategory?: string;
 }
 
@@ -115,6 +151,10 @@ export interface Decomposition {
  * subsets are carved out of their base (OpenAI/Gemini cached input inside input; OpenAI reasoning inside output);
  * separate addends stand alone (Anthropic cache_read/cache_creation; Gemini thoughtsTokenCount).
  * A category reported as null was not reported (absent) and contributes nothing; it is never invented.
+ *
+ * @param u - Normalized usage.
+ * @returns The decomposition; `ok: false` when base input/output is missing, a count is negative, a subset
+ *   exceeds its base, or a non-zero raw category has no mapping.
  */
 export function decomposeUsage(u: NormalizedUsage): Decomposition {
   const q: Record<CuCanonicalCategory, bigint> = { input_uncached: 0n, input_cache_read: 0n, input_cache_write: 0n, output_visible: 0n, output_reasoning: 0n };
@@ -159,6 +199,10 @@ function priceOf(p: CuReferenceProfileV1, provider: string, model: string, cat: 
 /**
  * p_ref in micro-USD per MTok for a reference definition, or null when the reference is not in the profile. A real
  * reference may name a dated snapshot (e.g. gpt-4o-mini-2024-07-18): it is resolved through the profile's explicit aliases.
+ *
+ * @param p - Profile holding the prices.
+ * @param r - Reference definition (a profile entry or an abstract price).
+ * @returns p_ref in micro-USD per million tokens, or null.
  */
 export function referencePrice(p: CuReferenceProfileV1, r: CuReferenceDefinition): bigint | null {
   if (r.kind === 'abstract_price') return BigInt(r.priceMicroUsdPerMTok);
@@ -167,7 +211,12 @@ export function referencePrice(p: CuReferenceProfileV1, r: CuReferenceDefinition
   return e ? BigInt(e.priceMicroUsdPerMTok) : null;
 }
 
-/** w = p / p_ref for every entry, as irreducible fractions (empty when the profile has no reference). */
+/**
+ * w = p / p_ref for every entry, as irreducible fractions (empty when the profile has no reference).
+ *
+ * @param p - Profile.
+ * @returns One weight per entry, in entry order; empty when the reference is missing or not in the profile.
+ */
 export function derivedWeightsOf(p: CuReferenceProfileV1): NonNullable<CuReferenceProfileV1['derivedWeights']> {
   if (p.referenceDefinition === null) return [];
   const pRef = referencePrice(p, p.referenceDefinition);
@@ -178,6 +227,7 @@ export function derivedWeightsOf(p: CuReferenceProfileV1): NonNullable<CuReferen
   });
 }
 
+/** Options of `computeCuReference`. */
 export interface ComputeCuReferenceOptions {
   /** Explicit normalization when the profile has none (DN-01 open). The result is then labelled CANDIDATE. */
   reference?: CuReferenceDefinition;
@@ -185,6 +235,18 @@ export interface ComputeCuReferenceOptions {
   acceptCompleteness?: ReadonlyArray<NormalizedUsage['completeness']>;
 }
 
+/**
+ * Computes the reference CU of one observed usage under a frozen profile.
+ *
+ * Never throws: an invalid profile, refused completeness, unknown model or category, or a missing reference
+ * gives a result with `cu: null` and a status. The result is labelled FINAL only for a FINAL profile with its own
+ * reference; otherwise CANDIDATE. `cu` is rounded half up at 10^-9; `exact` keeps the irreducible fraction.
+ *
+ * @param usage - Normalized usage of one call.
+ * @param profile - Reference profile (validated here).
+ * @param opts - Explicit reference when the profile has none, and accepted completeness values.
+ * @returns The reference CU result.
+ */
 export function computeCuReference(usage: NormalizedUsage, profile: CuReferenceProfileV1, opts: ComputeCuReferenceOptions = {}): CuReferenceResult {
   let digest: Hex32;
   try { digest = digestCuReferenceProfile(profile); } catch (e) {
@@ -233,7 +295,13 @@ export function computeCuReference(usage: NormalizedUsage, profile: CuReferenceP
   return { ...base, status: 'computed', model, quantities, exact: { numerator: num.toString(), denominator: den.toString() }, cu };
 }
 
-/** Exact comparison of two computed results: a/b as an irreducible fraction (used to show scale invariance). */
+/**
+ * Exact comparison of two computed results: a/b as an irreducible fraction (used to show scale invariance).
+ *
+ * @param a - Numerator result.
+ * @param b - Denominator result.
+ * @returns The ratio, or null when either result has no exact value or `b` is zero.
+ */
 export function cuRatio(a: CuReferenceResult, b: CuReferenceResult): { numerator: string; denominator: string } | null {
   if (!a.exact || !b.exact) return null;
   let n = BigInt(a.exact.numerator) * BigInt(b.exact.denominator);
@@ -244,5 +312,10 @@ export function cuRatio(a: CuReferenceResult, b: CuReferenceResult): { numerator
   return { numerator: n.toString(), denominator: d.toString() };
 }
 
-/** Plain integer check for loaders (keeps numbers out of CE1). */
+/**
+ * Plain integer check for loaders (keeps numbers out of CE1).
+ *
+ * @param s - Any value.
+ * @returns True when `s` is a string of decimal digits.
+ */
 export function isDecimalString(s: unknown): s is string { return typeof s === 'string' && DEC.test(s); }

@@ -10,15 +10,23 @@
  * Route (wired into routes.ts):
  *   GET /demo — Demo sandbox HTML page (no auth)
  *
- * @module dashboard/demo
+ * The rows are generated once, when the module is loaded, for the 7 days ending on that day (UTC dates), so the
+ * dates move with the process start but the counts and CU values never change. Nothing is read from the
+ * receipt store, the accounting layer or the network.
+ *
+ * @module src/dashboard/demo
  * @since Wave 5 (W5-5C01 / P4.2)
  */
 
+/** One synthetic receipt of the demo dataset. */
 export interface DemoReceipt {
+  /** UTC day, `YYYY-MM-DD`. */
   date: string;
   provider: string;
   model: string;
+  /** Compute units of the request. */
   cu: number;
+  /** Latency in milliseconds. */
   latencyMs: number;
 }
 
@@ -45,7 +53,11 @@ export const DEMO_RECEIPTS: DemoReceipt[] = (() => {
   return rows;
 })();
 
-/** Aggregate demo stats from DEMO_RECEIPTS. */
+/**
+ * Aggregate demo stats from DEMO_RECEIPTS.
+ *
+ * @returns Total CU, receipt count, CU per day (`YYYY-MM-DD` key) and CU per `"provider / model"`.
+ */
 export function getDemoStats() {
   let totalCU = 0;
   const byDay = new Map<string, number>();
@@ -63,6 +75,11 @@ export function getDemoStats() {
 // Demo HTML
 // ---------------------------------------------------------------------------
 
+/**
+ * Renders the public demo dashboard as a complete HTML document.
+ *
+ * @returns The HTML text built from `getDemoStats()`.
+ */
 export function getDemoHtml(): string {
   const stats = getDemoStats();
   const days = Array.from(stats.byDay.entries()).sort(([a], [b]) => a.localeCompare(b));

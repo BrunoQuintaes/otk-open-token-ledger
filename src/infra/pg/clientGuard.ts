@@ -9,6 +9,8 @@
  * The guard listens for the whole checkout, remembers the error (the next query/COMMIT still fails, so callers keep
  * answering persistence_unavailable or spooling as before) and hands it to release(), which makes the pool destroy the
  * broken client instead of reusing it.
+ *
+ * @module src/infra/pg/clientGuard
  */
 interface GuardableClient {
   on?: (event: 'error', listener: (err: Error) => void) => unknown;
@@ -17,6 +19,7 @@ interface GuardableClient {
   release(err?: Error | boolean): void;
 }
 
+/** Handle returned by `guardClient` for one pool checkout. */
 export interface ClientGuard {
   /** The connection error seen during the checkout, if any. */
   readonly error: Error | null;
@@ -24,6 +27,13 @@ export interface ClientGuard {
   release(extra?: Error | boolean): void;
 }
 
+/**
+ * Starts guarding a checked-out pool client against connection errors.
+ *
+ * @param c - Pool client (anything with an optional `on`/`off` and a `release`).
+ * @param onError - Optional callback for the connection error (called for each one).
+ * @returns The guard; call its `release()` instead of the client's.
+ */
 export function guardClient(c: GuardableClient, onError?: (err: Error) => void): ClientGuard {
   let seen: Error | null = null;
   const listener = (err: Error) => { seen = err; onError?.(err); };

@@ -15,6 +15,11 @@
  *  - Operations freeze cfg.ref at admission; byRef() finds that exact table later (restart,
  *    recovery, audit) even after it expired or was replaced. A refresh never mutates a frozen
  *    config. revoke() removes a table from activation but keeps it in history, flagged.
+ *
+ * Side effects: the file store writes JSON files (atomic rename) under the directory it is given; the runtime
+ * itself reads no environment variable. The source of new tables is a function passed to `refresh()`.
+ *
+ * @module src/economics/cuWeightsRuntimeV2
  */
 import { mkdirSync, readFileSync, renameSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -22,21 +27,34 @@ import type { CuWeightsLoadStatus, IsoTime, VersionRef } from '../types/d1d8/ind
 import type { CuConfig } from '../types/d1d8/index.js';
 import { loadCuWeights } from './cuWeightsV2.js';
 
+/** Persistence of the active table, the history by digest and the revocation list (raw JSON values). */
 export interface CuWeightsSnapshotStore {
+  /** Returns the persisted active table, or null when none. */
   readActive(): unknown | null;
+  /** Persists `raw` as the active table. */
   writeActive(raw: unknown): void;
+  /** Returns the table stored under a digest, or null. */
   readHistory(digest: string): unknown | null;
+  /** Stores a table under its digest. */
   writeHistory(digest: string, raw: unknown): void;
+  /** Returns revoked digests mapped to the reason. */
   readRevoked(): Record<string, string>;
+  /** Replaces the revocation list. */
   writeRevoked(revoked: Record<string, string>): void;
 }
 
+/** What the table source returned: a raw table, or why it was unreachable. */
 export type SourceResult = { kind: 'ok'; raw: unknown } | { kind: 'unavailable'; reason: string };
 
+/** Current state of the weights runtime. */
 export interface CuWeightsRuntimeState {
+  /** `valid`, `source_unavailable_using_snapshot`, `expired`, `missing`, or a load status. */
   status: CuWeightsLoadStatus;
+  /** Configuration to use for new admissions; null means measurement-dependent admission must be refused. */
   active: CuConfig | null;
+  /** Where the active configuration came from. */
   activeSource: 'source' | 'snapshot' | 'previous' | null;
+  /** Explanation of the current status; null after a clean refresh. */
   reason: string | null;
   /** Why the table offered by a reachable source was not activated (distinct from an outage). */
   lastRejection: { status: CuWeightsLoadStatus | 'revoked' | 'downgrade'; reason: string } | null;
@@ -53,7 +71,16 @@ function readJson(path: string): unknown | null {
   try { return JSON.parse(readFileSync(path, 'utf8')); } catch { return null; }
 }
 
-/** File store: <dir>/active.json, <dir>/history/<digest>.json, <dir>/revoked.json (atomic writes). */
+/**
+ * File store: <dir>/active.json, <dir>/history/<digest>.json, <dir>/revoked.json (atomic writes).
+ *
+ * Creates `<dir>/history` immediately. Unreadable or invalid JSON files read as absent.
+ *
+ * @param dir - Directory that holds the files.
+ * @returns The store.
+ * @throws {Error} When the directory cannot be created; history calls throw `invalid digest` for a digest that is
+ *   not `0x` plus 64 lower-case hex characters.
+ */
 export function createFileSnapshotStore(dir: string): CuWeightsSnapshotStore {
   mkdirSync(join(dir, 'history'), { recursive: true });
   const safe = (d: string) => { if (!/^0x[0-9a-f]{64}$/.test(d)) throw new Error('invalid digest'); return d; };
@@ -67,6 +94,11 @@ export function createFileSnapshotStore(dir: string): CuWeightsSnapshotStore {
   };
 }
 
+/**
+ * In-memory store (tests and single-process use); values are deep-copied in and out.
+ *
+ * @returns The store.
+ */
 export function createMemorySnapshotStore(): CuWeightsSnapshotStore {
   let active: unknown | null = null;
   const history = new Map<string, unknown>();
@@ -81,6 +113,15 @@ export function createMemorySnapshotStore(): CuWeightsSnapshotStore {
   };
 }
 
+/**
+ * Creates a weights runtime following the policy described in the module comment.
+ *
+ * The returned object has `refresh(fetchSource)` (load from the source, persist when valid, return the new
+ * state), `state()`, `active()`, `byRef(ref)` (frozen table lookup) and `revoke(digest, reason)`.
+ *
+ * @param opts - Snapshot store, trusted and historical signers, clock (`now`, ISO time) and optional formula.
+ * @returns The runtime; its state starts as `missing` until the first refresh.
+ */
 export function createCuWeightsRuntime(opts: {
   store: CuWeightsSnapshotStore;
   trustedSigners: readonly string[];
@@ -107,7 +148,12 @@ export function createCuWeightsRuntime(opts: {
     return { status, active: r.config, activeSource: 'snapshot', reason, lastRejection };
   }
 
-  /** Keep the current active config (if still valid now) or fall back to the snapshot. */
+  /**
+   * Keep the current active config (if still valid now) or fall back to the snapshot.
+   *
+   * @param lastRejection - Why the offered table was not activated.
+   * @returns The new state.
+   */
   function keepPrevious(lastRejection: NonNullable<CuWeightsRuntimeState['lastRejection']>): CuWeightsRuntimeState {
     const prev = state.active && load(opts.store.readHistory(state.active.ref.digest), opts.now()).status === 'valid' ? state.active : null;
     if (prev && !isRevoked(prev)) return { status: 'valid', active: prev, activeSource: 'previous', reason: lastRejection.reason, lastRejection };
@@ -152,6 +198,9 @@ export function createCuWeightsRuntime(opts: {
     /**
      * Exact table frozen by an operation, verified as of its own validFrom against current and
      * historical signers (key rotation must not make frozen history unreadable).
+     *
+     * @param ref - Version and digest frozen by the operation.
+     * @returns The configuration and whether it is revoked, or null when not found or not verifiable.
      */
     byRef(ref: VersionRef): { config: CuConfig; revoked: boolean } | null {
       const raw = opts.store.readHistory(ref.digest) as Record<string, unknown> | null;

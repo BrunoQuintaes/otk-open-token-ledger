@@ -11,7 +11,11 @@
  *   OTK_SMTP_PASS   — SMTP auth password (optional)
  *   OTK_EMAIL_FROM  — Default from address (default: noreply@otk.io)
  *
- * @module email/SmtpEmailAdapter
+ * `createSmtpAdapterFromEnv()` is called by `src/infra/storeBootstrap.ts`. `nodemailer` is loaded on the first send;
+ * when it is missing every send returns `ok: false`. Port 465 uses implicit TLS. Credentials are passed to the
+ * transport only and are never logged.
+ *
+ * @module src/email/SmtpEmailAdapter
  * @since Wave 4 (W4-SMTP)
  * @see ADR-0301-email-adapter.md
  */
@@ -29,19 +33,27 @@ interface MailTransporter {
   }): Promise<{ messageId?: string }>;
 }
 
+/** SMTP connection settings. */
 export interface SmtpAdapterOpts {
+  /** SMTP server host name. */
   host: string;
+  /** SMTP port (465 means implicit TLS). */
   port: number;
+  /** Login user; without it no authentication is sent. */
   user?: string;
   pass?: string;
+  /** Default sender address. */
   from: string;
 }
 
+/** Email adapter that sends through an SMTP server. */
 export class SmtpEmailAdapter implements IEmailAdapter {
   private readonly _from: string;
   private readonly _transport: MailTransporter;
 
   /**
+   * Creates the adapter; no connection is opened until the first send.
+   *
    * @param opts    SMTP connection options
    * @param transport  Optional pre-built transport (for testing / DI).
    *                   When omitted, a nodemailer SMTP transport is created.
@@ -100,6 +112,12 @@ export class SmtpEmailAdapter implements IEmailAdapter {
     };
   }
 
+  /**
+   * Sends one message through the transport.
+   *
+   * @param msg - Message to send; `from` defaults to the adapter's sender.
+   * @returns `ok: true` with the transport's message id, or `ok: false` with the error message (never rejects).
+   */
   async send(msg: EmailMessage): Promise<EmailResult> {
     try {
       const info = await this._transport.sendMail({
@@ -119,6 +137,8 @@ export class SmtpEmailAdapter implements IEmailAdapter {
 /**
  * Factory: reads OTK_SMTP_* environment variables.
  * Returns null when OTK_SMTP_HOST is not set (caller should fall back to ConsoleEmailAdapter).
+ *
+ * @returns An adapter configured from the environment, or null.
  */
 export function createSmtpAdapterFromEnv(): SmtpEmailAdapter | null {
   const host = process.env['OTK_SMTP_HOST'];

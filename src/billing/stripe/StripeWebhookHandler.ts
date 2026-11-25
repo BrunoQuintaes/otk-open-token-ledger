@@ -7,6 +7,15 @@
  *   invoice.finalized            → BILL-06: update billing cycle status + notify tenant
  *   customer.subscription.deleted → downgrade tenant to FREE
  *
+ * As implemented at this version, `invoice.payment_succeeded` and `invoice.finalized` only send an e-mail
+ * through the configured adapter (no plan or billing-cycle change); only checkout completion and subscription
+ * deletion change the plan. Any other event type is acknowledged as `ignored`.
+ *
+ * Called by the Stripe webhook route in `src/api/routes.ts`, after that route has verified the signature with
+ * `StripeClient.constructWebhookEvent`; this class does NOT verify signatures. Side effects: plan writes through
+ * `PlanRegistry.applyStripePlanEvent`, e-mails through `getEmailAdapter()`, and the Prometheus counter
+ * `stripeWebhookEventsTotal`.
+ *
  * All handlers are idempotent — safe to retry on duplicate delivery.
  *
  * H1-S03 (FA-02, INF02-O1, INF02-O2; OTK-H1-MEGA 2026-10-13):
@@ -22,7 +31,7 @@
  * H1R2 R-07/R-11: the subscription id of the event goes to the store, which orders events per subscription and
  * against the last administrative decision (admin_superseded_ignored / other_subscription_ignored; see IPlanStore).
  *
- * @module billing/stripe/StripeWebhookHandler
+ * @module src/billing/stripe/StripeWebhookHandler
  * @since Wave 4 (4C-PACK-4C02 / P4.5), updated W7-C (BILL-06)
  */
 
@@ -37,8 +46,11 @@ import type { StripeSkipReason } from '../IPlanStore.js';
 // Stripe event shape (minimal — only fields we use)
 // ──────────────────────────────────────────────────────────
 
+/** The parts of a verified Stripe event that the handler reads. */
 export interface StripeEvent {
+  /** Stripe event type, e.g. `checkout.session.completed`. */
   type: string;
+  /** Stripe event id (`evt_…`); each id is applied at most once. */
   id: string;
   /** Unix seconds (Stripe sets it on every event; used to refuse out-of-order plan changes). */
   created?: number;
@@ -51,10 +63,15 @@ export interface StripeEvent {
 // Handler result
 // ──────────────────────────────────────────────────────────
 
+/** What the handler did with one event; the route maps it to the HTTP answer. */
 export interface WebhookHandleResult {
+  /** False when the event was refused or failed. */
   ok: boolean;
+  /** The event type. */
   event: string;
+  /** Outcome code, e.g. `plan_activated`, `stale_ignored`, `missing_metadata`, `plan_store_unavailable`. */
   action: string;
+  /** Tenant named by the event, when one was found. */
   tenantId?: string;
   /** H1-S03: transient failure (plan store); the event was not applied and must be redelivered (HTTP 503). */
   retryable?: boolean;
@@ -73,6 +90,9 @@ const SKIP_ACTION: Readonly<Record<StripeSkipReason, string>> = {
  * H1R2 R-07/R-11: Stripe subscription the event is about — `subscription` of a checkout session (id or expanded
  * object), `id` of a subscription object (customer.subscription.*). Undefined when absent: the store then falls back
  * to the tenant-wide H1-S03 order.
+ *
+ * @param event - The Stripe event.
+ * @returns The subscription id, or undefined when the event names none.
  */
 function subscriptionIdOf(event: StripeEvent): string | undefined {
   const o = event.data?.object ?? {};
@@ -89,17 +109,22 @@ function subscriptionIdOf(event: StripeEvent): string | undefined {
 // StripeWebhookHandler
 // ──────────────────────────────────────────────────────────
 
+/** Optional dependencies of `StripeWebhookHandler`. */
 export interface StripeWebhookHandlerOptions {
   /** H1-S03b: refuse events whose metadata names an unknown tenant (no phantom plan rows). */
   tenantExists?: (tenantId: string) => Promise<boolean>;
 }
 
+/** Applies verified Stripe events to tenant plans and sends billing e-mails. */
 export class StripeWebhookHandler {
   constructor(private readonly _opts: StripeWebhookHandlerOptions = {}) {}
 
   /**
    * Dispatch a parsed Stripe event to the appropriate handler.
    * Returns a result descriptor. Never throws — errors are captured in result.
+   *
+   * @param event - A Stripe event whose signature was already verified.
+   * @returns The outcome; `retryable: true` means the route should answer 503 so Stripe redelivers.
    */
   async handle(event: StripeEvent): Promise<WebhookHandleResult> {
     let r: WebhookHandleResult;
@@ -131,6 +156,15 @@ export class StripeWebhookHandler {
   }
 
   /** Apply a plan change at most once per event id, atomically with the event record (H1-S03b). */
+  /**
+   * Applies the plan change carried by a Stripe event.
+   *
+   * @param event - The Stripe event carrying the change.
+   * @param tenantId - Tenant from the event metadata.
+   * @param tier - Tier to apply (FREE for a cancellation).
+   * @param action - Outcome code returned when the change is applied.
+   * @returns The outcome; store failures and unknown tenants on an upgrade are `retryable`.
+   */
   private async _applyPlan(event: StripeEvent, tenantId: string, tier: PlanTier, action: string): Promise<WebhookHandleResult> {
     // H1 R-08 (adversarial review): a downgrade is always applied (a deactivated tenant must not come back paid);
     // an upgrade for a tenant this replica does not know is retried (503), not acknowledged and lost

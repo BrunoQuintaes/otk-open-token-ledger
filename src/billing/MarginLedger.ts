@@ -16,7 +16,10 @@
  * The marginRate is applied to providerCostUsd (not to collectedUsd) to avoid
  * circular dependency. This is a simple cost-plus model.
  *
- * @module billing/MarginLedger
+ * Pure functions, no I/O. No caller in `src/` at the evaluated version; `BillingCycleWorker`
+ * uses its own margin rates.
+ *
+ * @module src/billing/MarginLedger
  * @since W7-C (BILL-07)
  */
 
@@ -29,18 +32,22 @@ const MARGIN_RATES: Record<PlanTier, number> = {
   PRO:     0.20,
 };
 
+/** Breakdown of one margin computation; every amount is in USD (float). */
 export interface MarginResult {
   providerCostUsd: number;
+  /** Fraction applied to the provider cost (0.30 means 30 %). */
   marginRate: number;
   marginUsd: number;
+  /** What the tenant pays: `providerCostUsd + marginUsd`. */
   collectedUsd: number;
 }
 
 /**
  * Compute the OTK margin for a given plan tier and provider cost.
  *
- * @param tier            Plan tier
- * @param providerCostUsd Provider cost in USD (from CostBridge)
+ * @param tier - Plan tier; an unknown tier gets a 0 margin rate.
+ * @param providerCostUsd - Provider cost in USD (from CostBridge).
+ * @returns The rate, the margin and the collected total.
  */
 export function computeMarginDetails(tier: PlanTier, providerCostUsd: number): MarginResult {
   const marginRate = MARGIN_RATES[tier] ?? 0;
@@ -51,6 +58,10 @@ export function computeMarginDetails(tier: PlanTier, providerCostUsd: number): M
 
 /**
  * Convenience: return only the margin USD amount.
+ *
+ * @param tier - Plan tier; an unknown tier gets a 0 margin rate.
+ * @param providerCostUsd - Provider cost in USD.
+ * @returns The margin in USD.
  */
 export function computeMargin(tier: PlanTier, providerCostUsd: number): number {
   return computeMarginDetails(tier, providerCostUsd).marginUsd;
@@ -59,7 +70,10 @@ export function computeMargin(tier: PlanTier, providerCostUsd: number): number {
 /**
  * Aggregate P&L over a set of billing cycles.
  *
- * @returns { totalProviderCost, totalMargin, totalCollected }
+ * The margin is taken from each cycle as stored, not recomputed; `planTier` is not read.
+ *
+ * @param cycles - Cycles with `totalUsd` (provider cost) and `marginUsd`, both in USD.
+ * @returns Sums in USD: provider cost, margin and their total (`totalCollected`).
  */
 export function aggregatePnL(
   cycles: Array<{ planTier: string; totalUsd: number; marginUsd: number }>,

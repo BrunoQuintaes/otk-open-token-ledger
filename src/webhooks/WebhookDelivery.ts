@@ -21,16 +21,24 @@ import { createSafeWebhookHttpPost } from './destinationPolicy.js';
 // Types
 // ──────────────────────────────────────────────────────────
 
+/**
+ * JSON body sent to a webhook endpoint.
+ */
 export interface WebhookPayload {
   event: string;
+  /** Send time in Unix seconds (also sent in the X-OTK-Timestamp header and signed). */
   timestamp: number;
   data: unknown;
 }
 
+/**
+ * Outcome of one delivery attempt; `ok` only for an HTTP 2xx status.
+ */
 export interface DeliveryResult {
   ok: boolean;
   statusCode?: number;
   error?: string;
+  /** Wall-clock time of the attempt in milliseconds. */
   durationMs?: number;
 }
 
@@ -41,11 +49,30 @@ export type HttpPostFn = (url: string, headers: Record<string, string>, body: st
 // HMAC signing
 // ──────────────────────────────────────────────────────────
 
+/**
+ * Computes the X-OTK-Signature value: HMAC-SHA256 of `<timestamp>.<body>` with the endpoint secret.
+ *
+ * @param secret - Endpoint signing secret.
+ * @param body - Exact JSON body sent.
+ * @param timestamp - Unix seconds sent in X-OTK-Timestamp.
+ * @returns `sha256=` followed by the lowercase hex HMAC.
+ */
 export function signWebhookPayload(secret: string, body: string, timestamp: number): string {
   const signingKey = `${timestamp}.${body}`;
   return 'sha256=' + crypto.createHmac('sha256', secret).update(signingKey).digest('hex');
 }
 
+/**
+ * Checks a received signature in constant time (receiver side).
+ *
+ * Note: it does not check how old `timestamp` is; a receiver that wants replay protection must do that.
+ *
+ * @param secret - Endpoint signing secret.
+ * @param body - Exact body received.
+ * @param timestamp - Value of the X-OTK-Timestamp header.
+ * @param signature - Value of the X-OTK-Signature header.
+ * @returns `true` only when the signature matches.
+ */
 export function verifyWebhookSignature(secret: string, body: string, timestamp: number, signature: string): boolean {
   const expected = signWebhookPayload(secret, body, timestamp);
   try {
@@ -68,6 +95,9 @@ const defaultHttpPost: HttpPostFn = createSafeWebhookHttpPost();
 // WebhookDelivery
 // ──────────────────────────────────────────────────────────
 
+/**
+ * Sends signed webhook events; the default transport is the SSRF-guarded one from `destinationPolicy.ts`.
+ */
 export class WebhookDelivery {
   private _httpPost: HttpPostFn;
 
@@ -77,6 +107,13 @@ export class WebhookDelivery {
 
   /**
    * Deliver an event to a single endpoint.
+   *
+   * Network call to the endpoint URL. Never rejects: transport errors are returned in `error`.
+   *
+   * @param endpoint - Destination and signing secret.
+   * @param eventKind - Event name (also sent in X-OTK-Event).
+   * @param data - Event data, serialized as JSON.
+   * @returns The attempt outcome.
    */
   async deliver(endpoint: WebhookEndpoint, eventKind: string, data: unknown): Promise<DeliveryResult> {
     const timestamp = Math.floor(Date.now() / 1000);
@@ -108,6 +145,13 @@ export class WebhookDelivery {
 
   /**
    * Build a delivery log entry from a delivery result.
+   *
+   * @param endpointId - Endpoint ID.
+   * @param eventKind - Event name.
+   * @param body - Body text to record.
+   * @param attempt - Attempt number (1-based).
+   * @param result - Outcome of the attempt.
+   * @returns A new log entry (random ID, current time).
    */
   buildDeliveryLog(
     endpointId: string,

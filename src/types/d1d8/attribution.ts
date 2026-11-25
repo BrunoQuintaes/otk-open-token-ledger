@@ -21,9 +21,14 @@
  * the receipt digest (domain OTK_ATTRIBUTION_V1), like the conference report. otk.receipt.v3 keeps its frozen
  * shape (D1D8_SCHEMA_IDS: a new shape gets a new id), so every receipt signed before keeps verifying. A later
  * correction would be a new statement that names the one it supersedes, never an edit of a signed one.
+ *
+ * @module src/types/d1d8/attribution
  */
 import type { Hex32, IsoTime, OperationKey } from './common.js';
 
+/**
+ * Attribution of one operation; every field is optional (`null` = not attributed at that level).
+ */
 export interface OperationAttribution {
   projectId: string | null;
   applicationId: string | null;
@@ -32,6 +37,9 @@ export interface OperationAttribution {
   teamId: string | null;
 }
 
+/**
+ * Operator-signed statement that binds an attribution to one private receipt.
+ */
 export interface AttributionStatementV1 {
   schema: 'otk.attribution.v1';
   key: OperationKey;

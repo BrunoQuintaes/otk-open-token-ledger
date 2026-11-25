@@ -12,16 +12,21 @@
  *   rss_kb        — delta resident set size (KB)
  *   external_kb   — delta external memory (KB)
  *
- * @module ResourceProfiler
+ * Used by the benchmark script `scripts/benchmark/u9_bench_v2.ts`. Reads no environment variable. CPU and memory are
+ * process-wide, so concurrent work in the same process is included in the deltas.
+ *
+ * @module src/bench/ResourceProfiler
  * @since U9.2
  */
 
+/** Raw readings taken by `snapshot`. */
 export interface ResourceSnapshot {
   cpu: NodeJS.CpuUsage;
   mem: NodeJS.MemoryUsage;
   hrtime: [number, number]; // [seconds, nanoseconds]
 }
 
+/** Differences between two snapshots, rounded to 4 decimals (units in the field names; `elapsed_ms` is wall time). */
 export interface ResourceDelta {
   cpu_user_ms: number;
   cpu_sys_ms: number;
@@ -35,12 +40,15 @@ export interface ResourceDelta {
 const US_TO_MS = 1 / 1000;
 const BYTES_TO_KB = 1 / 1024;
 
+// Rounds to 4 decimal places.
 function r4(x: number): number {
   return Math.round(x * 10000) / 10000;
 }
 
 /**
  * Take a snapshot of current process resources.
+ *
+ * @returns CPU usage (µs), memory usage (bytes) and a high-resolution time.
  */
 export function snapshot(): ResourceSnapshot {
   return {
@@ -52,6 +60,10 @@ export function snapshot(): ResourceSnapshot {
 
 /**
  * Compute delta between two snapshots.
+ *
+ * @param before - Earlier snapshot.
+ * @param after - Later snapshot.
+ * @returns The deltas in ms and KB (memory deltas may be negative after garbage collection).
  */
 export function delta(before: ResourceSnapshot, after: ResourceSnapshot): ResourceDelta {
   // CPU delta computed from the two snapshots:
@@ -79,6 +91,9 @@ export function delta(before: ResourceSnapshot, after: ResourceSnapshot): Resour
 
 /**
  * Profile an async operation, returning both its result and resource delta.
+ *
+ * @param fn - Operation to measure.
+ * @returns The operation's result and the resource deltas.
  */
 export async function profileAsync<T>(
   fn: () => Promise<T>
@@ -91,6 +106,9 @@ export async function profileAsync<T>(
 
 /**
  * Profile a sync operation, returning both its result and resource delta.
+ *
+ * @param fn - Operation to measure.
+ * @returns The operation's result and the resource deltas.
  */
 export function profileSync<T>(
   fn: () => T
@@ -109,6 +127,9 @@ export const RESOURCE_CSV_HEADER =
 
 /**
  * Serialize a ResourceDelta to CSV row (no newline).
+ *
+ * @param d - Deltas to serialize.
+ * @returns Comma-separated values in `RESOURCE_CSV_HEADER` order.
  */
 export function resourceDeltaToCsvRow(d: ResourceDelta): string {
   return [

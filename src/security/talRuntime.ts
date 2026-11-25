@@ -20,6 +20,8 @@ let _tal: AccountingLayer = new TokenAccountingLayer();
 /**
  * Returns the process-level accounting layer singleton.
  * May be a TokenAccountingLayer (in-memory) or RedisTAL (distributed).
+ *
+ * @returns The current accounting layer (in-memory unless replaced with `setAccountingLayer`).
  */
 export function getAccountingLayer(): AccountingLayer {
   return _tal;
@@ -33,6 +35,12 @@ export function getAccountingLayer(): AccountingLayer {
  * N11: balance shared by every instance. With RedisTAL this reads the Redis total (the
  * synchronous balance() is this process's memory only, which after a restart or on another
  * replica is 0); with the in-memory TAL it is the same as balance().
+ *
+ * Order: the durable source when installed (its errors fall back), then the Redis total, then memory.
+ *
+ * @param tenantId - Tenant ID.
+ * @param epochId - Epoch ID.
+ * @returns The balance from the first available source.
  */
 export async function sharedBalance(tenantId: string, epochId: string): Promise<ReturnType<AccountingLayer['balance']>> {
   // RV30-02: with PostgreSQL the durable ledger is the source every instance reads; Redis and
@@ -47,11 +55,22 @@ export async function sharedBalance(tenantId: string, epochId: string): Promise<
 type BalanceSource = (tenantId: string, epochId: string) => Promise<ReturnType<AccountingLayer['balance']>>;
 let _durableSource: BalanceSource | null = null;
 
-/** Install (or remove with null) the durable balance source (receiptStore, Postgres mode). */
+/**
+ * Install (or remove with null) the durable balance source (receiptStore, Postgres mode).
+ *
+ * @param source - Function that reads the durable balance, or `null` to remove it.
+ */
 export function setDurableBalanceSource(source: BalanceSource | null): void {
   _durableSource = source;
 }
 
+/**
+ * Replaces the process-wide accounting layer (e.g. with a `RedisTAL` once Redis is ready).
+ *
+ * Entries already recorded in the previous layer are not copied.
+ *
+ * @param tal - New accounting layer.
+ */
 export function setAccountingLayer(tal: AccountingLayer): void {
   _tal = tal;
 }

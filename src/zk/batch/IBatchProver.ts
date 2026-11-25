@@ -11,6 +11,8 @@
  *
  * Feature flag: Set BATCHING_ENABLED=true to enable batch mode in SDK.
  *
+ * Environment variable read: `BATCHING_ENABLED` (once, at module load).
+ *
  * @module IBatchProver
  * @since U12.1
  */
@@ -18,6 +20,9 @@
 // ---------------------------------------------------------------------------
 // Feature flag
 // ---------------------------------------------------------------------------
+/**
+ * `true` when the environment variable `BATCHING_ENABLED` is exactly `true` at module load.
+ */
 export const BATCHING_ENABLED =
   process.env['BATCHING_ENABLED'] === 'true';
 
@@ -74,6 +79,9 @@ export interface BatchProofResult {
   estimatedGasSavings: GasSavingsEstimate;
 }
 
+/**
+ * Estimated gas of a batch compared with individual submissions (gas units, estimates only).
+ */
 export interface GasSavingsEstimate {
   individualGasTotal: number;  // N × 290_620
   batchGasEstimate: number;    // 290_620 + ΔB (future: single proof for all)
@@ -85,6 +93,9 @@ export interface GasSavingsEstimate {
 // IBatchProver interface
 // ---------------------------------------------------------------------------
 
+/**
+ * Strategy that turns several circuit inputs into proofs, with a gas estimate.
+ */
 export interface IBatchProver {
   /** Unique strategy identifier */
   readonly strategyId: string;
@@ -120,6 +131,9 @@ export interface IBatchProver {
 // BatchError
 // ---------------------------------------------------------------------------
 
+/**
+ * Raised by batch provers; `code` is one of {@link BATCH_ERROR}.
+ */
 export class BatchError extends Error {
   readonly code: string;
   constructor(code: string, message: string) {
@@ -129,6 +143,9 @@ export class BatchError extends Error {
   }
 }
 
+/**
+ * Stable codes carried by {@link BatchError}.
+ */
 export const BATCH_ERROR = {
   BATCH_TOO_LARGE: 'BATCH_TOO_LARGE',
   BATCH_EMPTY: 'BATCH_EMPTY',
@@ -147,6 +164,10 @@ export const GAS_PER_ZK_RECEIPT = 290_620;
  * Compute GasSavingsEstimate for a batch.
  * For sequential batching: no gas savings, but demonstrates the interface.
  * For zkRollup batching: batchGasEstimate = 290_620 + ΔB (future work).
+ *
+ * @param batchSize - Number of receipts in the batch.
+ * @param batchGasEstimate - Estimated gas of the batch; default = no savings.
+ * @returns Individual total, batch estimate, savings (never negative) and savings percentage (2 decimals).
  */
 export function computeGasSavings(
   batchSize: number,

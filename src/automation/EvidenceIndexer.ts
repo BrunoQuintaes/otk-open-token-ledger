@@ -23,13 +23,17 @@
  *     hasDesign: boolean
  *   }
  *
- * @module automation/EvidenceIndexer
+ * Called by `src/api/routes.ts` (`runIndexer`, which WRITES `docs/_ops/INDEX.json`). Only two directory levels are
+ * scanned (phase / EVD); every sub-directory of a phase counts as an EVD. Reads no environment variable.
+ *
+ * @module src/automation/EvidenceIndexer
  * @since Wave 6 (P5.1)
  */
 
 import { readdirSync, existsSync, writeFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 
+/** One evidence directory found under the ops folder (fields described in the file header). */
 export interface EvidenceEntry {
   path: string;
   phase: string;
@@ -40,6 +44,7 @@ export interface EvidenceEntry {
   hasDesign: boolean;
 }
 
+/** The whole index written to `INDEX.json`. */
 export interface EvidenceIndex {
   generatedAt: string;
   totalEvds: number;
@@ -49,7 +54,12 @@ export interface EvidenceIndex {
 const OPS_DIR_NAME = join('docs', '_ops');
 const INDEX_FILE_NAME = 'INDEX.json';
 
-/** Detect which phase a directory belongs to from its path components. */
+/**
+ * Detect which phase a directory belongs to from its path components.
+ *
+ * @param relPath - Repo-relative path of the EVD (platform separators).
+ * @returns The phase folder name, or `unknown`.
+ */
 function detectPhase(relPath: string): string {
   const parts = relPath.split(sep);
   // First segment after docs/_ops/ is the phase
@@ -57,7 +67,13 @@ function detectPhase(relPath: string): string {
   return 'unknown';
 }
 
-/** Scan a single EVD directory and produce an entry. */
+/**
+ * Scan a single EVD directory and produce an entry.
+ *
+ * @param absPath - Absolute EVD path.
+ * @param repoRoot - Repository root, used to make the path relative.
+ * @returns The entry; an unreadable directory gives an empty file list.
+ */
 function scanEvd(absPath: string, repoRoot: string): EvidenceEntry {
   const relPath = relative(repoRoot, absPath) + sep;
   const name = absPath.split(sep).pop() ?? absPath;
@@ -81,7 +97,12 @@ function scanEvd(absPath: string, repoRoot: string): EvidenceEntry {
   };
 }
 
-/** Recursively find all EVD directories under opsDir (non-recursive: just 2 levels). */
+/**
+ * Recursively find all EVD directories under opsDir (non-recursive: just 2 levels).
+ *
+ * @param opsDir - Absolute path of the ops folder.
+ * @returns Absolute EVD paths (empty when the folder does not exist).
+ */
 function findEvds(opsDir: string): string[] {
   const evds: string[] = [];
   if (!existsSync(opsDir)) return evds;
@@ -113,7 +134,12 @@ function findEvds(opsDir: string): string[] {
   return evds;
 }
 
-/** Build and return the evidence index without writing to disk. */
+/**
+ * Build and return the evidence index without writing to disk.
+ *
+ * @param repoRoot - Repository root.
+ * @returns The index, sorted by path.
+ */
 export function buildIndex(repoRoot: string): EvidenceIndex {
   const opsDir = join(repoRoot, OPS_DIR_NAME);
   const evdPaths = findEvds(opsDir);
@@ -129,7 +155,13 @@ export function buildIndex(repoRoot: string): EvidenceIndex {
   };
 }
 
-/** Build index and write it to docs/_ops/INDEX.json. */
+/**
+ * Build index and write it to docs/_ops/INDEX.json.
+ *
+ * @param repoRoot - Repository root (default: the current working directory).
+ * @returns The index that was written.
+ * @throws {Error} When the index file cannot be written.
+ */
 export function runIndexer(repoRoot: string = process.cwd()): EvidenceIndex {
   const index = buildIndex(repoRoot);
   const outPath = join(repoRoot, OPS_DIR_NAME, INDEX_FILE_NAME);

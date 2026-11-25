@@ -11,11 +11,17 @@
  * This is a complementary layer to CostUnits.ts:
  *   CostUnits  → deterministic internal CU (ZK-compatible, bigint, cross-provider index)
  *   CostBridge → fiat USD cost (economic reporting, FGV dissertation evidence)
+ *
+ * Floating-point USD, prices in USD per 1000 tokens. Not used for the durable money ledger (which uses frozen
+ * price tables and integer pico-USD). The async version may read Redis through `PriceStore.ts`.
+ *
+ * @module src/pricing/economics/CostBridge
  */
 
 import { PROVIDER_PRICE_TABLE } from "./ProviderPriceTable.js";
 import { getPrice } from "../PriceStore.js";
 
+/** Token usage of one call (tokens). Provider and model are matched case-insensitively. */
 export type CostBridgeInput = {
   provider: string;
   model: string;
@@ -23,6 +29,7 @@ export type CostBridgeInput = {
   outputTokens: number;
 };
 
+/** USD cost split by input and output, with the price source used. Provider and model are lower-cased. */
 export type CostBridgeResult = {
   inputCostUsd: number;
   outputCostUsd: number;
@@ -36,6 +43,10 @@ export type CostBridgeResult = {
  * Calculate USD cost for a token usage record.
  * Checks PriceStore first (live Redis prices), falls back to static seed.
  * Async to support PriceStore Redis lookup.
+ *
+ * @param input - Provider, model and token counts.
+ * @returns The cost and whether a live or seed price was used.
+ * @throws {Error} When no live price exists and the provider or model is not in the seed table.
  */
 export async function calculateUsdCost(input: CostBridgeInput): Promise<CostBridgeResult> {
   const providerLower = input.provider.toLowerCase();
@@ -87,6 +98,10 @@ export async function calculateUsdCost(input: CostBridgeInput): Promise<CostBrid
 /**
  * Synchronous version using seed only (for backward compat with callers that can't await).
  * Does NOT consult PriceStore. Use calculateUsdCost() for live prices.
+ *
+ * @param input - Provider, model and token counts.
+ * @returns The cost from the seed table.
+ * @throws {Error} When the provider or model is not in the seed table.
  */
 export function calculateUsdCostSync(input: CostBridgeInput): Omit<CostBridgeResult, 'priceSource'> & { priceSource: 'seed' } {
   const providerLower = input.provider.toLowerCase();

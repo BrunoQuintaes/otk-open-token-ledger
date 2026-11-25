@@ -2,15 +2,32 @@
  * Serialização determinística do relatório (JSON e CSV) e saída para humanos do comando.
  * O JSON é JSON.stringify com 2 espaços + "\n": a ordem das chaves é a da construção em core.ts,
  * igual no Node e no navegador. sha256 sobre os bytes UTF-8 desse texto.
+ *
+ * (English) Deterministic serialization of the verification report (JSON and CSV) and the human-readable
+ * output of the command; the visible texts are in Portuguese.
+ *
+ * @module src/verifier/report
  */
 import { ethers } from 'ethers';
 import { NAO_GARANTE, TEXTOS, VERDICT_LABEL } from './textos.js';
 import type { VerificationReport } from './types.js';
 
+/**
+ * Serializes a report as JSON indented with 2 spaces plus a final newline.
+ *
+ * @param r - Report to serialize.
+ * @returns The JSON text.
+ */
 export function serializeReport(r: VerificationReport): string {
   return JSON.stringify(r, null, 2) + '\n';
 }
 
+/**
+ * SHA-256 of the UTF-8 bytes of {@link serializeReport}.
+ *
+ * @param r - Report.
+ * @returns Lowercase hex digest without `0x`.
+ */
 export function reportSha256(r: VerificationReport): string {
   return ethers.sha256(ethers.toUtf8Bytes(serializeReport(r))).slice(2);
 }
@@ -22,7 +39,12 @@ function csvCell(v: unknown): string {
   return /[",;\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
 
-/** CSV para planilha (separador ";" — padrão do Excel em português; "\r\n"; BOM fica a cargo de quem grava). */
+/**
+ * CSV para planilha (separador ";" — padrão do Excel em português; "\r\n"; BOM fica a cargo de quem grava).
+ *
+ * @param r - Report.
+ * @returns CSV text (header and one row per item); cells that start like a formula are prefixed with `'`.
+ */
 export function reportToCsv(r: VerificationReport): string {
   const head = ['id', 'tipo', 'arquivo', 'linha', 'veredito', 'codigo', 'o_que_aconteceu', 'data', 'provedor', 'modelo', 'tokens', 'cu', 'chave', 'assinado_em', 'somado', 'avisos'];
   const rows = r.items.map((it) => [
@@ -36,7 +58,12 @@ export function reportToCsv(r: VerificationReport): string {
   return [head, ...rows].map((row) => row.map(csvCell).join(';')).join('\r\n') + '\r\n';
 }
 
-/** Saída para humanos do `otk verify` (sem cores; o comando pinta se o terminal suportar). */
+/**
+ * Saída para humanos do `otk verify` (sem cores; o comando pinta se o terminal suportar).
+ *
+ * @param r - Report.
+ * @returns Plain multi-line text (Portuguese).
+ */
 export function renderHuman(r: VerificationReport): string {
   const out: string[] = [];
   out.push('Verificador de recibos OTK ' + r.verifierVersion);

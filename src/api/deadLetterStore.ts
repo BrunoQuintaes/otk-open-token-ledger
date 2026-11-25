@@ -4,7 +4,10 @@
  * Thin async wrapper over IDeadLetterStore singleton.
  * Backend selected by storeBootstrap (Memory default, PG when configured).
  *
- * @module api/deadLetterStore
+ * Every function here delegates to `getDeadLetterStore()` from `src/api/IDeadLetterStore.ts`, so callers do
+ * not depend on which backend is installed.
+ *
+ * @module src/api/deadLetterStore
  * @since S1.5 (Wave 1 Pack 1), refactored Wave 3A (PACK 3A-01)
  */
 
@@ -22,6 +25,10 @@ export type { DeadLetterEntry, DeadLetterStatus };
 
 /**
  * Add an item to the dead-letter store.
+ *
+ * @param params - The failed payload (as a string), the error message, the reason category, the component that
+ *   produced it and, when known, the owning tenant.
+ * @returns The stored entry, with status `pending`.
  */
 export async function addDeadLetter(params: {
   originalPayload: string;
@@ -33,12 +40,23 @@ export async function addDeadLetter(params: {
   return getDeadLetterStore().add(params);
 }
 
-/** Get a single dead-letter entry by id. */
+/**
+ * Get a single dead-letter entry by id.
+ *
+ * @param id - Entry id.
+ * @returns The entry, or `null` when unknown.
+ */
 export async function getDeadLetter(id: string): Promise<DeadLetterEntry | null> {
   return getDeadLetterStore().get(id);
 }
 
-/** List dead-letter entries, optionally filtered by status/reason/tenantId. */
+/**
+ * List dead-letter entries, optionally filtered by status/reason/tenantId.
+ *
+ * @param filter - Optional `status`, `reason` and `tenantId` filters and a `limit`; without a filter every entry
+ *   is returned.
+ * @returns The matching entries; when `reason` is given the limit is applied after the reason filter.
+ */
 export async function listDeadLetters(filter?: {
   status?: DeadLetterStatus;
   reason?: DeadLetterReason;
@@ -58,28 +76,50 @@ export async function listDeadLetters(filter?: {
   return entries;
 }
 
-/** Mark a dead-letter entry as retried. */
+/**
+ * Mark a dead-letter entry as retried.
+ *
+ * @param id - Entry id.
+ * @returns The updated entry, or `null` when unknown.
+ */
 export async function markRetried(id: string): Promise<DeadLetterEntry | null> {
   return getDeadLetterStore().markRetried(id);
 }
 
-/** Mark a dead-letter entry as discarded. */
+/**
+ * Mark a dead-letter entry as discarded.
+ *
+ * @param id - Entry id.
+ * @returns The updated entry, or `null` when unknown.
+ */
 export async function markDiscarded(id: string): Promise<DeadLetterEntry | null> {
   return getDeadLetterStore().markDiscarded(id);
 }
 
-/** Total count of dead-letter entries. */
+/**
+ * Total count of dead-letter entries.
+ *
+ * @param tenantId - When given, counts only this tenant's entries.
+ * @returns Number of entries.
+ */
 export async function deadLetterCount(tenantId?: string): Promise<number> {
   return getDeadLetterStore().count(tenantId);
 }
 
-/** Count of pending (unresolved) dead-letter entries. */
+/**
+ * Count of pending (unresolved) dead-letter entries.
+ *
+ * @param tenantId - When given, counts only this tenant's entries.
+ * @returns Number of entries with status `pending`.
+ */
 export async function pendingCount(tenantId?: string): Promise<number> {
   return getDeadLetterStore().pendingCount(tenantId);
 }
 
 /**
  * Clear all dead-letter entries.
+ *
+ * @returns Resolves once the store is empty.
  * @internal Test only
  */
 export async function clearDeadLettersForTest(): Promise<void> {

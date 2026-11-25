@@ -12,6 +12,11 @@ import { MemoryTeamStore } from './TeamModel.js';
 
 let _store: ITeamStore | undefined;
 
+/**
+ * Returns the process-wide team store, creating an in-memory one on first use.
+ *
+ * @returns The shared store.
+ */
 export function getTeamStore(): ITeamStore {
   if (!_store) {
     _store = new MemoryTeamStore();
@@ -19,7 +24,11 @@ export function getTeamStore(): ITeamStore {
   return _store;
 }
 
-/** Override the singleton — used in tests or when PgTeamStore is wired. */
+/**
+ * Override the singleton — used in tests or when PgTeamStore is wired.
+ *
+ * @param store - Backend to use from now on.
+ */
 export function setTeamStore(store: ITeamStore): void {
   _store = store;
 }

@@ -15,6 +15,9 @@
 import { writeFileSync, appendFileSync, readFileSync, existsSync } from 'node:fs';
 import { chainHash, sha256Hex, type AuditRecord } from './AuditLogChain.js';
 
+/**
+ * Governance event types recorded in the trail.
+ */
 export type GovernanceAction =
   | 'tenant_created'
   | 'tenant_updated'
@@ -23,6 +26,9 @@ export type GovernanceAction =
   | 'key_rotated'
   | 'config_changed';
 
+/**
+ * One governance event, as given by the caller.
+ */
 export interface GovernanceEvent {
   ts: string;           // ISO-8601
   tenantId: string;
@@ -31,6 +37,9 @@ export interface GovernanceEvent {
   meta?: Record<string, unknown>;
 }
 
+/**
+ * A governance event as stored in the trail, with its position and chain hash.
+ */
 export interface GovernanceEntry extends GovernanceEvent {
   /** Sequential index in the chain. */
   seq: number;
@@ -40,6 +49,12 @@ export interface GovernanceEntry extends GovernanceEvent {
 
 const GENESIS_HASH = sha256Hex('governance-genesis');
 
+/**
+ * Hash-chained list of governance events, kept in memory and optionally appended to a JSONL file.
+ *
+ * The file path comes from the constructor option or the `OTK_GOVERNANCE_LOG` environment variable; an
+ * existing file is loaded at construction. Disk errors are ignored (the in-memory trail stays usable).
+ */
 export class GovernanceTrail {
   private entries: GovernanceEntry[] = [];
   private lastHash: string = GENESIS_HASH;
@@ -56,6 +71,12 @@ export class GovernanceTrail {
    * Append a governance event to the trail.
    * Returns the new entry with seq and chain hash.
    * H2.6: Also delegates to IGovernanceStore when a PG/Redis backend is active.
+   *
+   * Side effects: appends one line to the log file (when configured) and, asynchronously and without
+   * waiting, to the shared governance store.
+   *
+   * @param event - Event to record (copied into the entry).
+   * @returns The new entry; `seq` is 0-based here.
    */
   append(event: GovernanceEvent): GovernanceEntry {
     const auditRecord: AuditRecord = {
@@ -93,6 +114,12 @@ export class GovernanceTrail {
 
   /**
    * List all governance events, optionally filtered by tenantId.
+   *
+   * Note: without a filter the internal array itself is returned frozen, so a later `append()` on the same
+   * trail fails (TypeError on a frozen array); pass a filter or copy the result if more events will follow.
+   *
+   * @param filter - Optional tenant and action filters (both must match).
+   * @returns The matching entries, frozen.
    */
   list(filter?: { tenantId?: string; action?: GovernanceAction }): readonly GovernanceEntry[] {
     let result: GovernanceEntry[] = this.entries;
@@ -107,6 +134,7 @@ export class GovernanceTrail {
 
   /**
    * Get the total number of events.
+   * @returns Number of events in memory.
    */
   count(): number {
     return this.entries.length;
@@ -114,6 +142,7 @@ export class GovernanceTrail {
 
   /**
    * Get the latest chain hash.
+   * @returns The hash of the last event, or the genesis hash when empty.
    */
   headHash(): string {
     return this.lastHash;
@@ -121,6 +150,7 @@ export class GovernanceTrail {
 
   /**
    * Verify chain integrity. Returns true if no tampering detected.
+   * @returns `true` when every hash matches its recomputed value.
    */
   verifyIntegrity(): boolean {
     let prevHash = GENESIS_HASH;
@@ -189,6 +219,7 @@ let _singleton: GovernanceTrail | undefined;
 
 /**
  * Get or create the process-level GovernanceTrail singleton.
+ * @returns The shared trail (created on the first call; it may read the log file then).
  */
 export function getGovernanceTrail(): GovernanceTrail {
   if (!_singleton) {

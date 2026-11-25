@@ -9,7 +9,12 @@
  *
  * Call bootstrapSecrets() once from server.ts before starting the HTTP server.
  *
- * @module infra/secretsBootstrap
+ * Full list of variables read (names only): `OTK_ADMIN_KEY`, `OTK_JWT_SECRET`, `OTK_STRIPE_SECRET_KEY`,
+ * `OTK_STRIPE_WEBHOOK_SECRET`, `OTK_VAULT_MASTER_KEY`, `OTK_V3_OPERATOR_KEY`, `OTK_V3_SUBMITTER_KEY`,
+ * `OTK_STRIPE_PRICE_IDS`, `OTK_METRICS_TOKEN` and `OTK_GDPR_NOTIFY_EMAIL`. Only the names of loaded secrets are
+ * logged, never their values. Every getter falls back to the environment variable when bootstrap has not run.
+ *
+ * @module src/infra/secretsBootstrap
  * @since Wave 3 audit fix (AUD-005)
  */
 
@@ -30,6 +35,8 @@ let _bootstrapped = false;
 /**
  * Read credential env vars, register in SecretsManager, cache for sync access.
  * Safe to call multiple times — only runs once.
+ *
+ * @throws {Error} When the secrets provider rejects a `setSecret` call (bootstrap then stays incomplete).
  */
 export async function bootstrapSecrets(): Promise<void> {
   if (_bootstrapped) return;
@@ -96,6 +103,8 @@ export async function bootstrapSecrets(): Promise<void> {
  * Sync getter — returns cached admin key.
  * Falls back to process.env for backward compat in tests where bootstrap wasn't called.
  * At runtime, bootstrapSecrets() is always called first so the cache is populated.
+ *
+ * @returns The admin key, or undefined when not configured.
  */
 export function getAdminKey(): string | undefined {
   return _adminKey ?? process.env['OTK_ADMIN_KEY'];
@@ -104,6 +113,8 @@ export function getAdminKey(): string | undefined {
 /**
  * Sync getter — returns cached JWT secret.
  * Falls back to process.env for backward compat in tests where bootstrap wasn't called.
+ *
+ * @returns The JWT signing secret, or undefined when not configured.
  */
 export function getCachedJwtSecret(): string | undefined {
   return _jwtSecret ?? process.env['OTK_JWT_SECRET'];
@@ -112,6 +123,8 @@ export function getCachedJwtSecret(): string | undefined {
 /**
  * Sync getter — returns cached Stripe secret key.
  * Falls back to process.env for backward compat in tests where bootstrap wasn't called.
+ *
+ * @returns The Stripe secret key, or undefined when not configured.
  */
 export function getStripeSecretKey(): string | undefined {
   return _stripeSecretKey ?? process.env['OTK_STRIPE_SECRET_KEY'];
@@ -120,6 +133,8 @@ export function getStripeSecretKey(): string | undefined {
 /**
  * Sync getter — returns cached Stripe webhook signing secret.
  * Falls back to process.env for backward compat in tests where bootstrap wasn't called.
+ *
+ * @returns The Stripe webhook signing secret, or undefined when not configured.
  */
 export function getStripeWebhookSecret(): string | undefined {
   return _stripeWebhookSecret ?? process.env['OTK_STRIPE_WEBHOOK_SECRET'];
@@ -128,6 +143,8 @@ export function getStripeWebhookSecret(): string | undefined {
 /**
  * Sync getter — returns cached vault master key.
  * Falls back to process.env for backward compat in tests where bootstrap wasn't called.
+ *
+ * @returns The vault master key, or undefined when not configured.
  */
 export function getVaultMasterKey(): string | undefined {
   return _vaultMasterKey ?? process.env['OTK_VAULT_MASTER_KEY'];
@@ -136,22 +153,36 @@ export function getVaultMasterKey(): string | undefined {
 /**
  * Sync getter — returns cached Stripe price IDs JSON string.
  * Falls back to process.env for backward compat in tests where bootstrap wasn't called.
+ *
+ * @returns The JSON text of the tier-to-price map, or undefined.
  */
 export function getStripePriceIds(): string | undefined {
   return _stripePriceIds ?? process.env['OTK_STRIPE_PRICE_IDS'];
 }
 
-/** D1–D8 v3 operator signing key (receipts, conferences, public authorizations). */
+/**
+ * D1–D8 v3 operator signing key (receipts, conferences, public authorizations).
+ *
+ * @returns The key, or undefined when not configured.
+ */
 export function getV3OperatorKey(): string | undefined {
   return _v3OperatorKey ?? process.env['OTK_V3_OPERATOR_KEY'];
 }
 
-/** D1–D8 v3 on-chain submitter key (pays gas; distinct from the operator key). */
+/**
+ * D1–D8 v3 on-chain submitter key (pays gas; distinct from the operator key).
+ *
+ * @returns The key, or undefined when not configured.
+ */
 export function getV3SubmitterKey(): string | undefined {
   return _v3SubmitterKey ?? process.env['OTK_V3_SUBMITTER_KEY'];
 }
 
-/** STOPGATE-01 P1.2: metrics scraper bearer (deployed environments). Empty value = not configured. */
+/**
+ * STOPGATE-01 P1.2: metrics scraper bearer (deployed environments). Empty value = not configured.
+ *
+ * @returns The token, or undefined.
+ */
 export function getMetricsToken(): string | undefined {
   return _metricsToken ?? (process.env['OTK_METRICS_TOKEN'] || undefined);
 }
@@ -159,6 +190,8 @@ export function getMetricsToken(): string | undefined {
 /**
  * STOPGATE-01 P1.4 (S23-F04): recipient of the GDPR export notification (config, not a secret). Unset = no
  * notification (it used to go to a fixed external address).
+ *
+ * @returns The trimmed address, or undefined when unset or blank.
  */
 export function getGdprNotifyEmail(): string | undefined {
   const v = (process.env['OTK_GDPR_NOTIFY_EMAIL'] ?? '').trim();

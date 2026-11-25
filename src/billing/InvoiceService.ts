@@ -6,7 +6,12 @@
  *
  * USD-05: Added unitPriceUsd, lineUsd, totalUsd using CostBridge seed prices.
  *
- * @module billing/InvoiceService
+ * Reads the tenant's entries for one epoch from the token accounting layer (`talRuntime`), groups them by
+ * provider and model, prices each group with the seed prices of `CostBridge` and compares the CU total with the
+ * plan's CU quota from `PlanRegistry`. Pure computation over in-memory data: it does NOT persist the invoice,
+ * send it or charge anyone.
+ *
+ * @module src/billing/InvoiceService
  * @since S2.2 (Wave 1 Pack 6)
  */
 
@@ -16,9 +21,13 @@ import { calculateUsdCostSync } from '../pricing/economics/CostBridge.js';
 
 /** Invoice line item (per model) */
 export interface InvoiceLineItem {
+  /** Provider id as recorded in the accounting entry. */
   provider: string;
+  /** Model id as recorded in the accounting entry. */
   model: string;
+  /** Number of accounting entries in this group. */
   requestCount: number;
+  /** Compute units of the group. */
   totalCU: bigint;
   unitPriceUsd: number;   // USD-05: USD per 1K input tokens (seed price)
   lineUsd: number;        // USD-05: total line USD cost
@@ -27,10 +36,13 @@ export interface InvoiceLineItem {
 /** Invoice summary for a tenant+epoch */
 export interface Invoice {
   tenantId: string;
+  /** Accounting epoch the invoice covers. */
   epochId: string;
   planTier: PlanTier;
+  /** Generation time, ISO 8601. */
   generatedAt: string;
   lineItems: InvoiceLineItem[];
+  /** Sum of the line items' compute units. */
   totalCU: bigint;
   totalRequests: number;
   totalUsd: number;       // USD-05: sum of all lineUsd
@@ -40,6 +52,13 @@ export interface Invoice {
 /**
  * Generate an invoice for a tenant and epoch.
  * Aggregates TAL entries by provider+model.
+ *
+ * A model with no seed price gets `lineUsd` and `unitPriceUsd` 0 (the pricing error is ignored). Entries without
+ * token counts add 0 tokens. `quotaUsedPct` is an integer percentage that can exceed 100.
+ *
+ * @param tenantId - Tenant to bill.
+ * @param epochId - Accounting epoch to read.
+ * @returns The invoice; `totalCU` and line `totalCU` are bigint (use `serializeInvoice` before JSON).
  */
 export function generateInvoice(tenantId: string, epochId: string): Invoice {
   const tal = getAccountingLayer();
@@ -128,6 +147,9 @@ export function generateInvoice(tenantId: string, epochId: string): Invoice {
 
 /**
  * Serialize an invoice to JSON-safe format (bigints → strings).
+ *
+ * @param invoice - Invoice from `generateInvoice`; not mutated.
+ * @returns A shallow copy with `totalCU` fields as decimal strings.
  */
 export function serializeInvoice(invoice: Invoice): Record<string, unknown> {
   return {

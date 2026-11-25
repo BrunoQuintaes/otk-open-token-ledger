@@ -10,7 +10,11 @@
  *
  * Reports recovery summary with counts and consistency status.
  *
- * @module automation/CrashRecovery
+ * Each source (receipt log, proof queue log, counts, chain head) is injected through `CrashRecoveryDeps`; the class
+ * only reads files and compares counts. Reads no environment variable. In this version no module under `src/`
+ * constructs it (only tests).
+ *
+ * @module src/automation/CrashRecovery
  * @since Wave 2 Pack 17 (S4.4)
  */
 
@@ -18,13 +22,21 @@ import { existsSync, readFileSync } from 'node:fs';
 
 /** Recovery summary */
 export interface RecoverySummary {
+  /** Distinct requestIds found in the receipt log. */
   receiptsRestored: number;
+  /** Proof jobs whose last snapshot in the queue log is pending or processing. */
   jobsRestored: number;
+  /** `false` when the store holds fewer receipts than the log. */
   talConsistent: boolean;
+  /** `false` when the persisted chain head differs from the current one. */
   chainHeadValid: boolean;
+  /** Whether the auto-loop was restarted. */
   autoLoopResumed: boolean;
+  /** Problems found (read errors and inconsistencies). */
   errors: string[];
+  /** ISO-8601 time the check finished. */
   recoveredAt: string;
+  /** Duration of the check in ms. */
   durationMs: number;
 }
 
@@ -68,6 +80,8 @@ export class CrashRecoveryManager {
   /**
    * Execute the recovery check sequence.
    * Returns a RecoverySummary with all recovery details.
+   *
+   * @returns The summary (also kept as `lastSummary`). Problems are reported in `errors`, never thrown.
    */
   recover(): RecoverySummary {
     const startMs = Date.now();
@@ -133,7 +147,11 @@ export class CrashRecoveryManager {
     return summary;
   }
 
-  /** Get the last recovery summary (null if recover() not called). */
+  /**
+   * Get the last recovery summary (null if recover() not called).
+   *
+   * @returns The last summary, or `null`.
+   */
   get lastSummary(): RecoverySummary | null {
     return this._summary;
   }
@@ -143,6 +161,10 @@ export class CrashRecoveryManager {
   /**
    * Count the number of unique receipt requestIds in a JSONL file.
    * Uses a Set to deduplicate (JSONL may have multiple snapshots).
+   *
+   * @param filePath - Receipt log path.
+   * @param errors - Receives a message when the file cannot be read.
+   * @returns Number of distinct requestIds (0 when the file does not exist).
    */
   private _countJsonlLines(filePath: string, errors: string[]): number {
     if (!existsSync(filePath)) {
@@ -170,6 +192,10 @@ export class CrashRecoveryManager {
   /**
    * Count unique pending/processing proof jobs in a JSONL queue log.
    * Only counts jobs that would be restored as pending (not done/dead_letter).
+   *
+   * @param filePath - Proof queue log path.
+   * @param errors - Receives a message when the file cannot be read.
+   * @returns Number of pending or processing jobs (0 when the file does not exist).
    */
   private _countJsonlJobs(filePath: string, errors: string[]): number {
     if (!existsSync(filePath)) {
@@ -204,6 +230,11 @@ export class CrashRecoveryManager {
   /**
    * Check TAL consistency.
    * After JSONL replay, receipt count in store should match unique receipts in log.
+   *
+   * @param storeCount - Receipts in the store.
+   * @param logCount - Distinct receipts in the log.
+   * @param errors - Receives a message when inconsistent.
+   * @returns `true` when there is no log or the store holds at least as many receipts.
    */
   private _checkTalConsistency(
     storeCount: number,
@@ -224,6 +255,9 @@ export class CrashRecoveryManager {
   /**
    * Check chain head continuity.
    * If persisted chain head is available, compare with current.
+   *
+   * @param errors - Receives a message on a mismatch.
+   * @returns `true` when no head was persisted or the heads are equal.
    */
   private _checkChainHead(errors: string[]): boolean {
     if (!this._deps.persistedChainHead) return true; // No persisted head — skip

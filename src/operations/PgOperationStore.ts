@@ -13,7 +13,13 @@
  * converts held → confirmed; held_uncertain keeps the exposure; released returns it. Effects
  * passed in `extras.enqueue` are written in the same transaction (outbox).
  *
- * @module operations/PgOperationStore
+ * Units: CU amounts are bigint accounting units (micro-CU, `ACCOUNTING_SCALE`); money amounts are bigint
+ * pico-USD (`MONEY_SCALE`), both from `src/operations/accounting.ts`. Built by `src/operations/runtime.ts`.
+ * Tables: `otk_operations`, quota/budget/ledger tables (via `ledger.ts`), `otk_money_ledger`,
+ * `otk_erasure_tombstones`, attribution tables (via `attribution.ts`) and `otk_outbox`. Reads no
+ * environment variables; quota and budget policy come from {@link PgOperationStoreOptions}.
+ *
+ * @module src/operations/PgOperationStore
  */
 import type {
   AdmitRequest, AdmitResult, DurableOperation, IsoTime, OperationKey, OperationStore,
@@ -30,21 +36,40 @@ import { returnedModelAllowed, serviceTierMatches } from './moneyBound.js';
 import type { PgClientLike, PgPoolLike } from './schema.js';
 import { guardClient } from '../infra/pg/clientGuard.js';
 
+/** Thrown by a transition when the (tenant, operation) row does not exist. */
 export class OperationNotFoundError extends Error {
+  /**
+   * Builds the error naming the missing operation.
+   *
+   * @param key - Tenant and operation id.
+   */
   constructor(key: OperationKey) { super(`operation ${key.tenantId}/${key.operationId} not found`); this.name = 'OperationNotFoundError'; }
 }
 /** A second debit for an identity already in the ledger (logic error, never an outage). */
 export class LedgerIdentityError extends Error {
+  /**
+   * Builds the error naming the duplicated ledger identity.
+   *
+   * @param id - The ledger identity that already exists.
+   */
   constructor(id: string) { super(`ledger identity ${id} already exists: refusing a second debit`); this.name = 'LedgerIdentityError'; }
 }
 
+/** Thrown when a transition's expected revision is not the stored one (another writer moved first). */
 export class RevisionConflictError extends Error {
+  /**
+   * Builds the error; the caller can retry from `current`.
+   *
+   * @param current - The operation as currently stored.
+   * @param expected - The revision the caller expected.
+   */
   constructor(readonly current: DurableOperation, expected: bigint) {
     super(`revision conflict: expected ${expected}, current ${current.revision}`);
     this.name = 'RevisionConflictError';
   }
 }
 
+/** Policy hooks of {@link PgOperationStore}. */
 export interface PgOperationStoreOptions {
   /** Plan quota of the tenant in accounting units (null = no hard limit). */
   quotaFor(tenantId: string): bigint | null;
@@ -60,19 +85,28 @@ export interface PgOperationStoreOptions {
    * every admission reserves against it as well (same row lock, same worst-case reservation as any budget).
    */
   globalBudgetId?: string | null;
+  /** Clock used for the quota epoch and timestamps (default: system clock). Tests inject a fixed one. */
   now?: () => Date;
 }
 
+/** An operation plus the storage-side columns that are not part of the public operation record. */
 export interface OperationDetail {
   operation: DurableOperation;
+  /** Quota epoch frozen at admission. */
   epochId: string;
+  /** CU reserved at admission, accounting units (micro-CU). */
   reservedUnits: bigint;
+  /** Money reserved at admission, pico-USD; `null` when no money reservation was made. */
   reservedMoney: bigint | null;
+  /** Settlement or freeze note; `null` until one is recorded. */
   settlementNote: SettlementNote | null;
+  /** Auxiliary local token count (numbers only); `null` when none was recorded. */
   localCount: LocalCountResult | null;
+  /** Current execution lease; `null` when none was taken or its columns are cleared. */
   lease: { owner: string; until: IsoTime } | null;
 }
 
+/** Extra writes made in the same transaction as a state transition. */
 export interface TransitionExtras {
   /** Effects written in the same transaction (outbox). */
   enqueue?: EnqueueInput[];
@@ -87,20 +121,37 @@ type Row = OperationRow & {
   local_count: unknown; settlement_note: string | null; owner: string | null; lease_until: Date | null;
 } & Record<string, unknown>;
 
-/** Errors that come from our own rules, not from the database being unavailable. */
+/**
+ * Errors that come from our own rules, not from the database being unavailable.
+ *
+ * @param err - Any thrown value.
+ * @returns `true` for rule/programming errors (re-thrown), `false` for errors treated as an outage.
+ */
 function isLogicError(err: unknown): boolean {
   const n = (err as Error | null)?.name;
   return n === 'ScaleLossError' || n === 'IllegalTransitionError' || n === 'RangeError' || n === 'CodecError' || n === 'LedgerIdentityError';
 }
 
-/** Short, secret-free description of a database error (code + message head), for logs. */
+/**
+ * Short, secret-free description of a database error (code + message head), for logs.
+ *
+ * @param err - Any thrown value.
+ * @returns `<code>: <first 160 characters of the message>`.
+ */
 function errorDetail(err: unknown): string {
   const e = err as { code?: string; message?: string } | null;
   return `${e?.code ?? 'no_code'}: ${String(e?.message ?? err).slice(0, 160)}`;
 }
 
+/** PostgreSQL implementation of the `OperationStore` contract (admission, transitions, leases). */
 export class PgOperationStore implements OperationStore {
   private readonly now: () => Date;
+  /**
+   * Binds the store to a pool and its policy options.
+   *
+   * @param pool - PostgreSQL pool; transactions take a dedicated client from it.
+   * @param opts - Quota, epoch and money-budget policy.
+   */
   constructor(private readonly pool: PgPoolLike, private readonly opts: PgOperationStoreOptions) {
     this.now = opts.now ?? (() => new Date());
   }
@@ -121,6 +172,19 @@ export class PgOperationStore implements OperationStore {
     }
   }
 
+  /**
+   * Admits a new operation and reserves its CU (and money, when given) in one transaction.
+   *
+   * Outcomes other than `admitted` reserve nothing: `existing`, `conflict`, `erased`,
+   * `attribution_rejected`, `quota_exceeded`, `money_budget_required`, `money_policy_required`,
+   * `budget_exceeded`, or `persistence_unavailable` (database failure; `detail` carries a short
+   * secret-free cause). A unique-key race is retried once and then answered as existing/conflict.
+   *
+   * @param req - The admission request; its reservation must be in state `held`.
+   * @returns The admission outcome.
+   * @throws {RangeError} When the reservation is not `held`, an amount is negative, or the currency is not USD.
+   * @throws {@link ScaleLossError} When an amount cannot be converted to the accounting/money scale exactly.
+   */
   async admit(req: AdmitRequest): Promise<AdmitResult> {
     // Programming errors (bad scale, negative amounts) surface as exceptions, not as outages.
     const reservedUnits = toAccountingUnits(req.reservation.cu);
@@ -241,11 +305,23 @@ export class PgOperationStore implements OperationStore {
     return { outcome: 'admitted', operation: decodeOperationRow(ins.rows[0]!) };
   }
 
+  /**
+   * Reads one operation (tenant-scoped by the key).
+   *
+   * @param key - Tenant and operation id.
+   * @returns The operation, or `null` when absent.
+   */
   async get(key: OperationKey): Promise<DurableOperation | null> {
     const r = await this.pool.query<Row>('SELECT * FROM otk_operations WHERE tenant_id = $1 AND operation_id = $2', [key.tenantId, key.operationId]);
     return r.rows[0] ? decodeOperationRow(r.rows[0]) : null;
   }
 
+  /**
+   * Reads one operation with its storage-side columns (reservation amounts, note, lease).
+   *
+   * @param key - Tenant and operation id.
+   * @returns The detail, or `null` when absent.
+   */
   async getDetail(key: OperationKey): Promise<OperationDetail | null> {
     const r = await this.pool.query<Row>('SELECT * FROM otk_operations WHERE tenant_id = $1 AND operation_id = $2', [key.tenantId, key.operationId]);
     const row = r.rows[0];
@@ -264,6 +340,21 @@ export class PgOperationStore implements OperationStore {
     };
   }
 
+  /**
+   * Applies a legal patch under a row lock and moves quota/money counters, ledger rows and budget freezes
+   * in the same transaction (see the file header). Increments `revision` by one.
+   *
+   * @param key - Tenant and operation id.
+   * @param expectedRevision - Revision the caller read; the write is refused if it changed.
+   * @param patch - State changes to apply (validated by `transitions.ts`).
+   * @param extras - Effects to enqueue, settlement note and local count to store with the transition.
+   * @returns The operation as stored after the transition.
+   * @throws {@link OperationNotFoundError} When the operation does not exist.
+   * @throws {@link RevisionConflictError} When the stored revision differs from `expectedRevision`.
+   * @throws {@link LedgerIdentityError} When the debit or money-ledger row for this operation already exists.
+   * @throws {Error} Illegal transitions (from `transitions.ts`), scale errors and database errors propagate;
+   *   the transaction is rolled back.
+   */
   async transition(key: OperationKey, expectedRevision: bigint, patch: OperationPatch, extras: TransitionExtras = {}): Promise<DurableOperation> {
     return this.tx(async (c) => {
       const r = await c.query<Row>('SELECT * FROM otk_operations WHERE tenant_id = $1 AND operation_id = $2 FOR UPDATE', [key.tenantId, key.operationId]);
@@ -369,6 +460,13 @@ export class PgOperationStore implements OperationStore {
     });
   }
 
+  /**
+   * Lists operations still executing (admitted, upstream started or cancel requested) that were not updated
+   * since `olderThan` and hold no live lease; used by recovery. Not tenant-scoped.
+   *
+   * @param opts - Age cut-off and maximum rows (floored, minimum 1).
+   * @returns Matching operations, least recently updated first.
+   */
   async listIncomplete(opts: { olderThan: IsoTime; limit: number }): Promise<DurableOperation[]> {
     const r = await this.pool.query<Row>(
       `SELECT * FROM otk_operations
@@ -380,7 +478,12 @@ export class PgOperationStore implements OperationStore {
     return r.rows.map(decodeOperationRow);
   }
 
-  /** Whether a money budget (own or shared) applies to the tenant: strict money mode (ABC-04). */
+  /**
+   * Whether a money budget (own or shared) applies to the tenant: strict money mode (ABC-04).
+   *
+   * @param tenantId - The tenant.
+   * @returns `true` when the tenant owns a budget or is a member of a shared one.
+   */
   async hasMoneyBudget(tenantId: string): Promise<boolean> {
     const r = await this.pool.query(
       'SELECT 1 FROM otk_money_budget WHERE tenant_id = $1 OR budget_id IN (SELECT budget_id FROM otk_money_budget_members WHERE tenant_id = $1) LIMIT 1',
@@ -395,6 +498,10 @@ export class PgOperationStore implements OperationStore {
    * its next attempt scheduled (backoff base × 2^attempts, capped), so permanently unpriceable operations
    * leave the head of the queue and concurrent workers (SKIP LOCKED) never claim the same row twice in a
    * window. Only the scheduling columns change; business timestamps and the money axis do not.
+   *
+   * @param limit - Maximum rows (floored, minimum 1).
+   * @param backoff - Base and cap of the retry delay, ms (each floored, minimum 1).
+   * @returns Keys of the claimed operations with their attempt count after this claim.
    */
   async claimPendingPrice(limit: number, backoff: { baseMs: number; maxMs: number }): Promise<Array<OperationKey & { attempts: number }>> {
     const r = await this.pool.query<{ tenant_id: string; operation_id: string; price_attempts: number }>(
@@ -413,7 +520,14 @@ export class PgOperationStore implements OperationStore {
     return r.rows.map((x) => ({ tenantId: x.tenant_id, operationId: x.operation_id, attempts: Number(x.price_attempts) }));
   }
 
-  /** Take or renew the execution lease of an operation. False when another live owner holds it. */
+  /**
+   * Take or renew the execution lease of an operation. False when another live owner holds it.
+   *
+   * @param key - Tenant and operation id.
+   * @param owner - Lease owner id of this process.
+   * @param ms - Lease length from now, ms (floored, minimum 1).
+   * @returns `true` when the lease is now held by `owner`; `false` also when the operation does not exist.
+   */
   async claimLease(key: OperationKey, owner: string, ms: number): Promise<boolean> {
     const r = await this.pool.query(
       `UPDATE otk_operations SET owner = $3, lease_until = now() + ($4::int * interval '1 millisecond')
@@ -423,6 +537,12 @@ export class PgOperationStore implements OperationStore {
     return (r.rowCount ?? 0) === 1;
   }
 
+  /**
+   * Ends the execution lease if `owner` still holds it (the owner column is kept); otherwise does nothing.
+   *
+   * @param key - Tenant and operation id.
+   * @param owner - The owner releasing the lease.
+   */
   async releaseLease(key: OperationKey, owner: string): Promise<void> {
     await this.pool.query('UPDATE otk_operations SET lease_until = NULL WHERE tenant_id = $1 AND operation_id = $2 AND owner = $3', [key.tenantId, key.operationId, owner]);
   }

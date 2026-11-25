@@ -96,6 +96,7 @@ let _provider: ISecretsProvider | undefined;
 /**
  * Get or create the process-level secrets provider singleton.
  * Defaults to LocalSecretsProvider.
+ * @returns The shared provider (a `LocalSecretsProvider` unless replaced).
  */
 export function getSecretsProvider(): ISecretsProvider {
   if (!_provider) {
@@ -106,6 +107,7 @@ export function getSecretsProvider(): ISecretsProvider {
 
 /**
  * Override the singleton provider (for testing or advanced configuration).
+ * @param provider - New provider, or `undefined` to recreate the default on the next get.
  */
 export function setSecretsProviderForTest(provider: ISecretsProvider | undefined): void {
   _provider = provider;

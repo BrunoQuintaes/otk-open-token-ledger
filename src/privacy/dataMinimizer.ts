@@ -11,7 +11,7 @@
  *
  * This function never throws. All inputs are validated inline.
  *
- * @module privacy/dataMinimizer
+ * @module src/privacy/dataMinimizer
  * @since F2.2
  */
 
@@ -33,9 +33,11 @@ export type MinimizedEvent = {
 /**
  * Apply compliance minimization to a NormalizedUsageEvent.
  *
- * @param event   Source usage event from an adapter
- * @param profile ComplianceProfile governing minimization mode and retention
- * @returns       MinimizedEvent safe for export/audit surfaces
+ * An unknown minimization mode is treated as `full`. The input event is not mutated.
+ *
+ * @param event - Source usage event from an adapter
+ * @param profile - ComplianceProfile governing minimization mode and retention
+ * @returns MinimizedEvent safe for export/audit surfaces
  */
 export function minimizeEvent(
   event: NormalizedUsageEvent,
@@ -72,10 +74,11 @@ export function minimizeEvent(
  * The resulting record is audit-safe: it contains only the minimized fields,
  * no raw prompts or secrets.
  *
- * @param minimized  Output of minimizeEvent()
- * @param tenantId   Tenant identifier for the audit record
- * @param actor      Actor identifier (userId or service name)
- * @param nowIso     ISO 8601 timestamp (injectable for determinism)
+ * @param minimized - Output of minimizeEvent()
+ * @param tenantId - Tenant identifier for the audit record
+ * @param actor - Actor identifier (userId or service name)
+ * @param nowIso - ISO 8601 timestamp (injectable for determinism)
+ * @returns An audit record with action `usage_metered`; it is not written anywhere by this function.
  */
 export function toComplianceAuditRecord(
   minimized: MinimizedEvent,

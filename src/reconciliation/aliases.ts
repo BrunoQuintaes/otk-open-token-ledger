@@ -10,21 +10,33 @@
  */
 import type { ReconProvider } from './types.js';
 
+/**
+ * One explicit alias: a model string a provider may write, and the canonical ID it stands for.
+ */
 export interface ModelAliasEntry {
   provider: ReconProvider;
+  /** Alias as compared: lowercase, trimmed, inner whitespace collapsed to one space. */
   alias: string;
   canonical: string;
   kind: 'dated_snapshot' | 'resource_prefix' | 'display_name';
+  /** Where the alias was observed, or `UNVERIFIED_ASSUMPTION: …` when it was not. */
   source: string;
 }
 
+/**
+ * A versioned alias table: canonical model IDs per provider plus explicit alias entries.
+ */
 export interface AliasTable {
+  /** Version label, written into reconciliation reports. */
   id: string;
   /** Canonical model ids per provider (lowercase). */
   canonical: Record<ReconProvider, string[]>;
   entries: ModelAliasEntry[];
 }
 
+/**
+ * Alias table used by default by the importers and the matcher (frozen at the top level).
+ */
 export const RECON_ALIAS_TABLE_V1: AliasTable = Object.freeze({
   id: 'otk.reconciliation_aliases.v1@2026-10-06',
   canonical: {
@@ -43,10 +55,14 @@ export const RECON_ALIAS_TABLE_V1: AliasTable = Object.freeze({
   ],
 }) as AliasTable;
 
+/**
+ * Result of a model lookup; `canonical` is `null` when the string is not resolvable (never guessed).
+ */
 export interface CanonicalModel {
   canonical: string | null;
   /** true when the canonical id was reached through an alias entry or prefix rule. */
   viaAlias: boolean;
+  /** Rule that produced the canonical ID (e.g. `dated_snapshot:<alias>-><id>`), or `null`. */
   rule: string | null;
 }
 
@@ -55,6 +71,12 @@ const norm = (s: string): string => s.trim().toLowerCase().replace(/\s+/g, ' ');
 /**
  * Resolve a model string to the canonical id. Gemini's documented resource form 'models/<id>' is
  * stripped (resource_prefix). Extra aliases (e.g. from price tables) may be passed in.
+ *
+ * @param provider - Provider whose canonical list and aliases are searched.
+ * @param raw - Model string as exported (`null` or blank gives `canonical: null`).
+ * @param table - Alias table (default {@link RECON_ALIAS_TABLE_V1}).
+ * @param extra - Additional exact aliases (normalized alias -> canonical ID); used only when the target is canonical.
+ * @returns The canonical model, how it was reached and the rule used.
  */
 export function canonicalModel(provider: ReconProvider, raw: string | null, table: AliasTable = RECON_ALIAS_TABLE_V1, extra: Record<string, string> = {}): CanonicalModel {
   if (raw === null || raw.trim() === '') return { canonical: null, viaAlias: false, rule: null };
@@ -71,7 +93,17 @@ export function canonicalModel(provider: ReconProvider, raw: string | null, tabl
   return { canonical: null, viaAlias: false, rule: null };
 }
 
-/** Find a display-name alias contained in a free-text description (longest alias first). */
+/**
+ * Find a display-name alias contained in a free-text description (longest alias first).
+ *
+ * Display-name aliases are tried first (longest first, whole-word match); then canonical IDs written
+ * verbatim in the text.
+ *
+ * @param provider - Provider whose display-name aliases are searched.
+ * @param text - Free-text description (SKU or line description); `null`/empty gives `canonical: null`.
+ * @param table - Alias table (default {@link RECON_ALIAS_TABLE_V1}).
+ * @returns The canonical model found, or `canonical: null`.
+ */
 export function modelFromDescription(provider: ReconProvider, text: string | null, table: AliasTable = RECON_ALIAS_TABLE_V1): CanonicalModel {
   if (!text) return { canonical: null, viaAlias: false, rule: null };
   const t = norm(text);

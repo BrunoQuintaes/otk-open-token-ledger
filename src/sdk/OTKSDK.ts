@@ -5,6 +5,13 @@
  * Maps provider-specific data to canonical receipt schema.
  *
  * Part of U8.4.1 MVP (pre-U8.5, no on-chain submission yet).
+ *
+ * Who calls it: `src/proxy/ProxyGateway.ts` uses {@link buildRawReceipt}; the other builders are used by SDK
+ * clients and tests. `submitReceipt`, `buildDualReceiptV2` and `OTKSDK.buildReceiptV2` make a network call to the
+ * prover service (base URL from `opts.proverUrl`, else the `OTK_PROVER_URL` environment variable, read by
+ * `ProverClient`); every builder signs with the caller's signer. No receipt is stored or sent on-chain here.
+ *
+ * @module src/sdk/OTKSDK
  */
 
 import { ethers } from 'ethers';
@@ -53,6 +60,13 @@ export type CostNormalizer = (
  * Default cost normalizer (enterprise model with weighted pricing)
  *
  * Uses U5 enterprise cost weights (provider × model × tokens).
+ *
+ * @param provider - Provider ID.
+ * @param model - Model ID.
+ * @param inputTokens - Input tokens (non-negative integer).
+ * @param outputTokens - Output tokens (non-negative integer).
+ * @returns The exact cost units (CU) of the active weights.
+ * @throws {Error} When the CU cannot be computed (unknown provider/model or invalid counts).
  */
 export const defaultCostNormalizer: CostNormalizer = (
   provider: string,
@@ -76,6 +90,7 @@ export const defaultCostNormalizer: CostNormalizer = (
  * @param nonce Anti-replay nonce (monotonic per user)
  * @param costNormalizer Optional cost normalization function
  * @returns Raw receipt ready for signing
+ * @throws {Error} When the cost normalizer throws (the default one does for a non-computable CU).
  */
 export function buildRawReceipt(
   response: ProviderResponse,
@@ -234,6 +249,10 @@ export interface SubmitReceiptOpts {
  * @param nonce     Anti-replay nonce
  * @param signer    Ethers.js Wallet or Signer for signing raw receipt
  * @param opts      Circuit version + bucket bounds + prover URL
+ * @param costNormalizer - Optional cost normalization function (default {@link defaultCostNormalizer}).
+ * @returns The signed raw receipt plus the ZK part built from the prover's proof and public signals.
+ * @throws {Error} When the proof job does not end with status `done` (rejected promise), and any error of
+ *   the signer, the cost normalizer or the prover client.
  */
 export async function submitReceipt(
   response: ProviderResponse,
@@ -317,6 +336,10 @@ export async function submitReceipt(
  * @param maxUsageBucket Upper bucket bound (inclusive). Pass 0n to auto-derive.
  * @param opts           ProverDaemon URL + poll timeout
  * @since Wave 5 (W5-5A01 / S6.1)
+ * @param costNormalizer - Optional cost normalization function (default {@link defaultCostNormalizer}).
+ * @returns The signed raw receipt plus the v2 ZK part (range proof).
+ * @throws {Error} When the proof job does not end with status `done` (rejected promise), and any error of
+ *   the signer, the cost normalizer or the prover client.
  */
 export async function buildDualReceiptV2(
   response: ProviderResponse,
@@ -483,6 +506,7 @@ export class OTKSDK {
 
   /**
    * Get current nonce (next value to be used)
+   * @returns The nonce the next built receipt will use.
    */
   getCurrentNonce(): bigint {
     return this.nonceCounter;
@@ -490,6 +514,7 @@ export class OTKSDK {
 
   /**
    * Get user ID
+   * @returns The user ID given at construction.
    */
   getUserId(): bigint {
     return this.userId;

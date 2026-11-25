@@ -1,6 +1,10 @@
 /**
  * D1–D8 shared interface contract (S0 run 20260930-1625). Human-readable companion:
  * docs/_ops/EXECUCAO_D1_D8_20260930/runs/20260930-1625/INTERFACES.md
+ *
+ * Barrel module of the measurement contract types: it only re-exports the files of this folder.
+ *
+ * @module src/types/d1d8/index
  */
 export * from './common.js';
 export * from './usage.js';

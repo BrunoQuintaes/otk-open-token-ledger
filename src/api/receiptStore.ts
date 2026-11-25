@@ -5,7 +5,19 @@
  * Provides: idempotent storage, AuditLogChain wiring, ProverDaemon dispatch,
  * BatchAggregator integration for flush-batch, JSONL durability, and TAL debiting.
  *
- * @module api/receiptStore
+ * Side effects at import time: when `OTK_DB_URL` is set, loading this module connects to PostgreSQL (top-level
+ * await) and restores its receipts; when `OTK_RECEIPT_LOG` is set, it reloads the JSONL log, the chain head
+ * (`<log>.head`) and the proof-job correlations (`<log>.jobs`). Exactly one durability mode applies: JSONL
+ * (synchronous), PostgreSQL (transactional) or memory only (see `persistenceStatus`).
+ *
+ * Environment variables read: `OTK_RECEIPT_LOG`, `OTK_DB_URL`, `OTK_PG_RECONNECT_MS`, `OTK_PG_WRITE_TIMEOUT_MS`,
+ * `OTK_INSTANCE_ID`, `OTK_EXPORT_PAGE_SIZE`, `OTK_REDIS_URL`, `OTK_CIRCUIT_DEFAULT`, `OTK_V2_BUCKET_MULTIPLIER`,
+ * `PROVER_URL` (`disabled` turns proof dispatch off), `PROVER_CB_THRESHOLD`, `PROVER_CB_COOLDOWN_MS`,
+ * `PROVER_RECOVERY_INTERVAL_MS`, and `NODE_ENV` through `src/infra/deployEnv.ts` (TLS of the PostgreSQL pool).
+ *
+ * It does NOT price requests or decide quotas: callers pass the receipt (cost in CU) and the quota.
+ *
+ * @module src/api/receiptStore
  * @since u12.post.d (alpha bridge) | u12.alpha.c (e2e runtime) | u12.alpha.d (hardening)
  *        u12.closure.b (TAL startup replay, chainHead persistence)
  */
@@ -31,6 +43,10 @@ const _receipts = new Map<string, RawReceipt>();
  * M24-DYN-04 (RUN-M1-24H): a requestId already held for ANOTHER tenant is that tenant's receipt, never this caller's
  * duplicate. The memory check used to answer 'duplicate' first, so the caller got 200 ok while nothing was stored for it
  * (the tenant_mismatch rule below only compared the caller with the NEW receipt, always equal).
+ *
+ * @param input - Receipt being stored.
+ * @param tenantId - Tenant resolved for the caller, if any.
+ * @returns `null` when the requestId is not in memory; otherwise whether it belongs to the same tenant.
  */
 function _knownOutcome(input: RawReceipt, tenantId: string | undefined): 'duplicate' | 'tenant_mismatch' | null {
   const existing = _receipts.get(input.requestId);
@@ -118,6 +134,9 @@ const CHAIN_HEAD_FILE = RECEIPT_LOG ? RECEIPT_LOG + '.head' : '';
 /**
  * Append a receipt as a JSONL line. Throws on I/O error (R13): when JSONL is the
  * configured durable store, a receipt that could not be written is not acknowledged.
+ *
+ * @param receipt - Receipt to append (bigint fields written as strings).
+ * @throws {Error} The file-system error when the append fails (only when `OTK_RECEIPT_LOG` is set).
  */
 function _appendReceiptLog(receipt: RawReceipt): void {
   if (!RECEIPT_LOG) return;
@@ -140,6 +159,11 @@ function _persistChainHead(): void {
  * the prover is enabled. Receipts marked 'legacy-unknown' have a job entry and are skipped.
  * Limit: another live replica may still be dispatching a receipt it stored moments ago; the
  * daemon's check of already-registered commitments (N15) prevents a second registration.
+ *
+ * @param receipts - Receipts restored from PostgreSQL.
+ * @param jobs - Recorded proof jobs by requestId.
+ * @param proverDisabled - `true` when proof dispatch is disabled (then nothing is pending).
+ * @returns The receipts with a requestId and no recorded proof job.
  */
 export function pendingFromRestore(receipts: RawReceipt[], jobs: ReadonlyMap<string, string>, proverDisabled: boolean): RawReceipt[] {
   if (proverDisabled) return [];
@@ -149,6 +173,8 @@ export function pendingFromRestore(receipts: RawReceipt[], jobs: ReadonlyMap<str
 /**
  * Process-memory debit. With the transactional PostgreSQL store the Redis projection has a single
  * writer (the outbox effect project_redis), so only memory is updated here.
+ *
+ * @param entry - Debit entry (tenant, epoch, requestId, provider, model, CU, time in ms, optional tokens).
  */
 function _debitAccounting(entry: Parameters<ReturnType<typeof getAccountingLayer>['debit']>[0]): void {
   const tal = getAccountingLayer();
@@ -157,7 +183,12 @@ function _debitAccounting(entry: Parameters<ReturnType<typeof getAccountingLayer
   else tal.debit(entry);
 }
 
-/** Debit one restored receipt into the accounting layer (idempotent by requestId). */
+/**
+ * Debit one restored receipt into the accounting layer (idempotent by requestId).
+ *
+ * @param r - Restored receipt; its timestamp is in seconds.
+ * @param withTokens - Whether to include the token counts in the debit entry.
+ */
 function _rehydrateAccounting(r: RawReceipt, withTokens: boolean): void {
   _debitAccounting({
     tenantId: r.tenantId ?? 'default',
@@ -200,6 +231,7 @@ let _outboxWorker: OutboxWorker | null = null;
 let _outboxAutoStart = false;
 const INSTANCE_OWNER = `${process.env['OTK_INSTANCE_ID'] ?? 'api'}:${process.pid}:${randomUUID().slice(0, 8)}`;
 
+// Connects, restores and wires the PostgreSQL mode; on failure marks the store unavailable and schedules a retry.
 async function _initPg(url: string): Promise<boolean> {
   const store = new PostgresReceiptStore(url, { ssl: isDeployedEnv() ? { rejectUnauthorized: true } : false });
   try {
@@ -255,6 +287,7 @@ async function _initPg(url: string): Promise<boolean> {
   }
 }
 
+// One pending reconnect at a time; the timer does not keep the process alive.
 function _schedulePgReconnect(url: string): void {
   if (_pgReconnectTimer) return;
   _pgReconnectTimer = setTimeout(() => {
@@ -348,6 +381,11 @@ if (RECEIPT_LOG) {
  * Returns { stored: true } on first store, { stored: false } on duplicate.
  * On duplicate: no TAL debit, no JSONL append, no ProverDaemon dispatch, no chain advance.
  * Fires an async prove job to ProverDaemon (fire-and-forget, non-blocking).
+ *
+ * @param input - The receipt; a missing `tenantId` is filled with the resolved tenant (a copy is stored).
+ * @param tenantId - Authenticated caller's tenant; when both are set and differ the receipt is refused.
+ * @returns `stored: true`, or `stored: false` with the reason (`persistence_failed` when the configured store is
+ *   unavailable or the JSONL write fails).
  */
 export function storeReceipt(
   input: RawReceipt,
@@ -395,6 +433,7 @@ export function storeReceipt(
 /** Maximum wait for the durable Postgres write before answering 503 (OTK_PG_WRITE_TIMEOUT_MS). */
 const PG_WRITE_TIMEOUT_MS = Math.max(100, Number(process.env['OTK_PG_WRITE_TIMEOUT_MS'] ?? 5000) || 5000);
 
+/** Outcome of `storeReceiptDurable`. */
 type DurableStoreResult = {
   stored: boolean;
   reason?: 'duplicate' | 'tenant_mismatch' | 'persistence_failed' | 'quota_exceeded';
@@ -402,6 +441,7 @@ type DurableStoreResult = {
   quota?: { quota: bigint; current: bigint };
 };
 
+/** Options of `storeReceiptDurable`. */
 export interface DurableStoreOptions {
   /**
    * RV30-05: quota checked inside the PostgreSQL transaction, in accounting units (micro-CU);
@@ -423,6 +463,12 @@ const _durableInFlight = new Map<string, Promise<DurableStoreResult>>();
  * With Postgres only: the INSERT is awaited before any effect (memory, audit chain, debit,
  * proof job); if it fails the caller gets 'persistence_failed' and nothing happened.
  * A row that already exists in Postgres (e.g. stored by another instance) is a duplicate.
+ *
+ * @param input - The receipt; a missing `tenantId` is filled with the resolved tenant.
+ * @param tenantId - Authenticated caller's tenant; when both are set and differ the receipt is refused.
+ * @param opts - Quota to enforce inside the PostgreSQL transaction (micro-CU).
+ * @returns The outcome; `quota_exceeded` comes with the quota and the current usage in micro-CU.
+ * @throws {RangeError} In transactional PostgreSQL mode, when `costUnits` is not a non-negative safe integer.
  */
 export async function storeReceiptDurable(
   input: RawReceipt,
@@ -455,7 +501,12 @@ export async function storeReceiptDurable(
   }
 }
 
-/** Wait at most PG_WRITE_TIMEOUT_MS; the outcome of a write still running is then uncertain. */
+/**
+ * Wait at most PG_WRITE_TIMEOUT_MS; the outcome of a write still running is then uncertain.
+ *
+ * @param p - The database write.
+ * @returns The write's result.
+ */
 async function _withTimeout<T>(p: Promise<T>): Promise<T> {
   let timer: NodeJS.Timeout | undefined;
   const timeout = new Promise<never>((_, reject) => {
@@ -473,6 +524,14 @@ async function _withTimeout<T>(p: Promise<T>): Promise<T> {
  * durable effects (project_redis, enqueue_proof) are one transaction. A timeout answers 503;
  * if the commit lands later the effects exist and the outbox worker of any instance runs them,
  * so no proof is left behind without a client retry or an API restart (RV30-03).
+ *
+ * @param pgStore - The PostgreSQL store.
+ * @param receipt - Receipt with its tenant already resolved.
+ * @param resolvedTenant - Tenant the receipt is stored and debited for.
+ * @param tenantId - Caller's tenant as passed in (used for the proof dispatch).
+ * @param opts - Quota to enforce (micro-CU).
+ * @returns The outcome; database errors and timeouts become `persistence_failed`.
+ * @throws {RangeError} When `costUnits` is not a non-negative safe integer.
  */
 async function _transactionalWrite(
   pgStore: PostgresReceiptStore,
@@ -514,6 +573,7 @@ async function _transactionalWrite(
   return { stored: true };
 }
 
+// Non-transactional PostgreSQL write (a store without storeDurable, e.g. a test fake): insert first, effects after.
 async function _durableWrite(
   pgStore: PostgresReceiptStore,
   receipt: RawReceipt,
@@ -562,6 +622,8 @@ async function _durableWrite(
 /**
  * Replace the Postgres receipt store (tests only): lets unit tests drive the durable path
  * with a controllable fake. Pass null to return to the configured behaviour.
+ *
+ * @param store - The fake (or real) store, or `null`.
  * @internal
  */
 export function setPgStoreForTest(store: Pick<PostgresReceiptStore, 'store' | 'get'> | null): void {
@@ -584,6 +646,9 @@ export function setPgStoreForTest(store: Pick<PostgresReceiptStore, 'store' | 'g
 /**
  * Receipt by requestId: memory first, then Postgres when configured, so an instance can
  * read receipts stored by another instance sharing the database.
+ *
+ * @param requestId - The receipt's requestId.
+ * @returns The receipt, or `undefined` when unknown or when the database read fails.
  */
 export async function getReceiptDurable(requestId: string): Promise<RawReceipt | undefined> {
   const local = _receipts.get(requestId);
@@ -592,6 +657,7 @@ export async function getReceiptDurable(requestId: string): Promise<RawReceipt |
 }
 
 /** H1R2 S23-F02: a receipt source required for a complete export could not be read. */
+/** Thrown by `listReceiptsForTenant` when a receipt source needed for a complete export cannot be read. */
 export class ExportSourceUnavailableError extends Error {
   constructor(readonly source: string, cause: string) {
     super(`receipt source ${source} unavailable: ${cause}`);
@@ -610,6 +676,10 @@ function getExportPageSize(): number {
  * PostgreSQL when it is configured (receipts written by another instance sharing the database are only there).
  * A configured PostgreSQL that cannot be read throws ExportSourceUnavailableError: a partial list must never be
  * presented as the complete export. Receipts with no tenantId belong to 'default', as in storeReceipt().
+ *
+ * @param tenantId - Tenant whose receipts are listed.
+ * @returns The receipts (memory and database merged by requestId) and the names of the sources read.
+ * @throws {@link ExportSourceUnavailableError} When PostgreSQL is configured but cannot be read or is not connected.
  */
 export async function listReceiptsForTenant(tenantId: string): Promise<{ receipts: RawReceipt[]; sources: string[] }> {
   const byId = new Map<string, RawReceipt>();
@@ -641,7 +711,16 @@ export async function listReceiptsForTenant(tenantId: string): Promise<{ receipt
   return { receipts: [...byId.values()], sources };
 }
 
-/** Effects of a receipt that is already durably written (or memory-only by configuration). */
+/**
+ * Effects of a receipt that is already durably written (or memory-only by configuration).
+ *
+ * Adds it to memory, advances the audit chain, debits the accounting layer and dispatches the proof job.
+ *
+ * @param receipt - The stored receipt.
+ * @param resolvedTenant - Tenant recorded in the audit entry and the debit.
+ * @param tenantId - Caller's tenant as passed in.
+ * @param dispatch - `direct` posts the proof job now; `outbox` lets the outbox worker run the durable effects.
+ */
 function _applyStoreEffects(receipt: RawReceipt, resolvedTenant: string, tenantId: string | undefined, dispatch: 'direct' | 'outbox' = 'direct'): void {
   _receipts.set(receipt.requestId, receipt);
 
@@ -687,12 +766,22 @@ function _applyStoreEffects(receipt: RawReceipt, resolvedTenant: string, tenantI
   _lastDispatchPromise = _dispatchProveJob(receipt, tenantId).catch(() => { /* non-critical: daemon may be offline */ });
 }
 
-/** Retry instant for effects the daemon/Redis could not take now (bounded, never dropped). */
+/**
+ * Retry instant for effects the daemon/Redis could not take now (bounded, never dropped).
+ *
+ * @param ms - Delay in ms.
+ * @returns ISO-8601 time `ms` from now.
+ */
 function _retryIn(ms: number): string {
   return new Date(Date.now() + ms).toISOString();
 }
 
-/** Outbox handler: legacy proof dispatch of one receipt (POST /prove), idempotent per receipt. */
+/**
+ * Outbox handler: legacy proof dispatch of one receipt (POST /prove), idempotent per receipt.
+ *
+ * @param e - Claimed `enqueue_proof` effect; its payload carries the requestId.
+ * @returns `done`, or a retry time and reason.
+ */
 async function _handleProofEffect(e: ClaimedEffect): Promise<EffectOutcome> {
   const requestId = String(e.payload?.['requestId'] ?? '');
   if (getProverUrl() === 'disabled') return 'done';
@@ -711,7 +800,12 @@ async function _handleProofEffect(e: ClaimedEffect): Promise<EffectOutcome> {
   return ok ? 'done' : { retryAt: _retryIn(Math.min(60_000, 500 * 2 ** Math.min(e.attempts, 7))), reason: 'prover_dispatch_failed' };
 }
 
-/** Outbox handler: project one ledger debit into the Redis TAL (idempotent by requestId). */
+/**
+ * Outbox handler: project one ledger debit into the Redis TAL (idempotent by requestId).
+ *
+ * @param e - Claimed `project_redis` effect; its payload carries epoch, requestId, provider, model, CU and time.
+ * @returns `done`, or a retry time when Redis is configured but not available in this process.
+ */
 async function _handleProjectionEffect(e: ClaimedEffect): Promise<EffectOutcome> {
   const tal = getAccountingLayer();
   const p = e.payload ?? {};
@@ -742,6 +836,8 @@ let _lastDispatchPromise: Promise<void> = Promise.resolve();
  * Await the most recent fire-and-forget proof dispatch.
  * Use in tests instead of setTimeout to eliminate timing flakiness.
  * In production, dispatch is fire-and-forget and this is never called.
+ *
+ * @returns Resolves when that dispatch has settled.
  */
 export async function awaitLastDispatch(): Promise<void> {
   await _lastDispatchPromise;
@@ -753,6 +849,8 @@ export async function awaitLastDispatch(): Promise<void> {
  * receipt stays pending and is replayed after a later successful dispatch (R14).
  *
  * @internal
+ * @param receipt - The stored receipt.
+ * @param tenantId - Caller's tenant, recorded in the audit entry.
  */
 async function _dispatchProveJob(receipt: RawReceipt, tenantId?: string): Promise<void> {
   if (getProverUrl() === 'disabled') return;
@@ -793,6 +891,8 @@ async function _drainPendingProofs(): Promise<void> {
 /**
  * Retry pending proofs now (ops hook / scheduler). Respects the circuit breaker:
  * while open and inside the cooldown nothing is sent. Returns the pending count left.
+ *
+ * @returns Number of receipts still pending a proof job.
  */
 export async function retryPendingProofs(): Promise<number> {
   // RV30-03: durable effects first (receipts committed late or by another instance)
@@ -812,6 +912,8 @@ export async function retryPendingProofs(): Promise<number> {
  * breaker (nothing is sent while open inside the cooldown) and each attempt keeps the
  * 5 s request timeout, so a tick waits a bounded time. The timer does not keep the
  * process alive (unref). Receipts restored as pending after a restart are covered.
+ *
+ * @param opts - `intervalMs`: tick period in ms (default `PROVER_RECOVERY_INTERVAL_MS`, 5000).
  */
 export function startProofRecovery(opts: { intervalMs?: number } = {}): void {
   // RV30-02: the outbox also carries Redis projections, so its worker runs even without a prover
@@ -836,7 +938,11 @@ export async function stopProofRecovery(): Promise<void> {
   await _outboxWorker?.stop();
 }
 
-/** RV05: whether the recovery loop is active (monitoring / tests). */
+/**
+ * RV05: whether the recovery loop is active (monitoring / tests).
+ *
+ * @returns `true` while the timer is set.
+ */
 export function proofRecoveryRunning(): boolean {
   return _recoveryTimer !== null;
 }
@@ -845,6 +951,9 @@ export function proofRecoveryRunning(): boolean {
  * D7-G08: Redis lost or rebuilt — re-apply every Redis projection from the durable source
  * (ledger-backed `project_redis` effects of receipts and operations). Idempotent: markers inside
  * each aggregate prevent double counting where Redis still has data. Null outside Postgres mode.
+ *
+ * @param filter - Optional tenant and epoch to limit the replay.
+ * @returns Number of effects re-enqueued, or `null` outside PostgreSQL mode.
  */
 export async function reprojectRedis(filter: { tenantId?: string | null; epochId?: string | null } = {}): Promise<number | null> {
   if (!(_pgStore instanceof PostgresReceiptStore)) return null;
@@ -853,18 +962,34 @@ export async function reprojectRedis(filter: { tenantId?: string | null; epochId
   return n;
 }
 
-/** RV30-03: outbox counts by state (pending/leased/done/dead), or null outside Postgres mode. */
+/**
+ * RV30-03: outbox counts by state (pending/leased/done/dead), or null outside Postgres mode.
+ *
+ * @returns Counts by state, or `null`.
+ */
 export async function receiptEffectsStatus(): Promise<Record<string, number> | null> {
   return _pgStore && 'outbox' in _pgStore ? _pgStore.outbox().stats() : null;
 }
 
-/** RV04: the error proves the request never reached the daemon (safe to re-send). */
+/**
+ * RV04: the error proves the request never reached the daemon (safe to re-send).
+ *
+ * @param err - Error thrown by `fetch`.
+ * @returns `true` for connection refused or DNS failures only.
+ */
 function _isCertainNonDelivery(err: unknown): boolean {
   const code = (err as { cause?: { code?: string } } | null)?.cause?.code;
   return code === 'ECONNREFUSED' || code === 'ENOTFOUND' || code === 'EAI_AGAIN';
 }
 
-/** Single POST /prove. Updates breaker state; returns true when the daemon accepted the job. */
+/**
+ * Single POST /prove. Updates breaker state; returns true when the daemon accepted the job.
+ *
+ * @param receipt - Receipt to prove.
+ * @param tenantId - Tenant recorded in the audit entry.
+ * @param opts - `awaitJobRecord`: wait for the PostgreSQL record of the job before returning (outbox path).
+ * @returns Whether the daemon accepted the job.
+ */
 async function _sendProveJob(receipt: RawReceipt, tenantId?: string, opts: { awaitJobRecord?: boolean } = {}): Promise<boolean> {
   const epoch = deriveEpoch(receipt.timestamp);
   const usage = deriveUsage(receipt);
@@ -957,12 +1082,23 @@ async function _sendProveJob(receipt: RawReceipt, tenantId?: string, opts: { awa
   }
 }
 
-/** Retrieve a stored receipt by requestId. */
+/**
+ * Retrieve a stored receipt by requestId.
+ *
+ * @param requestId - The receipt's requestId.
+ * @returns The receipt held in this process's memory, or `undefined` (the database is not read).
+ */
 export function getReceipt(requestId: string): RawReceipt | undefined {
   return _receipts.get(requestId);
 }
 
-/** Flush all stored receipts. Returns count before flush. */
+/**
+ * Flush all stored receipts. Returns count before flush.
+ *
+ * Also deletes every row of the PostgreSQL table, asynchronously (errors ignored).
+ *
+ * @returns Number of receipts held before the flush.
+ */
 export function flushAll(): number {
   const count = _receipts.size;
   _receipts.clear();
@@ -978,6 +1114,9 @@ export function flushAll(): number {
  * Merkle batch, appends a batch_finalized audit record, then clears the store.
  *
  * Returns null if no receipts are stored.
+ *
+ * @param opts - `tenantId` used for the audit entry and for receipts without a tenant (default `system`).
+ * @returns The batch (header with Merkle root and epoch), or `null` when empty.
  */
 export function flushBatch(opts?: { tenantId?: string }): import('../batch/BatchAggregator.js').BatchResult | null {
   if (_receipts.size === 0) return null;
@@ -1028,17 +1167,29 @@ export function flushBatch(opts?: { tenantId?: string }): import('../batch/Batch
   return result;
 }
 
-/** Current receipt count. */
+/**
+ * Current receipt count.
+ *
+ * @returns Number of receipts held in memory.
+ */
 export function size(): number {
   return _receipts.size;
 }
 
-/** Current audit chain head hash. */
+/**
+ * Current audit chain head hash.
+ *
+ * @returns 64-character hex hash (all zeros before the first entry).
+ */
 export function chainHead(): string {
   return _chainHead;
 }
 
-/** Total audit entries appended (does not reset on flush). */
+/**
+ * Total audit entries appended (does not reset on flush).
+ *
+ * @returns Number of entries appended since start (not restored from disk).
+ */
 export function auditCount(): number {
   return _entryCount;
 }
@@ -1050,6 +1201,9 @@ export function auditCount(): number {
  *                       storeReceiptDurable; the synchronous storeReceipt() is write-behind)
  *   'memory-only'     — nothing survives a restart
  * JSONL is reported when configured because it is the synchronous one.
+ *
+ * @returns The mode, whether an acknowledgement is durable, the count of failed write-behind writes and, when
+ *   PostgreSQL is unavailable, its last error.
  */
 export function persistenceStatus(): {
   mode: 'jsonl-sync' | 'pg-sync' | 'pg-unavailable' | 'memory-only';
@@ -1069,6 +1223,8 @@ export function persistenceStatus(): {
  * ProverDaemon circuit breaker status (for monitoring).
  * RV04: `inFlight` attempts running now; `uncertainDispatches` attempts that ended without
  * an answer; `possibleDuplicateJobs` acceptances that followed an uncertain attempt.
+ *
+ * @returns Breaker state and dispatch counters.
  */
 export function circuitBreakerStatus(): {
   open: boolean; consecutiveFails: number; pendingProofs: number;
@@ -1090,11 +1246,17 @@ export function circuitBreakerStatus(): {
  */
 export type ProofStatus = 'pending' | 'proved' | 'failed' | 'unknown' | 'disabled';
 
+/** Proof status of one receipt as returned by `getProofStatus`. */
 export interface ProofStatusResult {
+  /** Status derived from the prover's job status. */
   proofStatus: ProofStatus;
+  /** Prover job id, when one is recorded. */
   jobId?: string;
+  /** Attempts reported by the prover. */
   attempts?: number;
+  /** Next retry time as reported by the prover. */
   nextRetryAt?: number;
+  /** Last error reported by the prover. */
   error?: string;
   /** PA-03: on-chain tx hash from ReceiptRegistry.submitReceipt(). */
   txHash?: string;
@@ -1105,6 +1267,9 @@ export interface ProofStatusResult {
  * Queries ProverDaemon GET /status/:jobId (1s timeout, fail-safe).
  * Returns 'unknown' when the daemon is unreachable or no correlation exists.
  * Returns 'disabled' when PROVER_URL=disabled.
+ *
+ * @param requestId - The receipt's requestId.
+ * @returns The status; never throws (failures map to `unknown`).
  *
  * @since PA-02
  */
@@ -1187,6 +1352,8 @@ void _conformanceCheck;
  * RV30-05: whether the quota of POST /receipts is applied inside the PostgreSQL transaction
  * (global across instances). False in JSONL, memory or test-fake modes, where the caller keeps
  * the per-process reservation.
+ *
+ * @returns `true` only in PostgreSQL-only mode with the real (transactional) store available.
  */
 export function transactionalQuotaActive(): boolean {
   return !RECEIPT_LOG && _pgState !== 'unavailable' && _pgStore instanceof PostgresReceiptStore;

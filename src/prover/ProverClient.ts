@@ -7,12 +7,16 @@
  *
  * Default URL: OTK_PROVER_URL env var || 'http://localhost:3001'
  *
- * @module prover/ProverClient
+ * Network: plain HTTP calls to the prover daemon; the proof inputs (private values) travel in the request
+ * body, so the daemon URL must point to a trusted, local or private endpoint. Sends no credentials.
+ *
+ * @module src/prover/ProverClient
  * @since Wave 4 (4A-PACK-4A01 / S5.1)
  */
 
 import type { ProofInput } from './ProofQueue.js';
 
+/** Proof returned by the daemon (same shape as `ProofResult`). */
 export interface ProverProofResult {
   proof: {
     pi_a: string[];
@@ -29,6 +33,7 @@ export interface ProverProofResult {
   circuitVersion?: string;
 }
 
+/** Job status as returned by the daemon's status route; times are epoch ms. */
 export interface ProverJobResult {
   jobId: string;
   status: 'pending' | 'processing' | 'done' | 'failed' | 'dead_letter';
@@ -39,6 +44,7 @@ export interface ProverJobResult {
   updatedAt?: number;
 }
 
+/** Polling options. */
 export interface ProverPollOpts {
   /** Max wait time in ms before throwing (default: 120_000) */
   timeoutMs?: number;
@@ -46,9 +52,15 @@ export interface ProverPollOpts {
   pollIntervalMs?: number;
 }
 
+/** HTTP client of the prover daemon. */
 export class ProverClient {
   private readonly _baseUrl: string;
 
+  /**
+   * Fixes the daemon base URL (a trailing slash is removed).
+   *
+   * @param baseUrl - Daemon URL; defaults to OTK_PROVER_URL, then `http://localhost:3001`.
+   */
   constructor(baseUrl?: string) {
     this._baseUrl = (
       baseUrl ?? process.env['OTK_PROVER_URL'] ?? 'http://localhost:3001'
@@ -58,6 +70,10 @@ export class ProverClient {
   /**
    * Submit a proof request to the ProverDaemon.
    * Returns the jobId for status polling.
+   *
+   * @param input - Proof inputs (sent in the body).
+   * @returns The job id assigned by the daemon.
+   * @throws {Error} On a non-2xx answer (the message includes the response body) or a network error.
    */
   async submit(input: ProofInput): Promise<string> {
     const res = await fetch(`${this._baseUrl}/prove`, {
@@ -75,6 +91,11 @@ export class ProverClient {
 
   /**
    * Poll job status until terminal state (done/failed/dead_letter) or timeout.
+   *
+   * @param jobId - Job id.
+   * @param opts - Timeout and poll interval.
+   * @returns The job in a terminal state (failed jobs are returned, not thrown).
+   * @throws {Error} On a non-2xx answer, a network error, or the timeout.
    */
   async poll(jobId: string, opts?: ProverPollOpts): Promise<ProverJobResult> {
     const timeoutMs = opts?.timeoutMs ?? 120_000;
@@ -107,13 +128,25 @@ export class ProverClient {
   /**
    * Submit + poll in one call. Returns the completed job.
    * Throws if the job fails or times out.
+   *
+   * Note: a job that ends `failed` or `dead_letter` is returned, not thrown; check `status`.
+   *
+   * @param input - Proof inputs.
+   * @param pollOpts - Polling options.
+   * @returns The job in a terminal state.
+   * @throws {Error} On HTTP errors or timeout.
    */
   async prove(input: ProofInput, pollOpts?: ProverPollOpts): Promise<ProverJobResult> {
     const jobId = await this.submit(input);
     return this.poll(jobId, pollOpts);
   }
 
-  /** Check daemon health. */
+  /**
+   * Check daemon health.
+   *
+   * @returns The daemon's health body.
+   * @throws {Error} On a non-2xx answer or a network error.
+   */
   async health(): Promise<{
     status: string;
     circuits: Record<string, string>;
@@ -127,7 +160,11 @@ export class ProverClient {
   }
 }
 
-/** Factory: creates ProverClient from OTK_PROVER_URL env var. */
+/**
+ * Factory: creates ProverClient from OTK_PROVER_URL env var.
+ *
+ * @returns A client for OTK_PROVER_URL, or the local default.
+ */
 export function createProverClientFromEnv(): ProverClient {
   return new ProverClient(process.env['OTK_PROVER_URL']);
 }

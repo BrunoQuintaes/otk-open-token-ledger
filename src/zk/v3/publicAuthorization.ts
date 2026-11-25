@@ -9,6 +9,8 @@
  * frozen config, opening usage equal to the receipt's exact CU, epoch from admittedAt, userRef,
  * policy window, and receipt.publicCommitment equal to the opening's commitment. Any mismatch
  * throws: a public record is never produced for data that does not match its private receipt.
+ *
+ * @module src/zk/v3/publicAuthorization
  */
 import { ethers } from 'ethers';
 import type {
@@ -22,6 +24,9 @@ import {
 } from './eip712.js';
 import { commitmentOf, epochOf, openingValues, operationRefOf, usageToCircuitUnits } from './opening.js';
 
+/**
+ * Raised when the private data does not match what a public authorization would state.
+ */
 export class AuthorizationBindingError extends Error {
   constructor(message: string) {
     super(message);
@@ -29,6 +34,9 @@ export class AuthorizationBindingError extends Error {
   }
 }
 
+/**
+ * Options of {@link createPublicAuthorizationBuilder}.
+ */
 export interface PublicAuthorizationBuilderOptions {
   keyRing: KeyRing;
   signer: { keyId: string; wallet: ethers.Signer };
@@ -45,13 +53,26 @@ function sameBucket(a: PublicBucket, b: PublicBucket): boolean {
   return a.min === b.min && a.max === b.max && a.policyVersion === b.policyVersion;
 }
 
-/** Window the policy assigns to a receipt's exact usage (what C passes as `bucket`). */
+/**
+ * Window the policy assigns to a receipt's exact usage (what C passes as `bucket`).
+ *
+ * @param receipt - Private receipt with computed CU.
+ * @param policy - Bucket policy.
+ * @returns The public bucket containing the receipt's usage.
+ * @throws {@link AuthorizationBindingError} When the receipt's CU is not computed.
+ */
 export function bucketForReceipt(receipt: PrivateReceiptV3, policy: FixedWidthBucketPolicy): PublicBucket {
   if (receipt.cu.status !== 'computed' || !receipt.cu.cu) throw new AuthorizationBindingError(`receipt CU not computed (${receipt.cu.status})`);
   return bucketFor(policy, usageToCircuitUnits(receipt.cu.cu));
 }
 
-/** Values of PublicAuthorization.fields as the EIP-712 struct. */
+/**
+ * Values of PublicAuthorization.fields as the EIP-712 struct.
+ *
+ * @param auth - Public authorization.
+ * @returns The typed values.
+ * @throws {@link AuthorizationBindingError} When the fields are not in the struct order.
+ */
 export function authorizationValues(auth: PublicAuthorization): AuthorizationValues {
   const f = new Map(auth.fields.map((x) => [x.name, x.value]));
   check(auth.fields.length === AUTHORIZATION_FIELD_ORDER.length && AUTHORIZATION_FIELD_ORDER.every((n, i) => auth.fields[i]?.name === n), 'fields must follow the Authorization struct order');
@@ -79,6 +100,11 @@ export interface AuthorizationExpectation {
  * signature recovered to an ACTIVE key of the ring and equal to the envelope's signer/keyId, circuit
  * and bucket policy as expected, window aligned and exactly one policy width wide. Authorizations of
  * retired keys are not accepted here; their historical validity is the on-chain registration.
+ *
+ * @param auth - Authorization to check.
+ * @param keyRing - Operator keys.
+ * @param expect - Expected circuit and bucket policy.
+ * @returns `ok` with the signer, or the failure reason; never throws.
  */
 export function verifyPublicAuthorization(auth: PublicAuthorization, keyRing: KeyRing, expect: AuthorizationExpectation): VerifyResult {
   let v: AuthorizationValues;
@@ -107,6 +133,15 @@ export function verifyPublicAuthorization(auth: PublicAuthorization, keyRing: Ke
   return { ok: true, signer: entry.address, keyId: entry.keyId };
 }
 
+/**
+ * Creates the function that cross-checks a receipt and its opening and signs the public authorization.
+ *
+ * The returned function rejects with {@link AuthorizationBindingError} on any mismatch listed in the file header,
+ * or when the signing key is not active for the wallet. `signedAt` is the current time.
+ *
+ * @param opts - Key ring, signer, bucket policy and circuit ID.
+ * @returns The authorization builder.
+ */
 export function createPublicAuthorizationBuilder(opts: PublicAuthorizationBuilderOptions): BuildPublicAuthorizationFn {
   const policyRef = bucketPolicyRef(opts.policy);
   return async ({ receipt, opening, domain, bucket }: { receipt: PrivateReceiptV3; opening: CommitmentOpening; domain: ChainDomain; bucket: PublicBucket }) => {

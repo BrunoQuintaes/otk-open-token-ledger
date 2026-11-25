@@ -5,6 +5,12 @@
  * and the identity carries that package version plus a digest of the rank content, so a count
  * can be reproduced in a clean clone. The legacy id 'tiktoken@<encoding>@v1' of
  * TokenizerRegistry is not enough for that and is kept only for historical receipts.
+ *
+ * Used by `localCounter.ts`, `incrementalCounter.ts` and the model catalog. Reads the rank files and
+ * `package.json` of the installed js-tiktoken package from disk (once per encoding; results are cached
+ * in memory). No network.
+ *
+ * @module src/tokenization/tokenizerIdentity
  */
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -14,6 +20,9 @@ import { Tiktoken } from 'js-tiktoken';
 import type { Hex32 } from '../types/d1d8/index.js';
 import type { TokenizerIdentity } from '../types/d1d8/index.js';
 
+/**
+ * Encodings the local counter can load.
+ */
 export type LocalEncoding = 'o200k_base' | 'cl100k_base';
 
 /** Every encoding a local counter may load (keep equal to LocalEncoding). */
@@ -32,7 +41,13 @@ const require = createRequire(import.meta.url);
 
 let packageVersionCache: string | null = null;
 
-/** Version of the js-tiktoken package actually installed (not the semver range). */
+/**
+ * Version of the js-tiktoken package actually installed (not the semver range).
+ *
+ *
+ * @returns The `version` field of the installed js-tiktoken `package.json` (cached after the first call).
+ * @throws {Error} When no js-tiktoken `package.json` is found within five folders above the entry point.
+ */
 export function tiktokenPackageVersion(): string {
   if (packageVersionCache) return packageVersionCache;
   // The package does not export ./package.json; walk up from the resolved entry point.
@@ -66,6 +81,11 @@ const loaded = new Map<LocalEncoding, LoadedEncoding>();
 /**
  * Encoder and identity for one encoding. The digest covers pat_str, special tokens and the BPE
  * ranks, in that order, joined by '\n' — the exact data the encoder is constructed from.
+ *
+ * @param encoding - Encoding name.
+ * @returns The encoder and its identity (cached; the same object on later calls).
+ * @throws {Error} When the rank file cannot be loaded or has an unexpected shape, or the package version is
+ *   not found.
  */
 export function loadEncoding(encoding: LocalEncoding): LoadedEncoding {
   const cached = loaded.get(encoding);
@@ -91,7 +111,14 @@ export function loadEncoding(encoding: LocalEncoding): LoadedEncoding {
   return entry;
 }
 
-/** Load (and cache) each encoding now; returns the time each first load took (0 when already cached). */
+/**
+ * Load (and cache) each encoding now; returns the time each first load took (0 when already cached).
+ *
+ *
+ * @param encodings - Encodings to load (default: all of them).
+ * @returns Load time in milliseconds per encoding, in the given order.
+ * @throws {Error} The errors of {@link loadEncoding}.
+ */
 export function warmEncodings(encodings: readonly LocalEncoding[] = LOCAL_ENCODINGS): Array<{ encoding: LocalEncoding; ms: number }> {
   return encodings.map((encoding) => {
     const t0 = performance.now();
@@ -103,6 +130,10 @@ export function warmEncodings(encodings: readonly LocalEncoding[] = LOCAL_ENCODI
 /**
  * Count tokens of one text piece. Special-token strings inside user text are counted as
  * ordinary text (disallowedSpecial = []), instead of throwing as js-tiktoken does by default.
+ *
+ * @param encoder - Encoder from {@link loadEncoding}.
+ * @param text - Text to count.
+ * @returns Token count; 0 for an empty string.
  */
 export function countWith(encoder: Tiktoken, text: string): number {
   if (text.length === 0) return 0;
@@ -118,6 +149,12 @@ export const MAX_PIECE_CHARS = 1000;
 const N = MAX_PIECE_CHARS + 1;
 const OVERSIZED_PIECE = new RegExp(String.raw`[\p{L}\p{M}]{${N},}|[^\s\p{L}\p{N}]{${N},}|\s{${N},}`, 'u');
 
+/**
+ * Tells whether the text contains a run (letters, symbols or whitespace) longer than {@link MAX_PIECE_CHARS}.
+ *
+ * @param text - Text about to be counted.
+ * @returns `true` when counting it could take quadratic time and must be skipped.
+ */
 export function hasOversizedPiece(text: string): boolean {
   return text.length > MAX_PIECE_CHARS && OVERSIZED_PIECE.test(text);
 }

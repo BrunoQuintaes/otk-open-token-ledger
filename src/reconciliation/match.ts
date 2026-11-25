@@ -33,17 +33,27 @@ import type { PriceTableV1 } from '../pricing/priceUsage.js';
 import type { TokenCategoryName } from '../types/d1d8/index.js';
 import type { OtkLoadResult } from './otkSource.js';
 
+/**
+ * Identifier of the rounding policy described above; written into every report.
+ */
 export const ROUNDING_POLICY_ID = 'otk.reconciliation_rounding.v1';
+/**
+ * Default tolerance (milliseconds) around a period boundary for the TIMING_WINDOW check.
+ */
 export const DEFAULT_TIMING_TOLERANCE_MS = 120_000;
 const PICO = 1_000_000_000_000n;
 const TOKEN_CATEGORIES: readonly UsageCategory[] = ['input', 'cache_read', 'cache_write', 'output', 'thinking'];
 const INPUT_FAMILY: readonly UsageCategory[] = ['input', 'cache_read', 'cache_write'];
 const PRICE_CATEGORY: Partial<Record<UsageCategory, TokenCategoryName>> = { input: 'input', output: 'output', cache_read: 'input_cache_read', cache_write: 'input_cache_write' };
 
+/**
+ * Input of {@link reconcile}.
+ */
 export interface ReconcileInput {
   statements: ProviderStatement[];
   otk: OtkLoadResult;
   window: ReconciliationWindow;
+  /** Price tables used to price OTK categories and to test PRICE_VERSION; their aliases also join models. */
   priceTables?: PriceTableV1[];
   timingToleranceMs?: number;
   aliasTable?: AliasTable;
@@ -99,7 +109,18 @@ function qtyCmp(otk: bigint | null, prov: bigint | null): { cmp: Comparison; eq:
   return { cmp: { metric: 'tokens', currency: null, otk: otk.toString(), provider: prov.toString(), diff: d.toString(), absDiff: absBig(d).toString(), relDiff: rel, relDiffNote: rel === null ? 'undefined: provider count is zero and OTK is not' : null }, eq: d === 0n };
 }
 
-/** Exact OTK amount of one record for one category with one table (pico-USD), or null. */
+/**
+ * Exact OTK amount of one record for one category with one table (pico-USD), or null.
+ *
+ * @param tables - Loaded price tables.
+ * @param version - Price table version frozen for the record; `null` gives `null`.
+ * @param provider - Provider of the record.
+ * @param model - Canonical model (mapped through the table's aliases).
+ * @param cat - Statement category (thinking has no price here).
+ * @param count - Tokens.
+ * @param at - Instant used to pick the effective price entry.
+ * @param anyWindow - When no entry is effective at `at`, accept the single entry of the table if there is only one.
+ */
 function priceOf(tables: PriceTableV1[], version: string | null, provider: ReconProvider, model: string, cat: UsageCategory, count: bigint, at: string, anyWindow = false): { amount: ScaledAmount; price: bigint } | null {
   if (count === 0n) return { amount: { units: 0n, scale: PICO }, price: 0n };
   const pc = PRICE_CATEGORY[cat];
@@ -167,7 +188,11 @@ function evalCategory(g: Group, cat: UsageCategory, tables: PriceTableV1[]): Cat
 
 const isZeroSide = (s: Side): boolean => (s.qty === null || s.qty === 0n) && (s.amount === null || s.amount.units === 0n);
 
-/** Do the comparable values of a category agree (missing side with all-zero counterpart counts as agreement)? */
+/**
+ * Do the comparable values of a category agree (missing side with all-zero counterpart counts as agreement)?
+ *
+ * @param e - Evaluation of one category in one group.
+ */
 function agrees(e: CatEval): boolean {
   if (!e.prov.present && !e.otk.present) return true;
   if (!e.prov.present) return isZeroSide(e.otk);
@@ -190,6 +215,16 @@ function groupAgrees(g: Group, tables: PriceTableV1[]): boolean {
 
 const fmtDur = (msd: number): string => (msd % 86_400_000 === 0 ? `${msd / 86_400_000}d` : msd % 3_600_000 === 0 ? `${msd / 3_600_000}h` : msd % 60_000 === 0 ? `${msd / 60_000}min` : `${msd}ms`);
 
+/**
+ * Reconciles OTK records with provider statements for one provider and window, classifying every difference.
+ *
+ * Deterministic: no clock or randomness is read, so the same input gives the same report. Inputs are not
+ * modified.
+ *
+ * @param input - Statements, OTK records, window and optional price tables, tolerance and alias table.
+ * @returns The full report (results, matches, adjustments, out-of-scope lines, totals and counts).
+ * @throws {Error} When a statement is for a provider other than the window's provider.
+ */
 export function reconcile(input: ReconcileInput): ReconciliationReport {
   const { window } = input;
   const provider = window.provider;

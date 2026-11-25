@@ -5,11 +5,16 @@
  * Uses:
  *  - CostBridge.calculateUsdCost() (tokens → USD)
  *  - MarginEngine.calculateMargin() (USD + markup + optional FX)
+ *
+ * Prices come from the static seed table only (no Redis). Floating-point results; no I/O.
+ *
+ * @module src/pricing/economics/ScenarioEngine
  */
 
 import { calculateUsdCostSync as calculateUsdCost } from "./CostBridge.js";
 import { calculateMargin } from "./MarginEngine.js";
 
+/** A usage scenario: users, call rate, duration, tokens per call and pricing. */
 export type ScenarioInput = {
   provider: string;
   model: string;
@@ -22,6 +27,7 @@ export type ScenarioInput = {
   fxRate?: number; // USD→BRL snapshot
 };
 
+/** Totals and per-user values of a scenario (USD; BRL only when an FX rate was given). */
 export type ScenarioResult = {
   provider: string;
   model: string;
@@ -44,6 +50,16 @@ export type ScenarioResult = {
   priceBrlPerUser?: number;
 };
 
+/**
+ * Simulates cost, price and margin of a usage scenario.
+ *
+ * Call and token totals are rounded to integers before pricing.
+ *
+ * @param s - The scenario.
+ * @returns Totals and per-user values; provider and model are lower-cased.
+ * @throws {Error} When users or days are not positive, a rate or token count is negative, the model is not in
+ *   the seed table, or the markup is negative.
+ */
 export function simulateScenario(s: ScenarioInput): ScenarioResult {
   if (s.users <= 0) throw new Error("ScenarioEngine: users must be > 0");
   if (s.callsPerUserPerDay < 0 || s.days <= 0) throw new Error("ScenarioEngine: invalid calls/day or days");

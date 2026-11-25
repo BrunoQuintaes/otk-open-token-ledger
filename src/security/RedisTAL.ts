@@ -78,12 +78,21 @@ export class RedisTAL {
     this._available = !!redisClient;
   }
 
-  /** Whether Redis is being used for shared state. */
+  /**
+   * Whether Redis is being used for shared state.
+   *
+   * @returns `true` when a Redis client was given at construction.
+   */
   get isDistributed(): boolean {
     return this._available;
   }
 
-  /** Redis key for a tenant+epoch pair. */
+  /**
+   * Redis key for a tenant+epoch pair.
+   *
+   * @param tenantId - Tenant ID.
+   * @param epochId - Epoch ID.
+   */
   private _key(tenantId: string, epochId: string): string {
     return `${this._config.keyPrefix}${tenantId}:${epochId}`;
   }
@@ -97,12 +106,20 @@ export class RedisTAL {
   private readonly _pending = new Map<string, TALEntry>();
 
   private _droppedProjections = 0;
-  /** Pending projections dropped by the in-process bound (durable source: the PG outbox). */
+  /**
+   * Pending projections dropped by the in-process bound (durable source: the PG outbox).
+   *
+   * @returns Count since construction.
+   */
   get droppedProjections(): number {
     return this._droppedProjections;
   }
 
-  /** Number of debits waiting to be re-projected into Redis by this process. */
+  /**
+   * Number of debits waiting to be re-projected into Redis by this process.
+   *
+   * @returns Pending debit count.
+   */
   get pendingProjection(): number {
     return this._pending.size;
   }
@@ -112,7 +129,12 @@ export class RedisTAL {
     await this._redis.eval(DEBIT_SCRIPT, 2, key, `${key}:req:${entry.requestId}`, String(entry.cu), String(this._config.ttlSeconds), entry.requestId);
   }
 
-  /** Replay pending projections in insertion order; stops at the first failure. */
+  /**
+   * Replay pending projections in insertion order; stops at the first failure.
+   *
+   * @returns The number of debits still pending when Redis is not configured, otherwise 0 (on success).
+   * @throws {Error} The first Redis error (the remaining debits stay pending).
+   */
   async flushPending(): Promise<number> {
     if (!this._available || !this._redis) return this._pending.size;
     for (const [id, e] of [...this._pending]) {
@@ -126,6 +148,9 @@ export class RedisTAL {
    * Record a CU debit. Writes to both local TAL and Redis (if available).
    * Idempotent by requestId within (tenantId, epochId). A Redis failure is logged and the
    * debit stays pending in this process (RV30-02) instead of being forgotten.
+   *
+   * @param entry - Debit to record (copied into the local ledger).
+   * @throws {Error} A Redis error, only when `fallbackOnError` is `false`.
    */
   async debitAsync(entry: TALEntry): Promise<void> {
     // Always write to local TAL (fast, non-blocking)
@@ -158,6 +183,9 @@ export class RedisTAL {
   /**
    * Projection write for the durable outbox (effect `project_redis`): applies the debit to
    * Redis or throws, so the effect stays pending and is retried by any instance. Idempotent.
+   *
+   * @param entry - Debit to record.
+   * @throws {Error} When Redis is not configured or the Redis write fails.
    */
   async debitStrict(entry: TALEntry): Promise<void> {
     this._local.debit(entry);
@@ -170,6 +198,8 @@ export class RedisTAL {
    * Local (process memory) debit only. In PostgreSQL mode the durable outbox effect
    * `project_redis` is the single writer of the Redis projection; a second, fire-and-forget
    * writer could re-add a debit after the aggregate was dropped (observed, D7-G08 test).
+   *
+   * @param entry - Debit to record in process memory.
    */
   debitLocal(entry: TALEntry): void {
     this._local.debit(entry);
@@ -178,6 +208,8 @@ export class RedisTAL {
   /**
    * Synchronous debit (for backward compatibility with existing callers).
    * Only writes to local TAL — Redis write is fire-and-forget.
+   *
+   * @param entry - Debit to record.
    */
   debit(entry: TALEntry): void {
     this._local.debit(entry);
@@ -188,6 +220,10 @@ export class RedisTAL {
 
   /**
    * Get balance from Redis (distributed total) or local TAL (fallback).
+   *
+   * @param tenantId - Tenant ID.
+   * @param epochId - Epoch ID.
+   * @returns The Redis aggregate when present, else the local one (also on a Redis error).
    */
   async balanceAsync(tenantId: string, epochId: string): Promise<TALBalance> {
     if (this._available && this._redis) {
@@ -210,22 +246,45 @@ export class RedisTAL {
     return this._local.balance(tenantId, epochId);
   }
 
-  /** Synchronous balance (local TAL only — for backward compat). */
+  /**
+   * Synchronous balance (local TAL only — for backward compat).
+   *
+   * @param tenantId - Tenant ID.
+   * @param epochId - Epoch ID.
+   * @returns The local aggregate.
+   */
   balance(tenantId: string, epochId: string): TALBalance {
     return this._local.balance(tenantId, epochId);
   }
 
-  /** Entries from local TAL (Redis doesn't store individual entries). */
+  /**
+   * Entries from local TAL (Redis doesn't store individual entries).
+   *
+   * @param tenantId - Tenant ID.
+   * @param epochId - Epoch ID.
+   * @returns The local entries of that tenant and epoch.
+   */
   entries(tenantId: string, epochId: string): ReadonlyArray<TALEntry> {
     return this._local.entries(tenantId, epochId);
   }
 
-  /** Reconcile (local TAL). */
+  /**
+   * Reconcile (local TAL).
+   *
+   * @param tenantId - Tenant ID.
+   * @param epochId - Epoch ID.
+   * @param onChainCU - CU total submitted on-chain.
+   * @returns See `TokenAccountingLayer.reconcile`.
+   */
   reconcile(tenantId: string, epochId: string, onChainCU: bigint): ReconcileResult {
     return this._local.reconcile(tenantId, epochId, onChainCU);
   }
 
-  /** Total entries in local ledger. */
+  /**
+   * Total entries in local ledger.
+   *
+   * @returns Number of local entries, all tenants.
+   */
   size(): number {
     return this._local.size();
   }

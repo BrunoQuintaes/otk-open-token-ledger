@@ -11,7 +11,12 @@
  * Weights are stored as integer millis (× 1000) to avoid floating point.
  * Example: weight 1.1 → 1100, weight 0.85 → 850
  *
- * @module CostUnits
+ * This is the legacy integer formula (CU_MODEL_v1) with static, unsigned weight tables. It is used by legacy
+ * receipts, the legacy measurement adapters (`src/operations/measurementPorts.ts`) and the known-CU path
+ * (`src/operations/knownCu.ts`); the durable profile uses signed weight tables instead. Reads the environment
+ * variable CU_PUBLISH_MODE once, at import (see {@link CU_PUBLISH_MODE}).
+ *
+ * @module src/pricing/CostUnits
  * @since U5.2
  */
 
@@ -101,6 +106,7 @@ export const MODEL_WEIGHTS_INT: Readonly<Record<string, bigint>> = {
 // Error Codes (stable, for programmatic matching)
 // ---------------------------------------------------------------------------
 
+/** Stable error codes carried by {@link CUError}. */
 export const CU_ERROR = {
   UNKNOWN_PROVIDER: 'CU_UNKNOWN_PROVIDER',
   UNKNOWN_MODEL: 'CU_UNKNOWN_MODEL',
@@ -113,10 +119,15 @@ export const CU_ERROR = {
 // Input Type
 // ---------------------------------------------------------------------------
 
+/** Inputs of the CU_MODEL_v1 computation. */
 export interface CostUnitsInput {
+  /** Provider id (case-insensitive key of {@link PROVIDER_WEIGHTS_INT}). */
   provider: string;
+  /** Model id (case-insensitive key of {@link MODEL_WEIGHTS_INT}); dated ids are not mapped here. */
   model: string;
+  /** Input tokens (integer >= 0). */
   inputTokens: number;
+  /** Output tokens (integer >= 0). */
   outputTokens: number;
 }
 
@@ -133,8 +144,12 @@ export interface CostUnitsInput {
  *
  * Weight lookup is case-insensitive.
  *
- * @throws Error with stable code on unknown provider/model, negative tokens,
+ * @param input - Provider, model and token counts.
+ * @returns Whole CU (bigint).
+ * @throws {@link CUError} with stable code on unknown provider/model, negative tokens,
  *         non-integer tokens, or uint64 overflow.
+ * @example
+ * calculateCostUnitsV1({ provider: 'anthropic', model: 'claude-haiku-4-5', inputTokens: 1000, outputTokens: 500 }); // 1320n
  */
 export function calculateCostUnitsV1(input: CostUnitsInput): bigint {
   const { provider, model, inputTokens, outputTokens } = input;
@@ -212,6 +227,11 @@ export function calculateCostUnitsV1(input: CostUnitsInput): bigint {
  *
  * Convenience wrapper for contexts that need a JS number (e.g., RawReceipt.costUnits).
  * Throws if the result exceeds Number.MAX_SAFE_INTEGER.
+ *
+ * @param input - Provider, model and token counts.
+ * @returns Whole CU as a number.
+ * @throws {@link CUError} For the same reasons as {@link calculateCostUnitsV1}, or code `CU_UINT64_OVERFLOW`
+ *   above `Number.MAX_SAFE_INTEGER`.
  */
 export function calculateCostUnitsV1Number(input: CostUnitsInput): number {
   const cu = calculateCostUnitsV1(input);
@@ -230,12 +250,22 @@ export function calculateCostUnitsV1Number(input: CostUnitsInput): number {
 // Utility: Provider/Model queries
 // ---------------------------------------------------------------------------
 
-/** Check if a provider is supported (case-insensitive). */
+/**
+ * Check if a provider is supported (case-insensitive).
+ *
+ * @param provider - Provider id.
+ * @returns Whether it has a static weight.
+ */
 export function isProviderSupported(provider: string): boolean {
   return PROVIDER_WEIGHTS_INT[provider.toLowerCase()] !== undefined;
 }
 
-/** Check if a model is supported (case-insensitive). */
+/**
+ * Check if a model is supported (case-insensitive).
+ *
+ * @param model - Model id.
+ * @returns Whether it has a static weight.
+ */
 export function isModelSupported(model: string): boolean {
   return MODEL_WEIGHTS_INT[model.toLowerCase()] !== undefined;
 }
@@ -247,6 +277,10 @@ export function isModelSupported(model: string): boolean {
  * only when the family is in the table; anything else is returned unchanged, so an unknown
  * model still fails explicitly instead of being mapped to another one. Callers keep the
  * original id in the receipt.
+ *
+ * @param provider - Provider id.
+ * @param model - Model id as reported or requested.
+ * @returns The family id for a dated Anthropic snapshot whose family is listed; otherwise `model` unchanged.
  */
 export function weightModelKey(provider: string, model: string): string {
   if (provider.toLowerCase() !== 'anthropic' || isModelSupported(model)) return model;
@@ -254,12 +288,20 @@ export function weightModelKey(provider: string, model: string): string {
   return family !== model && isModelSupported(family) ? family : model;
 }
 
-/** Get all supported provider keys. */
+/**
+ * Get all supported provider keys.
+ *
+ * @returns Lower-case provider ids.
+ */
 export function getSupportedProviders(): string[] {
   return Object.keys(PROVIDER_WEIGHTS_INT);
 }
 
-/** Get all supported model keys. */
+/**
+ * Get all supported model keys.
+ *
+ * @returns Lower-case model ids.
+ */
 export function getSupportedModels(): string[] {
   return Object.keys(MODEL_WEIGHTS_INT);
 }
@@ -268,9 +310,16 @@ export function getSupportedModels(): string[] {
 // CUError class (stable error codes for programmatic matching)
 // ---------------------------------------------------------------------------
 
+/** Error of the CU engine; match on `code` (a value of {@link CU_ERROR}), not on the message. */
 export class CUError extends Error {
   readonly code: string;
 
+  /**
+   * Builds the error.
+   *
+   * @param code - Stable code from {@link CU_ERROR}.
+   * @param message - Human-readable detail.
+   */
   constructor(code: string, message: string) {
     super(message);
     this.name = 'CUError';
@@ -289,7 +338,7 @@ export const CU_DEFAULT_BUCKET = 100n;
 /** Publish mode for on-chain CU value */
 export type CUPublishMode = 'raw' | 'bucketed';
 
-/** Current publish mode — can be overridden via env CU_PUBLISH_MODE */
+/** Current publish mode — can be overridden via env CU_PUBLISH_MODE (only the exact value `raw`; read once at import) */
 export const CU_PUBLISH_MODE: CUPublishMode =
   (process.env['CU_PUBLISH_MODE'] as CUPublishMode | undefined) === 'raw' ? 'raw' : 'bucketed';
 
@@ -303,6 +352,14 @@ export const CU_PUBLISH_MODE: CUPublishMode =
  *   - result >= 0
  *   - result is a multiple of bucketSize
  *   - result == 0 iff cu == 0
+ *
+ * Note: the last invariant above does not hold for small values: with bucketSize 100, any cu from 1 to 49
+ * rounds to 0 (only cu >= bucketSize/2 gives a non-zero bucket).
+ *
+ * @param cu - CU value (>= 0).
+ * @param bucketSize - Bucket width (> 0).
+ * @returns The nearest multiple of `bucketSize`, halves rounded up.
+ * @throws {@link CUError} When `bucketSize` <= 0 or `cu` < 0 (code `CU_NEGATIVE_TOKENS` in both cases).
  */
 export function bucketCU(cu: bigint, bucketSize: bigint = CU_DEFAULT_BUCKET): bigint {
   if (bucketSize <= 0n) throw new CUError(CU_ERROR.NEGATIVE_TOKENS, `bucketSize must be > 0, got ${bucketSize}`);
@@ -318,6 +375,11 @@ export function bucketCU(cu: bigint, bucketSize: bigint = CU_DEFAULT_BUCKET): bi
 
 /**
  * Apply publish mode: return raw or bucketed CU based on CU_PUBLISH_MODE.
+ *
+ * @param cu - CU value.
+ * @param bucketSize - Bucket width used in bucketed mode.
+ * @returns `cu` unchanged in raw mode, else {@link bucketCU}.
+ * @throws {@link CUError} In bucketed mode, for the reasons of {@link bucketCU}.
  */
 export function publishCU(cu: bigint, bucketSize: bigint = CU_DEFAULT_BUCKET): bigint {
   return CU_PUBLISH_MODE === 'raw' ? cu : bucketCU(cu, bucketSize);

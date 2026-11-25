@@ -9,7 +9,12 @@
  * - Graceful shutdown
  * - Circuit breaker for unavailability
  *
- * @module infra/redis/redisClient
+ * Environment variables read by `getRedisClient()`: `OTK_REDIS_URL` (required; without it Redis is off),
+ * `OTK_REDIS_CONNECT_TIMEOUT`, `OTK_REDIS_COMMAND_TIMEOUT`, `OTK_REDIS_MAX_RECONNECT`, `OTK_REDIS_HEALTH_INTERVAL`
+ * (milliseconds / count). `ioredis` is loaded dynamically on `connect()`. Logs are JSON lines on stderr with the URL
+ * password masked. The Redis-backed stores in this folder use `rawClient` and `prefix` of the shared instance.
+ *
+ * @module src/infra/redis/redisClient
  * @since S3.1 (Wave 1 Pack 2)
  */
 
@@ -40,12 +45,19 @@ export interface RedisConfig {
   maxMemoryPolicy?: string;
 }
 
+/** Health snapshot of the Redis connection. */
 export interface RedisHealthStatus {
+  /** True while the connection is up. */
   connected: boolean;
+  /** Latency of the last successful PING in ms; null before the first one. */
   lastPingMs: number | null;
+  /** Time of the last successful PING, ISO 8601. */
   lastPingAt: string | null;
+  /** Reconnect attempts since the last successful connection. */
   reconnectAttempts: number;
+  /** True after `maxReconnectAttempts` failed reconnects (no more retries). */
   circuitOpen: boolean;
+  /** Milliseconds since this wrapper was created. */
   uptimeMs: number;
 }
 
@@ -76,12 +88,21 @@ export class RedisClient extends EventEmitter {
   private _client: any = null; // IORedis instance (lazy)
   private _closing = false;
 
+  /**
+   * Creates the wrapper; no connection is opened until `connect()`.
+   *
+   * @param config - URL and optional timeouts, retry limits and key prefix.
+   */
   constructor(config: RedisConfig) {
     super();
     this.config = { ...DEFAULT_CONFIG, ...config } as Required<RedisConfig>;
   }
 
-  /** Masked URL for logging (hides password if present). */
+  /**
+   * Masked URL for logging (hides password if present).
+   *
+   * @returns The URL with the password replaced by `***`, or `<invalid-url>`.
+   */
   get maskedUrl(): string {
     try {
       const u = new URL(this.config.url);
@@ -92,7 +113,11 @@ export class RedisClient extends EventEmitter {
     }
   }
 
-  /** Current health status (safe to expose in admin endpoints). */
+  /**
+   * Current health status (safe to expose in admin endpoints).
+   *
+   * @returns A snapshot of the connection state.
+   */
   health(): RedisHealthStatus {
     return {
       connected: this._connected,
@@ -104,7 +129,11 @@ export class RedisClient extends EventEmitter {
     };
   }
 
-  /** Whether the client is connected and healthy. */
+  /**
+   * Whether the client is connected and healthy.
+   *
+   * @returns True when connected and the reconnect circuit is closed.
+   */
   get isReady(): boolean {
     return this._connected && !this._circuitOpen;
   }
@@ -113,6 +142,10 @@ export class RedisClient extends EventEmitter {
    * Connect to Redis.
    * Returns true on success. On failure, logs (no secret leakage) and returns false.
    * Does NOT throw — callers can proceed without Redis in Phase 1 fallback mode.
+   *
+   * Side effect: starts a background PING every `healthCheckIntervalMs` (the timer does not keep the process alive).
+   *
+   * @returns True when connected (or already connected), false on any failure (including `ioredis` missing).
    */
   async connect(): Promise<boolean> {
     if (this._client && this._connected) return true;
@@ -188,6 +221,8 @@ export class RedisClient extends EventEmitter {
   /**
    * Execute a PING health check.
    * Returns latency in ms or null on failure.
+   *
+   * @returns Round-trip time in ms, or null when not connected or the reply is not PONG.
    */
   async ping(): Promise<number | null> {
     if (!this._client || !this._connected) return null;
@@ -206,17 +241,29 @@ export class RedisClient extends EventEmitter {
     }
   }
 
-  /** Get the raw IORedis client (for BullMQ or direct use). Null if not connected. */
+  /**
+   * Get the raw IORedis client (for BullMQ or direct use). Null if not connected.
+   *
+   * @returns The ioredis instance; null only before `connect()` created it (it stays non-null after a disconnect).
+   */
   get rawClient(): any {
     return this._client;
   }
 
-  /** Get the Redis URL (for BullMQ connection config). */
+  /**
+   * Get the Redis URL (for BullMQ connection config).
+   *
+   * @returns The configured URL, unmasked (may contain the password; never log it).
+   */
   get url(): string {
     return this.config.url;
   }
 
-  /** Key prefix for namespacing. */
+  /**
+   * Key prefix for namespacing.
+   *
+   * @returns The prefix (default `otk:`).
+   */
   get prefix(): string {
     return this.config.keyPrefix;
   }
@@ -272,6 +319,8 @@ let _instance: RedisClient | null = null;
 /**
  * Get or create the singleton Redis client.
  * Uses OTK_REDIS_URL env var. Returns null if URL is not configured.
+ *
+ * @returns The shared wrapper (not yet connected on first call), or null.
  */
 export function getRedisClient(): RedisClient | null {
   const url = process.env['OTK_REDIS_URL'];
@@ -292,6 +341,8 @@ export function getRedisClient(): RedisClient | null {
  * Initialize Redis connection (call at server startup).
  * Returns true if connected, false if Redis is unavailable or not configured.
  * Non-fatal: the system can run in Phase 1 mode without Redis.
+ *
+ * @returns Whether the shared client is connected.
  */
 export async function initRedis(): Promise<boolean> {
   const client = getRedisClient();

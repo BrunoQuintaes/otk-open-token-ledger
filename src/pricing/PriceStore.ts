@@ -7,7 +7,11 @@
  * Keys: `otk:prices:<provider>:<model>` → JSON { inputUsdPer1K, outputUsdPer1K, updatedAt }
  * TTL: 25h (ensures daily scrape keeps data fresh; expired → fallback to seed)
  *
- * @module pricing/PriceStore
+ * Read by `economics/CostBridge.ts` and by the admin prices route in `src/api/routes.ts`. Without a ready Redis
+ * client every write is skipped and every read returns `null` (no error). The seed file is
+ * `src/pricing/data/price_seed.json`.
+ *
+ * @module src/pricing/PriceStore
  * @since W7 (PI-02)
  */
 
@@ -18,12 +22,19 @@ import type { ModelPrice } from './economics/ProviderPriceTable.js';
 const PRICE_TTL_S = 25 * 60 * 60; // 25 hours
 const KEY_PREFIX = 'otk:prices:';
 
+/** A price as stored in Redis, with the time it was written. */
 export interface StoredPrice extends ModelPrice {
   updatedAt: string; // ISO timestamp of last scrape
 }
 
 /**
  * Write a price entry to Redis. Non-fatal if Redis unavailable.
+ *
+ * Provider and model are lower-cased in the key; Redis errors are swallowed.
+ *
+ * @param provider - Provider id.
+ * @param model - Model id.
+ * @param price - Input/output prices to store (expire after 25 hours).
  */
 export async function setPrice(provider: string, model: string, price: ModelPrice): Promise<void> {
   const redis = getRedisClient();
@@ -37,6 +48,10 @@ export async function setPrice(provider: string, model: string, price: ModelPric
 
 /**
  * Read a price entry from Redis. Returns null if not found or Redis unavailable.
+ *
+ * @param provider - Provider id (case-insensitive).
+ * @param model - Model id (case-insensitive).
+ * @returns The stored price, or `null` (also when the stored JSON is unreadable).
  */
 export async function getPrice(provider: string, model: string): Promise<StoredPrice | null> {
   const redis = getRedisClient();
@@ -53,6 +68,9 @@ export async function getPrice(provider: string, model: string): Promise<StoredP
 
 /**
  * Write an entire provider price table to Redis.
+ *
+ * @param provider - Provider id.
+ * @param models - Model id → price; written one by one.
  */
 export async function setProviderPrices(provider: string, models: Record<string, ModelPrice>): Promise<void> {
   for (const [model, price] of Object.entries(models)) {
@@ -63,6 +81,11 @@ export async function setProviderPrices(provider: string, models: Record<string,
 /**
  * List all cached price entries from Redis (for /v1/admin/prices endpoint).
  * Returns flat array with provider/model/price/updatedAt/staleness.
+ *
+ * Only models listed in the seed file are returned; a Redis value overrides the seed price.
+ *
+ * @returns One row per seed model; `staleHours` (one decimal) and `updatedAt` are `null` for seed rows.
+ * @throws {Error} When the seed file cannot be read or parsed.
  */
 export async function listPrices(): Promise<Array<{
   provider: string;

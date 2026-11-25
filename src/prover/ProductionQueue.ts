@@ -12,7 +12,14 @@
  * - Retry with exponential backoff
  * - Unified monitoring interface
  *
- * @module prover/ProductionQueue
+ * Environment variables read when this module is imported: PROVER_MAX_ATTEMPTS, PROVER_BACKOFF_MS,
+ * PROVER_BACKOFF_FACTOR, PROVER_MAX_BACKOFF_MS, PROVER_MAX_QUEUE_SIZE, PROVER_REJECT_POLICY,
+ * PROVER_CONCURRENCY; at construction and init: OTK_REDIS_URL, OTK_PROOF_QUEUE_LOG.
+ * Limits of this version: `drop_oldest` is accepted but not implemented (the job is enqueued anyway),
+ * `backoffFactor`, `maxBackoffMs` and `concurrency` are not applied by this class, and in BullMQ mode
+ * completion/failure are handled by the BullMQ worker, so the metrics here only count enqueues.
+ *
+ * @module src/prover/ProductionQueue
  * @since S3.2 + S3.4 (Wave 1 Pack 3)
  */
 
@@ -96,6 +103,11 @@ export class ProductionQueue {
   private _queue: any; // DurableProofQueue or BullMQProofQueue instance
   private _metrics: QueueMetrics;
 
+  /**
+   * Chooses the mode from OTK_REDIS_URL; the backing queue is created by {@link ProductionQueue.init}.
+   *
+   * @param config - Overrides of the defaults read from the environment.
+   */
   constructor(config?: Partial<QueueConfig>) {
     this.config = { ...DEFAULT_CONFIG, ...config, retry: { ...DEFAULT_RETRY, ...config?.retry } };
     this._mode = process.env['OTK_REDIS_URL'] ? 'bullmq' : 'durable';
@@ -128,7 +140,11 @@ export class ProductionQueue {
     }
   }
 
-  /** Current operating mode. */
+  /**
+   * Current operating mode.
+   *
+   * @returns `bullmq` or `durable`.
+   */
   get mode(): 'bullmq' | 'durable' {
     return this._mode;
   }
@@ -136,6 +152,12 @@ export class ProductionQueue {
   /**
    * Enqueue a proof job with backpressure check.
    * Returns the job id, or throws if queue is full (reject policy).
+   *
+   * A rejected job is also recorded in the dead-letter store (asynchronously; failures ignored).
+   *
+   * @param input - Proof inputs.
+   * @returns The job id.
+   * @throws {Error} When the queue is full under the reject policy, or the backing queue fails.
    */
   async enqueue(input: ProofInput): Promise<string> {
     // Backpressure check
@@ -166,7 +188,11 @@ export class ProductionQueue {
     return id;
   }
 
-  /** Dequeue next available job (durable mode only). BullMQ uses worker pattern. */
+  /**
+   * Dequeue next available job (durable mode only). BullMQ uses worker pattern.
+   *
+   * @returns The job, or `null` when none is ready or in BullMQ mode.
+   */
   dequeue(): QueueJob | null {
     if (this._mode !== 'durable') return null;
     const job = this._queue.dequeue();
@@ -177,7 +203,14 @@ export class ProductionQueue {
     return null;
   }
 
-  /** Mark job as completed. */
+  /**
+   * Mark job as completed.
+   *
+   * @param id - Job id.
+   * @param result - Proof result.
+   * @param txHash - On-chain transaction hash, when submitted.
+   * @throws {Error} In durable mode, when the job id is unknown.
+   */
   complete(id: string, result: ProofResult, txHash?: string): void {
     if (this._mode === 'durable') {
       this._queue.complete(id, result, txHash);
@@ -190,6 +223,12 @@ export class ProductionQueue {
   /**
    * Mark job as failed. Handles retry and dead-letter logic.
    * On dead-letter: captures to the S1.5 dead-letter store.
+   *
+   * No-op in BullMQ mode.
+   *
+   * @param id - Job id.
+   * @param error - Failure message (stored; must not contain secrets).
+   * @throws {Error} In durable mode, when the job id is unknown.
    */
   fail(id: string, error: string): void {
     if (this._mode === 'durable') {
@@ -213,14 +252,25 @@ export class ProductionQueue {
     }
   }
 
-  /** Mark job as submitted on-chain (PA-04 txHash guard). */
+  /**
+   * Mark job as submitted on-chain (PA-04 txHash guard).
+   *
+   * @param id - Job id.
+   * @param txHash - Transaction hash.
+   * @throws {Error} In durable mode, when the job id is unknown.
+   */
   markSubmitted(id: string, txHash: string): void {
     if (this._mode === 'durable') {
       this._queue.markSubmitted(id, txHash);
     }
   }
 
-  /** Get job info. */
+  /**
+   * Get job info.
+   *
+   * @param id - Job id.
+   * @returns The job, or `null`; in BullMQ mode `input` is an empty object.
+   */
   async getJob(id: string): Promise<QueueJob | null> {
     if (this._mode === 'bullmq') {
       const status = await this._queue.getJobStatus(id);
@@ -239,7 +289,11 @@ export class ProductionQueue {
     return job ? this._toQueueJob(job) : null;
   }
 
-  /** Current queue depth. */
+  /**
+   * Current queue depth.
+   *
+   * @returns Pending jobs according to the backing queue.
+   */
   async depth(): Promise<number> {
     if (this._mode === 'bullmq') {
       return this._queue.size();
@@ -247,7 +301,11 @@ export class ProductionQueue {
     return this._queue.size();
   }
 
-  /** Queue stats. */
+  /**
+   * Queue stats.
+   *
+   * @returns A copy of the in-process counters (they reset on restart).
+   */
   async stats(): Promise<QueueMetrics> {
     return { ...this._metrics };
   }
@@ -279,7 +337,11 @@ export class ProductionQueue {
 
 let _instance: ProductionQueue | null = null;
 
-/** Get or create the production queue singleton. */
+/**
+ * Get or create the production queue singleton.
+ *
+ * @returns The process-wide queue (call {@link initProductionQueue} before using it).
+ */
 export function getProductionQueue(): ProductionQueue {
   if (!_instance) {
     _instance = new ProductionQueue();

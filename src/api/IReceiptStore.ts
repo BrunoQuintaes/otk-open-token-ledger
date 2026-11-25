@@ -5,7 +5,10 @@
  * Current implementation: module-level functions in receiptStore.ts (in-memory + JSONL).
  * Future implementation: class-based adapters (PostgreSQL, Redis) fulfilling this contract.
  *
- * @module api/IReceiptStore
+ * The only implementation today is the set of module-level functions in `src/api/receiptStore.ts`, whose
+ * conformance is checked at compile time at the end of that file. This file has no runtime code.
+ *
+ * @module src/api/IReceiptStore
  * @since u12.p3.p (ADR-0205)
  */
 

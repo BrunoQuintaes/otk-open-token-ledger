@@ -7,7 +7,11 @@
  *   - Per-endpoint delivery log table
  *   - Dead-letter queue replay button
  *
- * @module dashboard/webhooks
+ * Pure rendering: the caller supplies the data from the webhook registry (`src/webhooks/WebhookRegistry.ts`).
+ * The buttons of the page call the webhook management API from the browser; this module itself sends nothing.
+ * Called by `handleDashboardRequest` in `src/dashboard/app.ts` for the `/app/webhooks` page.
+ *
+ * @module src/dashboard/webhooks
  * @since Wave 4 (4E-PACK-4E02 / NEW-4.06)
  */
 
@@ -18,9 +22,12 @@ import type { WebhookEndpoint, WebhookDeliveryLog, WebhookDeadLetter } from '../
 // Types
 // ──────────────────────────────────────────────────────────
 
+/** Data shown on the webhook management page. */
 export interface WebhookDashboardData {
+  /** Registered endpoints. */
   endpoints: WebhookEndpoint[];
   deliveries: Record<string, WebhookDeliveryLog[]>;  // endpointId → logs
+  /** Deliveries that exhausted their retries. */
   deadLetters: WebhookDeadLetter[];
 }
 
@@ -28,6 +35,14 @@ export interface WebhookDashboardData {
 // HTML renderer
 // ──────────────────────────────────────────────────────────
 
+/**
+ * Renders the webhook management page as a complete HTML document.
+ *
+ * Shows at most the last 20 deliveries (across all endpoints, newest first). Text values are HTML-escaped.
+ *
+ * @param data - Endpoints, delivery logs and dead letters.
+ * @returns The HTML text.
+ */
 export function renderWebhooksPage(data: WebhookDashboardData): string {
   const { endpoints, deliveries, deadLetters } = data;
 

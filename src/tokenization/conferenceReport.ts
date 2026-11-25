@@ -24,6 +24,8 @@
  *    the adjusted deltas; raw local counts, raw deltas and provider usage are never overwritten. A category the
  *    profile does not cover keeps its raw numbers but leaves the verdict (listed as uncovered). Without a
  *    calibration argument the report is byte-for-byte the v1.1 one.
+ *
+ * @module src/tokenization/conferenceReport
  */
 import type {
   CategoryComparison, ConferenceCalibration, ConferenceReport, ConferenceState, ConferenceThreshold, ConferenceVerdict, Hex32, IsoTime,
@@ -31,6 +33,9 @@ import type {
 } from '../types/d1d8/index.js';
 import { categorySide } from '../providers/usage/normalizeUsage.js';
 
+/**
+ * Identifier of the comparison rule described above.
+ */
 export const CONFERENCE_RULE_ID = 'otk.conference.rule.v1';
 
 /**
@@ -39,6 +44,9 @@ export const CONFERENCE_RULE_ID = 'otk.conference.rule.v1';
  * so (calibrated = false, calibrationVersion = null) until a profile validated out of sample replaces it.
  */
 export const HEURISTIC_THRESHOLD_LABEL = 'HEURISTIC' as const;
+/**
+ * Default threshold: more than 16 tokens AND more than 10 %; heuristic and uncalibrated.
+ */
 export const HEURISTIC_THRESHOLD_V0: ConferenceThreshold = Object.freeze({
   absoluteTokens: 16n,
   relative: '0.100000',
@@ -48,6 +56,13 @@ export const HEURISTIC_THRESHOLD_V0: ConferenceThreshold = Object.freeze({
 
 const REL_SCALE = 1_000_000n;
 
+/**
+ * Formats |delta| / provider with 6 decimals, truncated (not rounded).
+ *
+ * @param delta - Difference in tokens (sign ignored).
+ * @param provider - Provider count in tokens.
+ * @returns The decimal text, or `null` when `provider` is 0 or negative.
+ */
 export function relativeDeltaString(delta: bigint, provider: bigint): string | null {
   if (provider <= 0n) return null;
   const abs = delta < 0n ? -delta : delta;
@@ -55,13 +70,28 @@ export function relativeDeltaString(delta: bigint, provider: bigint): string | n
   return `${q / REL_SCALE}.${(q % REL_SCALE).toString().padStart(6, '0')}`;
 }
 
-/** Parse a fixed decimal string to micro units; throws on malformed thresholds. */
+/**
+ * Parse a fixed decimal string to micro units; throws on malformed thresholds.
+ *
+ *
+ * @param s - Non-negative decimal with at most 6 fraction digits.
+ * @returns The value × 10^6.
+ * @throws {Error} When `s` is not in that format.
+ */
 export function decimalToMicro(s: string): bigint {
   const m = /^(\d+)(?:\.(\d{1,6}))?$/.exec(s);
   if (!m) throw new Error(`invalid decimal threshold ${s}`);
   return BigInt(m[1]!) * REL_SCALE + BigInt((m[2] ?? '').padEnd(6, '0'));
 }
 
+/**
+ * Applies the divergence rule of the file header to one comparison.
+ *
+ * @param c - Comparison of one category.
+ * @param t - Threshold to apply.
+ * @returns `true` when the gap exceeds both the absolute and the relative limit (or the relative one cannot apply).
+ * @throws {Error} When `t.relative` or `c.relativeDelta` is not a valid decimal.
+ */
 export function isDivergent(c: CategoryComparison, t: ConferenceThreshold): boolean {
   if (c.absoluteDelta === null) return false;
   const abs = c.absoluteDelta < 0n ? -c.absoluteDelta : c.absoluteDelta;
@@ -70,6 +100,9 @@ export function isDivergent(c: CategoryComparison, t: ConferenceThreshold): bool
   return decimalToMicro(c.relativeDelta) > decimalToMicro(t.relative);
 }
 
+/**
+ * Inputs of {@link buildConferenceReport}.
+ */
 export interface BuildConferenceArgs {
   key: OperationKey;
   receiptDigest: Hex32;
@@ -77,6 +110,7 @@ export interface BuildConferenceArgs {
   local: LocalCountResult;
   support: ModelSupport;
   threshold: ConferenceThreshold;
+  /** Time written into the report (the function reads no clock). */
   now: IsoTime;
   calibration?: ConferenceCalibration;
 }
@@ -85,7 +119,15 @@ function cat(usage: NormalizedUsage, name: TokenCategoryName) {
   return usage.categories.find((c) => c.name === name);
 }
 
-/** BuildConferenceReportFn. */
+/**
+ * BuildConferenceReportFn.
+ *
+ *
+ * @param args - Operation key, receipt digest, normalized usage, local count, model support, threshold, time
+ *   and optional calibration.
+ * @returns The report (unsigned); inputs are not modified.
+ * @throws {Error} When a threshold value is not a valid decimal.
+ */
 export function buildConferenceReport(args: BuildConferenceArgs): ConferenceReport {
   const { usage, local, support, threshold } = args;
   const localOf = (name: TokenCategoryName) => local.counts.find((c) => c.category === name)?.count ?? null;

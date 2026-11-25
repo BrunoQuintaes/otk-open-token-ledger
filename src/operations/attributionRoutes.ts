@@ -13,7 +13,10 @@
  * The tenant always comes from the credential; another tenant's project ids are unknown here. Labels stay private
  * (never published, never on chain). Amounts are integers with their scale (CU micro units; money pico-USD).
  *
- * @module operations/attributionRoutes
+ * Dispatched from the proxy gateway (`src/proxy/ProxyGateway.ts`), which passes its credential check as a
+ * callback. Any storage failure answers 503 `persistence_unavailable` and is logged without the request body.
+ *
+ * @module src/operations/attributionRoutes
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { AttributionStatementV1, SignedEnvelope } from '../types/d1d8/index.js';
@@ -24,6 +27,12 @@ import type { Caller } from './routes.js';
 
 const ROUTE = /^\/v1\/attribution\/(projects|applications|summary|export)$/;
 
+/**
+ * Whether a path is one of the four attribution routes (method not checked).
+ *
+ * @param pathname - URL path without query string.
+ * @returns `true` for the projects, applications, summary and export paths.
+ */
 export function isAttributionRoute(pathname: string): boolean {
   return ROUTE.test(pathname);
 }
@@ -36,6 +45,7 @@ function json(res: ServerResponse, status: number, body: unknown): void {
   res.end(data);
 }
 
+// Bodies over `max` characters, non-JSON and non-object bodies all read as null (answered 400 by the caller).
 async function readSmallJson(req: IncomingMessage, max = 4096): Promise<Record<string, unknown> | null> {
   let raw = '';
   for await (const c of req) { raw += String(c); if (raw.length > max) return null; }
@@ -44,6 +54,20 @@ async function readSmallJson(req: IncomingMessage, max = 4096): Promise<Record<s
 
 const EPOCH_RE = /^[0-9]{1,20}$/;
 
+/**
+ * Serves one attribution request and always writes the response.
+ *
+ * Write routes need the `receipts:write` permission and read routes `receipts:read`. The export verifies each
+ * signed statement against its receipt when the crypto context supports it (`verification` is `null` otherwise).
+ *
+ * @param ctx - Operations context (pool, receipt store, crypto, logger).
+ * @param req - The request (its body is read for write routes, at most 4096 characters).
+ * @param res - The response to write.
+ * @param url - Parsed request URL.
+ * @param method - HTTP method.
+ * @param authorize - Credential check for the required permission; returns the caller or a refusal.
+ * @returns Resolves once the response has been sent.
+ */
 export async function handleAttributionRoute(ctx: OperationsContext, req: IncomingMessage, res: ServerResponse, url: URL, method: string,
   authorize: (req: IncomingMessage, permission: 'receipts:read' | 'receipts:write') => Caller): Promise<void> {
   const m = ROUTE.exec(url.pathname);

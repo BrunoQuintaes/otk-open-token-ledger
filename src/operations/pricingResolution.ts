@@ -11,7 +11,10 @@
  * not loaded at settlement time, or an explicit table chosen by the operator (correction); the
  * table used is recorded in money.priceTable and in otk_money_ledger.
  *
- * @module operations/pricingResolution
+ * {@link resolvePendingPrices} is run periodically by `src/operations/runtime.ts`. No network call: prices
+ * come from the loaded price tables.
+ *
+ * @module src/operations/pricingResolution
  */
 import type { OperationKey, VersionRef } from '../types/d1d8/index.js';
 import type { OperationsContext } from './context.js';
@@ -19,12 +22,24 @@ import { keyString } from './context.js';
 import { moneyFromQuote } from './proxyDurable.js';
 import { RevisionConflictError } from './PgOperationStore.js';
 
+/** Outcome of one price-resolution attempt for an operation. */
 export type PriceResolution =
   | { outcome: 'settled'; table: VersionRef }
   | { outcome: 'already' }
   | { outcome: 'still_pending'; priceStatus: 'missing_price' | 'partial' }
   | { outcome: 'not_applicable'; reason: string };
 
+/**
+ * Tries to settle the money axis of one pending-price operation with a complete quote of its stored usage.
+ *
+ * Retries up to 5 times on a revision conflict, then answers `not_applicable` with reason `busy`.
+ *
+ * @param ctx - Operations context (store, measurement prices, logger).
+ * @param key - Tenant and operation id.
+ * @param table - Price table to use; defaults to the table frozen into the operation.
+ * @returns `settled` with the table used, `already`, `still_pending`, or `not_applicable` with a reason.
+ * @throws {Error} Errors other than a revision conflict propagate from the store.
+ */
 export async function resolveOperationPrice(ctx: OperationsContext, key: OperationKey, table?: VersionRef): Promise<PriceResolution> {
   if (!ctx.measurement.priceUsage) return { outcome: 'not_applicable', reason: 'no_price_function' };
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -49,13 +64,15 @@ export async function resolveOperationPrice(ctx: OperationsContext, key: Operati
   return { outcome: 'not_applicable', reason: 'busy' };
 }
 
+/** Tuning of {@link resolvePendingPrices}; every field has a default. */
 export interface ReconciliationOptions {
-  /** Operations claimed per pass (bounded cost). */
+  /** Operations claimed per pass (bounded cost). Default 100. */
   limit?: number;
-  /** Backoff after an attempt: base × 2^(attempts before it), capped at maxMs. */
+  /** Backoff after an attempt: base × 2^(attempts before it), capped at maxMs. Default 60000 ms. */
   baseBackoffMs?: number;
+  /** Cap of the backoff, ms. Default 3600000 (one hour). */
   maxBackoffMs?: number;
-  /** Attempts from which a still-pending operation is reported as stuck (alert). */
+  /** Attempts from which a still-pending operation is reported as stuck (alert). Default 5. */
   alertAfterAttempts?: number;
 }
 
@@ -71,6 +88,14 @@ export interface ReconciliationOptions {
  * faster than limit per pass, or slow passes, no time bound holds: capacity (limit × pass rate) must exceed
  * the arrival rate of pending prices. Idempotent across restarts and workers: the schedule is in PostgreSQL and
  * every settlement is a revision-checked transition (money ledger keyed by operation).
+ *
+ * A failed attempt for one operation is counted as pending (and logged as stuck past the alert threshold);
+ * it does not stop the pass.
+ *
+ * @param ctx - Operations context.
+ * @param opts - Pass size, backoff and alert threshold.
+ * @returns Counts for this pass: settled, still pending, and pending past the alert threshold.
+ * @throws {Error} When claiming the due operations fails.
  */
 export async function resolvePendingPrices(ctx: OperationsContext, opts: ReconciliationOptions = {}): Promise<{ settled: number; pending: number; stuck: number }> {
   const limit = opts.limit ?? 100;

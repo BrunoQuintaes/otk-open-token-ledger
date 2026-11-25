@@ -25,7 +25,13 @@
  *   GET  /health          — liveness check
  *   GET  /metrics         — queue stats
  *
- * @module ProverDaemon
+ * Runs as its own process (started by running this file). Other environment variables read: OTK_REDIS_URL
+ * (BullMQ queue instead of the local durable queue), OTK_PROOF_QUEUE_LOG, PROVER_MAX_ATTEMPTS,
+ * OTK_ZK_KEY_PATH, and the chain settings listed at the on-chain submission helper below (the signer key is a
+ * secret and is never logged). The metrics route is guarded by `src/observability/metricsAccess.ts`.
+ * This file is scanned as text by the route inventory script under `scripts/ops/`.
+ *
+ * @module src/prover/ProverDaemon
  * @since U13 (2026-02-22)
  */
 
@@ -166,6 +172,10 @@ async function generateProof(input: ProofInput): Promise<ProofResult> {
  *   OTK_REGISTRY_V2_ADDRESS  — ReceiptRegistryV2 address (required for v2 proofs)
  *   OTK_SIGNER_KEY           — private key of trustedSigner
  *
+ * @param input - The job's proof inputs (its circuit version is the fallback).
+ * @param result - The generated proof.
+ * @returns The transaction hash, or `null` when the chain is not configured.
+ * @throws {Error} When the version has no registry configured or the submission fails.
  * @since PA-03 | R19 (version-aware submission)
  */
 async function submitProofOnChain(input: ProofInput, result: ProofResult): Promise<string | null> {
@@ -203,7 +213,12 @@ interface IProofQueueAdapter {
   stats(): Promise<{ pending: number; done: number; dead_letter: number; failed: number }>;
 }
 
-/** Wraps DurableProofQueue (sync) as an async IProofQueueAdapter. */
+/**
+ * Wraps DurableProofQueue (sync) as an async IProofQueueAdapter.
+ *
+ * @param q - The local durable queue.
+ * @returns The adapter.
+ */
 function makeDurableAdapter(q: DurableProofQueue): IProofQueueAdapter {
   return {
     enqueue: (input) => Promise.resolve(q.enqueue(input)),
@@ -227,7 +242,12 @@ function makeDurableAdapter(q: DurableProofQueue): IProofQueueAdapter {
   };
 }
 
-/** Wraps BullMQProofQueue (async) as an IProofQueueAdapter. */
+/**
+ * Wraps BullMQProofQueue (async) as an IProofQueueAdapter.
+ *
+ * @param q - The BullMQ queue.
+ * @returns The adapter.
+ */
 function makeBullMQAdapter(q: BullMQProofQueue): IProofQueueAdapter {
   return {
     enqueue: (input) => q.enqueue(input),

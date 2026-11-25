@@ -7,7 +7,9 @@
  * All timestamps and seeds are injectable for determinism.
  * Pure types — no I/O.
  *
- * @module enterprise/EnterpriseContext
+ * Consumed by `EnterpriseEvaluator.evaluateEnterprise`.
+ *
+ * @module src/enterprise/EnterpriseContext
  * @since E4
  */
 

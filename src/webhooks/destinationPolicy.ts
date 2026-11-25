@@ -22,6 +22,9 @@ import dns from 'node:dns';
 import net from 'node:net';
 import type { HttpPostFn } from './WebhookDelivery.js';
 
+/**
+ * Stable reason codes of {@link WebhookDestinationError}.
+ */
 export type DestinationRefusal =
   | 'invalid_url'
   | 'scheme_not_allowed'
@@ -31,6 +34,9 @@ export type DestinationRefusal =
   | 'dns_resolution_failed'
   | 'address_not_allowed';
 
+/**
+ * Raised when a webhook destination is refused; `reason` is the stable code.
+ */
 export class WebhookDestinationError extends Error {
   constructor(public readonly reason: DestinationRefusal, detail: string) {
     super(`webhook destination refused (${reason}): ${detail}`);
@@ -38,10 +44,16 @@ export class WebhookDestinationError extends Error {
   }
 }
 
+/**
+ * One resolved IP address and its family.
+ */
 export interface ResolvedAddress { address: string; family: 4 | 6 }
 /** Resolver returning every address of a host name (injectable: tests use a fake DNS, never the network). */
 export type WebhookResolver = (hostname: string) => Promise<ResolvedAddress[]>;
 
+/**
+ * Options of the destination policy; the defaults are the production policy.
+ */
 export interface DestinationPolicyOptions {
   /** Default true. Only tests talking to a local plain-HTTP server set it to false. */
   requireHttps?: boolean;
@@ -50,6 +62,9 @@ export interface DestinationPolicyOptions {
   isAddressAllowed?: (address: string, family: 4 | 6) => boolean;
 }
 
+/**
+ * A destination that passed every check, with the address the connection must use.
+ */
 export interface ValidatedDestination {
   url: URL;
   hostname: string;   // without IPv6 brackets
@@ -57,6 +72,12 @@ export interface ValidatedDestination {
   pinned: ResolvedAddress;
 }
 
+/**
+ * Resolves every address of a host name with the system resolver (network/DNS access).
+ *
+ * @param hostname - Host name to resolve.
+ * @returns All answers, in resolver order.
+ */
 export const defaultWebhookResolver: WebhookResolver = async (hostname) => {
   const answers = await dns.promises.lookup(hostname, { all: true, verbatim: true });
   return answers.map((a) => ({ address: a.address, family: a.family === 6 ? 6 : 4 }));
@@ -99,7 +120,11 @@ function v4Category(address: string): string | null {
   return null;
 }
 
-/** Expands an IPv6 literal (optionally with an embedded dotted IPv4) to 8 hextets; null when malformed. */
+/**
+ * Expands an IPv6 literal (optionally with an embedded dotted IPv4) to 8 hextets; null when malformed.
+ *
+ * @param address - IPv6 literal.
+ */
 function expandV6(address: string): number[] | null {
   let s = address;
   const dotted = s.match(/(\d+\.\d+\.\d+\.\d+)$/);
@@ -149,7 +174,12 @@ function v6Category(address: string): string | null {
   return null;
 }
 
-/** Returns why an address may not receive a webhook, or null when it is a public unicast address. */
+/**
+ * Returns why an address may not receive a webhook, or null when it is a public unicast address.
+ *
+ * @param address - IP address text.
+ * @returns A category label (e.g. `private`, `loopback`, `not-an-ip`), or `null` when allowed.
+ */
 export function blockedAddressCategory(address: string): string | null {
   const family = net.isIP(address);
   if (family === 4) return v4Category(address);
@@ -163,7 +193,15 @@ export function blockedAddressCategory(address: string): string | null {
 
 const INTERNAL_HOST = /(^|\.)(localhost|local|internal|localdomain|home\.arpa|in-addr\.arpa|ip6\.arpa)$/i;
 
-/** Syntactic checks only (no DNS). Throws WebhookDestinationError. */
+/**
+ * Syntactic checks only (no DNS). Throws WebhookDestinationError.
+ *
+ * @param raw - URL text.
+ * @param opts - Policy options (`requireHttps`).
+ * @returns The parsed URL, host name without brackets or trailing dot, and port.
+ * @throws {@link WebhookDestinationError} When the URL is invalid, not https, has credentials, a disallowed
+ *   port, or an internal host name.
+ */
 export function parseWebhookUrl(raw: string, opts: DestinationPolicyOptions = {}): { url: URL; hostname: string; port: number } {
   let url: URL;
   try { url = new URL(raw); } catch { throw new WebhookDestinationError('invalid_url', 'not an absolute URL'); }
@@ -183,6 +221,11 @@ export function parseWebhookUrl(raw: string, opts: DestinationPolicyOptions = {}
 /**
  * Full check: syntax + resolution; every resolved address must be allowed. Returns the address to pin the
  * connection to. Called at registration AND before every delivery (DNS may change in between).
+ *
+ * @param raw - URL text.
+ * @param opts - Policy options (resolver and test hooks).
+ * @returns The validated destination; `pinned` is the first resolved address.
+ * @throws {@link WebhookDestinationError} When any check fails (rejected promise).
  */
 export async function validateWebhookDestination(raw: string, opts: DestinationPolicyOptions = {}): Promise<ValidatedDestination> {
   const { url, hostname, port } = parseWebhookUrl(raw, opts);
@@ -209,17 +252,30 @@ export async function validateWebhookDestination(raw: string, opts: DestinationP
 // Pinned, bounded HTTP POST
 // ──────────────────────────────────────────────────────────
 
+/**
+ * Options of {@link createSafeWebhookHttpPost}.
+ */
 export interface SafePostOptions extends DestinationPolicyOptions {
   timeoutMs?: number;        // default 10 s, whole request
   maxRequestBytes?: number;  // default 256 KiB
 }
 
+/**
+ * Default time limit of a whole delivery request, in milliseconds.
+ */
 export const WEBHOOK_TIMEOUT_MS = 10_000;
+/**
+ * Default maximum body size of a delivery, in bytes.
+ */
 export const WEBHOOK_MAX_REQUEST_BYTES = 256 * 1024;
 
 /**
  * HttpPostFn that validates the destination on every call and connects to the validated address only.
  * The response body is never read (status only); 3xx is returned as-is and never followed.
+ *
+ * @param opts - Policy options, timeout and maximum body size.
+ * @returns A POST function that rejects on an oversized body, a refused destination, a timeout or a
+ *   network error, and otherwise resolves with the HTTP status (0 when none).
  */
 export function createSafeWebhookHttpPost(opts: SafePostOptions = {}): HttpPostFn {
   const timeoutMs = opts.timeoutMs ?? WEBHOOK_TIMEOUT_MS;

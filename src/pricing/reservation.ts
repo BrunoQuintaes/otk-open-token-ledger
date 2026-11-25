@@ -22,33 +22,61 @@
  * (computeCu.ts); if it returns a heavier/pricier model the final value can exceed this
  * reservation. C must compare the returned model with the reserved one at settlement and treat
  * a mismatch as an explicit over-reservation event (never silently cap).
+ *
+ * Pure (no I/O). Money is in pico-USD: tokens × micro-USD per MTok is exactly 10^-12 USD per unit.
+ *
+ * @module src/pricing/reservation
  */
 import type { Money, Scaled, UsageApi, VersionRef } from '../types/d1d8/index.js';
 import type { CuConfig } from '../types/d1d8/index.js';
 import { cuFromTotals, resolveCuWeights } from '../economics/computeCu.js';
 import { AMOUNT_SCALE, type PriceTableRegistry, worstCaseSidePrices } from './priceUsage.js';
 
+/** Refusal to reserve: the model has no authorized weight, or the request has no bound. */
 export class ReservationError extends Error {
+  /**
+   * Builds the error.
+   *
+   * @param code - Machine-readable reason.
+   * @param message - Human-readable detail.
+   */
   constructor(readonly code: 'unsupported_model' | 'invalid_request', message: string) {
     super(message);
     this.name = 'ReservationError';
   }
 }
 
+/** What is known before the provider is called. */
 export interface ReservationRequest {
   provider: string;
   api: UsageApi;
   modelRequested: string;
+  /** Upper bound of input tokens (>= 0); must be a bound, not an estimate. */
   estimatedInputTokens: bigint;
+  /** Output limit frozen for the call (> 0, tokens). */
   maxOutputTokens: bigint;
 }
 
+/** The reserved worst case. */
 export interface ReservationResult {
+  /** CU computed with the frozen formula and weights. */
   cu: Scaled;
+  /** Pico-USD worst case; `null` when there is no price table or no base price (never zero). */
   money: Money | null;
+  /** Human-readable derivation, stored with the reservation as evidence. */
   basis: string;
 }
 
+/**
+ * Builds the reservation function bound to a price-table registry.
+ *
+ * The returned function throws {@link ReservationError} with code `invalid_request` when
+ * `estimatedInputTokens` < 0 or `maxOutputTokens` <= 0, and `unsupported_model` when the model has no
+ * authorized weight in the configuration.
+ *
+ * @param registry - Registry used to resolve the frozen price table.
+ * @returns The `EstimateReservationFn` (arguments: request, CU configuration, price table reference or `null`).
+ */
 export function createEstimateReservation(registry: PriceTableRegistry) {
   return (req: ReservationRequest, cfg: CuConfig, priceTable: VersionRef | null): ReservationResult => {
     if (req.estimatedInputTokens < 0n || req.maxOutputTokens <= 0n) {
@@ -79,6 +107,7 @@ export function createEstimateReservation(registry: PriceTableRegistry) {
   };
 }
 
+// Fail-closed scan: any part whose type or key suggests media or files makes the body non-boundable.
 function isTextOnly(value: unknown): boolean {
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' || value === null) return true;
   if (Array.isArray(value)) return value.every(isTextOnly);
@@ -92,7 +121,13 @@ function isTextOnly(value: unknown): boolean {
   return false;
 }
 
-/** Upper bound of input tokens for a text-only request body; null when it cannot be bounded. */
+/**
+ * Upper bound of input tokens for a text-only request body; null when it cannot be bounded.
+ *
+ * @param api - Provider API (currently unused; kept for the contract signature).
+ * @param body - Parsed request body.
+ * @returns UTF-8 byte length of `JSON.stringify(body)`, or `null` for non-objects and bodies with non-text parts.
+ */
 export function inputTokensUpperBound(api: UsageApi, body: unknown): bigint | null {
   void api;
   if (body === null || typeof body !== 'object' || !isTextOnly(body)) return null;

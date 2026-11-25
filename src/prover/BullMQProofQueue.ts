@@ -10,12 +10,17 @@
  * re-enqueue the job after the lock expires. To avoid CommitmentAlreadyUsed,
  * the Worker stores txHash in job.updateData() so retries can detect it.
  *
+ * Jobs are retried 3 times with exponential backoff (1 s base); the last 1000 completed and 500 failed jobs
+ * are kept in Redis. The Redis URL may contain a password: never log it.
+ *
+ * @module src/prover/BullMQProofQueue
  * @since PA-07 (2026-03-13)
  */
 
 import { Queue, type Job } from 'bullmq';
 import type { ProofInput, ProofResult } from './ProofQueue.js';
 
+/** Job status in the shape the prover's status route returns (times are epoch ms). */
 export interface BullMQJobStatus {
   jobId: string;
   status: 'pending' | 'processing' | 'done' | 'dead_letter' | 'not_found';
@@ -27,6 +32,7 @@ export interface BullMQJobStatus {
   updatedAt: number;
 }
 
+/** Queue counts; `dead_letter` is BullMQ's failed count, `total` includes active jobs. */
 export interface BullMQQueueStats {
   total: number;
   pending: number;
@@ -46,10 +52,16 @@ export interface BullMQJobResult {
   txHash?: string;
 }
 
+/** Producer side of the BullMQ proof queue (named `otk-proofs`). */
 export class BullMQProofQueue {
   private readonly queue: Queue<BullMQJobData, BullMQJobResult>;
   static readonly QUEUE_NAME = 'otk-proofs';
 
+  /**
+   * Connects to Redis for the queue (the connection is opened lazily by BullMQ).
+   *
+   * @param redisUrl - Redis connection URL.
+   */
   constructor(redisUrl: string) {
     // IORedis connection — maxRetriesPerRequest=null required by BullMQ v5
     this.queue = new Queue<BullMQJobData, BullMQJobResult>(
@@ -66,14 +78,25 @@ export class BullMQProofQueue {
     );
   }
 
-  /** Add a proof job to the queue. Returns the BullMQ job id. */
+  /**
+   * Add a proof job to the queue. Returns the BullMQ job id.
+   *
+   * @param input - Proof inputs.
+   * @returns The job id.
+   * @throws {Error} When Redis fails or BullMQ returns no id.
+   */
   async enqueue(input: ProofInput): Promise<string> {
     const job = await this.queue.add('prove', input as BullMQJobData);
     if (!job.id) throw new Error('BullMQProofQueue: job id is null after add');
     return job.id;
   }
 
-  /** Get job status. Returns null if job not found. */
+  /**
+   * Get job status. Returns null if job not found.
+   *
+   * @param id - Job id.
+   * @returns The status (unknown BullMQ states map to `pending`), or `null` when absent or the lookup failed.
+   */
   async getJobStatus(id: string): Promise<BullMQJobStatus | null> {
     let job: Job<BullMQJobData, BullMQJobResult> | undefined;
     try {
@@ -100,12 +123,22 @@ export class BullMQProofQueue {
     };
   }
 
-  /** Pending job count (waiting + delayed). */
+  /**
+   * Pending job count (waiting + delayed).
+   *
+   * Note: the implementation counts only waiting jobs (delayed retries are not included).
+   *
+   * @returns Number of waiting jobs.
+   */
   async size(): Promise<number> {
     return this.queue.getWaitingCount();
   }
 
-  /** Aggregate queue stats. */
+  /**
+   * Aggregate queue stats.
+   *
+   * @returns Counts read from Redis (not one atomic snapshot).
+   */
   async stats(): Promise<BullMQQueueStats> {
     const [pending, active, done, dlq] = await Promise.all([
       this.queue.getWaitingCount(),

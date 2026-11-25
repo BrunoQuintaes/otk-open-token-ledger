@@ -17,7 +17,11 @@
  *     await prover.submit(contract);
  *   }
  *
- * @module BatchProver
+ * Default circuit files are the legacy metering_v1 artifacts under `zk/` (resolved from the repository root).
+ * Proving is CPU-heavy and runs in this process; `submit` sends a blockchain transaction (spends gas from the
+ * contract's signer). Pending inputs live in memory only.
+ *
+ * @module src/prover/BatchProver
  * @since U13 (2026-02-22)
  */
 
@@ -33,30 +37,39 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..');
 // Types
 // ---------------------------------------------------------------------------
 
+/** Private and public inputs of one metering_v1 proof, as decimal strings (circuit field elements). */
 export interface ProverInput {
   userId: string;
+  /** Exact usage (CU). Private input. */
   usage: string;
   nonce: string;
+  /** Epoch; every input of one batch must share it. */
   epoch: string;
+  /** Public upper bound the usage must not exceed. */
   maxUsage: string;
 }
 
+/** One proof in Solidity calldata form. */
 export interface SingleProofResult {
   pA: [bigint, bigint];
   pB: [[bigint, bigint], [bigint, bigint]];
   pC: [bigint, bigint];
   /** pubSignals[0]=commitment, [1]=epoch, [2]=maxUsage */
   pubSignals: [bigint, bigint, bigint];
+  /** Wall-clock proving time, ms. */
   proveMs: number;
 }
 
+/** Proofs of one batch. */
 export interface BatchProverResult {
   proofs: SingleProofResult[];
+  /** Sum of the proving times, ms. */
   totalProveMs: number;
   /** Estimated gas for the batch tx */
   estimatedGas?: bigint;
 }
 
+/** Options of {@link BatchProver}. */
 export interface BatchProverConfig {
   /** Number of proofs to collect before proving (default: 10) */
   batchSize?: number;
@@ -96,6 +109,7 @@ function proofToSolidity(proof: Record<string, unknown>, publicSignals: string[]
 // BatchProver
 // ---------------------------------------------------------------------------
 
+/** Accumulates same-epoch inputs, proves them one by one and submits them in one transaction. */
 export class BatchProver {
   private readonly _batchSize: number;
   private readonly _wasmPath: string;
@@ -103,6 +117,11 @@ export class BatchProver {
   private readonly _pending: ProverInput[] = [];
   private _lastResult: BatchProverResult | null = null;
 
+  /**
+   * Creates an empty batch; files are checked only when proving.
+   *
+   * @param config - Batch size and circuit file paths.
+   */
   constructor(config: BatchProverConfig = {}) {
     this._batchSize = config.batchSize ?? 10;
     this._wasmPath = config.wasmPath ??
@@ -115,6 +134,12 @@ export class BatchProver {
   // Accumulation
   // ---------------------------------------------------------------------------
 
+  /**
+   * Adds one input to the pending batch.
+   *
+   * @param input - Proof inputs.
+   * @throws {Error} When the epoch differs from the first pending input's epoch.
+   */
   add(input: ProverInput): void {
     if (this._pending.length > 0 && input.epoch !== this._pending[0].epoch) {
       throw new Error(
@@ -124,10 +149,20 @@ export class BatchProver {
     this._pending.push(input);
   }
 
+  /**
+   * Whether the batch is full.
+   *
+   * @returns `true` when at least `batchSize` inputs are pending.
+   */
   isReady(): boolean {
     return this._pending.length >= this._batchSize;
   }
 
+  /**
+   * Inputs waiting to be proved.
+   *
+   * @returns Their number.
+   */
   get pendingCount(): number {
     return this._pending.length;
   }
@@ -139,7 +174,11 @@ export class BatchProver {
   /**
    * Generate proofs for all pending inputs.
    * Clears the pending queue.
-   * @throws if no pending inputs or circuit files not found.
+   *
+   * The queue is cleared before proving starts, so inputs are lost if a proof fails.
+   *
+   * @returns The proofs, in input order, with timings.
+   * @throws {Error} if no pending inputs or circuit files not found, or snarkjs fails.
    */
   async prove(): Promise<BatchProverResult> {
     if (this._pending.length === 0) {
@@ -189,6 +228,11 @@ export class BatchProver {
 
   /**
    * Estimate gas for submitBatch on a VerifierBatchV1 contract instance.
+   *
+   * @param contract - Contract object exposing `submitBatch.estimateGas` (network call).
+   * @param result - Proofs to estimate; defaults to the last `prove()` result.
+   * @returns Estimated gas.
+   * @throws {Error} When there is no result to estimate, or the node rejects the estimate.
    */
   async estimate(
     contract: { submitBatch: { estimateGas: (proofs: unknown) => Promise<bigint> } },
@@ -202,6 +246,11 @@ export class BatchProver {
   /**
    * Submit batch to VerifierBatchV1.sol.
    * Returns the transaction receipt.
+   *
+   * @param contract - Contract object exposing `submitBatch` (sends a transaction).
+   * @param result - Proofs to submit; defaults to the last `prove()` result.
+   * @returns The mined transaction receipt.
+   * @throws {Error} When there is no result to submit, or the transaction fails.
    */
   async submit(
     contract: { submitBatch: (proofs: unknown) => Promise<{ wait: () => Promise<unknown> }> },
@@ -213,6 +262,11 @@ export class BatchProver {
     return (tx as { wait: () => Promise<unknown> }).wait();
   }
 
+  /**
+   * The result of the last `prove()`.
+   *
+   * @returns The result, or `null` before the first proof.
+   */
   get lastResult(): BatchProverResult | null {
     return this._lastResult;
   }

@@ -8,16 +8,24 @@
  *   GET /analytics              — Analytics HTML page (Chart.js via CDN)
  *   GET /v1/analytics/cu-trend  — JSON: daily CU trend data
  *
- * @module dashboard/analytics
+ * Both functions are called by routes in `src/api/routes.ts`. Despite the route note above, the page does not
+ * load Chart.js: it draws its bar charts on a canvas with inline script and fetches the JSON route from the
+ * browser. Data is read from the in-memory indexer only (at most the 10 000 most recent receipts); nothing is
+ * written.
+ *
+ * @module src/dashboard/analytics
  * @since Wave 5 (W5-5C01 / P4.3)
  */
 
 import { getIndexer } from './indexer.js';
 
+/** Totals of one calendar day (UTC). */
 export interface CuTrendPoint {
   date: string;   // ISO date "YYYY-MM-DD"
+  /** Compute units of the day's receipts. */
   totalCU: number;
   totalUsd: number;  // USD-06: daily USD spend
+  /** Number of receipts counted for the day. */
   receiptCount: number;
 }
 
@@ -25,8 +33,12 @@ export interface CuTrendPoint {
  * Compute CU/USD trend: totalCU + totalUsd + receiptCount per calendar day for last N days.
  * Uses the in-memory ReceiptIndexer (pull model).
  *
- * @param tenantId  Optional: filter to specific tenant
- * @param days      Number of days to include (default 7)
+ * Every day of the window appears, with zeros when it has no receipts. Each receipt's `timestamp` is compared
+ * with a cutoff and converted to a date as epoch milliseconds.
+ *
+ * @param tenantId - Optional: filter to specific tenant.
+ * @param days - Number of days to include (default 7).
+ * @returns One point per UTC day, oldest first.
  */
 export function getCuTrendData(tenantId?: string, days = 7): CuTrendPoint[] {
   const indexer = getIndexer();
@@ -65,6 +77,11 @@ export function getCuTrendData(tenantId?: string, days = 7): CuTrendPoint[] {
 // Analytics HTML page — self-contained, no CDN dependencies
 // ---------------------------------------------------------------------------
 
+/**
+ * Returns the analytics page as a complete HTML document with inline style and script.
+ *
+ * @returns The HTML text (static; the data is fetched by the browser).
+ */
 export function getAnalyticsHtml(): string {
   return `<!DOCTYPE html>
 <html lang="en">

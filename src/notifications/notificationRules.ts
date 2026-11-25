@@ -4,18 +4,25 @@
  * Each rule maps an EventKind to a notification channel and template.
  * Rules are evaluated in order; first match wins.
  *
- * @module notifications/notificationRules
+ * Note: `NotificationService` applies EVERY enabled rule whose event kind matches, not only the first.
+ * All default rules use the `log` channel; email requires a caller-supplied rule list.
+ *
+ * @module src/notifications/notificationRules
  * @since Wave 3C (PACK 3C-02)
  */
 
 import type { EventKind } from '../publisher/deliveryTypes.js';
 
+/** Where a notification goes: the structured log or an email through the registered adapter. */
 export type NotificationChannel = 'email' | 'log';
 
+/** One routing rule: events of `eventKind` go to `channel` using `template`. */
 export interface NotificationRule {
   eventKind: EventKind;
   channel: NotificationChannel;
+  /** Email template name (`keyCreated`, `keyRevoked`, `keyRotated`); unknown names send no email. Ignored by the log channel. */
   template: string;
+  /** When false the rule is ignored. */
   enabled: boolean;
 }
 

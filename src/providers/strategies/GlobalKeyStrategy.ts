@@ -5,6 +5,12 @@
  * This is the only place in the codebase that may access process.env for API keys.
  *
  * SECURITY: Never log, print, or expose the resolved key.
+ *
+ * Environment variable NAMES read: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY` (fallback
+ * `GOOGLE_API_KEY`), `COHERE_API_KEY`, `MISTRAL_API_KEY`, `META_API_KEY`, `DEEPSEEK_API_KEY`.
+ * Used by `src/proxy/ProxyGateway.ts` to obtain the operator's key for the upstream call.
+ *
+ * @module src/providers/strategies/GlobalKeyStrategy
  */
 
 import { KeyStrategy } from "./KeyStrategy.js";
@@ -28,7 +34,20 @@ const PROVIDER_ENV_ALIAS: Record<string, string> = {
   gemini: "GOOGLE_API_KEY",
 };
 
+/**
+ * Key strategy that returns one operator-wide key per provider, read from the environment at each call.
+ *
+ * The `userId` argument of {@link KeyStrategy.resolve} is not used: every caller gets the same key.
+ */
 export class GlobalKeyStrategy implements KeyStrategy {
+  /**
+   * Returns the API key for `provider` from its environment variable (or the alias variable).
+   *
+   * @param provider - Provider name, any letter case.
+   * @returns The key value; callers must never log it.
+   * @throws {Error} When the provider has no mapped variable, or neither the variable nor its alias is set
+   *   (the message names the variables, never a value).
+   */
   async resolve(provider: string): Promise<string> {
     const normalizedProvider = provider.toLowerCase();
     const envVar = PROVIDER_ENV_MAP[normalizedProvider];

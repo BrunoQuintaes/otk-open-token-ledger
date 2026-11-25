@@ -15,12 +15,13 @@
  *   - Rate must be injected — no hidden defaults from process.env
  *   - Snapshot epoch injected for determinism
  *
- * @module oracle/referenceOracle
+ * @module src/oracle/referenceOracle
  * @since G3
  */
 
 import type { ReferenceRate } from '../economics/tokenEconomicsTypes.js';
 
+/** A currency-rate snapshot used to convert CU-denominated values to fiat. */
 export type ReferenceOracleConfig = {
   /** Currency pair being quoted (e.g. 'USD_BRL') */
   pair: string;
@@ -34,6 +35,7 @@ export type ReferenceOracleConfig = {
   version: string;
 };
 
+/** Result of {@link evaluateReferenceRate}. */
 export type ReferenceOracleOutput = {
   /** The derived ReferenceRate (compatible with tokenEconomicsTypes) */
   referenceRate: ReferenceRate;
@@ -53,6 +55,8 @@ export const DEFAULT_STALENESS_SECS = 86_400;
  * @param config        - Oracle configuration (rate + epoch injected by caller)
  * @param nowSecs       - Current time in unix seconds (injectable for tests)
  * @param stalenessSecs - Max acceptable snapshot age (default 24h)
+ * @returns The rate, whether it is fresh, and its age (seconds, never negative).
+ * @throws {Error} When `config.rate` is not greater than 0.
  */
 export function evaluateReferenceRate(
   config: ReferenceOracleConfig,
@@ -84,6 +88,9 @@ export function evaluateReferenceRate(
  *
  * USD/BRL = 5.10 (approximate 2026-02 rate, locked for reproducibility).
  * snapshotEpoch = 2026-03-02T00:00:00Z (1740873600).
+ *
+ * Note: the epoch value 1740873600 decodes to 2025-03-02T00:00:00Z, not the 2026 date written above.
+ * Evaluated against the real clock this snapshot is therefore never fresh (`isFresh` false).
  */
 export const DEFAULT_ORACLE_CONFIG: ReferenceOracleConfig = {
   pair: 'USD_BRL',

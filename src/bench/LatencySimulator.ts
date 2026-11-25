@@ -18,10 +18,14 @@
  *
  * Reference: Saltini 2019 — IBFT block time = f(latency, validator count)
  *
- * @module LatencySimulator
+ * Used by the benchmark script `scripts/benchmark/u9_bench_v2.ts`; not used by the API at runtime. Also reads
+ * IBFT_ROUNDS (default 3). The estimates are a simplified model, not measurements.
+ *
+ * @module src/bench/LatencySimulator
  * @since U9.5
  */
 
+/** Latency model settings. */
 export interface LatencyConfig {
   /** One-way latency in milliseconds (0 = no simulation) */
   baseMs: number;
@@ -39,6 +43,9 @@ const DEFAULT_CONFIG: LatencyConfig = {
 
 /**
  * Read latency config from environment variables.
+ *
+ * @returns Config from NET_LATENCY_MS (clamped to 0 or more), NET_LATENCY_JITTER (clamped to 0..1) and IBFT_ROUNDS;
+ *   invalid values fall back to the defaults.
  */
 export function latencyConfigFromEnv(): LatencyConfig {
   const baseMs   = parseFloat(process.env['NET_LATENCY_MS']     ?? '0');
@@ -51,6 +58,7 @@ export function latencyConfigFromEnv(): LatencyConfig {
   };
 }
 
+/** Injects simulated network delay and estimates IBFT block time and throughput. */
 export class LatencySimulator {
   private readonly config: LatencyConfig;
 
@@ -58,17 +66,38 @@ export class LatencySimulator {
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
 
-  /** True if latency simulation is active */
+  /**
+   * True if latency simulation is active.
+   *
+   * @returns `true` when the base latency is above 0 ms.
+   */
   get isActive(): boolean {
     return this.config.baseMs > 0;
   }
 
+  /**
+   * One-way base latency.
+   *
+   * @returns Milliseconds.
+   */
   get baseMs(): number { return this.config.baseMs; }
+  /**
+   * Jitter fraction.
+   *
+   * @returns A value in 0..1.
+   */
   get jitter(): number { return this.config.jitter; }
+  /**
+   * Message rounds per consensus.
+   *
+   * @returns Number of rounds.
+   */
   get ibftRounds(): number { return this.config.ibftRounds; }
 
   /**
    * Compute the actual delay to inject for one network hop.
+   *
+   * @returns Delay in ms: base × (1 + jitter × U(-1, 1)), never negative; 0 when inactive.
    */
   computeHopDelay(): number {
     if (this.config.baseMs <= 0) return 0;
@@ -107,6 +136,9 @@ export class LatencySimulator {
   /**
    * Wrap an async operation with simulated IBFT consensus latency.
    * Returns both the result and the simulated delay applied.
+   *
+   * @param fn - Operation to run after the delay.
+   * @returns The operation's result and the delay applied, in ms.
    */
   async withConsensusDelay<T>(fn: () => Promise<T>): Promise<{ result: T; simulatedDelayMs: number }> {
     const delay = this.isActive ? this.computeHopDelay() * this.config.ibftRounds : 0;
@@ -124,6 +156,10 @@ export class LatencySimulator {
    *   block_time ≈ (ibftRounds × 2 × latency) + processing_overhead_ms
    *
    * This is a theoretical lower bound for loopback networks.
+   *
+   * @param processingOverheadMs - Fixed processing time per block, ms (default 500).
+   * @param validatorCount - Number of validators (default 4).
+   * @returns Estimated block time in ms (just the overhead when inactive).
    */
   estimatedBlockTimeMs(
     processingOverheadMs = 500,
@@ -142,6 +178,12 @@ export class LatencySimulator {
    *
    * Formula: throughput = receiptsPerBlock / blockTimeSeconds
    * where receiptsPerBlock = floor(blockGasLimit / gasPerReceipt)
+   *
+   * @param blockGasLimit - Gas limit per block (default 12 000 000).
+   * @param gasPerReceipt - Gas per receipt submission (default 290 620).
+   * @param processingOverheadMs - Fixed processing time per block, ms (default 500).
+   * @param validatorCount - Number of validators (default 4).
+   * @returns Estimated receipts per second.
    */
   estimatedThroughput(
     blockGasLimit = 12_000_000,
@@ -154,6 +196,11 @@ export class LatencySimulator {
     return receiptsPerBlock / (blockTimeMs / 1000);
   }
 
+  /**
+   * Human-readable description of the configuration.
+   *
+   * @returns A one-line summary.
+   */
   toString(): string {
     if (!this.isActive) return 'LatencySimulator(disabled)';
     return `LatencySimulator(base=${this.config.baseMs}ms, jitter=${this.config.jitter}, rounds=${this.config.ibftRounds})`;

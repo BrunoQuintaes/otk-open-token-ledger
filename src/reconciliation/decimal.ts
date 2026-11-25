@@ -11,16 +11,32 @@ import type { ScaledAmount } from './types.js';
 
 const DECIMAL_RE = /^([+-])?(\d+)?(?:\.(\d*))?(?:[eE]([+-]?\d+))?$/;
 
+/**
+ * Raised when a lexeme is not an exact decimal (or not an integer quantity).
+ */
 export class DecimalParseError extends Error {
   constructor(message: string) { super(message); this.name = 'DecimalParseError'; }
 }
 
+/**
+ * Returns 10^k as a bigint.
+ *
+ * @param k - Exponent; a non-negative integer.
+ * @returns 10^k.
+ * @throws {RangeError} When `k` is negative or not an integer.
+ */
 export const pow10 = (k: number): bigint => {
   if (!Number.isInteger(k) || k < 0) throw new RangeError(`pow10: invalid exponent ${k}`);
   return 10n ** BigInt(k);
 };
 
-/** log10 of a power-of-ten scale (throws if not a power of ten). */
+/**
+ * log10 of a power-of-ten scale (throws if not a power of ten).
+ *
+ * @param scale - A positive power of ten (1, 10, 100, …).
+ * @returns The exponent k such that `scale` = 10^k.
+ * @throws {RangeError} When `scale` is not positive or not a power of ten.
+ */
 export function scaleDigits(scale: bigint): number {
   if (scale <= 0n) throw new RangeError('scale must be positive');
   const s = scale.toString(10);
@@ -28,6 +44,9 @@ export function scaleDigits(scale: bigint): number {
   return s.length - 1;
 }
 
+/**
+ * Result of {@link parseDecimal}: the exact amount plus the precision written in the source text.
+ */
 export interface ParsedDecimal {
   amount: ScaledAmount;
   /** Decimal places written in the lexeme after applying the exponent (precision of the source text). */
@@ -39,6 +58,10 @@ export interface ParsedDecimal {
 /**
  * Parse a decimal lexeme exactly. Accepts sign, fraction and exponent ("-1.5", ".5", "3.6e-06").
  * Rejects empty strings, NaN/Infinity, thousands separators and anything else (no guessing).
+ *
+ * @param lexeme - Decimal text; surrounding whitespace is ignored. The exponent must be within ±400.
+ * @returns The amount with scale 10^decimals (a positive exponent is folded into the units).
+ * @throws {@link DecimalParseError} When the text is not a decimal or the exponent is out of range.
  */
 export function parseDecimal(lexeme: string): ParsedDecimal {
   const t = lexeme.trim();
@@ -59,7 +82,13 @@ export function parseDecimal(lexeme: string): ParsedDecimal {
   return { amount: { units: sign * units, scale: pow10(decimals) }, decimals, msdExponent };
 }
 
-/** Parse an integer lexeme (tokens). "1549.0" is accepted only when the fraction is all zeros. */
+/**
+ * Parse an integer lexeme (tokens). "1549.0" is accepted only when the fraction is all zeros.
+ *
+ * @param lexeme - Integer text, optionally with an all-zero fraction or an exponent.
+ * @returns The integer value (may be negative when the lexeme is).
+ * @throws {@link DecimalParseError} When the text is not a decimal or has a non-zero fraction.
+ */
 export function parseIntegerQuantity(lexeme: string): bigint {
   const p = parseDecimal(lexeme);
   const s = p.amount.scale;
@@ -67,7 +96,14 @@ export function parseIntegerQuantity(lexeme: string): bigint {
   return p.amount.units / s;
 }
 
-/** Rescale to a larger (or equal) scale; refuses to lose digits. */
+/**
+ * Rescale to a larger (or equal) scale; refuses to lose digits.
+ *
+ * @param a - Amount to convert.
+ * @param scale - Target scale (power of ten).
+ * @returns The same value at `scale` (`a` itself when the scale is unchanged).
+ * @throws {RangeError} When the scales are incompatible, or going to a smaller scale would drop non-zero digits.
+ */
 export function rescale(a: ScaledAmount, scale: bigint): ScaledAmount {
   if (scale === a.scale) return a;
   if (scale > a.scale) {
@@ -79,26 +115,64 @@ export function rescale(a: ScaledAmount, scale: bigint): ScaledAmount {
   return { units: a.units / f, scale };
 }
 
+/**
+ * Largest of the given scales (1 when none is given).
+ *
+ * @param xs - Scales to compare.
+ * @returns The largest scale, at least 1.
+ */
 export const maxScale = (...xs: bigint[]): bigint => xs.reduce((m, x) => (x > m ? x : m), 1n);
 
+/**
+ * Exact sum at the larger of the two scales.
+ *
+ * @param a - First amount.
+ * @param b - Second amount.
+ * @returns `a + b`.
+ */
 export function addAmounts(a: ScaledAmount, b: ScaledAmount): ScaledAmount {
   const s = maxScale(a.scale, b.scale);
   return { units: rescale(a, s).units + rescale(b, s).units, scale: s };
 }
 
+/**
+ * Exact difference at the larger of the two scales.
+ *
+ * @param a - Minuend.
+ * @param b - Subtrahend.
+ * @returns `a - b`.
+ */
 export function subAmounts(a: ScaledAmount, b: ScaledAmount): ScaledAmount {
   const s = maxScale(a.scale, b.scale);
   return { units: rescale(a, s).units - rescale(b, s).units, scale: s };
 }
 
+/**
+ * Exact sum of a list of amounts.
+ *
+ * @param xs - Amounts to add.
+ * @returns The sum at the largest scale, or `null` for an empty list (absent is not zero).
+ */
 export function sumAmounts(xs: ScaledAmount[]): ScaledAmount | null {
   if (xs.length === 0) return null;
   return xs.reduce((acc, x) => addAmounts(acc, x));
 }
 
+/**
+ * Absolute value of a bigint.
+ *
+ * @param x - Value.
+ * @returns `|x|`.
+ */
 export const absBig = (x: bigint): bigint => (x < 0n ? -x : x);
 
-/** Exact decimal string with every digit of the scale, e.g. {36000000, 10^12} → "0.000036000000". */
+/**
+ * Exact decimal string with every digit of the scale, e.g. {36000000, 10^12} → "0.000036000000".
+ *
+ * @param a - Amount whose scale is a power of ten.
+ * @returns The decimal text, with a leading `-` for negative values.
+ * @throws {RangeError} When the scale is not a power of ten.
+ */
 export function toDecimalString(a: ScaledAmount): string {
   const k = scaleDigits(a.scale);
   const neg = a.units < 0n;
@@ -110,6 +184,10 @@ export function toDecimalString(a: ScaledAmount): string {
 /**
  * Round a value to `scale` with round-half-even (banker's). Used ONLY to bring a float-derived
  * source value onto a fixed scale; returns the half-units lost so the caller can widen tolerance.
+ *
+ * @param a - Amount to round.
+ * @param scale - Target scale (power of ten).
+ * @returns The rounded amount and `lostHalfUnits` (1 when digits were dropped, 0 when exact).
  */
 export function roundHalfEvenToScale(a: ScaledAmount, scale: bigint): { amount: ScaledAmount; lostHalfUnits: bigint } {
   if (a.scale <= scale) return { amount: rescale(a, scale), lostHalfUnits: 0n };
@@ -127,6 +205,10 @@ export function roundHalfEvenToScale(a: ScaledAmount, scale: bigint): { amount: 
 /**
  * Relative difference |diff| / |base| as a percentage string with 6 decimals, rounded half up.
  * Zero rule: base 0 and diff 0 → '0.000000%'; base 0 and diff ≠ 0 → null (undefined).
+ *
+ * @param diff - Difference (sign ignored).
+ * @param base - Reference value (sign ignored).
+ * @returns The percentage text with a `%` sign, or `null` when `base` is zero and `diff` is not.
  */
 export function relDiffPercent(diff: ScaledAmount, base: ScaledAmount): string | null {
   const s = maxScale(diff.scale, base.scale);

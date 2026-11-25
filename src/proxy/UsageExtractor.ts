@@ -2,16 +2,28 @@
  * PROXY-01 — UsageExtractor
  * Extracts token usage from LLM provider response bodies.
  * Supports: OpenAI, Anthropic, Gemini, Cohere, Mistral
+ *
+ * Legacy extractor used by `src/operations/measurementPorts.ts` to read token counts from a buffered
+ * provider response. Pure function; it never throws for a missing usage: absent counts become 0 here
+ * (the D1-D8 normalizer in `src/providers/usage/normalizeUsage.ts` keeps them as null instead).
+ *
+ * @module src/proxy/UsageExtractor
  */
 
+/**
+ * Token usage read from one provider response by {@link extractUsage}.
+ */
 export interface ExtractedUsage {
   provider: string;
   model: string;
+  /** Input tokens; 0 when the response did not report them (fractions are floored). */
   inputTokens: number;
+  /** Output tokens; 0 when the response did not report them (fractions are floored). */
   outputTokens: number;
   requestId?: string;
   /** Anthropic prompt-cache categories, billed apart from input_tokens (N8). */
   cacheCreationInputTokens?: number;
+  /** Anthropic cache-read input tokens; absent when the response did not report them. */
   cacheReadInputTokens?: number;
 }
 
@@ -86,6 +98,7 @@ function extractCohere(
  * @param provider - Provider identifier: 'openai' | 'anthropic' | 'gemini' | 'cohere' | 'mistral'
  * @param model    - Model name as sent in the request (fallback if not present in response)
  * @param responseBody - Parsed JSON response body from the upstream provider
+ * @returns The extracted usage; unknown providers are read with the OpenAI field names.
  */
 export function extractUsage(
   provider: string,

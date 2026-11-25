@@ -10,12 +10,17 @@
  *   eu-west      — Europe (AWS eu-west-1 / GCP europe-west1)
  *   ap-southeast — Asia-Pacific (AWS ap-southeast-1)
  *
- * @module infra/routing/RegionRouter
+ * Pure functions; no network call. The endpoints are `example.com` placeholders at the evaluated version.
+ * Environment variable read: `OTK_REGION`.
+ *
+ * @module src/infra/routing/RegionRouter
  * @since W9-C (MR-01)
  */
 
+/** Supported deployment regions. */
 export type Region = 'us-east' | 'eu-west' | 'ap-southeast';
 
+/** Base URL of each region (placeholders). */
 export const REGION_ENDPOINTS: Record<Region, string> = {
   'us-east': 'https://otk-us.example.com',
   'eu-west': 'https://otk-eu.example.com',
@@ -32,6 +37,12 @@ export const REGION_ENDPOINTS: Record<Region, string> = {
  *   us-east:      40.0°N, 76.0°W
  *   eu-west:      51.0°N,  1.0°W
  *   ap-southeast:  1.4°N, 103.8°E
+ *
+ * Distance is measured in raw degrees, without wrap-around at ±180° longitude.
+ *
+ * @param lat - Latitude in degrees (north positive).
+ * @param lng - Longitude in degrees (east positive).
+ * @returns The region with the nearest centroid.
  */
 export function getRegionFromLatLng(lat: number, lng: number): Region {
   const centroids: Array<{ region: Region; lat: number; lng: number }> = [
@@ -57,6 +68,8 @@ export function getRegionFromLatLng(lat: number, lng: number): Region {
 /**
  * Read OTK_REGION from the environment.
  * Falls back to 'us-east' when the variable is absent or unrecognised.
+ *
+ * @returns The configured region.
  */
 export function getLocalRegion(): Region {
   const r = process.env['OTK_REGION'];
@@ -67,6 +80,9 @@ export function getLocalRegion(): Region {
 /**
  * Build the full URL for the given path in a specific region.
  *
+ * @param region - Target region.
+ * @param path - Path, with or without a leading slash.
+ * @returns The absolute URL.
  * @example
  *   routeToRegion('eu-west', '/v1/receipts') → 'https://otk-eu.example.com/v1/receipts'
  */

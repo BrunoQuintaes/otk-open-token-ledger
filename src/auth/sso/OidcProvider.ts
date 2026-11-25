@@ -12,7 +12,12 @@
  *   OTK_OIDC_CLIENT_ID     — OIDC client ID
  *   OTK_OIDC_CLIENT_SECRET — OIDC client secret
  *
- * @module auth/sso/OidcProvider
+ * Status in this version: a STUB. `exchangeCode` performs no real code exchange and validates no ID token; outside a
+ * deployed environment it returns a fake identity derived from the code, and in a deployed environment it throws.
+ * The OIDC callback route in `src/api/routes.ts` answers 501 and never calls it. Also reads OTK_BASE_URL (redirect
+ * URI base; default a localhost address).
+ *
+ * @module src/auth/sso/OidcProvider
  * @since Wave 4 (4D-PACK-4D01 / NEW-4.03)
  */
 
@@ -21,6 +26,7 @@
 // ──────────────────────────────────────────────────────────
 
 import { isDeployedEnv } from '../../infra/deployEnv.js'; // RV2-RUNS-02 (RUN-S): same rule as the auth guard
+/** OIDC client settings; each field falls back to its environment variable. */
 export interface OidcConfig {
   issuer?: string;
   clientId?: string;
@@ -28,7 +34,9 @@ export interface OidcConfig {
   redirectUri?: string;
 }
 
+/** Identity returned by a code exchange. */
 export interface OidcTokenResult {
+  /** Subject identifier at the identity provider. */
   sub: string;
   email?: string;
   name?: string;
@@ -41,6 +49,7 @@ export interface OidcTokenResult {
 // OidcProvider
 // ──────────────────────────────────────────────────────────
 
+/** OIDC relying party (stub; see the file header). */
 export class OidcProvider {
   private _config: OidcConfig;
 
@@ -57,6 +66,8 @@ export class OidcProvider {
   /**
    * Get the issuer configuration.
    * Returns true if OIDC is configured (issuer + clientId set).
+   *
+   * @returns Whether issuer and client id are set.
    */
   isConfigured(): boolean {
     return !!(this._config.issuer && this._config.clientId);
@@ -65,6 +76,11 @@ export class OidcProvider {
   /**
    * Exchange an authorization code for tokens.
    * Uses openid-client when available; returns stub result in test mode.
+   *
+   * @param code - One-time code returned to the callback by the identity provider.
+   * @param _state - Unused (state is not checked here).
+   * @returns A stub identity (fake values derived from the code).
+   * @throws {Error} When OIDC is not configured, or in a deployed environment (stub not allowed there).
    */
   async exchangeCode(code: string, _state?: string): Promise<OidcTokenResult> {
     if (!this.isConfigured()) {
@@ -101,6 +117,10 @@ export class OidcProvider {
 
   /**
    * Build authorization URL for redirecting user to IdP.
+   *
+   * @param state - Optional opaque state to round-trip.
+   * @returns The URL of the issuer's login endpoint with the query parameters.
+   * @throws {Error} When issuer or client id is missing.
    */
   getAuthorizationUrl(state?: string): string {
     if (!this._config.issuer || !this._config.clientId) {
@@ -116,6 +136,11 @@ export class OidcProvider {
     return `${this._config.issuer}/authorize?${params.toString()}`;
   }
 
+  /**
+   * Copy of the effective configuration (includes the client secret: do not log it).
+   *
+   * @returns A shallow copy of the configuration.
+   */
   get config(): OidcConfig {
     return { ...this._config };
   }

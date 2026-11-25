@@ -22,7 +22,12 @@
  *                                   unset = no profile (every conference records ABSENT, heuristic threshold);
  *                                   set to a missing directory = startup error. Synthetic profiles are refused.
  *
- * @module operations/bootstrapD1D8
+ * Side effects of {@link d1d8ProfileFromEnv}: reads the weights, price, deployment and calibration files,
+ * preloads the local tokenizer encodings, and installs the process-wide known-CU calculator used by legacy
+ * receipts. Secrets are read only through `src/infra/secretsBootstrap.ts`; their values are never put in the
+ * summary or in error messages.
+ *
+ * @module src/operations/bootstrapD1D8
  */
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -39,16 +44,36 @@ import { existsSync, statSync } from 'node:fs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
+/** Startup error listing every missing or invalid setting of the durable profile (all at once, not the first). */
 export class D1D8ConfigError extends Error {
+  /**
+   * Builds the error from the list of problems.
+   *
+   * @param missing - One human-readable entry per missing or invalid setting (names only, no secret values).
+   */
   constructor(readonly missing: string[]) { super(`durable profile not configured: ${missing.join('; ')}`); this.name = 'D1D8ConfigError'; }
 }
 
+/** The composed durable profile, ready to start the operations runtime. */
 export interface D1D8Profile {
+  /** Runtime options with the real measurement, crypto, proof and money-bound policy. */
   options: OperationsRuntimeOptions;
+  /** Source of the active CU weights (signed file or a development profile). */
   weights: WeightsSource;
+  /** Non-secret startup summary, one human-readable line per component, for the startup log. */
   summary: Record<string, string>;
 }
 
+/**
+ * Builds the durable proxy profile from environment variables, failing closed when essential configuration
+ * is missing.
+ *
+ * @param dbUrl - PostgreSQL connection URL (already chosen by the caller).
+ * @param env - Environment to read (defaults to `process.env`); tests pass their own.
+ * @returns The profile; see the file header for the variables read.
+ * @throws {@link D1D8ConfigError} When required settings are missing or invalid (all problems listed at once).
+ * @throws {Error} When a configured file (weights, prices, deployment, calibration) cannot be read or verified.
+ */
 export async function d1d8ProfileFromEnv(dbUrl: string, env: NodeJS.ProcessEnv = process.env): Promise<D1D8Profile> {
   const missing: string[] = [];
   const base = operationsOptionsFromEnv(dbUrl);
@@ -112,7 +137,12 @@ export async function d1d8ProfileFromEnv(dbUrl: string, env: NodeJS.ProcessEnv =
   };
 }
 
-/** Startup line about calibration profiles (ids and states only; never content). */
+/**
+ * Startup line about calibration profiles (ids and states only; never content).
+ *
+ * @param c - The loaded calibration registry.
+ * @returns A one-line summary: "no profiles", or the loaded ids plus any corrupt sources with their reason.
+ */
 export function calibrationSummaryLine(c: CalibrationRegistry): string {
   const s = c.summary();
   if (s.source === 'none') return 'no profiles (OTK_CALIBRATION_PROFILES_DIR unset): conference threshold HEURISTIC, calibrated=false';

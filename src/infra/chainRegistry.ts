@@ -21,7 +21,9 @@
  *   dev-only placeholders — actual deployed addresses vary per local run.
  *   Production deployments require operator injection via addDeployment().
  *
- * @module infra/chainRegistry
+ * The process-wide instance is held by `multichainRuntime.ts`.
+ *
+ * @module src/infra/chainRegistry
  * @since G4
  */
 
@@ -137,11 +139,19 @@ const SUBGRAPH_REFS: readonly SubgraphRef[] = [
 // ChainRegistry class
 // ---------------------------------------------------------------------------
 
+/** In-memory lookup of networks, contract deployments and subgraphs by chain id. */
 export class ChainRegistry {
   private readonly _networks = new Map<ChainId, NetworkProfile>();
   private readonly _deployments = new Map<string, DeploymentRecord>();
   private readonly _subgraphs = new Map<string, SubgraphRef>();
 
+  /**
+   * Builds the registry; later entries with the same key replace earlier ones.
+   *
+   * @param networks - Network profiles (default: the built-in list).
+   * @param deployments - Deployment records (default: the built-in list).
+   * @param subgraphs - Subgraph references (default: the built-in list).
+   */
   constructor(
     networks: readonly NetworkProfile[] = NETWORKS,
     deployments: readonly DeploymentRecord[] = DEPLOYMENTS,
@@ -152,27 +162,53 @@ export class ChainRegistry {
     for (const s of subgraphs) this._subgraphs.set(_skey(s.chainId, s.name), s);
   }
 
-  /** Get the network profile for a chain ID. Returns undefined if unknown. */
+  /**
+   * Get the network profile for a chain ID. Returns undefined if unknown.
+   *
+   * @param chainId - Chain id.
+   * @returns The profile, or undefined.
+   */
   getChain(chainId: ChainId): NetworkProfile | undefined {
     return this._networks.get(chainId);
   }
 
-  /** List all known network profiles. */
+  /**
+   * List all known network profiles.
+   *
+   * @returns Profiles in insertion order.
+   */
   listChains(): NetworkProfile[] {
     return Array.from(this._networks.values());
   }
 
-  /** Get a deployment record. Returns undefined if not found. */
+  /**
+   * Get a deployment record. Returns undefined if not found.
+   *
+   * @param chainId - Chain id.
+   * @param contractName - Contract name, e.g. `ReceiptRegistry`.
+   * @returns The record, or undefined.
+   */
   getDeployment(chainId: ChainId, contractName: string): DeploymentRecord | undefined {
     return this._deployments.get(_dkey(chainId, contractName));
   }
 
-  /** Get all deployments for a given chain. */
+  /**
+   * Get all deployments for a given chain.
+   *
+   * @param chainId - Chain id.
+   * @returns The chain's records (empty when none).
+   */
   getDeploymentsByChain(chainId: ChainId): DeploymentRecord[] {
     return Array.from(this._deployments.values()).filter(d => d.chainId === chainId);
   }
 
-  /** Get the subgraph reference for a chain + name. Returns undefined if not registered. */
+  /**
+   * Get the subgraph reference for a chain + name. Returns undefined if not registered.
+   *
+   * @param chainId - Chain id.
+   * @param name - Subgraph name.
+   * @returns The reference, or undefined.
+   */
   getSubgraphRef(chainId: ChainId, name: string): SubgraphRef | undefined {
     return this._subgraphs.get(_skey(chainId, name));
   }
@@ -180,6 +216,8 @@ export class ChainRegistry {
   /**
    * Add or overwrite a deployment record (operator injection).
    * Used for production deployments not known at build time.
+   *
+   * @param record - Deployment to store (kept by reference).
    */
   addDeployment(record: DeploymentRecord): void {
     this._deployments.set(_dkey(record.chainId, record.contractName), record);

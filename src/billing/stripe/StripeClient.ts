@@ -11,7 +11,12 @@
  *
  * Testing: pass a mock Stripe client via constructor for unit tests.
  *
- * @module billing/stripe/StripeClient
+ * Used by the checkout and webhook routes in `src/api/routes.ts`. Configuration: the secret key is passed in by
+ * the caller; the tier-to-price map comes from the constructor or, when omitted, from `getStripePriceIds()` in
+ * `src/infra/secretsBootstrap.ts` (variable `OTK_STRIPE_PRICE_IDS`, a JSON object). The `stripe` package is not a
+ * dependency of the project, so the real client works only when it is installed separately.
+ *
+ * @module src/billing/stripe/StripeClient
  * @since Wave 4 (4C-PACK-4C02 / P4.5)
  */
 
@@ -23,14 +28,18 @@ import { getStripePriceIds } from '../../infra/secretsBootstrap.js';
 // Minimal Stripe API surface (subset we use)
 // ──────────────────────────────────────────────────────────
 
+/** Fields of a Stripe Checkout session that this module reads. */
 export interface IStripeCheckoutSession {
   id: string;
+  /** Hosted checkout page to send the user to; null once the session is complete or expired. */
   url: string | null;
   customer: string | null;
+  /** Stripe's payment status, e.g. `paid`, `unpaid`, `no_payment_required`. */
   payment_status: string;
   metadata: Record<string, string>;
 }
 
+/** Fields of a Stripe customer that this module reads. */
 export interface IStripeCustomer {
   id: string;
   email: string | null;
@@ -58,23 +67,31 @@ export interface IStripeApi {
 // StripeClient
 // ──────────────────────────────────────────────────────────
 
+/** Input of `StripeClient.createCheckoutSession`. */
 export interface CheckoutSessionParams {
   tenantId: string;
   tier: PlanTier;
+  /** Where Stripe redirects after a successful checkout. */
   successUrl: string;
+  /** Where Stripe redirects when the user cancels. */
   cancelUrl: string;
   customerEmail?: string;
 }
 
+/** Thin wrapper over the Stripe SDK (or an injected test double) for checkout, customers and webhooks. */
 export class StripeClient {
   private _stripe: IStripeApi;
   private readonly _priceIds: Record<string, string>;
 
   /**
+   * Builds the client from a test double or from a secret key (real SDK), and loads the tier-to-price map.
+   *
    * @param stripeOrKey - Either a mock IStripeApi (for tests) or the Stripe secret key string.
    *   Pass the key from getStripeSecretKey() in secretsBootstrap, not from process.env directly.
    * @param priceIds - Optional map of PlanTier → Stripe price ID. When omitted, falls back to
    *   OTK_STRIPE_PRICE_IDS env var (backward compat). Callers should prefer explicit injection.
+   *   Invalid JSON in that variable gives an empty map.
+   * @throws {Error} When no key and no test double is given, or when the `stripe` package is not installed.
    */
   constructor(stripeOrKey?: IStripeApi | string, priceIds?: Record<string, string>) {
     if (stripeOrKey && typeof stripeOrKey === 'object') {
@@ -111,6 +128,13 @@ export class StripeClient {
   /**
    * Create a Stripe Checkout session for plan upgrade.
    * Returns the session URL to redirect the user to.
+   *
+   * Side effect: one Stripe API call (subscription mode, one line item). `tenantId` and `tier` are written in the
+   * metadata of both the session and the subscription, where the webhook handler reads them.
+   *
+   * @param params - Tenant, tier, return URLs and optional customer e-mail.
+   * @returns The created session (its `url` is the checkout page).
+   * @throws {Error} When no Stripe price is configured for `params.tier`, or when the Stripe call fails.
    */
   async createCheckoutSession(params: CheckoutSessionParams): Promise<IStripeCheckoutSession> {
     const priceId = this._priceIds[params.tier];
@@ -130,7 +154,14 @@ export class StripeClient {
     });
   }
 
-  /** Create or find an existing Stripe customer for a tenantId. */
+  /**
+   * Create or find an existing Stripe customer for a tenantId.
+   *
+   * @param tenantId - Tenant id, stored in the customer's metadata and used to search for it.
+   * @param email - Customer e-mail for a new customer; ignored when one already exists.
+   * @returns The existing customer, or the one just created.
+   * @throws {Error} When a Stripe call fails.
+   */
   async createCustomer(tenantId: string, email?: string): Promise<IStripeCustomer> {
     // Check if customer already exists
     const existing = await this._stripe.customers.list({ metadata: { tenantId }, limit: 1 });
@@ -144,13 +175,23 @@ export class StripeClient {
 
   /**
    * Verify and parse a webhook event. Throws on invalid signature.
+   * @param payload - Raw request body exactly as received (not re-serialized JSON).
+   * @param sig - Value of the `Stripe-Signature` request header.
    * @param webhookSecret - Pass from getStripeWebhookSecret() in secretsBootstrap.
+   * @returns The parsed event object.
+   * @throws {Error} When the signature or timestamp is invalid.
    */
   constructWebhookEvent(payload: string | Buffer, sig: string, webhookSecret: string): unknown {
     return this._stripe.webhooks.constructEvent(payload, sig, webhookSecret);
   }
 
-  /** Retrieve a checkout session by ID. */
+  /**
+   * Retrieve a checkout session by ID.
+   *
+   * @param sessionId - Stripe session id (`cs_…`).
+   * @returns The session.
+   * @throws {Error} When the Stripe call fails (for example, unknown id).
+   */
   async getCheckoutSession(sessionId: string): Promise<IStripeCheckoutSession> {
     return this._stripe.checkout.sessions.retrieve(sessionId);
   }

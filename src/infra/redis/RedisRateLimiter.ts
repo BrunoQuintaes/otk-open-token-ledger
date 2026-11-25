@@ -12,7 +12,10 @@
  * 3. ZCARD to count active entries
  * 4. EXPIRE to auto-cleanup abandoned keys
  *
- * @module infra/redis/RedisRateLimiter
+ * Fails open: when Redis is not connected or a command fails, every request is allowed. The window uses this
+ * process's clock (`Date.now()`), so replicas with skewed clocks see slightly different windows.
+ *
+ * @module src/infra/redis/RedisRateLimiter
  * @since Wave 3A (PACK 3A-01)
  */
 
@@ -21,13 +24,28 @@ import type { RedisClient } from './redisClient.js';
 
 const KEY_PREFIX = 'rl:';
 
+/** Sliding-window rate limiter shared by every instance through Redis. */
 export class RedisRateLimiter implements IDistributedRateLimiter {
   private readonly _redis: RedisClient;
 
+  /**
+   * Wraps the shared Redis client; nothing is read or written here.
+   *
+   * @param redis - Shared Redis client wrapper (prefix and raw client).
+   */
   constructor(redis: RedisClient) {
     this._redis = redis;
   }
 
+  /**
+   * Records one request for `key` and decides whether it is within the limit.
+   *
+   * A refused request is removed again, so it does not count against later ones.
+   *
+   * @param key - Rate-limit key (e.g. tenant or API key scope).
+   * @param config - Maximum requests per window and window length in seconds.
+   * @returns The decision, the remaining requests and, when refused, an estimated `retryAfterMs`.
+   */
   async check(key: string, config: RateLimitConfig): Promise<RateLimitDecision> {
     const raw = this._redis.rawClient;
     if (!raw) {
@@ -70,6 +88,11 @@ export class RedisRateLimiter implements IDistributedRateLimiter {
     }
   }
 
+  /**
+   * Deletes the counter of one key.
+   *
+   * @param key - Rate-limit key.
+   */
   async reset(key: string): Promise<void> {
     const raw = this._redis.rawClient;
     if (!raw) return;
@@ -78,6 +101,7 @@ export class RedisRateLimiter implements IDistributedRateLimiter {
     } catch { /* non-fatal */ }
   }
 
+  /** Does nothing (keys expire on their own). */
   async clear(): Promise<void> {
     // No-op for Redis: keys auto-expire. Full clear would require SCAN which is expensive.
   }

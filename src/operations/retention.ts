@@ -20,7 +20,10 @@
  * Not covered here (documented limits): Redis projections (rebuildable from PostgreSQL; rebuild after a restore), the
  * local spool / intervention files and logs (per-instance files), and copies outside this database.
  *
- * @module operations/retention
+ * Every function here DELETES or rewrites rows (irreversibly, except through a backup) and appends to the
+ * journal file. Missing optional tables are skipped (checked with `to_regclass`).
+ *
+ * @module src/operations/retention
  */
 import { appendFileSync, closeSync, existsSync, fsyncSync, openSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -29,7 +32,9 @@ import type { PgClientLike, PgPoolLike } from './schema.js';
 import { legacyReceiptId } from './context.js';
 import { guardClient } from '../infra/pg/clientGuard.js';
 
+/** Retention periods by age; `null` periods mean "keep forever". */
 export interface V3RetentionPolicy {
+  /** Version label recorded in the journal and tombstones of each erasure. */
   policyVersion: string;
   /** Terminal, fully settled/released operations older than this are erased; null = keep. */
   operationsMaxAgeDays: number | null;
@@ -44,31 +49,60 @@ export const RETENTION_POLICY_UNSET: V3RetentionPolicy = Object.freeze({
   outboxDoneMaxAgeDays: null,
 });
 
+/** One line of the erasure journal (an erasure intent). */
 export interface ErasureJournalEntry {
   v: 1;
   tenantId: string;
   operationId: string;
+  /** Why it was erased (e.g. `retention_age`, or a reason given by the operator). */
   reason: string;
   policyVersion: string;
+  /** ISO time the erasure was journalled. */
   requestedAt: string;
 }
 
 /** Append-only, fsync'ed erasure intent log. Must live outside the database and its backups. */
 export class ErasureJournal {
+  /**
+   * Binds the journal to a file; nothing is read or written until used.
+   *
+   * @param file - JSONL path, outside the database backups.
+   */
   constructor(readonly file: string) {}
+  /**
+   * Appends one entry and fsyncs it before returning.
+   *
+   * @param e - The entry without its version field.
+   * @throws {Error} When the file cannot be opened, written or synced.
+   */
   append(e: Omit<ErasureJournalEntry, 'v'>): void {
     const fd = openSync(this.file, 'a');
     try { appendFileSync(fd, JSON.stringify({ v: 1, ...e }) + '\n'); fsyncSync(fd); } finally { closeSync(fd); }
   }
+  /**
+   * Reads every journalled entry, oldest first.
+   *
+   * @returns The entries; empty when the file does not exist.
+   * @throws {SyntaxError} When a line is not valid JSON (a torn last line is not tolerated here).
+   */
   entries(): ErasureJournalEntry[] {
     if (!existsSync(this.file)) return [];
     return readFileSync(this.file, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l) as ErasureJournalEntry);
   }
 }
 
+/**
+ * Pseudonym that replaces an erased operation id in the ledgers (deterministic, so a re-erasure matches).
+ *
+ * It is a hash of tenant and operation id, not a secret: anyone who knows both ids can recompute it.
+ *
+ * @param k - Tenant and operation id.
+ * @returns `erased-` followed by the first 32 hex characters of SHA-256 of `tenant\noperation`.
+ */
 export const ledgerPseudonym = (k: OperationKey): string =>
   `erased-${createHash('sha256').update(`${k.tenantId}\n${k.operationId}`, 'utf8').digest('hex').slice(0, 32)}`;
 
+/** Result of erasing one operation; `not_terminal` also covers operations with open exposure. */
 export type EraseOutcome = 'erased' | 'already_erased' | 'not_found' | 'not_terminal';
 
 const TERMINAL = new Set(['completed', 'cancelled', 'upstream_failed', 'process_lost']);
@@ -104,7 +138,16 @@ async function precheck(pool: PgPoolLike, key: OperationKey): Promise<'eligible'
 
 const has = async (c: PgClientLike, rel: string) => ((await c.query<{ t: string | null }>('SELECT to_regclass($1)::text AS t', [rel])).rows[0]?.t ?? null) !== null;
 
-/** Erase one operation (see the module header). The journal entry is written first (write-ahead). */
+/**
+ * Erase one operation (see the module header). The journal entry is written first (write-ahead).
+ *
+ * @param pool - PostgreSQL pool.
+ * @param key - Tenant and operation id.
+ * @param o - Journal, reason, policy version, and `journalled: true` when replaying an existing journal entry
+ *   (then nothing is appended).
+ * @returns The outcome.
+ * @throws {Error} Database or journal errors propagate; the transaction is rolled back.
+ */
 export async function eraseOperation(pool: PgPoolLike, key: OperationKey, o: { journal: ErasureJournal; reason: string; policyVersion: string; journalled?: boolean }): Promise<EraseOutcome> {
   if (!o.journalled) {
     // journal only what is eligible now (a refused erasure must not be re-applied later by a replay); the
@@ -144,7 +187,14 @@ export async function eraseOperation(pool: PgPoolLike, key: OperationKey, o: { j
   });
 }
 
-/** After a restore (or at startup): re-erase every journalled operation the database still holds. Idempotent. */
+/**
+ * After a restore (or at startup): re-erase every journalled operation the database still holds. Idempotent.
+ *
+ * @param pool - PostgreSQL pool.
+ * @param journal - The erasure journal.
+ * @returns Counts of re-erased and already-erased operations, and the entries refused (with their outcome).
+ * @throws {Error} When the journal cannot be read or a database call fails.
+ */
 export async function reapplyErasures(pool: PgPoolLike, journal: ErasureJournal): Promise<{ reapplied: number; alreadyErased: number; refused: Array<{ key: OperationKey; outcome: EraseOutcome }> }> {
   let reapplied = 0; let alreadyErased = 0; const refused: Array<{ key: OperationKey; outcome: EraseOutcome }> = [];
   for (const e of journal.entries()) {
@@ -157,7 +207,18 @@ export async function reapplyErasures(pool: PgPoolLike, journal: ErasureJournal)
   return { reapplied, alreadyErased, refused };
 }
 
-/** Age-based retention. With RETENTION_POLICY_UNSET it does nothing. */
+/**
+ * Age-based retention. With RETENTION_POLICY_UNSET it does nothing.
+ *
+ * Erases at most 1000 operations per call (oldest `updated_at` first); call again for more.
+ *
+ * @param pool - PostgreSQL pool.
+ * @param policy - Retention periods.
+ * @param journal - Erasure journal (each erasure is journalled first).
+ * @param now - Reference time for the cut-offs.
+ * @returns Counts of erased operations, candidates skipped as not terminal, and deleted done outbox rows.
+ * @throws {Error} Database or journal errors propagate.
+ */
 export async function runRetention(pool: PgPoolLike, policy: V3RetentionPolicy, journal: ErasureJournal, now: Date = new Date()):
   Promise<{ erased: number; skippedNotTerminal: number; outboxDeleted: number }> {
   let erased = 0; let skippedNotTerminal = 0; let outboxDeleted = 0;

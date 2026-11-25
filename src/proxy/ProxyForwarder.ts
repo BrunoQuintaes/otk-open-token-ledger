@@ -1,12 +1,24 @@
 /**
  * PROXY-02 — ProxyForwarder
  * HTTP relay to upstream LLM provider APIs using native fetch.
+ *
+ * `openUpstream` is the function used by the proxy (`src/proxy/ProxyGateway.ts` and, through its
+ * adapter, `src/operations/proxyDurable.ts`); `forwardRequest` buffers the whole answer. Both make one
+ * network call to the URL given by the caller and never log the provider key. No retries, and the
+ * caller chooses the upstream URL (this module does not validate it).
+ *
+ * @module src/proxy/ProxyForwarder
  */
 
+/**
+ * Buffered upstream answer returned by {@link forwardRequest}.
+ */
 export interface ForwardResult {
   status: number;
+  /** Response headers, lowercase names (as given by `fetch`). */
   headers: Record<string, string>;
   body: string;
+  /** `true` when the upstream content type is `text/event-stream`. */
   isStream: boolean;
 }
 
@@ -22,6 +34,7 @@ const HOP_BY_HOP = new Set([
   'trailer',
 ]);
 
+// Returns a copy of the headers without connection-level (hop-by-hop) headers; the input is not modified.
 function stripHopByHop(
   headers: Record<string, string>,
 ): Record<string, string> {
@@ -53,6 +66,11 @@ const ANTHROPIC_DEFAULT_VERSION = '2023-06-01';
  * a key sent as `Authorization: Bearer` is refused (401). FECHAMENTO_GEMINI_AD: the Gemini Developer
  * API authenticates API keys with `x-goog-api-key` (not Bearer, which it refuses with 401; not the
  * `?key=` query, which would put the key in URLs and logs). Other providers keep Bearer.
+ *
+ * @param headers - Client request headers (not modified; a cleaned copy is returned).
+ * @param apiKey - Provider API key to inject; callers must never log it.
+ * @param provider - Lowercase provider ID; it selects the header used to send the key.
+ * @returns The headers to send upstream.
  */
 export function upstreamHeaders(headers: Record<string, string>, apiKey: string, provider: string): Record<string, string> {
   const clean = stripHopByHop(headers);
@@ -93,6 +111,9 @@ function collectResponseHeaders(headers: Headers): Record<string, string> {
  * @param body        - Raw request body string
  * @param apiKey      - Provider API key, injected as the provider expects (R11)
  * @param provider    - Provider id; selects how the key is sent (default Bearer)
+ * @returns Status, headers, the whole body as text and whether the answer is an event stream.
+ * @throws {Error} When `fetch` fails (network error) or the 30 s timeout aborts the request
+ *   (`AbortError`); the timeout covers the wait for the response headers.
  */
 export async function forwardRequest(
   upstreamUrl: string,
@@ -132,9 +153,14 @@ export async function forwardRequest(
   };
 }
 
+/**
+ * Upstream answer returned by {@link openUpstream} as soon as its headers arrive.
+ */
 export interface UpstreamResponse {
   status: number;
+  /** Response headers, lowercase names (as given by `fetch`). */
   headers: Record<string, string>;
+  /** `true` when the upstream content type is `text/event-stream`. */
   isStream: boolean;
   /** Unread body; the caller relays it chunk by chunk (R10). */
   body: ReadableStream<Uint8Array> | null;
@@ -144,6 +170,17 @@ export interface UpstreamResponse {
  * R10 — open the upstream request and return as soon as headers arrive, without
  * buffering the body. The timeout covers only the wait for headers, so long
  * streamed generations are not cut; the caller cancels the body on client abort.
+ *
+ * @param upstreamUrl - Full upstream URL, chosen by the caller.
+ * @param method - HTTP method; no body is sent for GET and HEAD.
+ * @param headers - Client request headers; cleaned by {@link upstreamHeaders}.
+ * @param body - Request body text, possibly rewritten by the caller.
+ * @param apiKey - Provider API key to inject; callers must never log it.
+ * @param provider - Provider ID (any letter case); default `openai`.
+ * @param headerTimeoutMs - Milliseconds to wait for the response headers (default 30000).
+ * @param signal - Optional signal that aborts the whole request, body included.
+ * @returns Status, headers, the stream flag and the unread body.
+ * @throws {Error} When `fetch` fails, the header timeout fires, or `signal` aborts before the headers arrive.
  */
 export async function openUpstream(
   upstreamUrl: string,

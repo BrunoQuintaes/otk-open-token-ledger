@@ -13,8 +13,14 @@
  */
 import type { IsoUtc } from './types.js';
 
+/**
+ * Stable codes carried by {@link TimestampError}.
+ */
 export type TimestampErrorCode = 'AMBIGUOUS_TIMESTAMP' | 'INVALID_TIMESTAMP' | 'NONEXISTENT_LOCAL_TIME' | 'AMBIGUOUS_LOCAL_TIME' | 'INVALID_TIMEZONE';
 
+/**
+ * Raised when a timestamp or timezone cannot be turned into an exact UTC instant.
+ */
 export class TimestampError extends Error {
   constructor(public readonly code: TimestampErrorCode, message: string) { super(`${code}: ${message}`); this.name = 'TimestampError'; }
 }
@@ -42,6 +48,13 @@ function wallFrom(m: RegExpExecArray): Wall {
 
 const wallUtcMs = (w: Wall): number => Date.UTC(w.y, w.mo - 1, w.d, w.h, w.mi, w.s, w.ms);
 
+/**
+ * Formats epoch milliseconds as an ISO-8601 UTC instant with milliseconds.
+ *
+ * @param ms - Milliseconds since the Unix epoch.
+ * @returns The ISO text.
+ * @throws {RangeError} When `ms` is outside the Date range.
+ */
 export const toIso = (ms: number): IsoUtc => new Date(ms).toISOString();
 
 const fmtCache = new Map<string, Intl.DateTimeFormat>();
@@ -58,7 +71,12 @@ function zoneFormatter(tz: string): Intl.DateTimeFormat {
   return f;
 }
 
-/** Offset (ms) of an IANA zone at a UTC instant: wall(instant) - instant. */
+/**
+ * Offset (ms) of an IANA zone at a UTC instant: wall(instant) - instant.
+ *
+ * @param tz - IANA zone name.
+ * @param instantMs - Instant in epoch milliseconds.
+ */
 function zoneOffsetMs(tz: string, instantMs: number): number {
   const parts = zoneFormatter(tz).formatToParts(new Date(instantMs));
   const g = (t: string) => Number(parts.find((p) => p.type === t)!.value);
@@ -66,13 +84,25 @@ function zoneOffsetMs(tz: string, instantMs: number): number {
   return wall - (instantMs - (((instantMs % 1000) + 1000) % 1000));
 }
 
-/** Validate a declared timezone ('UTC', '+HH:MM' or IANA name). */
+/**
+ * Validate a declared timezone ('UTC', '+HH:MM' or IANA name).
+ *
+ * @param tz - Timezone text.
+ * @throws {@link TimestampError} With code `INVALID_TIMEZONE` when the name is not a known IANA zone.
+ */
 export function assertTimezone(tz: string): void {
   if (tz === 'UTC' || OFFSET_TZ_RE.test(tz)) return;
   zoneFormatter(tz);
 }
 
-/** Convert a wall-clock time in `tz` to a UTC instant; rejects DST gaps and folds. */
+/**
+ * Convert a wall-clock time in `tz` to a UTC instant; rejects DST gaps and folds.
+ *
+ * @param w - Wall-clock date-time.
+ * @param tz - `UTC`, a `+HH:MM` offset or an IANA zone.
+ * @param lexeme - Original text, for error messages.
+ * @throws {@link TimestampError} When the zone is unknown or the local time falls in a DST gap or fold.
+ */
 function wallToUtc(w: Wall, tz: string, lexeme: string): number {
   if (tz === 'UTC') return wallUtcMs(w);
   const om = OFFSET_TZ_RE.exec(tz);
@@ -93,11 +123,19 @@ function wallToUtc(w: Wall, tz: string, lexeme: string): number {
   return [...valid][0]!;
 }
 
+/**
+ * How a timestamp field is written: `auto` (ISO-like text) or `unix_seconds`.
+ */
 export type TimestampFormat = 'auto' | 'unix_seconds';
 
 /**
  * Parse one timestamp lexeme to an ISO UTC instant.
+ * @param lexeme - Timestamp text as exported.
  * @param declaredTimezone timezone for naive values (null = naive values are rejected)
+ * @param format - `unix_seconds` for 1 to 12 digits of epoch seconds; `auto` otherwise.
+ * @returns The instant as ISO-8601 UTC with milliseconds.
+ * @throws {@link TimestampError} When the text is not a recognized timestamp, not a calendar date-time, naive
+ *   without a declared timezone, or in a DST gap or fold of the declared zone.
  */
 export function parseInstant(lexeme: string, declaredTimezone: string | null, format: TimestampFormat = 'auto'): IsoUtc {
   const t = lexeme.trim();
@@ -130,7 +168,14 @@ export function parseInstant(lexeme: string, declaredTimezone: string | null, fo
   throw new TimestampError('INVALID_TIMESTAMP', `unrecognized timestamp ${JSON.stringify(lexeme)}`);
 }
 
-/** A date-only value is a whole local day: [local midnight, next local midnight) in the declared zone. */
+/**
+ * A date-only value is a whole local day: [local midnight, next local midnight) in the declared zone.
+ *
+ * @param lexeme - Date as `YYYY-MM-DD`.
+ * @param declaredTimezone - Zone of the day; `null` rejects the value.
+ * @returns The UTC instants of the day's start (inclusive) and end (exclusive).
+ * @throws {@link TimestampError} When the text is not a date or the day has no declared zone.
+ */
 export function parseLocalDay(lexeme: string, declaredTimezone: string | null): { start: IsoUtc; end: IsoUtc } {
   const t = lexeme.trim();
   const dm = DATE_RE.exec(t);
@@ -141,9 +186,22 @@ export function parseLocalDay(lexeme: string, declaredTimezone: string | null): 
   return { start, end: parseInstant(nextLex, declaredTimezone) };
 }
 
+/**
+ * Tells whether a lexeme is a bare `YYYY-MM-DD` date.
+ *
+ * @param lexeme - Text to test (trimmed first).
+ * @returns `true` for a date without time.
+ */
 export const isDateOnly = (lexeme: string): boolean => DATE_RE.test(lexeme.trim());
 
-/** Calendar day of an instant in a zone, as YYYY-MM-DD, and that day's [start, end) in UTC. */
+/**
+ * Calendar day of an instant in a zone, as YYYY-MM-DD, and that day's [start, end) in UTC.
+ *
+ * @param iso - Instant (ISO UTC).
+ * @param tz - `UTC`, a `+HH:MM` offset or an IANA zone.
+ * @returns The local day label and its UTC bounds.
+ * @throws {@link TimestampError} When the zone is unknown or a day boundary falls in a DST gap or fold.
+ */
 export function dayInZone(iso: IsoUtc, tz: string): { day: string; start: IsoUtc; end: IsoUtc } {
   const ms = Date.parse(iso);
   let day: string;

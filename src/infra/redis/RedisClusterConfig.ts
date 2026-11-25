@@ -8,10 +8,13 @@
  *   Comma-separated list of host:port pairs.
  *   Example: "redis-0.example.com:6380,redis-1.example.com:6380"
  *
- * @module infra/redis/RedisClusterConfig
+ * Reads the variables on every call and opens no connection.
+ *
+ * @module src/infra/redis/RedisClusterConfig
  * @since W9-C (MR-02)
  */
 
+/** One Redis Cluster seed node. */
 export interface RedisClusterNode {
   host: string;
   port: number;
@@ -23,6 +26,10 @@ export interface RedisClusterNode {
  *
  * Returns an empty array when the variable is unset or contains no valid
  * host:port entries.
+ *
+ * Entries without a port, or with a port outside 1..65535, are skipped. The last `:` separates the port.
+ *
+ * @returns The valid nodes, in the given order.
  */
 export function getClusterNodes(): RedisClusterNode[] {
   const raw = process.env['OTK_REDIS_CLUSTER_NODES'];
@@ -46,6 +53,8 @@ export function getClusterNodes(): RedisClusterNode[] {
 
 /**
  * Returns true when Redis Cluster mode is enabled via OTK_REDIS_CLUSTER=true.
+ *
+ * @returns True only for the exact value `true`.
  */
 export function isClusterEnabled(): boolean {
   return process.env['OTK_REDIS_CLUSTER'] === 'true';

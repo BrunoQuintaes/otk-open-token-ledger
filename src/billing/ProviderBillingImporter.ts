@@ -9,21 +9,33 @@
  * response shape) the function returns an empty ImportResult so that
  * the reconciliation pipeline is never blocked.
  *
- * @module billing/ProviderBillingImporter
+ * Side effect: one outbound HTTPS request per call, using the provider key passed in by the caller (this module
+ * reads no environment variable). No caller in `src/` at the evaluated version. The record fields are read from
+ * the response by name (`date`, `cost`, `n_requests` / `request_count`); a missing field becomes the start date
+ * or 0, so a total of 0 can mean "no data" as well as "no spend".
+ *
+ * @module src/billing/ProviderBillingImporter
  * @since W9-A (PAY-02)
  */
 
+/** One day of provider-reported usage. */
 export interface ProviderUsageRecord {
   provider: string;
   date: string;       // YYYY-MM-DD
+  /** Spend reported by the provider for that day, in USD (0 when the field is missing). */
   totalUsd: number;
+  /** Requests reported for that day (0 when the field is missing). */
   requestCount: number;
 }
 
+/** Result of one import call; empty (`records: []`, `totalUsd: 0`) on any failure. */
 export interface ImportResult {
   provider: string;
+  /** Daily records as returned by the provider. */
   records: ProviderUsageRecord[];
+  /** Sum of the records' `totalUsd`, in USD. */
   totalUsd: number;
+  /** Time of the import, ISO 8601. */
   importedAt: string;
 }
 
@@ -39,6 +51,11 @@ function emptyResult(provider: string): ImportResult {
 /**
  * Import daily usage records from the OpenAI billing API.
  * Returns an empty ImportResult when apiKey is missing or the request fails.
+ *
+ * @param apiKey - OpenAI admin key; an empty string skips the request.
+ * @param startDate - First day, `YYYY-MM-DD`.
+ * @param endDate - Last day, `YYYY-MM-DD`.
+ * @returns The imported records (never rejects).
  */
 export async function importOpenAIUsage(
   apiKey: string,
@@ -74,6 +91,11 @@ export async function importOpenAIUsage(
 /**
  * Import daily usage records from the Anthropic billing API.
  * Returns an empty ImportResult when apiKey is missing or the request fails.
+ *
+ * @param apiKey - Anthropic admin key; an empty string skips the request.
+ * @param startDate - First day, `YYYY-MM-DD`.
+ * @param endDate - Last day, `YYYY-MM-DD`.
+ * @returns The imported records (never rejects).
  */
 export async function importAnthropicUsage(
   apiKey: string,

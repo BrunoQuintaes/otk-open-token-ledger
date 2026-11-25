@@ -9,7 +9,18 @@
  * H2.1: Storage migrated from in-memory Map to IPlanStore (PG or memory).
  * PlanRegistry is deterministic and bigint-safe.
  *
- * @module billing/PlanRegistry
+ * Keeps a synchronous in-process cache of each tenant's tier in front of the asynchronous `IPlanStore`, so hot
+ * paths can call `getTenantPlan()` without awaiting; admission paths use `getTenantPlanAsync()` to read the store.
+ * The store is replaced at startup by `setPlanStore()` (see `src/infra/storeBootstrap.ts`).
+ *
+ * Environment variable read: `OTK_PLAN_STORE_TIMEOUT_MS` (bound of one store call, default 5000 ms).
+ * Side effect: increments the Prometheus counter `planStoreOpsTotal` on every write.
+ *
+ * It does NOT verify Stripe signatures (the webhook route does, with `stripe/StripeClient.ts`) and does NOT enforce
+ * rate limits itself;
+ * it only returns the numbers.
+ *
+ * @module src/billing/PlanRegistry
  * @since S2.1 (Wave 1 Pack 5), updated Wave 2H (H2.1)
  */
 
@@ -25,14 +36,23 @@ export type PlanTier = 'FREE' | 'STARTER' | 'PRO';
 
 /** Plan definition */
 export interface PlanDefinition {
+  /** Tier this definition describes. */
   tier: PlanTier;
+  /** Display name. */
   name: string;
+  /** Compute-unit quota per accounting epoch; 0n means no hard limit (PRO). */
   cuQuotaPerEpoch: bigint;
+  /** Maximum requests per minute. */
   rateLimitPerMinute: number;
+  /** Maximum requests per hour. */
   rateLimitPerHour: number;
+  /** Maximum items in one batch request. */
   maxBatchSize: number;
+  /** Whether ZK proofs are generated for this tier. */
   zkProofsEnabled: boolean;
+  /** Whether on-chain anchoring is enabled for this tier. */
   onChainEnabled: boolean;
+  /** Queue priority; a higher number is served first. */
   queuePriority: number;
   /** BILL-04: Monthly price in USD (0 for free tier) */
   priceUsd: number;
@@ -67,7 +87,13 @@ const DEFAULT_TIER: PlanTier = 'FREE';
 /** SEC02-N01 / H1-S01: order of the tiers (a higher rank has a larger CU quota; PRO has no hard limit). */
 export const PLAN_RANK: Readonly<Record<PlanTier, number>> = { FREE: 0, STARTER: 1, PRO: 2 };
 
-/** The lower (financially more conservative) of two tiers. */
+/**
+ * The lower (financially more conservative) of two tiers.
+ *
+ * @param a - First tier.
+ * @param b - Second tier.
+ * @returns `a` when it ranks lower or equal to `b`, otherwise `b`.
+ */
 export function lowerTier(a: PlanTier, b: PlanTier): PlanTier {
   return PLAN_RANK[a] <= PLAN_RANK[b] ? a : b;
 }
@@ -78,6 +104,7 @@ export function lowerTier(a: PlanTier, b: PlanTier): PlanTier {
  * requested tiers until the store is read again.
  */
 export class PlanStoreUnavailableError extends Error {
+  /** Stable error code for callers and API responses. */
   readonly code = 'plan_store_unavailable';
   constructor(readonly tenantId: string, readonly cause: unknown) {
     super(`plan store did not confirm the assignment for ${tenantId}: ${cause instanceof Error ? cause.message : String(cause)}`);
@@ -91,6 +118,15 @@ function storeTimeoutMs(): number {
   return Number.isFinite(v) && v > 0 ? v : 5_000;
 }
 
+/**
+ * Races `p` against a timer; the losing promise is NOT cancelled (the store call may still complete later).
+ *
+ * @param p - The store call.
+ * @param ms - Timeout in milliseconds.
+ * @param what - Label used in the timeout error message.
+ * @returns The value of `p` when it settles first.
+ * @throws {Error} `"<what> timed out after <ms> ms"` when the timer fires first, or the rejection of `p`.
+ */
 function withTimeout<T>(p: Promise<T>, ms: number, what: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const t = new Promise<never>((_, reject) => {
@@ -124,6 +160,10 @@ function cacheOffer(tenantId: string, tier: PlanTier, version: number, startedSe
  * Replace the plan store backend (e.g., PgPlanStore after DB init) and hydrate
  * the sync cache from it (R07). Without hydration, getTenantPlan() returned FREE
  * for every tenant persisted before the restart. Await it before serving traffic.
+ *
+ * @param store - The new backend (it must already be initialized).
+ * @returns Number of assignments loaded into the cache.
+ * @throws {Error} When listing the store fails (the new store stays installed).
  */
 export async function setPlanStore(store: IPlanStore): Promise<number> {
   _store = store;
@@ -134,6 +174,11 @@ export async function setPlanStore(store: IPlanStore): Promise<number> {
  * Reload the sync cache from the persistent store. Returns the number of assignments.
  * Replicas do not notify each other: a plan changed on another instance is seen
  * here only after the next refresh or getTenantPlanAsync() for that tenant.
+ *
+ * Cached entries are reset to version 0, so the next versioned read replaces them.
+ *
+ * @returns Number of assignments loaded.
+ * @throws {Error} When listing the store fails (the cache is left unchanged).
  */
 export async function refreshPlanCache(): Promise<number> {
   const rows = await _store.list();
@@ -142,22 +187,41 @@ export async function refreshPlanCache(): Promise<number> {
   return rows.length;
 }
 
+/**
+ * Returns the plan store currently installed.
+ *
+ * @returns The active backend (memory until `setPlanStore` is called).
+ */
 export function getPlanStore(): IPlanStore {
   return _store;
 }
 
+/**
+ * Returns the fixed definition of a tier.
+ *
+ * @param tier - Plan tier.
+ * @returns The shared definition object (do not mutate).
+ */
 export function getPlan(tier: PlanTier): PlanDefinition {
   return PLANS[tier];
 }
 
+/**
+ * Lists the three plan definitions.
+ *
+ * @returns FREE, STARTER and PRO, in that order.
+ */
 export function getAllPlans(): PlanDefinition[] {
   return Object.values(PLANS);
 }
 
+/** Result of `assignPlan`. */
 export interface PlanAssignment {
   tenantId: string;
   tier: PlanTier;
+  /** Tier before the change (FREE when the tenant had no stored assignment). */
   previous: PlanTier;
+  /** Store version written by this change. */
   version: number;
 }
 
@@ -173,6 +237,14 @@ export interface PlanAssignment {
  *   - PlanStoreUnavailableError on a store error or timeout (outcome unknown; the sync view keeps the LOWER of the
  *     previous and requested tiers, so an unconfirmed promotion grants nothing and an unconfirmed downgrade is
  *     already applied locally, until the store is read again).
+ *
+ * @param tenantId - Tenant to change.
+ * @param tier - New tier.
+ * @param meta - Expected version and audit fields (see `PlanAssignMeta`).
+ * @returns The new tier, the previous one and the version written.
+ * @throws {Error} When `tier` is not FREE, STARTER or PRO.
+ * @throws {@link PlanVersionConflictError} When `meta.expectedVersion` no longer matches.
+ * @throws {@link PlanStoreUnavailableError} On a store error or timeout.
  */
 export async function assignPlan(tenantId: string, tier: PlanTier, meta: PlanAssignMeta = {}): Promise<PlanAssignment> {
   if (!(tier in PLANS)) throw new Error(`unknown plan tier: ${String(tier)}`);
@@ -187,6 +259,13 @@ export async function assignPlan(tenantId: string, tier: PlanTier, meta: PlanAss
  * store: the cache keeps the LOWER tier at the version it had (never above the store), and the next versioned read
  * started after the failure (every admission path does one, the durable proxy included since R-01) replaces it with whatever the store holds. Callers answer with an error (503) and
  * may retry with the version they read (409 tells them the ambiguous write did commit).
+ *
+ * @param tenantId - Tenant to change.
+ * @param tier - New tier.
+ * @param meta - Expected version, audit fields and optional Stripe event.
+ * @returns The store's result (a skipped Stripe event leaves the cache untouched).
+ * @throws {@link PlanVersionConflictError} When the expected version no longer matches (cache untouched).
+ * @throws {@link PlanStoreUnavailableError} On any other store error or timeout (cache lowered as described).
  */
 async function writeStore(tenantId: string, tier: PlanTier, meta: PlanAssignMeta): Promise<PlanWriteResult> {
   const before = _syncCache.get(tenantId) ?? { tier: DEFAULT_TIER, version: PLAN_VERSION_NONE };
@@ -210,6 +289,7 @@ async function writeStore(tenantId: string, tier: PlanTier, meta: PlanAssignMeta
   return written;
 }
 
+/** Stripe event reference accepted by `applyStripePlanEvent` (same shape as `StripeEventRef`). */
 export type StripePlanEvent = StripeEventRef;
 
 /**
@@ -219,6 +299,15 @@ export type StripePlanEvent = StripeEventRef;
  * the same second but raising the tier → not applied ('stale'). H1R2 R-07/R-11: a grant preceding the last
  * administrative decision → 'superseded_by_admin'; cancellation of a subscription other than the active one →
  * 'other_subscription' (see IPlanStore). Rejects like assignPlan on store failure.
+ *
+ * The audit actor is `stripe:<event id>` and the source `stripe_webhook`.
+ *
+ * @param tenantId - Tenant named by the event's metadata.
+ * @param tier - Tier the event grants (FREE for a cancellation).
+ * @param event - Event id, `created` (Unix seconds), type and subscription id.
+ * @returns Whether the change was applied, the skip reason when it was not, and the stored version.
+ * @throws {Error} When `tier` is not FREE, STARTER or PRO.
+ * @throws {@link PlanStoreUnavailableError} On a store error or timeout.
  */
 export async function applyStripePlanEvent(
   tenantId: string, tier: PlanTier, event: StripePlanEvent,
@@ -228,7 +317,15 @@ export async function applyStripePlanEvent(
   return { applied: w.applied !== false, ...(w.skipped ? { skipped: w.skipped } : {}), version: w.version };
 }
 
-/** Current tier and version read from the store (PLAN_VERSION_NONE when nothing was ever assigned). */
+/**
+ * Current tier and version read from the store (PLAN_VERSION_NONE when nothing was ever assigned).
+ *
+ * The result is offered to the sync cache, which only accepts it when it is not older than what it holds.
+ *
+ * @param tenantId - Tenant to read.
+ * @returns The stored tier (FREE when none) and its version.
+ * @throws {Error} When the store read fails or exceeds `OTK_PLAN_STORE_TIMEOUT_MS`.
+ */
 export async function getTenantPlanVersioned(tenantId: string): Promise<{ tier: PlanTier; version: number }> {
   const started = ++_readSeq;
   const cur = await withTimeout(_store.getVersioned(tenantId), storeTimeoutMs(), 'plan store read');
@@ -239,10 +336,24 @@ export async function getTenantPlanVersioned(tenantId: string): Promise<{ tier: 
 }
 
 /** Audit trail of plan changes (H1-S01). */
+/**
+ * Lists the plan audit trail.
+ *
+ * @param tenantId - Only this tenant's rows; all tenants when undefined.
+ * @returns Audit rows in write order.
+ */
 export async function listPlanAudit(tenantId?: string): Promise<PlanAuditRecord[]> {
   return _store.listAudit(tenantId);
 }
 
+/**
+ * Returns the tenant's tier from the in-process cache, without touching the store.
+ *
+ * May lag a change made on another replica; admission paths use `getTenantPlanAsync` instead.
+ *
+ * @param tenantId - Tenant to look up.
+ * @returns The cached tier, or FREE when the tenant is not cached.
+ */
 export function getTenantPlan(tenantId: string): PlanTier {
   return _syncCache.get(tenantId)?.tier ?? DEFAULT_TIER;
 }
@@ -253,16 +364,34 @@ export function getTenantPlan(tenantId: string): PlanTier {
  * elsewhere) takes effect on the next request instead of after the next restart. A null read means no assignment
  * (FREE); assignPlan() writes the store before the cache, so it cannot evict a fresher local value.
  * Store errors propagate (no silent fallback to the cached tier).
+ *
+ * @param tenantId - Tenant to read.
+ * @returns The stored tier (FREE when none).
+ * @throws {Error} When the store read fails or times out.
  */
 export async function getTenantPlanAsync(tenantId: string): Promise<PlanTier> {
   // H1-S01b: versioned read; the cache only moves forward (see cacheOffer)
   return (await getTenantPlanVersioned(tenantId)).tier;
 }
 
+/**
+ * Returns the plan definition of the tenant's cached tier.
+ *
+ * @param tenantId - Tenant to look up.
+ * @returns The definition (FREE when the tenant is not cached).
+ */
 export function getTenantPlanDefinition(tenantId: string): PlanDefinition {
   return PLANS[getTenantPlan(tenantId)];
 }
 
+/**
+ * Compares a CU total with the tenant's per-epoch quota (cached tier).
+ *
+ * @param tenantId - Tenant to check.
+ * @param currentCU - Compute units already used in the epoch.
+ * @returns `exceeded` is true when `currentCU >= quota`; for an unlimited plan (quota 0n) it is always false and
+ *   `remaining` is 0n.
+ */
 export function checkQuota(
   tenantId: string,
   currentCU: bigint,
@@ -274,20 +403,38 @@ export function checkQuota(
   return { exceeded: currentCU >= quota, quota, current: currentCU, remaining };
 }
 
+/**
+ * Returns the per-minute request limit of the tenant's cached tier.
+ *
+ * @param tenantId - Tenant to look up.
+ * @returns A 60-second window and the plan's `rateLimitPerMinute`.
+ */
 export function getPlanRateLimit(tenantId: string): { windowSeconds: number; maxRequests: number } {
   const plan = getTenantPlanDefinition(tenantId);
   return { windowSeconds: 60, maxRequests: plan.rateLimitPerMinute };
 }
 
+/**
+ * Lists the assignments held in the in-process cache (may lag the store).
+ *
+ * @returns One entry per cached tenant.
+ */
 export function listAssignments(): Array<{ tenantId: string; tier: PlanTier }> {
   return Array.from(_syncCache.entries()).map(([tenantId, v]) => ({ tenantId, tier: v.tier }));
 }
 
-/** Async version */
+/**
+ * Async version: lists the assignments from the store.
+ *
+ * @returns One entry per tenant with a stored tier.
+ */
 export async function listAssignmentsAsync(): Promise<Array<{ tenantId: string; tier: PlanTier }>> {
   return _store.list();
 }
 
+/**
+ * Clears the cache and, without awaiting, the store (tests only; store errors are ignored).
+ */
 export function clearAssignmentsForTest(): void {
   _syncCache.clear();
   _store.clear().catch(() => {});
@@ -303,7 +450,9 @@ export function resetPlanStoreForTest(): void {
 // SLA tiers (P4.4 — W5-5C02)
 // ---------------------------------------------------------------------------
 
+/** Service-level targets of one plan tier. */
 export interface SLADefinition {
+  /** Tier this SLA applies to. */
   tier: PlanTier;
   /** Max p99 latency guarantee in ms. 0 = no SLA (best effort). */
   maxLatencyP99Ms: number;
@@ -324,6 +473,9 @@ const SLA_TIERS: Record<PlanTier, SLADefinition> = {
  *
  * FREE returns maxLatencyP99Ms=0 (no SLA guarantee).
  * STARTER / PRO return the contractual p99 and uptime bounds.
+ *
+ * @param tier - Plan tier.
+ * @returns The shared SLA definition (do not mutate).
  */
 export function getSLAForTier(tier: PlanTier): SLADefinition {
   return SLA_TIERS[tier];

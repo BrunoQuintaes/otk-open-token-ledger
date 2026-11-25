@@ -11,7 +11,11 @@
  *   4. For STARTER (flat): return computed USD for P&L only (Stripe billed flat)
  *   5. For FREE: return 0 (no charge)
  *
- * @module billing/UsageMeterService
+ * Pricing uses the seed price table (`PRICE_TABLE_VERSION`); entries without token counts or without a price are
+ * listed in `unpricedEntries` and block the Stripe submission. The Stripe call is injected as a
+ * `StripeUsageRecordPort`; without one nothing is sent. No caller in `src/` at the evaluated version.
+ *
+ * @module src/billing/UsageMeterService
  * @since W7-C (BILL-01)
  */
 
@@ -20,15 +24,19 @@ import { getTenantPlanDefinition } from './PlanRegistry.js';
 import { calculateUsdCostSync } from '../pricing/economics/CostBridge.js';
 import { PRICE_TABLE_VERSION } from '../pricing/economics/ProviderPriceTable.js';
 
+/** Result of `computeAndSubmitUsage` for one tenant and epoch. */
 export interface UsageSummary {
   tenantId: string;
   epochId: string;
+  /** Billing model of the tenant's cached plan tier. */
   billingModel: 'free' | 'flat' | 'usage';
+  /** Compute units of every entry of the period, priced or not. */
   totalCU: bigint;
   /** USD of the priced entries only. Meaningful as an invoice total only when complete=true. */
   totalUsd: number;
   /** Seed price table version applied to every priced entry (R02/R08: price is identifiable). */
   priceVersion: string;
+  /** Number of entries that were priced. */
   pricedEntries: number;
   /** Entries that could not be priced; never silently counted as USD 0 (R02). */
   unpricedEntries: Array<{ requestId: string; reason: 'missing_tokens' | 'unknown_price' }>;
@@ -47,6 +55,7 @@ export interface UsageSummary {
  * without a port the result says so explicitly instead of pretending an attempt.
  */
 export interface StripeUsageRecordPort {
+  /** Creates (action `set`) the usage record of a subscription item; `quantity` is in US cents. */
   createUsageRecord(subscriptionItemId: string, params: { quantity: number; timestamp: 'now'; action: 'set' }): Promise<{ id: string }>;
 }
 
@@ -56,6 +65,14 @@ export interface StripeUsageRecordPort {
  * Stripe submission only happens for PRO (usage-based) tenants and only when
  * a Stripe subscription item ID is provided. All other paths return computed
  * USD without side effects.
+ *
+ * A Stripe error is logged to the console and not thrown; the result then has `stripeUsageRecordId: null`.
+ * The quantity sent is the USD total in cents, rounded.
+ *
+ * @param tenantId - Tenant to meter.
+ * @param epochId - Accounting epoch to read.
+ * @param opts - Subscription item id, dry-run flag and the Stripe usage-record port.
+ * @returns The usage summary, with the Stripe record id when one was created.
  */
 export async function computeAndSubmitUsage(
   tenantId: string,

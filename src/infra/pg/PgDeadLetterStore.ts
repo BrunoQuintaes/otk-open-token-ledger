@@ -4,13 +4,24 @@
  * Stores dead-letter entries in PostgreSQL for cross-instance visibility.
  * Table: otk_dead_letters
  *
- * @module infra/pg/PgDeadLetterStore
+ * Every method first runs `init()` (create table and index if missing, once per instance). Query errors propagate.
+ * Entry ids are `dl-<epoch ms>-<per-process counter>`.
+ *
+ * @module src/infra/pg/PgDeadLetterStore
  * @since Wave 3A (PACK 3A-01)
  */
 
 import type { IDeadLetterStore, DeadLetterEntry, DeadLetterStatus } from '../../api/IDeadLetterStore.js';
 
+/** The part of a `pg.Pool` this store uses. */
 export interface PgPool {
+  /**
+   * Runs one parameterized query.
+   *
+   * @param text - SQL text with `$n` placeholders.
+   * @param params - Parameter values.
+   * @returns The result rows.
+   */
   query(text: string, params?: unknown[]): Promise<{ rows: Record<string, unknown>[] }>;
 }
 
@@ -31,15 +42,26 @@ CREATE TABLE IF NOT EXISTS otk_dead_letters (
 const CREATE_STATUS_INDEX = `
 CREATE INDEX IF NOT EXISTS idx_dead_letters_status ON otk_dead_letters (status)`;
 
+/** `IDeadLetterStore` in the PostgreSQL table `otk_dead_letters`. */
 export class PgDeadLetterStore implements IDeadLetterStore {
   private readonly _pool: PgPool;
   private _counter = 0;
   private _initialized = false;
 
+  /**
+   * Wraps a pool; nothing is queried until the first call.
+   *
+   * @param pool - PostgreSQL pool.
+   */
   constructor(pool: PgPool) {
     this._pool = pool;
   }
 
+  /**
+   * Creates the table and index if missing (idempotent, once per instance).
+   *
+   * @throws {Error} When a DDL statement fails.
+   */
   async init(): Promise<void> {
     if (this._initialized) return;
     await this._pool.query(CREATE_TABLE);
@@ -47,6 +69,12 @@ export class PgDeadLetterStore implements IDeadLetterStore {
     this._initialized = true;
   }
 
+  /**
+   * Inserts a new pending entry.
+   *
+   * @param entry - Payload, error, reason, source and optional tenant.
+   * @returns The stored entry with its id, status `pending` and creation time.
+   */
   async add(entry: Omit<DeadLetterEntry, 'id' | 'status' | 'createdAt'>): Promise<DeadLetterEntry> {
     await this.init();
     this._counter++;
@@ -69,6 +97,12 @@ export class PgDeadLetterStore implements IDeadLetterStore {
     };
   }
 
+  /**
+   * Reads one entry.
+   *
+   * @param id - Entry id.
+   * @returns The entry, or null when unknown.
+   */
   async get(id: string): Promise<DeadLetterEntry | null> {
     await this.init();
     const { rows } = await this._pool.query(
@@ -78,6 +112,12 @@ export class PgDeadLetterStore implements IDeadLetterStore {
     return this._toEntry(rows[0]);
   }
 
+  /**
+   * Lists entries, newest first, filtered in SQL by status and tenant before the limit.
+   *
+   * @param opts - `limit` (default 100), `offset` (default 0), `status`, `tenantId`.
+   * @returns The page of entries.
+   */
   async list(opts?: { limit?: number; offset?: number; status?: DeadLetterStatus; tenantId?: string }): Promise<DeadLetterEntry[]> {
     await this.init();
     const conditions: string[] = [];
@@ -106,6 +146,12 @@ export class PgDeadLetterStore implements IDeadLetterStore {
     return rows.map(r => this._toEntry(r));
   }
 
+  /**
+   * Sets the status to `retried` (any current status).
+   *
+   * @param id - Entry id.
+   * @returns The updated entry, or null when unknown.
+   */
   async markRetried(id: string): Promise<DeadLetterEntry | null> {
     await this.init();
     const { rows } = await this._pool.query(
@@ -117,6 +163,12 @@ export class PgDeadLetterStore implements IDeadLetterStore {
     return this._toEntry(rows[0]);
   }
 
+  /**
+   * Sets the status to `discarded` (any current status).
+   *
+   * @param id - Entry id.
+   * @returns The updated entry, or null when unknown.
+   */
   async markDiscarded(id: string): Promise<DeadLetterEntry | null> {
     await this.init();
     const { rows } = await this._pool.query(
@@ -128,6 +180,12 @@ export class PgDeadLetterStore implements IDeadLetterStore {
     return this._toEntry(rows[0]);
   }
 
+  /**
+   * Counts entries.
+   *
+   * @param tenantId - Only this tenant's entries; all when undefined.
+   * @returns The count.
+   */
   async count(tenantId?: string): Promise<number> {
     await this.init();
     const { rows } = tenantId === undefined
@@ -136,6 +194,12 @@ export class PgDeadLetterStore implements IDeadLetterStore {
     return (rows[0]?.cnt as number) ?? 0;
   }
 
+  /**
+   * Counts pending entries.
+   *
+   * @param tenantId - Only this tenant's entries; all when undefined.
+   * @returns The count.
+   */
   async pendingCount(tenantId?: string): Promise<number> {
     await this.init();
     const { rows } = tenantId === undefined
@@ -144,6 +208,7 @@ export class PgDeadLetterStore implements IDeadLetterStore {
     return (rows[0]?.cnt as number) ?? 0;
   }
 
+  /** Deletes every row of `otk_dead_letters` and resets the id counter (tests; destructive). */
   async clear(): Promise<void> {
     await this.init();
     await this._pool.query(`DELETE FROM otk_dead_letters`);

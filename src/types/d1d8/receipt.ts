@@ -6,6 +6,8 @@
  * operator. It is never published. The public side is ./publicAuthorization.ts.
  * Historical formats (RawReceipt canonicalHash, OTK_RECEIPT_V1, OTK_RECEIPT_V2) keep their own
  * algorithms; they are verified as they were written and never re-hashed with new fields (D3 §5).
+ *
+ * @module src/types/d1d8/receipt
  */
 import type { Address, Hex32, IsoTime, OperationKey, FrozenConfigRef } from './common.js';
 import type { NormalizedUsage } from './usage.js';
@@ -27,6 +29,9 @@ export type ReceiptSource =
   | 'client_declared'
   | 'legacy_import';
 
+/**
+ * Private receipt `otk.receipt.v3`: one operation's tenant, configuration and usage, signed by the operator.
+ */
 export interface PrivateReceiptV3 {
   schema: 'otk.receipt.v3';
   key: OperationKey;
@@ -69,6 +74,9 @@ export interface SignedEnvelope {
   signedAt: IsoTime;
 }
 
+/**
+ * Reason a signature or payload verification failed.
+ */
 export type VerifyFailure =
   | 'bad_signature'
   | 'unauthorized_signer'
@@ -79,4 +87,7 @@ export type VerifyFailure =
   | 'unsupported_version'
   | 'malformed';
 
+/**
+ * Result of a verification: the authorized signer, or the failure reason (never thrown).
+ */
 export type VerifyResult = { ok: true; signer: Address; keyId: string } | { ok: false; reason: VerifyFailure; detail?: string };

@@ -5,7 +5,13 @@
  * creates Redis/PG backend implementations, and injects them via set*Store().
  * Falls back to Memory stores when external backends are unavailable.
  *
- * @module infra/storeBootstrap
+ * Environment variables read: `OTK_REDIS_URL`, `OTK_DB_URL`, `OTK_ALLOW_NON_DURABLE_STORES` (`1` = explicit opt-out
+ * of the durability check), `OTK_SMTP_HOST` (and, through `SmtpEmailAdapter`, the other `OTK_SMTP_*` names). In a
+ * deployed environment the PostgreSQL connection requires TLS with certificate verification. Besides the stores it
+ * installs the e-mail adapter and the notification service. `server.ts` refuses to start when
+ * `deployedStoreProblems()` reports anything.
+ *
+ * @module src/infra/storeBootstrap
  * @since Wave 3A (PACK 3A-01)
  */
 
@@ -23,15 +29,23 @@ import { setUserStore } from '../users/IUserStore.js';
 import { getLogger } from './logging/StructuredLogger.js';
 import { isDeployedEnv } from './deployEnv.js'; // RV2-RUNS-02 (RUN-S): same rule as the auth guard
 
+/** What `bootstrapStores` connected and which backend each store got. */
 export interface BootstrapResult {
+  /** True when Redis connected. */
   redis: boolean;
+  /** True when PostgreSQL answered and the PostgreSQL stores were installed. */
   pg: boolean;
+  /** Backend chosen per store name (`planStore`, `tal`, `email`, …). */
   stores: Record<string, 'redis' | 'pg' | 'memory' | 'smtp' | 'console'>;
 }
 
 let _pgPool: { query(text: string, params?: unknown[]): Promise<{ rows: Record<string, unknown>[] }> } | null = null;
 
-/** Get the shared PG pool (available after bootstrap). */
+/**
+ * Get the shared PG pool (available after bootstrap).
+ *
+ * @returns The pool, or null before bootstrap, without `OTK_DB_URL`, or after `closePg()`.
+ */
 export function getPgPool() { return _pgPool; }
 
 /** Close the PG pool (called during graceful shutdown). */
@@ -47,6 +61,10 @@ export async function closePg(): Promise<void> {
  * a deployed instance whose PostgreSQL was missing or unreachable at start kept serving with in-memory plan
  * assignments: paid tiers vanished on restart, downgrades did not survive, replicas disagreed. Empty outside
  * deployed environments (development and tests keep the memory fallback by design).
+ *
+ * @param result - Result of `bootstrapStores()`.
+ * @returns Human-readable problems; empty when the stores are durable, outside deployed environments, or with the
+ *   explicit opt-out.
  */
 export function deployedStoreProblems(result: BootstrapResult): string[] {
   if (!isDeployedEnv()) return [];
@@ -73,6 +91,8 @@ export function deployedStoreProblems(result: BootstrapResult): string[] {
  *
  * Graceful: if Redis/PG is configured but unreachable, falls back to Memory stores.
  * Non-throwing: always returns a result, never aborts server startup.
+ *
+ * @returns Which backends connected and the backend of each store.
  */
 export async function bootstrapStores(): Promise<BootstrapResult> {
   const log = getLogger();

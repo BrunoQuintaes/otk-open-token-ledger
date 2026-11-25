@@ -5,14 +5,22 @@
  * Uses an isolated Registry (NOT the default global register) so tests
  * can create fresh instances via createProverMetrics() without conflicts.
  *
+ * Served by the daemon's metrics route. Values are per process. Not to be confused with the
+ * `ProverMetrics` interface of `ProverDaemonManager.ts` (a different, supervisor-side shape).
+ *
+ * @module src/prover/proverMetrics
  * @since PA-06 (2026-03-13)
  */
 
 import { Counter, Gauge, Registry } from 'prom-client';
 
+/** The daemon's metric set. */
 export interface ProverMetrics {
+  /** Isolated registry holding the metrics below. */
   registry: Registry;
+  /** Queue depth gauge, labelled by job status (set by the daemon). */
   queueDepthGauge: Gauge;
+  /** Counts one finished job by status; for `done` with a duration, also sets the last-proof gauge (ms). */
   recordProof: (status: 'done' | 'failed' | 'dead_letter', ms?: number) => void;
 }
 
@@ -20,6 +28,8 @@ export interface ProverMetrics {
  * Create a fresh isolated metrics set.
  * Production code uses the module-level singleton `proverMetrics`.
  * Tests create their own instance to avoid cross-test counter accumulation.
+ *
+ * @returns A new metric set in its own registry.
  */
 export function createProverMetrics(): ProverMetrics {
   const registry = new Registry();

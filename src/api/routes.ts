@@ -3,7 +3,20 @@
  *
  * Endpoints: GET /health, GET /version, POST /ping
  *
- * @module api/routes
+ * Main HTTP router of the API server. `src/api/server.ts` passes every request to `handleRequest`, which sets the
+ * request id, tracing, security headers and CORS, handles the API version prefix and then dispatches on method and
+ * path to the handlers for receipts, tenants, keys, plans, billing, accounts, dead letters, GDPR, exports, metrics
+ * and the dashboard. Credentials are checked by `src/auth/authMiddleware.ts`; permissions by `checkRbac` and the
+ * deny helpers below, each of which sends the refusal itself and returns true when it denied the request.
+ *
+ * The endpoint list above is historical. The current route inventory is produced by `scripts/ops/extract_routes.mjs`,
+ * which reads this file as plain text; for that reason comments in this file describe routes in words only.
+ *
+ * Environment variables read here: OTK_CORS_ORIGINS, OTK_INSTANCE_ID, OTK_AUTH_FAIL_MAX, OTK_STRICT_VERSIONING,
+ * OTK_BILLING_REDIRECT_ORIGINS, OTK_SSE_REAUTH_MS, OTK_DB_URL, OTK_REDIS_URL, PROVER_URL and GIT_HEAD (the imported
+ * modules read their own).
+ *
+ * @module src/api/routes
  * @since RB-062
  */
 
@@ -125,6 +138,9 @@ const AUTH_FAIL_RL_CONFIG = {
  * Returns null when auth is enabled and token is missing/invalid (→ 401).
  * Returns { tenantId: 'default', role: 'OWNER' } when auth is disabled
  * (OWNER = all permissions pass → backward compat for auth-disabled deployments).
+ *
+ * @param req - Incoming request.
+ * @returns The caller's tenant and role, or `null` when the request is not authenticated.
  */
 function resolveCallerContext(req: IncomingMessage): TokenContext | null {
   const auth = authenticateRequest(req);
@@ -138,6 +154,11 @@ function resolveCallerContext(req: IncomingMessage): TokenContext | null {
  * the body can never substitute the caller's context. Acting on another tenant needs a platform role that does not
  * exist in this version (future work: PLATFORM_ADMIN). With auth disabled the legacy OTK_ADMIN_KEY path is the
  * platform operator and is not restricted here. Returns true when a response was sent (denied).
+ *
+ * @param req - Incoming request.
+ * @param res - Response; written only when the request is denied.
+ * @param targetTenantId - Tenant the request wants to act on (from the body or the path; any type is checked).
+ * @returns `true` when a 401 or 403 was sent.
  */
 function denyCrossTenant(req: IncomingMessage, res: ServerResponse, targetTenantId: unknown): boolean {
   if (!isAuthEnabled()) return false;
@@ -158,7 +179,12 @@ function denyCrossTenant(req: IncomingMessage, res: ServerResponse, targetTenant
  * Without that credential the usual RBAC answer is kept (401 unauthenticated, 403 forbidden without the permission);
  * a tenant role that HAS the permission gets 403 platform_operation_forbidden. Returns true when a response was sent.
  */
-/** True when the request carries the platform operator credential (OTK_ADMIN_KEY configured and presented). */
+/**
+ * True when the request carries the platform operator credential (OTK_ADMIN_KEY configured and presented).
+ *
+ * @param req - Incoming request; the platform credential header is compared in constant time.
+ * @returns Whether the configured platform credential was presented.
+ */
 function isPlatformCaller(req: IncomingMessage): boolean {
   const adminKey = getAdminKey();
   const presented = (req.headers as Record<string, string | string[] | undefined> | undefined)?.['x-admin-key'];
@@ -167,6 +193,15 @@ function isPlatformCaller(req: IncomingMessage): boolean {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
+/**
+ * Refuses a platform-wide operation to every caller except the platform operator (policy in the comment above
+ * `isPlatformCaller`).
+ *
+ * @param req - Incoming request.
+ * @param res - Response; written only when the request is denied.
+ * @param permission - RBAC permission the operation would need from a tenant role.
+ * @returns `true` when a 401, 403 or 429 was sent.
+ */
 async function denyPlatformOperation(req: IncomingMessage, res: ServerResponse, permission: Permission): Promise<boolean> {
   if (!isAuthEnabled()) return false;
   if (isPlatformCaller(req)) return false;
@@ -181,6 +216,11 @@ async function denyPlatformOperation(req: IncomingMessage, res: ServerResponse, 
  * key of another tenant is answered exactly like a key that does not exist (404), before any read, revoke or rotate,
  * so a tenant OWNER can neither revoke another tenant's key nor rotate it to obtain a live token. Returns true when a
  * response was sent.
+ *
+ * @param req - Incoming request.
+ * @param res - Response; written only when the request is denied.
+ * @param keyId - Id of the API key addressed by the path.
+ * @returns `true` when a 404 was sent.
  */
 async function denyForeignApiKey(req: IncomingMessage, res: ServerResponse, keyId: string): Promise<boolean> {
   if (!isAuthEnabled()) return false;
@@ -199,6 +239,10 @@ async function denyForeignApiKey(req: IncomingMessage, res: ServerResponse, keyI
  * an e-mail not verified → 403 email_not_verified. POLICY=PENDING_HUMAN_APPROVAL (D3): the e-mail gate is a product
  * decision, on by default. Registry tokens, dynamic keys and JWTs without userId are not affected. Returns true when a
  * response was sent.
+ *
+ * @param req - Incoming request.
+ * @param res - Response; written only when the request is denied.
+ * @returns `true` when a 401, 403 or 503 was sent.
  */
 async function denyUnverifiedOrDeprovisionedUser(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
   if (!isAuthEnabled()) return false;
@@ -230,6 +274,10 @@ async function denyUnverifiedOrDeprovisionedUser(req: IncomingMessage, res: Serv
  * H1 lane B (S04 residual): wait for the subject status to reach the durable store shared by the replicas. On failure
  * the change already holds on this replica (a deactivation is enforced here: fail closed) but other replicas do not see
  * it: answer 503 so that the operator retries. Returns true when a response was sent.
+ *
+ * @param res - Response; written only when the write failed.
+ * @param tenantId - Tenant whose status change must be saved.
+ * @returns `true` when a 503 was sent.
  */
 async function denySubjectStatusUnsaved(res: ServerResponse, tenantId: string): Promise<boolean> {
   const r = await flushSubjectStatus({ kind: 'tenant', id: tenantId }); // H1 R-05: this tenant's write, not another's
@@ -247,6 +295,11 @@ async function denySubjectStatusUnsaved(res: ServerResponse, tenantId: string): 
  * STOPGATE-01 cycle 2 (review MED-3): before a token is bound to `tenantId` on this replica, the shared registry must not
  * hold it for another tenant (a replica only knows its own registry). Store error → 503, nothing changed.
  * Returns true when a response was sent.
+ *
+ * @param res - Response; written only when the request is refused.
+ * @param token - Registry token about to be bound; absent means nothing to check.
+ * @param tenantId - Tenant the token is being bound to.
+ * @returns `true` when a 409 or 503 was sent.
  */
 async function denyTokenBoundElsewhere(res: ServerResponse, token: string | undefined, tenantId: string): Promise<boolean> {
   const src = getRegistryTokenAuthority();
@@ -262,6 +315,10 @@ async function denyTokenBoundElsewhere(res: ServerResponse, token: string | unde
 /**
  * STOPGATE-01 P1.2 (R2-D8): deployed environments need OTK_METRICS_TOKEN (Bearer) or the platform credential to read the
  * metrics routes (observability/metricsAccess). Returns true when a 401 was sent.
+ *
+ * @param res - Response; written only when access is refused.
+ * @param headers - Request headers, passed to the metrics access check.
+ * @returns `true` when a 401 was sent.
  */
 function denyMetricsAccess(res: ServerResponse, headers: Record<string, string | undefined> | undefined): boolean {
   if (metricsAccessAllowed(headers)) return false;
@@ -270,6 +327,13 @@ function denyMetricsAccess(res: ServerResponse, headers: Record<string, string |
   return true;
 }
 
+/**
+ * Flushes the queued registry token changes to the shared registry (policy in the second comment above
+ * `denyTokenBoundElsewhere`).
+ *
+ * @param res - Response; written only when the change could not be completed.
+ * @returns `true` when a 409 (token bound to another tenant) or 503 (shared registry not written) was sent.
+ */
 async function denyRegistryChangeUnsaved(res: ServerResponse): Promise<boolean> {
   if (await flushRegistryTokenChanges()) {
     // cycle 2 (review MED-3): a token already bound to another tenant in the shared registry was not moved
@@ -285,6 +349,10 @@ async function denyRegistryChangeUnsaved(res: ServerResponse): Promise<boolean> 
  * H1R2 review LOW-3: before changing the status of a tenant outside the registry, read its current status from the
  * shared store (the caller's own refresh covers the caller, not the target). Store error → 503, nothing changed.
  * Returns true when a response was sent.
+ *
+ * @param res - Response; written only when the status could not be read.
+ * @param tenantId - Tenant whose status is refreshed.
+ * @returns `true` when a 503 was sent.
  */
 async function denyTargetStatusUnknown(res: ServerResponse, tenantId: string): Promise<boolean> {
   if (await refreshSubjectsNow([{ kind: 'tenant', id: tenantId }])) return false;
@@ -292,7 +360,14 @@ async function denyTargetStatusUnknown(res: ServerResponse, tenantId: string): P
   return true;
 }
 
-/** H1 lane B (S05 residual): userId of the access JWT that authenticates the request, or null (other credentials). */
+/**
+ * H1 lane B (S05 residual): userId of the access JWT that authenticates the request, or null (other credentials).
+ *
+ * For a dynamic API key the key's recorded author is returned instead.
+ *
+ * @param req - Incoming request.
+ * @returns The user id, or `null`.
+ */
 function jwtUserIdOf(req: IncomingMessage): string | null {
   const auth = authenticateRequest(req);
   // H1 R-06 (adversarial review): a key minted or rotated with a dynamic key inherits that key's author; before, it
@@ -305,6 +380,11 @@ function jwtUserIdOf(req: IncomingMessage): string | null {
  * AUD-FC-09..11 (FINAL CLOSURE re-audit sweep, 2026-10-07): a resource addressed by id (export job, webhook endpoint,
  * team) belongs to one tenant. With auth enabled a resource of another tenant is answered like a missing one (404),
  * before any read or change. ownerTenantId null = resource not found. Returns true when a response was sent.
+ *
+ * @param req - Incoming request.
+ * @param res - Response; written only when the request is denied.
+ * @param ownerTenantId - Tenant that owns the resource; `null` or `undefined` means the resource does not exist.
+ * @returns `true` when a 401 or 404 was sent.
  */
 function denyForeignResource(req: IncomingMessage, res: ServerResponse, ownerTenantId: string | null | undefined): boolean {
   if (!isAuthEnabled()) return false;
@@ -317,13 +397,23 @@ function denyForeignResource(req: IncomingMessage, res: ServerResponse, ownerTen
 /** H1R2 S21-F01: spellings of the webhook collection besides '/webhooks' (prefix cut once: /v1/v1/webhooks → '/v1/webhooks'). */
 const WEBHOOK_COLLECTION_ALIASES = new Set(['/webhooks/', '/v1/webhooks', '/v1/webhooks/']);
 
-/** H1R2 S21-F01: list/create of webhook endpoints are disabled; authenticate first (401), then an explicit 501. */
+/**
+ * H1R2 S21-F01: list/create of webhook endpoints are disabled; authenticate first (401), then an explicit 501.
+ *
+ * @param req - Incoming request.
+ * @param res - Response; always written.
+ */
 function webhookManagementDisabled(req: IncomingMessage, res: ServerResponse): void {
   if (isAuthEnabled() && !resolveCallerContext(req)) return sendError(res, 'OTK-4010');
   return sendJson(res, 501, { ok: false, error: 'webhook_management_disabled', detail: 'listing and creating webhook endpoints is not enabled in this version (S21-F01: destination policy ready, role policy pending); endpoints by id remain under /v1/v1/webhooks/{id}' });
 }
 
-/** Tenant id of the caller when auth is enabled (listings are then restricted to it); null = auth disabled. */
+/**
+ * Tenant id of the caller when auth is enabled (listings are then restricted to it); null = auth disabled.
+ *
+ * @param req - Incoming request.
+ * @returns The caller's tenant, `null` when auth is disabled, or `null` when the caller cannot be resolved.
+ */
 function callerTenantScope(req: IncomingMessage): string | null {
   return isAuthEnabled() ? (resolveCallerContext(req)?.tenantId ?? null) : null;
 }
@@ -333,6 +423,9 @@ function callerTenantScope(req: IncomingMessage): string | null {
  * of every tenant. A tenant role sees and acts only on its own tenant; the platform credential (x-admin-key) and the
  * legacy auth-disabled path see all (null). Called after checkRbac, so with auth enabled the caller is authenticated;
  * an unresolved caller gets a scope that matches no tenant.
+ *
+ * @param req - Incoming request.
+ * @returns The tenant to restrict to, or `null` for "all tenants".
  */
 function tenantScopeUnlessPlatform(req: IncomingMessage): string | null {
   if (!isAuthEnabled() || isPlatformCaller(req)) return null;
@@ -343,6 +436,11 @@ function tenantScopeUnlessPlatform(req: IncomingMessage): string | null {
  * Check RBAC for a request. Returns a denial descriptor { code, error } or null if allowed.
  * When auth is disabled, always returns null (OWNER context → all perms pass).
  * Records auth-fail rate-limit on 401 when rateLimit=true.
+ *
+ * @param req - Incoming request.
+ * @param permission - Permission required by the route.
+ * @param rateLimit - Whether an unauthenticated request counts toward the per-source failure limit.
+ * @returns A denial (401, 403 or 429 with the error string) or `null` when allowed.
  */
 async function checkRbac(
   req: IncomingMessage,
@@ -369,6 +467,9 @@ async function checkRbac(
  * with OTK_PROXY_TRUSTED_HOPS>0). It used to be keyed by the first 8 characters of the presented token: guesses with
  * distinct prefixes were never throttled, and wrong tokens sharing a victim token's prefix throttled that prefix for
  * every source. The token never enters the key (GAP-B-004 still holds).
+ *
+ * @param req - Incoming request; its source address is the limiter key.
+ * @returns `true` when the source exceeded OTK_AUTH_FAIL_MAX failures in 60 seconds.
  */
 async function checkAuthFailRateLimit(req: IncomingMessage): Promise<boolean> {
   const rlKey = buildRateLimitKey({ tenantId: `__auth_fail__:${sourceKey(req)}` });
@@ -380,6 +481,9 @@ async function checkAuthFailRateLimit(req: IncomingMessage): Promise<boolean> {
  * F-H1-10 (H1 lane B): user behind a refresh token, or null when the token must not mint an access token: no userId
  * (unbound legacy token), no user store, store error, unknown or deprovisioned user (durable store re-read, so it holds
  * across replicas), a token issued before the user's deprovisioning, or a user that is not a member of the tenant.
+ *
+ * @param decoded - Verified refresh token payload: tenant, issue time in seconds and optional user id.
+ * @returns The user id, or `null`.
  */
 async function refreshTokenUser(decoded: { tenantId: string; iat: number; userId?: string }): Promise<string | null> {
   if (!decoded.userId) return null;
@@ -407,6 +511,10 @@ const readBody = readBodyWithLimits;
 /**
  * Check legacy X-Admin-Key header (when auth is disabled).
  * Returns true if the request should be denied. Extracted to reduce copy-paste.
+ *
+ * @param req - Incoming request.
+ * @param res - Response; written only when the request is denied.
+ * @returns `true` when a 401 was sent.
  */
 function checkLegacyAdminKey(req: IncomingMessage, res: ServerResponse): boolean {
   const adminKey = getAdminKey();
@@ -427,6 +535,10 @@ function checkLegacyAdminKey(req: IncomingMessage, res: ServerResponse): boolean
 /**
  * H1-S01/S03: an existing, active tenant as far as the platform can tell: tenant registry record (active), a registered
  * credential, or a /signup organization. Auth disabled (development A0) has no tenant registry: every id is accepted.
+ *
+ * @param tenantId - Tenant id to look up.
+ * @returns Whether the tenant exists and is active.
+ * @throws {Error} Errors of the user, registry or key stores (see `tenantExistsOutsideRegistry`).
  */
 async function tenantKnownToPlatform(tenantId: string): Promise<boolean> {
   if (!isAuthEnabled()) return true;
@@ -440,6 +552,10 @@ async function tenantKnownToPlatform(tenantId: string): Promise<boolean> {
 /**
  * H1R2 R-13 / R-14: a tenant that exists without a registry record — a /signup organization, or a tenant with an
  * active dynamic key in the shared key store (created on any replica). Store errors propagate (callers fail closed).
+ *
+ * @param tenantId - Tenant id to look up; empty is never found.
+ * @returns Whether an organization, a shared registry entry or an active dynamic key exists for it.
+ * @throws {Error} Errors of the user, registry or key stores, unchanged.
  */
 async function tenantExistsOutsideRegistry(tenantId: string): Promise<boolean> {
   if (!tenantId) return false;
@@ -453,6 +569,9 @@ async function tenantExistsOutsideRegistry(tenantId: string): Promise<boolean> {
  * H1-S03: checkout redirect allowlist. OTK_BILLING_REDIRECT_ORIGINS is a comma-separated list of origins
  * (e.g. "https://app.example.com"). Without it, deployed environments refuse every redirect (fail closed) and
  * development accepts only http(s) URLs on localhost.
+ *
+ * @param raw - Redirect address supplied by the client.
+ * @returns Whether the address may be used as a checkout redirect.
  */
 function checkoutRedirectAllowed(raw: string): boolean {
   let u: URL;
@@ -463,6 +582,16 @@ function checkoutRedirectAllowed(raw: string): boolean {
   return !isDeployedEnv() && (u.hostname === 'localhost' || u.hostname === '127.0.0.1');
 }
 
+/**
+ * Handles one HTTP request of the API server.
+ *
+ * Unhandled processing errors are answered 500 and recorded in the dead-letter store; an oversized body gets 413 and
+ * a body read timeout 503.
+ *
+ * @param req - Incoming request.
+ * @param res - Response to write.
+ * @returns Resolves once the request has been handled.
+ */
 export async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const base = `http://localhost`;
   const url = new URL(req.url ?? '/', base);

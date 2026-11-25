@@ -10,7 +10,10 @@
  * Single-worker: processes one proof at a time (CPU-bound).
  * Thread-safe for single-process use (no race conditions without concurrency).
  *
- * @module ProofQueue
+ * Also the home of the shared proof types ({@link ProofInput}, {@link ProofResult}) imported by the other
+ * prover queues and the client. Nothing is persisted: jobs are lost on restart.
+ *
+ * @module src/prover/ProofQueue
  * @since U13 (2026-02-22)
  */
 
@@ -20,8 +23,10 @@ import { randomBytes } from 'node:crypto';
 // Types
 // ---------------------------------------------------------------------------
 
+/** Lifecycle state of an in-memory proof job. */
 export type JobStatus = 'pending' | 'processing' | 'done' | 'failed';
 
+/** Circuit inputs of one legacy (v1/v2) proof, as decimal strings. Contains private values: never log it. */
 export interface ProofInput {
   /** Private: userId (bigint-serialized as string) */
   userId: string;
@@ -43,6 +48,7 @@ export interface ProofInput {
   circuitVersion?: 'v1' | 'v2';
 }
 
+/** A Groth16 proof in snarkjs JSON form, with its public signals and timing. */
 export interface ProofResult {
   proof: {
     pi_a: string[];
@@ -52,6 +58,7 @@ export interface ProofResult {
     curve: string;
   };
   publicSignals: string[];
+  /** Proving time, ms. */
   proveMs: number;
   /** Key file basename without .zkey extension (S5.2 — key pipeline) */
   keyVersion?: string;
@@ -59,6 +66,7 @@ export interface ProofResult {
   circuitVersion?: string;
 }
 
+/** A job of {@link ProofQueue}; times are epoch ms. */
 export interface ProofJob {
   id: string;
   status: JobStatus;
@@ -73,10 +81,17 @@ export interface ProofJob {
 // ProofQueue
 // ---------------------------------------------------------------------------
 
+/** Minimal in-memory FIFO of proof jobs (no retry; see `DurableProofQueue.ts` for retries). */
 export class ProofQueue {
   private readonly _jobs = new Map<string, ProofJob>();
   private readonly _pending: string[] = [];
 
+  /**
+   * Adds a pending job.
+   *
+   * @param input - Proof inputs.
+   * @returns The new job id (16 hex characters).
+   */
   enqueue(input: ProofInput): string {
     const id = randomBytes(8).toString('hex');
     const now = Date.now();
@@ -92,6 +107,11 @@ export class ProofQueue {
     return id;
   }
 
+  /**
+   * Takes the oldest pending job and marks it processing.
+   *
+   * @returns The job (mutated in place), or `null` when none is pending.
+   */
   dequeue(): ProofJob | null {
     while (this._pending.length > 0) {
       const id = this._pending.shift()!;
@@ -105,6 +125,13 @@ export class ProofQueue {
     return null;
   }
 
+  /**
+   * Marks a job done.
+   *
+   * @param id - Job id.
+   * @param result - Proof result.
+   * @throws {Error} When the job id is unknown.
+   */
   complete(id: string, result: ProofResult): void {
     const job = this._jobs.get(id);
     if (!job) throw new Error(`ProofQueue: job ${id} not found`);
@@ -113,6 +140,13 @@ export class ProofQueue {
     job.updatedAt = Date.now();
   }
 
+  /**
+   * Marks a job failed (terminal; no retry).
+   *
+   * @param id - Job id.
+   * @param error - Failure message.
+   * @throws {Error} When the job id is unknown.
+   */
   fail(id: string, error: string): void {
     const job = this._jobs.get(id);
     if (!job) throw new Error(`ProofQueue: job ${id} not found`);
@@ -121,14 +155,30 @@ export class ProofQueue {
     job.updatedAt = Date.now();
   }
 
+  /**
+   * Reads a job.
+   *
+   * @param id - Job id.
+   * @returns The live job object, or `undefined`.
+   */
   get(id: string): ProofJob | undefined {
     return this._jobs.get(id);
   }
 
+  /**
+   * Pending job count.
+   *
+   * @returns Number of queued ids not yet dequeued.
+   */
   size(): number {
     return this._pending.length;
   }
 
+  /**
+   * Counts all jobs by state.
+   *
+   * @returns The counts.
+   */
   stats(): { total: number; pending: number; processing: number; done: number; failed: number } {
     let pending = 0, processing = 0, done = 0, failed = 0;
     for (const job of this._jobs.values()) {

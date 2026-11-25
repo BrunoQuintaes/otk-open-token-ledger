@@ -11,9 +11,17 @@
  *
  * JS numbers, undefined, functions and symbols are refused: "absent" must be an explicit null and
  * integers must be bigint, so nothing is silently dropped, rounded or turned into 0.
+ *
+ * Used by `receiptCrypto.ts` (digests of receipt v3, conference report, statements and the signature
+ * envelope). Pure functions; no I/O.
+ *
+ * @module src/receipt/v3/canonicalEncoding
  */
 import { ethers } from 'ethers';
 
+/**
+ * Raised when a value cannot be encoded in CE1; `path` points to the offending member (empty for the root).
+ */
 export class CanonicalEncodingError extends Error {
   constructor(readonly path: string, message: string) {
     super(`CE1 ${path || '<root>'}: ${message}`);
@@ -97,14 +105,28 @@ function encodeInto(out: number[], v: unknown, path: string): void {
   }
 }
 
-/** CE1 bytes of a value. */
+/**
+ * CE1 bytes of a value.
+ *
+ * @param v - Value made only of null, booleans, bigints, strings, dense arrays and plain objects.
+ * @returns The CE1 bytes.
+ * @throws {@link CanonicalEncodingError} When the value (or a nested member) is a JS number, `undefined`, a
+ *   function, symbol, non-plain object, sparse array, a string with a lone surrogate, or a length above 2^32-1.
+ */
 export function encodeCE1(v: unknown): Uint8Array {
   const out: number[] = [];
   encodeInto(out, v, '');
   return Uint8Array.from(out);
 }
 
-/** keccak256(utf8(domain) ‖ 0x00 ‖ CE1(payload)). Domain must be non-empty ASCII without NUL. */
+/**
+ * keccak256(utf8(domain) ‖ 0x00 ‖ CE1(payload)). Domain must be non-empty ASCII without NUL.
+ *
+ * @param domain - Domain label: printable ASCII (0x21-0x7e), non-empty, no spaces.
+ * @param payload - Value to encode with {@link encodeCE1}.
+ * @returns The keccak256 digest as `0x` plus 64 lowercase hex characters.
+ * @throws {@link CanonicalEncodingError} When the domain is not printable ASCII or the payload is not encodable.
+ */
 export function domainDigest(domain: string, payload: unknown): `0x${string}` {
   if (!/^[\x21-\x7e]+$/.test(domain)) throw new CanonicalEncodingError('', 'domain must be printable ASCII');
   return ethers.keccak256(ethers.concat([ethers.toUtf8Bytes(domain), new Uint8Array([0x00]), encodeCE1(payload)])) as `0x${string}`;

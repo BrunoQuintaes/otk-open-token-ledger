@@ -10,22 +10,33 @@
  * - Uses native fetch (Node 18+)
  * - In production, run behind OTK_PRICE_SCRAPE_ENABLED=true guard
  *
- * @module pricing/PriceScraper
+ * Network: each scraper makes one HTTPS GET to the provider's public pricing page (10 s timeout). The regex
+ * parsers are heuristics: they take the first two dollar amounts after the model name and store them as
+ * USD per 1K tokens without checking which unit the page uses. Results are not used for billing; the
+ * durable billing path uses frozen price tables instead (`priceUsage.ts`).
+ *
+ * @module src/pricing/PriceScraper
  * @since W7 (PI-03)
  */
 
 import type { ModelPrice } from './economics/ProviderPriceTable.js';
 
+/** Prices scraped from one provider page. */
 export type ScrapeResult = {
   provider: string;
+  /** Model id → input/output price as parsed (see the unit caveat in the file header). */
   models: Record<string, ModelPrice>;
+  /** ISO time of the scrape. */
   scrapedAt: string;
+  /** URL of the page scraped. */
   source: string;
 };
 
 /**
  * Scrape OpenAI pricing page.
  * Returns null on fetch/parse failure.
+ *
+ * @returns The parsed prices, or `null` when the request fails or no model price is found. Never throws.
  */
 export async function scrapeOpenAI(): Promise<ScrapeResult | null> {
   try {
@@ -68,6 +79,8 @@ export async function scrapeOpenAI(): Promise<ScrapeResult | null> {
 /**
  * Scrape Anthropic pricing page.
  * Returns null on fetch/parse failure.
+ *
+ * @returns The parsed prices, or `null` when the request fails or no model price is found. Never throws.
  */
 export async function scrapeAnthropic(): Promise<ScrapeResult | null> {
   try {
@@ -106,6 +119,8 @@ export async function scrapeAnthropic(): Promise<ScrapeResult | null> {
 /**
  * Scrape Gemini pricing page.
  * Returns null on fetch/parse failure.
+ *
+ * @returns The parsed prices, or `null` when the request fails or no model price is found. Never throws.
  */
 export async function scrapeGemini(): Promise<ScrapeResult | null> {
   try {
@@ -144,6 +159,8 @@ export async function scrapeGemini(): Promise<ScrapeResult | null> {
 /**
  * Run all scrapers and return results per provider.
  * Failures are isolated — a failed provider doesn't affect others.
+ *
+ * @returns One result per provider that returned prices (failed providers are omitted).
  */
 export async function scrapeAllProviders(): Promise<ScrapeResult[]> {
   const results = await Promise.allSettled([

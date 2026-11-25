@@ -13,7 +13,7 @@
  * In scope: types, registry, query surface stub
  * Out of scope: live bridge, real subgraph host, cross-chain sync, relayers
  *
- * @module infra/multichainTypes
+ * @module src/infra/multichainTypes
  * @since G4
  */
 

@@ -8,6 +8,10 @@
  *
  * The singleton is reset-safe: call getCollector().reset() in tests.
  *
+ * In this version the snapshot is read by the metrics route in `src/api/routes.ts`; no server path in
+ * `src/` calls `record()` (see `MetricsCollector.ts`).
+ *
+ * @module src/observability/runtime
  * @since F1.2
  */
 
@@ -18,6 +22,8 @@ const _collector = new MetricsCollector();
 /**
  * Returns the process-level MetricsCollector singleton.
  * Same instance on every call — guaranteed by module scope.
+ *
+ * @returns The shared collector (created when this module is first imported).
  */
 export function getCollector(): MetricsCollector {
   return _collector;

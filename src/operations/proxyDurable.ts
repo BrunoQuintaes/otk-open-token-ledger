@@ -16,7 +16,12 @@
  *   when the database returns.
  * Prompt/response text is never stored; the optional counter keeps it in memory only.
  *
- * @module operations/proxyDurable
+ * Entry point: {@link handleDurableMitm}, called by `src/proxy/ProxyGateway.ts` after it identified the tenant.
+ * `replaySpool` runs periodically from `src/operations/runtime.ts`. Side effects: PostgreSQL writes, the local
+ * spool, one upstream provider call per admitted operation (spends the operator's provider key), the
+ * admission-refusal metric, and structured logs (keys, states and errors only; no text, no secrets).
+ *
+ * @module src/operations/proxyDurable
  */
 import { getTenantPlanVersioned } from '../billing/PlanRegistry.js';
 import { admissionRefusalsTotal } from '../observability/prometheusMetrics.js';
@@ -41,7 +46,13 @@ import { assessMoneyBound, serviceTierMatches } from './moneyBound.js';
 
 // ───────────────────────────── request inspection ─────────────────────────────
 
-/** Provider API addressed by a request path (the declared text scope, D5 §2); null = unsupported. */
+/**
+ * Provider API addressed by a request path (the declared text scope, D5 §2); null = unsupported.
+ *
+ * @param provider - Provider id as routed by the gateway (lower case).
+ * @param pathname - Upstream path; trailing slashes are ignored.
+ * @returns The usage API, or `null` when the path is outside the metered scope.
+ */
 export function detectApi(provider: string, pathname: string): UsageApi | null {
   const p = pathname.replace(/\/+$/, '');
   switch (provider) {
@@ -70,6 +81,7 @@ const MAX_OUTPUT_FIELDS: Record<UsageApi, string[]> = {
   'cohere.chat': ['max_tokens'],
 };
 
+// Dotted-path helpers for nested limit fields such as `generationConfig.maxOutputTokens`. setPath mutates `o`.
 function getPath(o: Record<string, unknown>, dotted: string): unknown {
   return dotted.split('.').reduce<unknown>((acc, k) => (acc && typeof acc === 'object' ? (acc as Record<string, unknown>)[k] : undefined), o);
 }
@@ -88,6 +100,7 @@ const MAX_OUTPUT_ALIASES: Partial<Record<UsageApi, string[]>> = {
   'gemini.generate_content': ['generation_config', 'generationConfig.max_output_tokens'],
 };
 
+/** Output limit frozen for an operation (tokens), whether the policy default was injected, or why it was refused. */
 export type LimitDecision =
   | { ok: true; maxOutputTokens: bigint; injected: boolean }
   | { ok: false; error: 'max_output_invalid' | 'max_output_above_policy' | 'max_output_ambiguous'; detail: string };
@@ -96,6 +109,13 @@ export type LimitDecision =
  * Freeze the output limit: the request's (≤ cap) or the policy default injected into the body.
  * More than one limit field (or an alias spelling) is refused: the provider might honour the
  * other one (review MEDIUM-5).
+ *
+ * Mutates `body` when the default is injected.
+ *
+ * @param api - Provider API (selects the documented limit field).
+ * @param body - Parsed request body.
+ * @param policy - Default limit and maximum accepted limit, tokens.
+ * @returns The frozen limit, or a refusal with an error code and detail.
  */
 export function applyOutputLimit(api: UsageApi, body: Record<string, unknown>, policy: { defaultMaxOutputTokens: bigint; maxOutputTokensCap: bigint }): LimitDecision {
   for (const alias of MAX_OUTPUT_ALIASES[api] ?? []) {
@@ -118,7 +138,13 @@ const OP_ID_RE = /^[A-Za-z0-9._:-]{1,128}$/;
 
 // ───────────────────────────── status view (no text) ─────────────────────────────
 
-/** Public shape of an operation for its tenant: state axes, amounts, effects — never text. */
+/**
+ * Public shape of an operation for its tenant: state axes, amounts, effects — never text.
+ *
+ * @param op - The operation.
+ * @param extra - Extra top-level fields merged last (they override same-named fields).
+ * @returns A JSON-safe object (bigint values as decimal strings).
+ */
 export function operationView(op: DurableOperation, extra: Record<string, unknown> = {}): Record<string, unknown> {
   const scaled = (x: { units: bigint; scale: bigint } | null) => (x ? { units: x.units.toString(), scale: x.scale.toString() } : null);
   return {
@@ -162,12 +188,17 @@ export function operationView(op: DurableOperation, extra: Record<string, unknow
 export interface FinalFacts {
   /** rejected = the provider answered 4xx without usage (nothing generated, nothing billed). */
   outcome: 'completed' | 'upstream_failed' | 'cancelled' | 'limit' | 'not_delivered' | 'rejected';
+  /** Measured usage; `null` when none was read. */
   usage: NormalizedUsage | null;
+  /** CU of a complete usage; `null` otherwise. */
   cu: CuResult | null;
+  /** Price quote of a complete usage; `null` when not priced. */
   price: PriceQuote | null;
   delivery: DeliveryState;
   providerRequestId: string | null;
+  /** Numeric result of the in-memory auxiliary counter; `null` when no counter ran. */
   localCount: LocalCountResult | null;
+  /** ISO time the facts were recorded. */
   at: string;
 }
 
@@ -178,6 +209,10 @@ const TERMINAL_DELIVERY = new Set(['delivered', 'client_disconnected']);
  * Money after a complete measurement (ABC-03): only a complete quote ('priced', total known)
  * confirms spend; missing/partial/no quote keeps the reserved worst case held ('pending_price'),
  * with a partial subtotal recorded as information only.
+ *
+ * @param m - Current money settlement of the operation (not mutated).
+ * @param price - Quote of the usage, or `null`.
+ * @returns The new money settlement: `settled` with the confirmed total, or `pending_price`.
  */
 export function moneyFromQuote(m: MoneySettlement, price: PriceQuote | null): MoneySettlement {
   if (price && price.status === 'priced' && price.total) {
@@ -190,7 +225,14 @@ export function moneyFromQuote(m: MoneySettlement, price: PriceQuote | null): Mo
   };
 }
 
-/** Completion of a pending price by a complete quote of the same stored usage; null = nothing to do. */
+/**
+ * Completion of a pending price by a complete quote of the same stored usage; null = nothing to do.
+ *
+ * @param cur - The operation as stored.
+ * @param price - A new quote.
+ * @param usage - The usage the quote priced; must have the same raw usage digest as the stored usage.
+ * @returns The settled money, or `null` when the price is not pending, the quote is incomplete, or the usage differs.
+ */
 export function resolvedMoney(cur: DurableOperation, price: PriceQuote | null, usage: NormalizedUsage | null): MoneySettlement | null {
   if (cur.money?.state !== 'pending_price' || !price || price.status !== 'priced' || !price.total) return null;
   if (!cur.usage || !usage || usage.rawUsageDigest !== cur.usage.rawUsageDigest) return null;
@@ -201,6 +243,13 @@ export function resolvedMoney(cur: DurableOperation, price: PriceQuote | null, u
  * Build the patch for the operation's CURRENT state (it may have been moved meanwhile by a cancel
  * request or by recovery). Exactly one settlement: a complete usage with a computed CU settles;
  * anything else keeps (or turns) the exposure uncertain.
+ *
+ * A stop (cancel or limit) on a running operation first returns only `cancel_requested`; the caller applies
+ * the facts again for the final state.
+ *
+ * @param cur - The operation as currently stored.
+ * @param f - What happened.
+ * @returns The patch to apply (may be empty when nothing changes).
  */
 export function patchFromFacts(cur: DurableOperation, f: FinalFacts): OperationPatch {
   const patch: OperationPatch = {};
@@ -263,7 +312,15 @@ export function patchFromFacts(cur: DurableOperation, f: FinalFacts): OperationP
   return patch;
 }
 
-/** Outbox effects created by a settlement (written in the same transaction). */
+/**
+ * Outbox effects created by a settlement (written in the same transaction).
+ *
+ * @param ctx - Operations context (decides the v3 or legacy receipt flavor).
+ * @param op - The operation as it will be after settlement.
+ * @param epochId - Quota epoch of the operation.
+ * @returns A `persist_receipt` effect and a `project_redis` effect (integer CU rounded up).
+ * @throws {@link ScaleLossError} When the settled CU cannot be converted to micro-CU exactly.
+ */
 export function settlementEffects(ctx: OperationsContext, op: DurableOperation, epochId: string): EnqueueInput[] {
   const key = op.key;
   const units = toAccountingUnits(op.reservation.cu);
@@ -277,6 +334,7 @@ export function settlementEffects(ctx: OperationsContext, op: DurableOperation, 
   ];
 }
 
+// Errors that waiting cannot fix (rule or data errors), as opposed to the database being unavailable.
 function isLogic(err: unknown): boolean {
   const n = (err as Error | null)?.name;
   return err instanceof IllegalTransitionError || n === 'ScaleLossError' || n === 'CodecError' || n === 'LedgerIdentityError';
@@ -285,7 +343,14 @@ function isLogic(err: unknown): boolean {
 /** Outcome of one attempt to write final facts to PostgreSQL (RV2-05: permanent vs transient). */
 type CoreWrite = 'written' | { rejected: string } | { unavailable: string };
 
-/** CAS on the current revision (re-read on conflict), settlement effects in the same transaction. */
+/**
+ * CAS on the current revision (re-read on conflict), settlement effects in the same transaction.
+ *
+ * @param ctx - Operations context.
+ * @param key - Tenant and operation id.
+ * @param facts - What happened.
+ * @returns `'written'`, a permanent rejection, or a transient unavailability (never throws).
+ */
 async function writeFinalCore(ctx: OperationsContext, key: OperationKey, facts: FinalFacts): Promise<CoreWrite> {
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
@@ -317,6 +382,11 @@ async function writeFinalCore(ctx: OperationsContext, key: OperationKey, facts: 
  * Write the final facts. If PostgreSQL is unreachable the facts go to the spool; if PostgreSQL rejects
  * them for a permanent logical reason they go to the intervention queue (RV2-05) — in both cases the
  * consumption is kept durably, never dropped. 'lost' only when neither could be written (logged).
+ *
+ * @param ctx - Operations context.
+ * @param key - Tenant and operation id.
+ * @param facts - What happened (numbers and states only).
+ * @returns Where the facts ended up.
  */
 export async function writeFinal(ctx: OperationsContext, key: OperationKey, facts: FinalFacts): Promise<'written' | 'spooled' | 'rejected' | 'lost'> {
   const w = await writeFinalCore(ctx, key, facts);
@@ -349,7 +419,15 @@ export async function writeFinal(ctx: OperationsContext, key: OperationKey, fact
   }
 }
 
-/** Decode spooled facts (inverse of encodeJson(FinalFacts)). */
+/**
+ * Decode spooled facts (inverse of encodeJson(FinalFacts)).
+ *
+ * `outcome` and `delivery` are taken as stored, without validation.
+ *
+ * @param v - Parsed spool record payload.
+ * @returns The facts.
+ * @throws {@link CodecError} When a usage, CU, price or local-count field is malformed.
+ */
 export function decodeFacts(v: unknown): FinalFacts {
   const o = v as Record<string, unknown>;
   return {
@@ -364,7 +442,12 @@ export function decodeFacts(v: unknown): FinalFacts {
   };
 }
 
-/** Re-apply spooled measurements once PostgreSQL is back (idempotent per operation). */
+/**
+ * Re-apply spooled measurements once PostgreSQL is back (idempotent per operation).
+ *
+ * @param ctx - Operations context.
+ * @returns The replay counts, or `null` when no spool is configured.
+ */
 export async function replaySpool(ctx: OperationsContext): Promise<SpoolReplayResult | null> {
   if (!ctx.spool) return null;
   const res = await ctx.spool.replay((rec) => applySpooled(ctx, rec));
@@ -376,7 +459,11 @@ export async function replaySpool(ctx: OperationsContext): Promise<SpoolReplayRe
   return res;
 }
 
-/** F-FPS5-01: damaged bytes in the intervention file are reported, never skipped silently. */
+/**
+ * F-FPS5-01: damaged bytes in the intervention file are reported, never skipped silently.
+ *
+ * @param ctx - Operations context (spool and logger); does nothing without a spool. Never throws.
+ */
 function reportInterventionFileDamage(ctx: OperationsContext): void {
   if (!ctx.spool) return;
   let h: ReturnType<NonNullable<OperationsContext['spool']>['inspectInterventions']>;
@@ -393,7 +480,13 @@ function reportInterventionFileDamage(ctx: OperationsContext): void {
   }
 }
 
-/** Apply one spooled record: transient failures retry, permanent logical rejections go to intervention. */
+/**
+ * Apply one spooled record: transient failures retry, permanent logical rejections go to intervention.
+ *
+ * @param ctx - Operations context.
+ * @param rec - The spooled record.
+ * @returns `applied`, `already`, `retry`, or an intervention reason.
+ */
 async function applySpooled(ctx: OperationsContext, rec: SpoolRecord): Promise<SpoolApplyOutcome> {
   let facts: FinalFacts;
   try { facts = decodeFacts(rec.patch); } catch (err) {
@@ -416,6 +509,10 @@ async function applySpooled(ctx: OperationsContext, rec: SpoolRecord): Promise<S
  * re-apply the open intervention entries. Applied/already → a 'resolved' line is appended; still
  * rejected or database unavailable → the entry stays open. Never deletes; the operation's revision and
  * ledger identity keep a repeated apply from counting twice. `ids` limits it to chosen entries.
+ *
+ * @param ctx - Operations context.
+ * @param ids - Optional intervention entry ids to re-apply; all open entries when omitted.
+ * @returns Counts of entries resolved, still open, and open because their integrity check failed.
  */
 export async function reapplyInterventions(ctx: OperationsContext, ids?: readonly string[]): Promise<{ resolved: number; open: number; corrupt: number }> {
   if (!ctx.spool) return { resolved: 0, open: 0, corrupt: 0 };
@@ -440,17 +537,34 @@ export async function reapplyInterventions(ctx: OperationsContext, ids?: readonl
 
 // ───────────────────────────── the request handler ─────────────────────────────
 
+/** Inputs of {@link handleDurableMitm}, prepared by the gateway. */
 export interface DurableMitmArgs {
   req: IncomingMessage;
   res: ServerResponse;
+  /** Tenant decided by the gateway from the caller's credential (never from the body). */
   tenantId: string;
+  /** Provider id (lower case). */
   provider: string;
+  /** Provider path, used for API detection and the request digest. */
   upstreamPath: string;
+  /** Full upstream URL (query string included). */
   upstreamUrl: string;
   method: string;
+  /** Incoming request headers; only an allowlist is forwarded upstream. */
   headers: Record<string, string>;
+  /** Raw request body text (JSON). */
   bodyStr: string;
+  /**
+   * Resolves the operator's provider key for this call; an empty or rejected value means nothing is sent.
+   *
+   * @returns The provider key (secret; never logged).
+   */
   resolveApiKey(): Promise<string>;
+  /**
+   * Opens the upstream request (network call to the provider).
+   *
+   * @returns The upstream response with a readable body.
+   */
   openUpstream(url: string, method: string, headers: Record<string, string>, body: string, apiKey: string, provider: string, headerTimeoutMs?: number, signal?: AbortSignal): Promise<UpstreamResponse>;
 }
 
@@ -463,7 +577,13 @@ function json(res: ServerResponse, status: number, body: unknown, headers: Recor
   res.end(data);
 }
 
-/** Wait for the client to drain; false when it stalled past `stallMs` (treated as gone). */
+/**
+ * Wait for the client to drain; false when it stalled past `stallMs` (treated as gone).
+ *
+ * @param res - The client response.
+ * @param stallMs - Longest wait, ms.
+ * @returns `true` when drained or closed, `false` on stall.
+ */
 function waitForDrainOrClose(res: ServerResponse, stallMs: number): Promise<boolean> {
   if (res.destroyed || !res.writableNeedDrain) return Promise.resolve(true);
   return new Promise((resolve) => {
@@ -475,6 +595,7 @@ function waitForDrainOrClose(res: ServerResponse, stallMs: number): Promise<bool
   });
 }
 
+// Connection-level errors that prove the request never reached the provider (safe to release the hold).
 function isCertainNonDelivery(err: unknown): boolean {
   const code = (err as { cause?: { code?: string } } | null)?.cause?.code ?? (err as { code?: string } | null)?.code;
   return code === 'ECONNREFUSED' || code === 'ENOTFOUND' || code === 'EAI_AGAIN';
@@ -487,6 +608,7 @@ const HIDDEN_RESPONSE_HEADERS = /^(set-cookie|openai-organization|openai-project
 
 /** Fields whose content is fetched by the provider from a reference: not boundable from the body. */
 const BY_REFERENCE_KEYS = new Set(['image_url', 'input_image', 'file_id', 'file_url', 'fileData', 'file_data', 'cachedContent', 'cached_content', 'previous_response_id', 'prompt_cache_key']);
+// First by-reference key found in the body, or null. Depth-capped; deeper content is not scanned.
 function findByReference(v: unknown, depth = 0): string | null {
   if (depth > 32 || v === null || typeof v !== 'object') return null;
   if (Array.isArray(v)) { for (const x of v) { const r = findByReference(x, depth + 1); if (r) return r; } return null; }
@@ -501,6 +623,10 @@ function findByReference(v: unknown, depth = 0): string | null {
 /**
  * A cache_control TTL other than the default 5 minutes, anywhere in the body (incl. the top-level automatic
  * cache_control). Fail-closed: a body nested beyond the scan depth counts as found (RV2-07).
+ *
+ * @param v - Parsed body or a nested value.
+ * @param depth - Current recursion depth.
+ * @returns A short description of the unsupported TTL, or `null`.
  */
 function hasUnpricedCacheTtl(v: unknown, depth = 0): string | null {
   if (depth > 32) return 'body nested beyond the scanned depth';
@@ -516,7 +642,15 @@ function hasUnpricedCacheTtl(v: unknown, depth = 0): string | null {
   return null;
 }
 
-/** Usage object found in the tail of a body too large to parse (non-stream overflow). */
+/**
+ * Usage object found in the tail of a body too large to parse (non-stream overflow).
+ *
+ * Scans backwards for the API's usage field and parses the first balanced JSON object after it.
+ *
+ * @param api - Provider API (selects the usage field name).
+ * @param tail - Last characters of the response body.
+ * @returns `{ <field>: <usage object> }`, or `null` when no parsable usage is found.
+ */
 export function usageFromTail(api: UsageApi, tail: string): Record<string, unknown> | null {
   const field = api === 'gemini.generate_content' ? '"usageMetadata"' : api === 'cohere.chat' ? '"meta"' : '"usage"';
   let at = tail.lastIndexOf(field);
@@ -541,6 +675,20 @@ export function usageFromTail(api: UsageApi, tail: string): Record<string, unkno
   return null;
 }
 
+/**
+ * Handles one metered provider request end to end and always answers the client.
+ *
+ * Validates the request, freezes limits, admits the operation durably (quota, money budget, idempotency),
+ * calls the provider under an execution lease, relays the response, and writes the final facts (settled,
+ * uncertain, spooled or sent to intervention). Refusals before the provider answer 4xx/5xx JSON with an
+ * error code and send nothing upstream. Long by design: the order of these steps is the durability
+ * guarantee and is documented step by step in the comments below.
+ *
+ * @param ctx - Operations context.
+ * @param a - Request, response, tenant and upstream helpers.
+ * @returns Resolves once the response was ended and the final facts were written (or spooled).
+ * @throws {Error} Unexpected errors during admission (other than a queue timeout) propagate to the gateway.
+ */
 export async function handleDurableMitm(ctx: OperationsContext, a: DurableMitmArgs): Promise<void> {
   const { res, tenantId, provider } = a;
   if (a.method !== 'POST') return json(res, 405, { ok: false, error: 'durable_profile_meters_post_only' });

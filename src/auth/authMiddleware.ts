@@ -4,7 +4,13 @@
  * Unified authentication: tries JWT first, then API key (static or dynamic).
  * Extracts tenantId + role for downstream RBAC.
  *
- * @module auth/authMiddleware
+ * Called by `src/api/routes.ts` for every authenticated route. It is synchronous: it reads only in-process state
+ * (token registry, key-hash registry, subject status); keeping that state current across replicas is the job of
+ * `src/auth/credentialAuthority.ts` before this runs. Side effect: on a successful API-key match it updates the key's
+ * `lastUsedAt` in the metadata store (fire-and-forget). Environment: the JWT secret through `src/auth/jwt.ts`, and
+ * NODE_ENV through the production guard (with auth disabled, deployed environments authenticate nobody).
+ *
+ * @module src/auth/authMiddleware
  * @since Wave 2H (H3.2)
  */
 
@@ -19,11 +25,17 @@ import { isTenantInactive, jwtSubjectDenial, dynamicKeyDenial } from './subjectS
 /** Tenant roles a JWT may carry (same set as the token registry); anything else does not authenticate. */
 const ACCESS_ROLES: ReadonlySet<string> = new Set(['OWNER', 'ADMIN', 'OPERATOR', 'MEMBER', 'VIEWER']);
 
+/** Outcome of `authenticateRequest`. */
 export interface AuthResult {
+  /** Whether the request is authenticated. */
   authenticated: boolean;
+  /** Tenant of the credential; empty when not authenticated, `default` when auth is disabled in development. */
   tenantId: string;
+  /** Role of the credential; empty when not authenticated. */
   role: string;
+  /** Which credential authenticated the request (`none` also when auth is disabled). */
   method: 'jwt' | 'api_key' | 'none';
+  /** Verified JWT payload, only for `method: 'jwt'`. */
   jwtPayload?: JWTPayload;
   teamId?: string;   // TEAM-04: optional team context carried from JWT payload
   /** H1 R-06: author (user id) of the dynamic key that authenticated the request, when recorded. */
@@ -38,6 +50,9 @@ export interface AuthResult {
  * 2. API key (Authorization: Bearer <api-key> — resolved via TenantKeyRegistry)
  * 3. Auth disabled → default OWNER context
  * 4. No credentials → unauthenticated
+ *
+ * @param req - Incoming request; only its headers are read.
+ * @returns The result; never throws for a bad credential (it is reported as not authenticated).
  */
 export function authenticateRequest(req: IncomingMessage): AuthResult {
   if (!isAuthEnabled()) {

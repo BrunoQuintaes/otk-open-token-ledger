@@ -10,27 +10,79 @@
  *    envelope is A's verifyConference, called by consumers;
  *  - objects are stored whole (codec keeps unknown additive fields) and read back exactly.
  *
- * @module operations/receiptV3Store
+ * Receipts and reports are private (exact usage); this module never logs them. It does not verify
+ * signatures: it only checks schema ids, envelope domain and digest binding.
+ *
+ * @module src/operations/receiptV3Store
  */
 import { appendFileSync, closeSync, existsSync, fsyncSync, openSync, readFileSync } from 'node:fs';
 import type { ConferenceReport, Hex32, OperationKey, PrivateReceiptV3, SignedEnvelope } from '../types/d1d8/index.js';
 import { decodeConference, decodeReceiptV3, encodeJson } from './codec.js';
 import type { PgQueryable } from './schema.js';
 
+/** Thrown when a different receipt or report (different digest) is already stored for the same key. */
 export class ReceiptConflictError extends Error {
+  /**
+   * Builds the error naming what conflicted and for which operation.
+   *
+   * @param what - `'receipt'` or `'conference report'`.
+   * @param key - Tenant and operation id.
+   */
   constructor(what: string, key: OperationKey) { super(`${what} for ${key.tenantId}/${key.operationId} differs from the stored one`); this.name = 'ReceiptConflictError'; }
 }
+/** Thrown when a schema id, envelope domain/digest, or receipt binding of a report is wrong. */
 export class BindingMismatchError extends Error {
+  /**
+   * Builds the error.
+   *
+   * @param message - What did not match.
+   */
   constructor(message: string) { super(message); this.name = 'BindingMismatchError'; }
 }
 
+/** A stored private receipt v3 with its signed envelope and digest. */
 export interface StoredReceipt { receipt: PrivateReceiptV3; envelope: SignedEnvelope; digest: Hex32 }
+/** A stored conference report with its signed envelope and digest. */
 export interface StoredConference { report: ConferenceReport; envelope: SignedEnvelope; digest: Hex32 }
 
+/** Storage contract shared by the PostgreSQL and JSONL implementations (rules in the file header). */
 export interface ReceiptV3Store {
+  /**
+   * Stores a signed receipt once per key.
+   *
+   * @param receipt - The private receipt.
+   * @param envelope - Its signed envelope (domain `OTK_PRIVATE_RECEIPT_V3`).
+   * @param digest - Receipt digest computed by the crypto module.
+   * @returns `'stored'`, or `'duplicate'` when the same digest is already stored.
+   * @throws {@link BindingMismatchError} When the schema, envelope domain or envelope digest is wrong.
+   * @throws {@link ReceiptConflictError} When a different receipt is stored for the key.
+   */
   putReceipt(receipt: PrivateReceiptV3, envelope: SignedEnvelope, digest: Hex32): Promise<'stored' | 'duplicate'>;
+  /**
+   * Stores a signed conference report once per key, bound to the stored receipt.
+   *
+   * @param report - The conference report.
+   * @param envelope - Its signed envelope (domain `OTK_CONFERENCE_V1`).
+   * @param digest - Report digest.
+   * @returns `'stored'` or `'duplicate'`.
+   * @throws {@link BindingMismatchError} When the receipt is missing, the report names another receipt, or a
+   *   schema/state/envelope check fails.
+   * @throws {@link ReceiptConflictError} When a different report is stored for the key.
+   */
   putConference(report: ConferenceReport, envelope: SignedEnvelope, digest: Hex32): Promise<'stored' | 'duplicate'>;
+  /**
+   * Reads a stored receipt.
+   *
+   * @param key - Tenant and operation id.
+   * @returns The receipt, or `null` when absent.
+   */
   getReceipt(key: OperationKey): Promise<StoredReceipt | null>;
+  /**
+   * Reads a stored conference report.
+   *
+   * @param key - Tenant and operation id.
+   * @returns The report, or `null` when absent.
+   */
   getConference(key: OperationKey): Promise<StoredConference | null>;
 }
 
@@ -51,9 +103,16 @@ function checkReport(rep: ConferenceReport): void {
   }
 }
 
+/** PostgreSQL implementation over `otk_receipts_v3` and `otk_conferences`. */
 export class PgReceiptV3Store implements ReceiptV3Store {
+  /**
+   * Binds the store to a database connection.
+   *
+   * @param pool - PostgreSQL pool (or client).
+   */
   constructor(private readonly pool: PgQueryable) {}
 
+  /** @inheritDoc */
   async putReceipt(receipt: PrivateReceiptV3, envelope: SignedEnvelope, digest: Hex32): Promise<'stored' | 'duplicate'> {
     checkReceipt(receipt);
     checkEnvelope(envelope, 'OTK_PRIVATE_RECEIPT_V3', digest);
@@ -68,6 +127,7 @@ export class PgReceiptV3Store implements ReceiptV3Store {
     return 'duplicate';
   }
 
+  /** @inheritDoc */
   async putConference(report: ConferenceReport, envelope: SignedEnvelope, digest: Hex32): Promise<'stored' | 'duplicate'> {
     checkReport(report);
     checkEnvelope(envelope, 'OTK_CONFERENCE_V1', digest);
@@ -85,6 +145,7 @@ export class PgReceiptV3Store implements ReceiptV3Store {
     return 'duplicate';
   }
 
+  /** @inheritDoc */
   async getReceipt(key: OperationKey): Promise<StoredReceipt | null> {
     const r = await this.pool.query<{ receipt: unknown; envelope: SignedEnvelope; receipt_digest: string }>(
       'SELECT receipt, envelope, receipt_digest FROM otk_receipts_v3 WHERE tenant_id = $1 AND operation_id = $2',
@@ -94,6 +155,7 @@ export class PgReceiptV3Store implements ReceiptV3Store {
     return row ? { receipt: decodeReceiptV3(row.receipt), envelope: row.envelope, digest: row.receipt_digest as Hex32 } : null;
   }
 
+  /** @inheritDoc */
   async getConference(key: OperationKey): Promise<StoredConference | null> {
     const r = await this.pool.query<{ report: unknown; envelope: SignedEnvelope; report_digest: string }>(
       'SELECT report, envelope, report_digest FROM otk_conferences WHERE tenant_id = $1 AND operation_id = $2',
@@ -109,6 +171,8 @@ const k = (key: OperationKey): string => JSON.stringify([key.tenantId, key.opera
 /**
  * JSONL implementation: one append-only file, each line fsync'd before put() resolves. The file
  * is replayed on open; a torn last line (crash during append) is ignored and reported.
+ *
+ * Single-process only (the in-memory index is not shared); appends are synchronous.
  */
 export class JsonlReceiptV3Store implements ReceiptV3Store {
   private readonly receipts = new Map<string, StoredReceipt>();
@@ -116,6 +180,11 @@ export class JsonlReceiptV3Store implements ReceiptV3Store {
   /** Lines that could not be parsed on open (torn tail after a crash). */
   readonly skippedLines: number;
 
+  /**
+   * Opens the store and replays the file synchronously (a missing file means an empty store).
+   *
+   * @param path - JSONL file path; created on the first write.
+   */
   constructor(private readonly path: string) {
     let skipped = 0;
     if (existsSync(path)) {
@@ -146,6 +215,7 @@ export class JsonlReceiptV3Store implements ReceiptV3Store {
     }
   }
 
+  /** @inheritDoc */
   async putReceipt(receipt: PrivateReceiptV3, envelope: SignedEnvelope, digest: Hex32): Promise<'stored' | 'duplicate'> {
     checkReceipt(receipt);
     checkEnvelope(envelope, 'OTK_PRIVATE_RECEIPT_V3', digest);
@@ -159,6 +229,7 @@ export class JsonlReceiptV3Store implements ReceiptV3Store {
     return 'stored';
   }
 
+  /** @inheritDoc */
   async putConference(report: ConferenceReport, envelope: SignedEnvelope, digest: Hex32): Promise<'stored' | 'duplicate'> {
     checkReport(report);
     checkEnvelope(envelope, 'OTK_CONFERENCE_V1', digest);
@@ -175,6 +246,8 @@ export class JsonlReceiptV3Store implements ReceiptV3Store {
     return 'stored';
   }
 
+  /** @inheritDoc */
   async getReceipt(key: OperationKey): Promise<StoredReceipt | null> { return this.receipts.get(k(key)) ?? null; }
+  /** @inheritDoc */
   async getConference(key: OperationKey): Promise<StoredConference | null> { return this.reports.get(k(key)) ?? null; }
 }

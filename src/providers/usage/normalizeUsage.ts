@@ -15,6 +15,12 @@
  * Consequence vs. the previous code: Anthropic cache read/write tokens now enter T_entrada
  * (the proxy previously left them out of CU, N8) and Gemini thoughts now enter T_saida.
  * Cache discounts belong to the price (priceUsage.ts), not to CU (D5 §6).
+ *
+ * Where it sits: exported through `src/providers/d1d8Measurement.ts`; the stream accumulator in this
+ * folder calls `normalizeUsageDetailed` on the usage it rebuilds from the stream. Pure functions: no I/O,
+ * no configuration, input objects are never mutated.
+ *
+ * @module src/providers/usage/normalizeUsage
  */
 import type {
   CategoryInclusion, NormalizedUsage, TokenCategory, TokenCategoryName, UsageApi, UsageCompleteness,
@@ -23,12 +29,27 @@ import type { UsageContext } from '../../types/d1d8/index.js';
 import { digestOf } from './canonicalJson.js';
 import { USAGE_DOC_REFS } from './usageDocRefs.js';
 
+/**
+ * Version label of this normalizer, copied into every {@link NormalizedUsage} it produces.
+ */
 export const NORMALIZER_VERSION = 'otk.usage_normalizer.b1@1';
+/**
+ * Identifier of the rule that sums categories into `tIn`/`tOut` (described in the file header).
+ */
 export const T_RULE_ID = 'otk.t_rule.v1';
 
 /** Above this a single operation's count is treated as out of range (≈500× the largest documented context). */
 export const MAX_TOKENS_PER_FIELD = 1_000_000_000n;
 
+/**
+ * Kind of problem found while normalizing a usage object.
+ *
+ * `usage_absent`/`base_absent`: the usage object or a base count is missing; `invalid_type`,
+ * `non_integer`, `negative`, `non_finite`, `out_of_range`: a field is not a valid count;
+ * `subset_exceeds_base`/`inconsistent_total`: counts contradict each other; `derived_from_total`: the
+ * output base was computed from the total; `inclusion_unverified`: a field whose inclusion is not
+ * documented is non-zero; `unmapped_field`: the response has a field this normalizer does not know.
+ */
 export type UsageIssueKind =
   | 'usage_absent'
   | 'base_absent'
@@ -43,13 +64,20 @@ export type UsageIssueKind =
   | 'inclusion_unverified'
   | 'unmapped_field';
 
+/**
+ * One problem found while normalizing; it never carries prompt or response text.
+ */
 export interface UsageIssue {
   kind: UsageIssueKind;
+  /** Dotted path of the field in the response body, e.g. `usage.prompt_tokens`. */
   field: string;
   /** Raw value rendered as text (numbers only; never prompt/response text). */
   detail?: string;
 }
 
+/**
+ * Result of {@link normalizeUsageDetailed}: the normalized usage plus every issue found.
+ */
 export interface DetailedUsage {
   usage: NormalizedUsage;
   issues: UsageIssue[];
@@ -107,6 +135,9 @@ const OPENAI_CHAT_LIKE = (extra: Partial<ApiRule> = {}): ApiRule => ({
   ...extra,
 });
 
+/**
+ * Per-API mapping from response fields to token categories, with the consistency checks to apply.
+ */
 export const API_RULES: Readonly<Record<UsageApi, ApiRule>> = Object.freeze({
   // v1.3: service_tier at the top level of the body and of every stream chunk (FECHAMENTO_GEMINI_AD, DL-07)
   'openai.chat_completions': OPENAI_CHAT_LIKE({ serviceTierPath: 'service_tier' }),
@@ -195,6 +226,12 @@ export const API_RULES: Readonly<Record<UsageApi, ApiRule>> = Object.freeze({
 
 const INPUT_SIDE: ReadonlySet<TokenCategoryName> = new Set(['input', 'input_cache_read', 'input_cache_write', 'input_audio', 'tool_use_prompt']);
 
+/**
+ * Tells on which side (input or output) a token category is added under the T rule.
+ *
+ * @param name - Token category name.
+ * @returns `'input'` for `input*` and `tool_use_prompt` categories, otherwise `'output'`.
+ */
 export function categorySide(name: TokenCategoryName): 'input' | 'output' {
   return INPUT_SIDE.has(name) ? 'input' : 'output';
 }
@@ -210,7 +247,13 @@ function getPath(obj: unknown, path: string): unknown {
 
 type Parsed = { kind: 'absent' } | { kind: 'ok'; value: bigint } | { kind: 'invalid'; issue: UsageIssueKind; detail: string };
 
-/** Strict count parser: only finite non-negative integers up to MAX_TOKENS_PER_FIELD are counts. */
+/**
+ * Strict count parser: only finite non-negative integers up to MAX_TOKENS_PER_FIELD are counts.
+ *
+ * @param v - Raw field value (number or bigint expected).
+ * @returns `absent` for `undefined`/`null`, `ok` with a bigint value, or `invalid` with the issue kind and
+ *   the value rendered as text.
+ */
 export function parseCount(v: unknown): Parsed {
   if (v === undefined || v === null) return { kind: 'absent' };
   if (typeof v === 'bigint') {
@@ -226,7 +269,12 @@ export function parseCount(v: unknown): Parsed {
   return { kind: 'ok', value: BigInt(v) };
 }
 
-/** Leaf paths of numeric-looking fields in the raw usage object, for the unmapped report. */
+/**
+ * Leaf paths of numeric-looking fields in the raw usage object, for the unmapped report.
+ *
+ * @param obj - Raw usage object (or a nested value while recursing).
+ * @param prefix - Dotted path of `obj` inside the usage object; empty at the top level.
+ */
 function leafPaths(obj: unknown, prefix = ''): string[] {
   if (obj === null || typeof obj !== 'object') return prefix ? [prefix] : [];
   if (Array.isArray(obj)) return prefix ? [prefix] : [];
@@ -237,7 +285,12 @@ function str(v: unknown): string | null {
   return typeof v === 'string' && v.length > 0 ? v : null;
 }
 
-/** First candidate's finish reason; `blocked:<reason>` when the prompt was blocked (no candidate); null if neither. */
+/**
+ * First candidate's finish reason; `blocked:<reason>` when the prompt was blocked (no candidate); null if neither.
+ *
+ * @param body - Full response body.
+ * @param f - Where the API reports candidates, their finish reason and the prompt block reason.
+ */
 function finishOf(body: unknown, f: NonNullable<ApiRule['finish']>): string | null {
   const cands = getPath(body, f.candidatesPath);
   const first = Array.isArray(cands) && cands.length > 0 ? (cands[0] as unknown) : undefined;
@@ -247,12 +300,28 @@ function finishOf(body: unknown, f: NonNullable<ApiRule['finish']>): string | nu
   return blocked ? `blocked:${blocked}` : null;
 }
 
+/**
+ * Options for {@link normalizeUsageDetailed}.
+ */
 export interface NormalizeOptions {
   /** Stream accumulators override completeness (e.g. 'partial' before the final event). */
   completeness?: UsageCompleteness;
 }
 
-/** Normalization with the list of issues found (the contract function drops the issues). */
+/**
+ * Normalization with the list of issues found (the contract function drops the issues).
+ *
+ * Missing data stays `null` (a reported zero stays `0n`). `tIn`/`tOut` are `null` unless both bases are
+ * valid and every consistency check passes; `completeness` is then `complete` (or `opts.completeness`),
+ * otherwise `partial`, or `missing` when there is no usage object at all.
+ *
+ * @param api - Usage API that produced the body; it selects the rule in {@link API_RULES}.
+ * @param responseBody - Parsed response body (not modified).
+ * @param ctx - Provider, requested model, origin and observation time to copy into the result.
+ * @param opts - Optional override of the completeness reported for a computable usage.
+ * @returns The normalized usage and the list of issues found (possibly empty).
+ * @throws {Error} When `api` has no rule in {@link API_RULES}.
+ */
 export function normalizeUsageDetailed(api: UsageApi, responseBody: unknown, ctx: UsageContext,
   opts: NormalizeOptions = {}): DetailedUsage {
   const rule = API_RULES[api];
@@ -391,14 +460,28 @@ export function normalizeUsageDetailed(api: UsageApi, responseBody: unknown, ctx
   };
 }
 
-/** NormalizeUsageFn (contract). Carries `issues` (1.1.0) when normalizeUsageDetailed found any. */
+/**
+ * NormalizeUsageFn (contract). Carries `issues` (1.1.0) when normalizeUsageDetailed found any.
+ *
+ * @param api - Usage API that produced the body.
+ * @param responseBody - Parsed response body (not modified).
+ * @param ctx - Provider, requested model, origin and observation time.
+ * @returns The normalized usage, with an `issues` member only when at least one issue was found.
+ * @throws {Error} When `api` has no rule in {@link API_RULES}.
+ */
 export function normalizeUsage(api: UsageApi, responseBody: unknown, ctx: UsageContext): NormalizedUsage {
   const { usage, issues } = normalizeUsageDetailed(api, responseBody, ctx);
   // contract 1.1.0 (R-B2): issues travel with the usage; omitted (never undefined) when there are none
   return issues.length > 0 ? { ...usage, issues } : usage;
 }
 
-/** Count of one category as reported, or null (absent/invalid). */
+/**
+ * Count of one category as reported, or null (absent/invalid).
+ *
+ * @param usage - A normalized usage.
+ * @param name - Category to read (the first category with that name is used).
+ * @returns The count in tokens, or `null` when the category is absent or invalid.
+ */
 export function categoryCount(usage: NormalizedUsage, name: TokenCategoryName): bigint | null {
   return usage.categories.find((c) => c.name === name)?.count ?? null;
 }

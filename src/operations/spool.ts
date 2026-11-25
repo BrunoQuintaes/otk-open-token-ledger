@@ -43,7 +43,11 @@
  * here, and the simultaneous loss of PostgreSQL and this disk. The operation still exists in
  * PostgreSQL (it was admitted durably) and recovery marks it uncertain.
  *
- * @module operations/spool
+ * Used by `proxyDurable.ts` (append, replay, intervention queue) and created by `runtime.ts` from
+ * OTK_SPOOL_DIR. All file I/O is synchronous. Files are per instance: three JSONL files named after the
+ * instance id in the spool directory (live, quarantine, intervention).
+ *
+ * @module src/operations/spool
  */
 import { createHash } from 'node:crypto';
 import {
@@ -53,14 +57,19 @@ import path from 'node:path';
 import type { OperationKey } from '../types/d1d8/index.js';
 import { encodeJson } from './codec.js';
 
+/** One spooled measurement (numbers and ids only), as one JSON line of the live file. */
 export interface SpoolRecord {
   v: 1;
+  /** Unique record id (random UUID), used to track it through replay and intervention. */
   id: string;
   key: OperationKey;
   /** Encoded (codec) OperationPatch and extras; decoded by the replayer. */
   patch: unknown;
+  /** Encoded local count, or `null`. */
   localCount: unknown;
+  /** Encoded effects to enqueue with the patch (may be empty). */
   enqueue: unknown[];
+  /** ISO time the record was appended. */
   at: string;
 }
 
@@ -68,20 +77,28 @@ export interface SpoolRecord {
 export interface SpoolCorruptLine {
   /** Byte offset of the line in the live file. */
   offset: number;
+  /** The line's bytes, without the newline. */
   raw: Buffer;
+  /** `json`: not parsable; `schema`: parsable but not a v1 record. */
   reason: 'json' | 'schema';
 }
 
+/** Read-only view of the live spool file. */
 export interface SpoolInspection {
+  /** Valid records, in file order. */
   records: SpoolRecord[];
   corrupt: SpoolCorruptLine[];
   /** Unterminated final segment (an append that never completed), or null. */
   tornTail: { offset: number; raw: Buffer } | null;
 }
 
+/** Counts of one {@link MeasurementSpool.replay} call. */
 export interface SpoolReplayResult {
+  /** Records applied now. */
   applied: number;
+  /** Records whose operation was already final. */
   already: number;
+  /** Records still in the live file after the replay (retry later). */
   left: number;
   /** Corrupt lines found and moved to the quarantine file in this replay. */
   corrupt: number;
@@ -105,9 +122,16 @@ export interface InterventionEntry {
   /** sha256 of the record as written in the live spool (integrity). */
   sha256: string;
 }
+/** Line appended when an intervention entry was re-applied successfully (`outcome`: applied or already). */
 export interface InterventionResolution { v: 1; kind: 'resolved'; id: string; at: string; outcome: string }
 
+/** Thrown by {@link MeasurementSpool.append} when the live file already holds `maxEntries` records. */
 export class SpoolFullError extends Error {
+  /**
+   * Builds the error naming the bound.
+   *
+   * @param max - The configured maximum number of records.
+   */
   constructor(max: number) { super(`measurement spool full (${max} entries)`); this.name = 'SpoolFullError'; }
 }
 
@@ -121,7 +145,9 @@ export interface InterventionCorruptLine {
   recovered: boolean;
 }
 
+/** Read-only view of the intervention file. */
 export interface InterventionInspection {
+  /** Entries without a later resolution; `intact` = the record's sha256 still matches. */
   open: Array<InterventionEntry & { intact: boolean }>;
   corrupt: InterventionCorruptLine[];
   /** Unterminated final segment (an interrupted append), or null. */
@@ -130,7 +156,13 @@ export interface InterventionInspection {
 
 const sha256 = (b: Buffer | string) => createHash('sha256').update(b).digest('hex');
 
-/** Write every byte (a single writeSync may write fewer bytes than asked). */
+/**
+ * Write every byte (a single writeSync may write fewer bytes than asked).
+ *
+ * @param fd - Open file descriptor.
+ * @param buf - Bytes to write.
+ * @throws {Error} When a write makes no progress.
+ */
 function writeAll(fd: number, buf: Buffer): void {
   let off = 0;
   while (off < buf.length) {
@@ -151,6 +183,11 @@ function isInterventionLine(o: unknown): o is InterventionEntry | InterventionRe
 /**
  * Durable append of one line to an append-only log (F-FPS5-01): close a torn tail in place with a newline,
  * write all bytes, fsync, read them back. Throws on any failure (the caller keeps its source).
+ *
+ * @param file - Append-only log file.
+ * @param dir - Its directory (fsynced when the file is created).
+ * @param line - One line of text, without the newline.
+ * @throws {Error} When writing, syncing or the read-back verification fails.
  */
 function appendDurable(file: string, dir: string, line: string): void {
   const data = Buffer.from(`${line}\n`, 'utf8');
@@ -180,14 +217,20 @@ function isRecord(v: unknown): v is SpoolRecord {
     && typeof k['tenantId'] === 'string' && typeof k['operationId'] === 'string';
 }
 
-/** fsync a directory after a rename (POSIX); Windows does not allow opening directories for it. */
+/**
+ * fsync a directory after a rename (POSIX); Windows does not allow opening directories for it.
+ *
+ * @param dir - Directory to sync.
+ */
 function fsyncDir(dir: string): void {
   if (process.platform === 'win32') return;
   const fd = openSync(dir, 'r');
   try { fsyncSync(fd); } finally { closeSync(fd); }
 }
 
+/** Per-instance durable spool of measurements, with quarantine and intervention files. */
 export class MeasurementSpool {
+  /** Path of the live JSONL file. */
   readonly file: string;
   /** Append-only evidence of torn tails and corrupt lines removed from the live file. */
   readonly quarantineFile: string;
@@ -196,6 +239,14 @@ export class MeasurementSpool {
   private readonly dir: string;
   private queue: Promise<unknown> = Promise.resolve();
 
+  /**
+   * Creates the directory if needed and removes a temp file left by a crash; does not read the live file.
+   *
+   * @param dir - Spool directory.
+   * @param instanceId - Stable instance id (characters outside `A-Za-z0-9._-` become `_` in file names).
+   * @param opts - `maxEntries` (default 10000).
+   * @throws {Error} When the directory cannot be created.
+   */
   constructor(dir: string, instanceId: string, private readonly opts: { maxEntries?: number } = {}) {
     mkdirSync(dir, { recursive: true });
     this.dir = dir;
@@ -207,7 +258,11 @@ export class MeasurementSpool {
     rmSync(`${this.file}.tmp`, { force: true });
   }
 
-  /** Parse the live file into records, corrupt lines and a possible torn tail (no side effects). */
+  /**
+   * Parse the live file into records, corrupt lines and a possible torn tail (no side effects).
+   *
+   * @returns The inspection; empty when the file does not exist.
+   */
   inspect(): SpoolInspection {
     if (!existsSync(this.file)) return { records: [], corrupt: [], tornTail: null };
     const buf = readFileSync(this.file);
@@ -235,6 +290,11 @@ export class MeasurementSpool {
     return { records, corrupt, tornTail: null };
   }
 
+  /**
+   * Valid records still waiting in the live file.
+   *
+   * @returns The records, in file order.
+   */
   pending(): SpoolRecord[] {
     return this.inspect().records;
   }
@@ -251,7 +311,15 @@ export class MeasurementSpool {
     appendDurable(file, this.dir, line);
   }
 
-  /** RV2-05: durably record an intact record that needs an operator. Throws if it cannot be written. */
+  /**
+   * RV2-05: durably record an intact record that needs an operator. Throws if it cannot be written.
+   *
+   * @param record - The record (stored whole, with its sha256).
+   * @param reason - Permanent rejection reason.
+   * @param source - `replay` (from the live spool) or `live` (rejected while the request ran).
+   * @returns The entry written.
+   * @throws {Error} When the append cannot be written or verified.
+   */
   recordIntervention(record: SpoolRecord, reason: string, source: 'replay' | 'live'): InterventionEntry {
     const line = JSON.stringify(record);
     const entry: InterventionEntry = { v: 1, kind: 'intervention', id: record.id, record, reason, source, detectedAt: new Date().toISOString(),
@@ -260,13 +328,23 @@ export class MeasurementSpool {
     return entry;
   }
 
-  /** RV2-05: append the resolution of an intervention entry (the entry itself is never removed). */
+  /**
+   * RV2-05: append the resolution of an intervention entry (the entry itself is never removed).
+   *
+   * @param id - Id of the resolved entry.
+   * @param outcome - How it was resolved.
+   * @throws {Error} When the append cannot be written or verified.
+   */
   markResolved(id: string, outcome: string): void {
     const r: InterventionResolution = { v: 1, kind: 'resolved', id, at: new Date().toISOString(), outcome };
     this.appendLine(this.interventionFile, JSON.stringify(r));
   }
 
-  /** RV2-05: intervention entries without a later resolution, in file order (integrity re-checked). */
+  /**
+   * RV2-05: intervention entries without a later resolution, in file order (integrity re-checked).
+   *
+   * @returns The open entries.
+   */
   openInterventions(): Array<InterventionEntry & { intact: boolean }> {
     return this.inspectInterventions().open;
   }
@@ -276,6 +354,8 @@ export class MeasurementSpool {
    * (offset, length, sha256); an entry or resolution embedded after defective bytes on the same line (what
    * the previous append produced after a torn tail) is recovered, and an entry's integrity is still judged
    * by its sha256, like any other line. An unterminated final segment is reported as tornTail.
+   *
+   * @returns Open entries, corrupt lines and a possible torn tail; empty when the file does not exist.
    */
   inspectInterventions(): InterventionInspection {
     if (!existsSync(this.interventionFile)) return { open: [], corrupt: [], tornTail: null };
@@ -316,7 +396,15 @@ export class MeasurementSpool {
     return { open: [...open.values()], corrupt, tornTail };
   }
 
-  /** Durable append (fsync) before returning. Throws SpoolFullError past the bound. */
+  /**
+   * Durable append (fsync) before returning. Throws SpoolFullError past the bound.
+   *
+   * A torn tail found first is copied to the quarantine file and cut from the live file.
+   *
+   * @param rec - The record without version and timestamp (both added here).
+   * @throws {@link SpoolFullError} When the live file already holds `maxEntries` records.
+   * @throws {Error} When a file operation fails (nothing is acknowledged then).
+   */
   append(rec: Omit<SpoolRecord, 'v' | 'at'>): void {
     const max = this.opts.maxEntries ?? 10_000;
     const ins = this.inspect();
@@ -341,6 +429,10 @@ export class MeasurementSpool {
    * Apply every pending record; records whose apply() returns 'retry' (or throws) stay in the
    * file, rewritten atomically (0600 tmp + fsync + rename + dir fsync). Corrupt lines are moved
    * to the quarantine file and counted. Serialized inside this process.
+   *
+   * @param apply - Applies one record; an exception counts as `retry`.
+   * @returns Counts of this replay.
+   * @throws {Error} When the rewrite of the live file or a quarantine append fails.
    */
   replay(apply: (rec: SpoolRecord) => Promise<SpoolApplyOutcome>): Promise<SpoolReplayResult> {
     const run = async (): Promise<SpoolReplayResult> => {

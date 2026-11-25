@@ -5,6 +5,8 @@
  * The report is a private, versioned statement BY THE OPERATOR about a local recount. Its
  * signature proves integrity/origin of the report, not correctness of the counter, and never
  * becomes a provider signature (D3 resultado exigido).
+ *
+ * @module src/types/d1d8/conference
  */
 import type { Hex32, IsoTime, OperationKey } from './common.js';
 import type { SupportLevel, TokenCategoryName, TokenizerIdentity } from './usage.js';
@@ -19,8 +21,14 @@ import type { SupportLevel, TokenCategoryName, TokenizerIdentity } from './usage
  */
 export type ConferenceState = 'unsupported' | 'incomplete' | 'unavailable' | 'observed' | 'compared';
 
+/**
+ * Verdict of a report; only state `compared` may carry `within_threshold` or `divergent`.
+ */
 export type ConferenceVerdict = 'within_threshold' | 'divergent' | 'not_applicable';
 
+/**
+ * Comparison of the local count with the provider count for one token category (tokens).
+ */
 export interface CategoryComparison {
   category: TokenCategoryName;
   provider: bigint | null;
@@ -40,6 +48,9 @@ export interface CategoryComparison {
   adjusted?: AdjustedComparison;
 }
 
+/**
+ * Comparison after applying a compatible calibration profile; raw numbers are kept beside it.
+ */
 export interface AdjustedComparison {
   /** Expected provider count = profile adjustment applied to `local` (integer, ≥ 0). */
   expected: bigint;
@@ -67,6 +78,9 @@ export interface ConferenceCalibrationRecord {
   reason: string | null;
 }
 
+/**
+ * Divergence threshold: an absolute gap in tokens and an optional relative gap (6-decimal string).
+ */
 export interface ConferenceThreshold {
   absoluteTokens: bigint;
   relative: string | null;
@@ -75,6 +89,9 @@ export interface ConferenceThreshold {
   calibrated: boolean;
 }
 
+/**
+ * Auxiliary conference report `otk.conference.v1`, signed by the operator in a separate envelope.
+ */
 export interface ConferenceReport {
   schema: 'otk.conference.v1';
   key: OperationKey;

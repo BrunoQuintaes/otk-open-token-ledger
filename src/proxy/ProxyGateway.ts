@@ -19,6 +19,12 @@
  * unauthenticated MITM relay refused unless explicitly allowed.
  * API key resolved via GlobalKeyStrategy (operator key; per-tenant BYOK not wired — R11).
  *
+ * Environment variable NAMES read: `OTK_PROXY_PORT` (then `PROXY_PORT`, default 8788),
+ * `OTK_PROXY_ALLOW_UNAUTHENTICATED`, `OTK_PROXY_ALLOW_UPSTREAM_OVERRIDE` and
+ * `OTK_PROXY_UPSTREAM_<PROVIDER>`; provider keys are read through `GlobalKeyStrategy`.
+ * Started with `startProxyGateway()`; with `opts.operations` the forwarding path is delegated to
+ * `src/operations/proxyDurable.ts`.
+ *
  * @module proxy/ProxyGateway
  * @since RB-052 (alpha hook: u12.post.d)
  */
@@ -67,6 +73,9 @@ const _globalKeyStrategy = new GlobalKeyStrategy();
  * Upstream base per provider. A local controllable provider (tests, rehearsals, S4's pilot
  * dry-run) is reached with OTK_PROXY_UPSTREAM_<PROVIDER>=http://127.0.0.1:<port>, honoured only
  * when OTK_PROXY_ALLOW_UPSTREAM_OVERRIDE=1 (operator configuration, never a request field).
+ *
+ * @param provider - Lowercase provider ID; unknown providers fall back to the OpenAI base.
+ * @returns The base URL, without a trailing slash.
  */
 function upstreamBase(provider: string): string {
   if (process.env['OTK_PROXY_ALLOW_UPSTREAM_OVERRIDE'] === '1') {
@@ -76,7 +85,13 @@ function upstreamBase(provider: string): string {
   return UPSTREAM_BASE[provider] ?? UPSTREAM_BASE['openai']!;
 }
 
-/** Resolve provider from x-otk-provider header or provider query param. Defaults to 'openai'. */
+/**
+ * Resolve provider from x-otk-provider header or provider query param. Defaults to 'openai'.
+ *
+ * @param req - Incoming request (its `x-otk-provider` header is read).
+ * @param url - Parsed request URL (its `provider` query parameter is read).
+ * @returns The provider ID, trimmed and lowercased.
+ */
 function resolveProvider(req: IncomingMessage, url: URL): string {
   const fromHeader = req.headers['x-otk-provider'];
   if (fromHeader && typeof fromHeader === 'string' && fromHeader.trim()) {
@@ -94,7 +109,14 @@ const QUERY_CREDENTIALS = new Set(['key', 'access_token', 'api_key', 'apikey']);
 /** OTK's own routing parameter (resolveProvider): meaningful to the OTK only. */
 const QUERY_OTK = new Set(['provider']);
 
-/** A copy of the query without credential parameters: the client's credential is for the OTK only. */
+/**
+ * A copy of the query without credential parameters: the client's credential is for the OTK only.
+ *
+ * The OTK `provider` routing parameter is removed too, since it means nothing to the provider.
+ *
+ * @param q - Query of the client request (not modified).
+ * @returns A new query with the remaining parameters, in their original order.
+ */
 export function stripQueryCredentials(q: URLSearchParams): URLSearchParams {
   const out = new URLSearchParams();
   for (const [k, v] of q) if (!QUERY_CREDENTIALS.has(k.toLowerCase()) && !QUERY_OTK.has(k)) out.append(k, v);
@@ -104,6 +126,9 @@ export function stripQueryCredentials(q: URLSearchParams): URLSearchParams {
 /**
  * OTK token of a request: `Authorization: Bearer`, else `x-api-key` (unmodified Anthropic SDK, R11), else
  * `x-goog-api-key` (unmodified Google GenAI SDK pointed at the OTK). None of them reaches the provider.
+ *
+ * @param req - Incoming request; only its headers are read.
+ * @returns The token, or an empty string when none is present.
  */
 function otkToken(req: IncomingMessage): string {
   const auth = req.headers['authorization'] ?? '';
@@ -116,7 +141,11 @@ function otkToken(req: IncomingMessage): string {
   return '';
 }
 
-/** Collect raw headers from IncomingMessage as Record<string, string>. */
+/**
+ * Collect raw headers from IncomingMessage as Record<string, string>.
+ *
+ * @param req - Incoming request.
+ */
 function collectIncomingHeaders(req: IncomingMessage): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(req.headers)) {
@@ -132,6 +161,9 @@ function collectIncomingHeaders(req: IncomingMessage): Record<string, string> {
 /**
  * PROXY-06: For OpenAI streaming requests (body has "stream":true),
  * inject stream_options.include_usage so usage data is present in the final chunk.
+ *
+ * @param provider - Lowercase provider ID; only `openai` is changed.
+ * @param body - Request body text.
  */
 function injectStreamOptions(provider: string, body: string): string {
   if (provider !== 'openai') return body;
@@ -166,6 +198,8 @@ type Denial = { ok: false; status: number; error: string; retryAfterS?: number }
  * H1-S06 (SEC02-N02): resolve the OTK token behind the per-source limiter of authentication failures. A source that
  * failed too often gets 429 before any token is looked up (valid ones included); each 401 counts one failure for the
  * source, never for the tenant (see security/authFailureLimiter).
+ *
+ * @param req - Incoming request.
  */
 function resolveProxyCaller(req: IncomingMessage): TokenContext | Denial {
   const limiter = getProxyAuthFailureLimiter();
@@ -182,12 +216,19 @@ function resolveProxyCaller(req: IncomingMessage): TokenContext | Denial {
   return ctx;
 }
 
-/** Send a denial, with Retry-After when the source is throttled. */
+/**
+ * Send a denial, with Retry-After when the source is throttled.
+ *
+ * @param res - Response to write and end.
+ * @param d - The denial to send.
+ */
 function sendDenial(res: ServerResponse, d: Denial): void {
   if (d.retryAfterS) res.setHeader('Retry-After', String(d.retryAfterS));
   sendJson(res, d.status, { ok: false, error: d.error });
 }
 
+// Admission for receipt-creating entries (role must have receipts:write); with auth disabled, refused in production unless
+// OTK_PROXY_ALLOW_UNAUTHENTICATED=1, and `tenantId` is left undefined.
 function authorizeMeteringWrite(req: IncomingMessage): { ok: true; tenantId?: string } | Denial {
   if (!isAuthEnabled()) {
     // NF-17 / PF-NEW-03 (RUN-S, decision D2): in production the legacy event endpoint follows the MITM rule and is
@@ -203,7 +244,12 @@ function authorizeMeteringWrite(req: IncomingMessage): { ok: true; tenantId?: st
   return { ok: true, tenantId: ctx.tenantId };
 }
 
-/** D7: status (receipts:read) and cancel (receipts:write) of the caller's own operations. */
+/**
+ * D7: status (receipts:read) and cancel (receipts:write) of the caller's own operations.
+ *
+ * @param req - Incoming request.
+ * @param permission - Permission the caller's role must have.
+ */
 function authorizeOperationAccess(req: IncomingMessage, permission: 'receipts:read' | 'receipts:write'): Caller {
   if (!isAuthEnabled()) {
     return process.env['OTK_PROXY_ALLOW_UNAUTHENTICATED'] === '1'
@@ -216,7 +262,11 @@ function authorizeOperationAccess(req: IncomingMessage, permission: 'receipts:re
   return { ok: true, tenantId: ctx.tenantId };
 }
 
-/** RV01: shared plan quota (billing/meteringQuota), checked before any effect. */
+/**
+ * RV01: shared plan quota (billing/meteringQuota), checked before any effect.
+ *
+ * @param tenantId - Tenant whose plan quota is checked.
+ */
 async function quotaDenial(tenantId: string): Promise<Denial | null> {
   // N11: shared balance (Redis when configured)
   return (await checkMeteringQuotaAsync(tenantId)).exceeded ? { ok: false, status: 429, error: 'quota_exceeded' } : null;
@@ -242,12 +292,21 @@ function recordMetering(outcome: MeteringOutcome, provider: string): void {
  * the CU; how to represent them is a formula decision (D5). Counted so they are visible.
  */
 let _cacheTokensOutsideCu = 0;
-/** Counters of metering outcomes on the MITM path (monitoring / tests). */
+/**
+ * Counters of metering outcomes on the MITM path (monitoring / tests).
+ *
+ * @returns A snapshot copy of the process-wide counters since start (they are never reset here).
+ */
 export function proxyMeteringCounts(): Readonly<Record<MeteringOutcome | 'cache_tokens_outside_cu', number>> {
   return { ..._meteringCounts, cache_tokens_outside_cu: _cacheTokensOutsideCu };
 }
 
-/** Whether a buffered provider response declares token usage at all (absent is not zero). */
+/**
+ * Whether a buffered provider response declares token usage at all (absent is not zero).
+ *
+ * @param provider - Provider ID (any letter case).
+ * @param body - Parsed response body.
+ */
 function hasUsageField(provider: string, body: Record<string, unknown>): boolean {
   switch (provider.toLowerCase()) {
     case 'gemini': return body['usageMetadata'] != null;
@@ -256,7 +315,11 @@ function hasUsageField(provider: string, body: Record<string, unknown>): boolean
   }
 }
 
-/** Model named in the client request body (fallback when the response does not carry it). */
+/**
+ * Model named in the client request body (fallback when the response does not carry it).
+ *
+ * @param body - Client request body text.
+ */
 function requestModel(body: string): string | undefined {
   try {
     const m = (JSON.parse(body) as Record<string, unknown>)['model'];
@@ -266,7 +329,11 @@ function requestModel(body: string): string | undefined {
   }
 }
 
-/** RV03: resolve when the client drains its write buffer or goes away. */
+/**
+ * RV03: resolve when the client drains its write buffer or goes away.
+ *
+ * @param res - Response being streamed to the client.
+ */
 function waitForDrainOrClose(res: ServerResponse): Promise<void> {
   // Already closed (its 'close' event is gone) or nothing buffered: do not wait.
   if (res.destroyed || !res.writableNeedDrain) return Promise.resolve();
@@ -285,7 +352,11 @@ function sendJson(res: ServerResponse, code: number, body: unknown): void {
   res.end(data);
 }
 
+/**
+ * Options for {@link startProxyGateway}.
+ */
 export type ProxyGatewayOpts = {
+  /** TCP port to listen on; when absent, `OTK_PROXY_PORT`, then `PROXY_PORT`, then 8788. */
   port?: number;
   /**
    * D7 durable profile (opt-in): with a runtime, every metered call is an operation admitted
@@ -295,6 +366,16 @@ export type ProxyGatewayOpts = {
   operations?: OperationsContext;
 };
 
+/**
+ * Creates and starts the proxy HTTP server (health, operation routes, provider forwarding and the
+ * legacy event endpoint).
+ *
+ * Side effects: listens on the port, registers a one-time SIGTERM handler that closes the server, and,
+ * for metered calls, spends the operator's provider key and writes receipts.
+ *
+ * @param opts - Port and optional durable operations runtime.
+ * @returns The listening `http.Server` (listening starts asynchronously).
+ */
 export function startProxyGateway(opts: ProxyGatewayOpts = {}): Server {
   const port = opts.port ?? Number(process.env['OTK_PROXY_PORT'] ?? process.env['PROXY_PORT'] ?? 8788);
 

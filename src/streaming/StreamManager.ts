@@ -16,16 +16,25 @@ import crypto from 'node:crypto';
 // Types
 // ──────────────────────────────────────────────────────────
 
+/**
+ * One open SSE connection.
+ */
 export interface SseConnection {
   id: string;
   tenantId: string;
   res: ServerResponse;
+  /** ID of the last event written to (or announced by) this client; null when none. */
   lastEventId: string | null;
+  /** When the connection was opened (epoch milliseconds). */
   connectedAt: number;
   pingInterval: ReturnType<typeof setInterval> | null;
 }
 
+/**
+ * An event to write on SSE connections.
+ */
 export interface SseEvent {
+  /** Event ID; a random UUID is used when absent. */
   id?: string;
   event: string;
   data: unknown;
@@ -35,6 +44,11 @@ export interface SseEvent {
 // StreamManager
 // ──────────────────────────────────────────────────────────
 
+/**
+ * In-memory pool of SSE connections grouped by tenant, with a keepalive ping per connection.
+ *
+ * State lives in this process only: connections on another instance do not receive its events.
+ */
 export class StreamManager {
   /** tenantId → Set of active connections */
   private _connections = new Map<string, Set<SseConnection>>();
@@ -51,6 +65,14 @@ export class StreamManager {
   /**
    * Register an SSE response for a tenant. Sets up keepalive ping.
    * Returns the connection object (for cleanup on disconnect).
+   *
+   * Side effects: writes the SSE response headers, starts a ping timer, and removes the connection when the
+   * response closes or errors.
+   *
+   * @param tenantId - Tenant of the connection (`*` is not special here).
+   * @param res - Response to keep open.
+   * @param lastEventId - Value of the client's `Last-Event-ID` header, if any.
+   * @returns The registered connection.
    */
   connect(tenantId: string, res: ServerResponse, lastEventId?: string | null): SseConnection {
     const conn: SseConnection = {
@@ -92,6 +114,8 @@ export class StreamManager {
 
   /**
    * Disconnect and clean up a connection by id.
+   *
+   * @param connId - Connection ID; unknown IDs are ignored.
    */
   disconnect(connId: string): void {
     const conn = this._byId.get(connId);
@@ -108,6 +132,12 @@ export class StreamManager {
   /**
    * Send an event to all connections for a given tenantId.
    * If tenantId is '*', broadcast to all connections.
+   *
+   * A write error disconnects that client only. String data containing a newline is written unchanged, which
+   * would split the SSE `data:` line.
+   *
+   * @param tenantId - Target tenant, or `*` for every connection.
+   * @param event - Event to write.
    */
   send(tenantId: string, event: SseEvent): void {
     const targets: Set<SseConnection>[] = tenantId === '*'
@@ -138,9 +168,25 @@ export class StreamManager {
     }
   }
 
+  /**
+   * Number of open connections.
+   *
+   * @returns Connection count.
+   */
   get connectionCount(): number { return this._byId.size; }
+  /**
+   * Number of tenants with at least one open connection.
+   *
+   * @returns Tenant count.
+   */
   get tenantCount(): number { return this._connections.size; }
 
+  /**
+   * Lists the open connections of a tenant.
+   *
+   * @param tenantId - Tenant ID.
+   * @returns A new array (the connection objects themselves are shared).
+   */
   getConnectionsForTenant(tenantId: string): SseConnection[] {
     return [...(this._connections.get(tenantId) ?? [])];
   }
@@ -152,11 +198,21 @@ export class StreamManager {
 
 let _manager: StreamManager | null = null;
 
+/**
+ * Returns the process-wide stream manager, creating it (30 s ping) on first use.
+ *
+ * @returns The shared manager.
+ */
 export function getStreamManager(): StreamManager {
   if (!_manager) _manager = new StreamManager();
   return _manager;
 }
 
+/**
+ * Replaces the process-wide stream manager (tests or custom ping interval).
+ *
+ * @param mgr - New manager; connections of the previous one are not moved.
+ */
 export function setStreamManager(mgr: StreamManager): void {
   _manager = mgr;
 }

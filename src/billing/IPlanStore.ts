@@ -19,7 +19,17 @@
  *     recorded as `other_subscription` (R-11), and events of different known subscriptions are not ordered by time;
  *   - events without a subscription id keep the H1-S03 rules (tenant-wide `created`, ties fail closed).
  *
- * @module billing/IPlanStore
+ * Two implementations live here: `MemoryPlanStore` (development and tests) and `PgPlanStore` (PostgreSQL,
+ * tables `otk_plan_assignments`, `otk_plan_audit`, `otk_stripe_events`, `otk_plan_subscriptions`). The store is
+ * chosen in `src/infra/storeBootstrap.ts` and used by `PlanRegistry` and `StripeWebhookHandler`.
+ *
+ * Environment variables read: `OTK_PLAN_ADMIN_ORDER_SKEW_S` (seconds, default 60) and
+ * `OTK_PLAN_STORE_TIMEOUT_MS` (client timeout; the server bound is 80 % of it).
+ *
+ * It does NOT define plans or prices (see `PlanRegistry`) and does NOT verify Stripe signatures (the webhook route
+ * does, with `StripeClient.constructWebhookEvent`).
+ *
+ * @module src/billing/IPlanStore
  * @since Wave 2H (H2.1)
  */
 
@@ -33,8 +43,17 @@ export const PLAN_VERSION_NONE = 0;
  * per subscription instead of per tenant-wide timestamp: cancelling subscription A never cancels B, and an event of a
  * subscription revoked by an administrative decision never restores the tier that decision removed.
  */
-export interface StripeEventRef { id: string; created: number; type: string; subscriptionId?: string }
+export interface StripeEventRef {
+  /** Stripe event id (`evt_…`); the dedup key. */
+  id: string;
+  /** Stripe's `event.created`, in Unix seconds. */
+  created: number;
+  /** Stripe event type, e.g. `customer.subscription.updated`. */
+  type: string;
+  /** Subscription the event refers to; absent when the event does not name one. */
+  subscriptionId?: string }
 
+/** Options of one plan assignment: concurrency check, audit fields and the Stripe event that carries it. */
 export interface PlanAssignMeta {
   /** Reject unless the stored version equals this value (PLAN_VERSION_NONE = no row yet). */
   expectedVersion?: number;
@@ -61,11 +80,15 @@ export interface PlanAssignMeta {
  */
 export type StripeSkipReason = 'duplicate' | 'stale' | 'superseded_by_admin' | 'other_subscription';
 
+/** Outcome of `IPlanStore.assign`. */
 export interface PlanWriteResult {
+  /** Tier before this call; null when the tenant had no stored assignment. */
   previous: PlanTier | null;
+  /** Stored version after the call (unchanged when the event was skipped). */
   version: number;
   /** false when a Stripe event was not applied (see `skipped`). Absent/true = the change was applied. */
   applied?: boolean;
+  /** Why the event was not applied; set only when `applied` is false. */
   skipped?: StripeSkipReason;
 }
 
@@ -79,12 +102,17 @@ export interface PlanOrdering {
   activeSubscriptionId: string | null;
 }
 
+/** One Stripe event as recorded by the store, applied or not. */
 export interface StripeEventRecord {
+  /** Stripe event id. */
   eventId: string;
   tenantId: string;
+  /** Stripe's `event.created`, in Unix seconds. */
   created: number;
   type: string;
+  /** Subscription named by the event; null when it named none. */
   subscriptionId: string | null;
+  /** True when the event changed the plan. */
   applied: boolean;
   /** null for applied events (and for unapplied events recorded before H1R2). */
   skipReason: Exclude<StripeSkipReason, 'duplicate'> | null;
@@ -98,6 +126,8 @@ const RANK: Readonly<Record<PlanTier, number>> = { FREE: 0, STARTER: 1, PRO: 2 }
  * to this many seconds after the decision is still treated as older (fail closed: recorded as superseded_by_admin,
  * reconcilable by an operator). Subscriptions known at decision time are decided by identity, never by this clock.
  * Default 60. PENDING_HUMAN_POLICY (D1/D2): the value, and the rule "an admin decision beats an older Stripe grant".
+ *
+ * @returns Whole seconds from `OTK_PLAN_ADMIN_ORDER_SKEW_S`, or 60 when it is unset, empty, negative or not a number.
  */
 export function adminOrderSkewSeconds(): number {
   const raw = process.env['OTK_PLAN_ADMIN_ORDER_SKEW_S'];
@@ -116,7 +146,14 @@ interface StripeOrderInput {
   adminDecidedAtMs: number | null;
 }
 
-/** Shared decision for a Stripe event (both stores): null = apply. */
+/**
+ * Shared decision for a Stripe event (both stores): null = apply.
+ *
+ * @param ev - The incoming Stripe event.
+ * @param next - Tier the event asks for (FREE means a cancellation).
+ * @param s - Ordering snapshot read inside the per-tenant critical section.
+ * @returns The skip reason, or null when the event must be applied.
+ */
 function stripeSkip(ev: StripeEventRef, next: PlanTier, s: StripeOrderInput): Exclude<StripeSkipReason, 'duplicate'> | null {
   const subId = ev.subscriptionId ?? null;
   if (next === 'FREE') {
@@ -138,18 +175,24 @@ function stripeSkip(ev: StripeEventRef, next: PlanTier, s: StripeOrderInput): Ex
   return null;
 }
 
+/** One row of the plan audit trail (one per applied assignment). */
 export interface PlanAuditRecord {
   tenantId: string;
+  /** Tier before the change; null for the first assignment. */
   fromTier: PlanTier | null;
   toTier: PlanTier;
   version: number;
+  /** Who asked for the change (`'unknown'` when not given). */
   actor: string;
+  /** Entry point of the change (`'unknown'` when not given). */
   source: string;
+  /** When the row was written, ISO 8601. */
   at: string;
 }
 
 /** The stored version differs from the one the caller read (another writer changed the plan in between). */
 export class PlanVersionConflictError extends Error {
+  /** Stable error code for callers and API responses. */
   readonly code = 'plan_version_conflict';
   constructor(readonly tenantId: string, readonly expected: number, readonly actual: number) {
     super(`plan of ${tenantId} changed concurrently (expected version ${expected}, found ${actual})`);
@@ -157,12 +200,49 @@ export class PlanVersionConflictError extends Error {
   }
 }
 
+/**
+ * Storage contract for tenant plan assignments; see the module comment for the ordering rules of Stripe events.
+ */
 export interface IPlanStore {
+  /**
+   * Writes the tenant's tier (or records a Stripe event without applying it) as one durable operation.
+   *
+   * @param tenantId - Tenant to change.
+   * @param tier - New plan tier.
+   * @param meta - Expected version, audit fields and the Stripe event, if any.
+   * @returns The previous tier, the version and, for a Stripe event, whether it was applied.
+   * @throws {@link PlanVersionConflictError} When `meta.expectedVersion` differs from the stored version.
+   * @throws {Error} When the backend write fails or times out.
+   */
   assign(tenantId: string, tier: PlanTier, meta?: PlanAssignMeta): Promise<PlanWriteResult>;
+  /**
+   * Reads the stored tier.
+   *
+   * @param tenantId - Tenant to read.
+   * @returns The tier, or null when the tenant has no stored assignment (callers treat it as FREE).
+   */
   get(tenantId: string): Promise<PlanTier | null>;
+  /**
+   * Reads the stored tier with its version.
+   *
+   * @param tenantId - Tenant to read.
+   * @returns Tier and version, or null when the tenant has no stored assignment.
+   */
   getVersioned(tenantId: string): Promise<{ tier: PlanTier; version: number } | null>;
+  /**
+   * Lists every stored assignment.
+   *
+   * @returns One entry per tenant with a stored tier.
+   */
   list(): Promise<Array<{ tenantId: string; tier: PlanTier }>>;
+  /**
+   * Lists audit rows in write order.
+   *
+   * @param tenantId - Only this tenant's rows; all tenants when undefined.
+   * @returns Copies of the audit rows.
+   */
   listAudit(tenantId?: string): Promise<PlanAuditRecord[]>;
+  /** Deletes every assignment, audit row and Stripe record (tests). */
   clear(): Promise<void>;
   /** H1R2 R-07: ordering state of a tenant (optional for test doubles). */
   getPlanOrdering?(tenantId: string): Promise<PlanOrdering>;
@@ -170,7 +250,11 @@ export interface IPlanStore {
   listStripeEvents?(tenantId: string): Promise<StripeEventRecord[]>;
 }
 
-/** In-memory implementation (development and tests only; refused by deployedStoreProblems in deployed envs). */
+/**
+ * In-memory implementation (development and tests only; refused by deployedStoreProblems in deployed envs).
+ *
+ * State lives in this object only and is lost on restart; the administrative-decision clock is `Date.now()`.
+ */
 export class MemoryPlanStore implements IPlanStore {
   private _map = new Map<string, { tier: PlanTier; version: number }>();
   private _audit: PlanAuditRecord[] = [];
@@ -187,6 +271,15 @@ export class MemoryPlanStore implements IPlanStore {
   }
 
   // No await inside: the whole operation is atomic with respect to other callers in this process.
+  /**
+   * See {@link IPlanStore.assign}.
+   *
+   * @param tenantId - Tenant to change.
+   * @param tier - New plan tier.
+   * @param meta - Expected version, audit fields and the Stripe event, if any.
+   * @returns The previous tier, the version and, for a Stripe event, whether it was applied.
+   * @throws {@link PlanVersionConflictError} When `meta.expectedVersion` differs from the stored version.
+   */
   async assign(tenantId: string, tier: PlanTier, meta: PlanAssignMeta = {}): Promise<PlanWriteResult> {
     const cur = this._map.get(tenantId);
     const actual = cur?.version ?? PLAN_VERSION_NONE;
@@ -232,31 +325,67 @@ export class MemoryPlanStore implements IPlanStore {
     return { previous: cur?.tier ?? null, version };
   }
 
+  /**
+   * See {@link IPlanStore.get}.
+   *
+   * @param tenantId - Tenant to read.
+   * @returns The tier, or null when none is stored.
+   */
   async get(tenantId: string): Promise<PlanTier | null> {
     return this._map.get(tenantId)?.tier ?? null;
   }
 
+  /**
+   * See {@link IPlanStore.getVersioned}.
+   *
+   * @param tenantId - Tenant to read.
+   * @returns A copy of tier and version, or null when none is stored.
+   */
   async getVersioned(tenantId: string): Promise<{ tier: PlanTier; version: number } | null> {
     const cur = this._map.get(tenantId);
     return cur ? { ...cur } : null;
   }
 
+  /**
+   * See {@link IPlanStore.list}.
+   *
+   * @returns One entry per tenant with a stored tier.
+   */
   async list(): Promise<Array<{ tenantId: string; tier: PlanTier }>> {
     return Array.from(this._map.entries()).map(([tenantId, v]) => ({ tenantId, tier: v.tier }));
   }
 
+  /**
+   * See {@link IPlanStore.listAudit}.
+   *
+   * @param tenantId - Only this tenant's rows; all tenants when undefined.
+   * @returns Copies of the audit rows.
+   */
   async listAudit(tenantId?: string): Promise<PlanAuditRecord[]> {
     return this._audit.filter((r) => tenantId === undefined || r.tenantId === tenantId).map((r) => ({ ...r }));
   }
 
+  /**
+   * Returns the tenant's ordering state (last administrative decision and active subscription).
+   *
+   * @param tenantId - Tenant to read.
+   * @returns A copy; all fields null when the tenant has none.
+   */
   async getPlanOrdering(tenantId: string): Promise<PlanOrdering> {
     return { ...(this._order.get(tenantId) ?? { adminVersion: null, adminDecidedAtMs: null, activeSubscriptionId: null }) };
   }
 
+  /**
+   * Lists the Stripe events recorded for the tenant, applied or not.
+   *
+   * @param tenantId - Tenant to read.
+   * @returns Copies of the records, in insertion order.
+   */
   async listStripeEvents(tenantId: string): Promise<StripeEventRecord[]> {
     return Array.from(this._events.values()).filter((e) => e.tenantId === tenantId).map((e) => ({ ...e }));
   }
 
+  /** Empties every in-memory map (tests). */
   async clear(): Promise<void> {
     this._map.clear();
     this._audit = [];
@@ -273,7 +402,12 @@ function serverTimeoutMs(): number {
   return Math.max(50, Math.floor(client * 0.8));
 }
 
-/** PostgreSQL implementation (activated when OTK_DB_URL is set). */
+/**
+ * PostgreSQL implementation (activated when OTK_DB_URL is set).
+ *
+ * Each `assign` is one transaction under a per-tenant advisory lock, bounded by a server-side statement and lock
+ * timeout. The administrative-decision clock is the database's `clock_timestamp()`, shared by all replicas.
+ */
 export class PgPlanStore implements IPlanStore {
   private _pool: any; // pg.Pool
 
@@ -281,6 +415,12 @@ export class PgPlanStore implements IPlanStore {
     this._pool = pool;
   }
 
+  /**
+   * Creates the tables, indexes and columns this store needs, if missing, and rebuilds the ordering state of
+   * decisions recorded before that column existed. Idempotent; call once at startup before any other method.
+   *
+   * @throws {Error} When a DDL statement fails (connection, permission).
+   */
   async init(): Promise<void> {
     await this._pool.query(`
       CREATE TABLE IF NOT EXISTS otk_plan_assignments (
@@ -348,6 +488,17 @@ export class PgPlanStore implements IPlanStore {
    * One transaction: lock the row (or the absence of a row, through the primary key on insert), check the expected
    * version, decide the order of a Stripe event (H1R2), write the new tier with version + 1, the ordering state, the
    * subscription record and the audit row. Either everything commits or nothing does.
+   *
+   * A primary-key race (error 23505) is mapped to a skipped `'duplicate'` result for a Stripe event and to
+   * {@link PlanVersionConflictError} otherwise.
+   *
+   * @param tenantId - Tenant to change.
+   * @param tier - New plan tier.
+   * @param meta - Expected version, audit fields and the Stripe event, if any.
+   * @returns The previous tier, the version and, for a Stripe event, whether it was applied.
+   * @throws {@link PlanVersionConflictError} When `meta.expectedVersion` differs from the stored version, or when a
+   *   concurrent first assignment wins the insert.
+   * @throws {Error} When a query fails or exceeds the server-side timeout (the transaction is rolled back).
    */
   async assign(tenantId: string, tier: PlanTier, meta: PlanAssignMeta = {}): Promise<PlanWriteResult> {
     const client = await this._pool.connect();
@@ -469,6 +620,12 @@ export class PgPlanStore implements IPlanStore {
     );
   }
 
+  /**
+   * See {@link IPlanStore.get}.
+   *
+   * @param tenantId - Tenant to read.
+   * @returns The tier, or null when none is stored.
+   */
   async get(tenantId: string): Promise<PlanTier | null> {
     const { rows } = await this._pool.query(
       'SELECT plan FROM otk_plan_assignments WHERE tenant_id = $1',
@@ -477,6 +634,12 @@ export class PgPlanStore implements IPlanStore {
     return rows[0]?.plan ?? null;
   }
 
+  /**
+   * See {@link IPlanStore.getVersioned}.
+   *
+   * @param tenantId - Tenant to read.
+   * @returns Tier and version, or null when none is stored.
+   */
   async getVersioned(tenantId: string): Promise<{ tier: PlanTier; version: number } | null> {
     const { rows } = await this._pool.query(
       'SELECT plan, version FROM otk_plan_assignments WHERE tenant_id = $1',
@@ -485,6 +648,11 @@ export class PgPlanStore implements IPlanStore {
     return rows[0] ? { tier: rows[0].plan, version: Number(rows[0].version) } : null;
   }
 
+  /**
+   * See {@link IPlanStore.list}.
+   *
+   * @returns One entry per tenant, ordered by tenant id.
+   */
   async list(): Promise<Array<{ tenantId: string; tier: PlanTier }>> {
     const { rows } = await this._pool.query(
       'SELECT tenant_id, plan FROM otk_plan_assignments ORDER BY tenant_id',
@@ -492,6 +660,12 @@ export class PgPlanStore implements IPlanStore {
     return rows.map((r: any) => ({ tenantId: r.tenant_id, tier: r.plan }));
   }
 
+  /**
+   * See {@link IPlanStore.listAudit}.
+   *
+   * @param tenantId - Only this tenant's rows; all tenants when undefined.
+   * @returns Audit rows ordered by insertion id.
+   */
   async listAudit(tenantId?: string): Promise<PlanAuditRecord[]> {
     const { rows } = tenantId === undefined
       ? await this._pool.query('SELECT * FROM otk_plan_audit ORDER BY id')
@@ -502,6 +676,12 @@ export class PgPlanStore implements IPlanStore {
     }));
   }
 
+  /**
+   * Returns the tenant's ordering state (last administrative decision and active subscription).
+   *
+   * @param tenantId - Tenant to read.
+   * @returns The stored state; all fields null when the tenant has no row.
+   */
   async getPlanOrdering(tenantId: string): Promise<PlanOrdering> {
     const { rows } = await this._pool.query(
       'SELECT admin_version, admin_decided_at_ms, active_subscription_id FROM otk_plan_assignments WHERE tenant_id = $1',
@@ -515,6 +695,12 @@ export class PgPlanStore implements IPlanStore {
     };
   }
 
+  /**
+   * Lists the Stripe events recorded for the tenant, applied or not.
+   *
+   * @param tenantId - Tenant to read.
+   * @returns Records ordered by processing time, then `created`, then event id.
+   */
   async listStripeEvents(tenantId: string): Promise<StripeEventRecord[]> {
     const { rows } = await this._pool.query(
       'SELECT * FROM otk_stripe_events WHERE tenant_id = $1 ORDER BY processed_at, created, event_id',
@@ -526,6 +712,7 @@ export class PgPlanStore implements IPlanStore {
     }));
   }
 
+  /** Deletes every row of the four plan tables (tests; destructive). */
   async clear(): Promise<void> {
     await this._pool.query('DELETE FROM otk_plan_assignments');
     await this._pool.query('DELETE FROM otk_plan_audit');

@@ -10,6 +10,8 @@
  *
  * Fallback: ProviderRegistry.createDefault() uses DeepseekAdapterStub when
  * DEEPSEEK_API_KEY is absent. This adapter is selected when key is present.
+ *
+ * @module src/providers/adapters/DeepSeekAdapter
  */
 
 import { calculateCostUnitsV1Number, isModelSupported } from '../../pricing/CostUnits.js';
@@ -43,6 +45,8 @@ export interface DeepSeekChatCompletionResponse {
 /**
  * Normalize DeepSeek model name to canonical weight table entry.
  * Maps variants like "deepseek-chat-v3" → "deepseek-chat".
+ * @param rawModel - Model ID as returned by the API.
+ * @returns The lowercase ID without a `-vN` suffix when that name is in the weight table, else the lowercase original.
  */
 function normalizeDeepSeekModel(rawModel: string): string {
   const lower = rawModel.toLowerCase();
@@ -59,6 +63,7 @@ function normalizeDeepSeekModel(rawModel: string): string {
  * @param latencyMs  Request latency in milliseconds
  * @returns NormalizedUsageEvent
  * @throws AdapterParseError if required fields are missing or invalid
+ * @throws {@link CUError} From the cost engine, when the normalized model is not in the weight table.
  */
 export function parseDeepSeekResponse(
   response: DeepSeekChatCompletionResponse,
@@ -121,6 +126,15 @@ export function parseDeepSeekResponse(
 export class DeepSeekAdapter implements IProviderAdapter {
   readonly providerId = 'deepseek';
 
+  /**
+   * Parses a raw DeepSeek response; the event time comes from the response's `created` field.
+   *
+   * @param raw - Parsed JSON body of the DeepSeek response.
+   * @param latencyMs - Round-trip latency in milliseconds.
+   * @param _timestamp - Ignored (the response carries its own timestamp).
+   * @returns The normalized usage event.
+   * @throws {@link AdapterParseError} See {@link parseDeepSeekResponse}.
+   */
   parseResponse(raw: unknown, latencyMs: number, _timestamp: number): NormalizedUsageEvent {
     return parseDeepSeekResponse(raw as DeepSeekChatCompletionResponse, latencyMs);
   }

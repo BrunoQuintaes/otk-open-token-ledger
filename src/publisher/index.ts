@@ -8,6 +8,11 @@
  *   const env = buildEnvelope('usage_metered', 'provider:openai', { ... });
  *   getDispatcher().emit(env);
  *
+ * Barrel module: it only re-exports the envelope types and helpers, the dispatcher class and the
+ * process-wide dispatcher accessor.
+ *
+ * @module src/publisher/index
+ *
  * @since F3
  */
 

@@ -1,6 +1,9 @@
 /**
  * OVERNIGHT 20261005 (Phase 10) — reconciliation of OTK usage/cost with provider statements.
  *
+ * Public entry point of the reconciliation module: it re-exports the types, the importers, the matcher
+ * (`reconcile`), the OTK-side loaders and the report serializers, and adds {@link importProviderStatement}.
+ *
  * @module reconciliation
  */
 import type { ProviderStatement, ReconProvider } from './types.js';
@@ -22,7 +25,18 @@ export { loadMapping, validateMapping, BUNDLED_MAPPING_IDS, MappingError, MAPPIN
 export type { StatementMapping } from './importers/mapping.js';
 export { RECON_ALIAS_TABLE_V1, canonicalModel, modelFromDescription } from './aliases.js';
 
-/** Dispatch to the provider importer (each one checks that the mapping belongs to its provider). */
+/**
+ * Dispatch to the provider importer (each one checks that the mapping belongs to its provider).
+ *
+ * Any provider other than `anthropic` and `openai` is routed to the Gemini importer.
+ *
+ * @param provider - Provider of the statement.
+ * @param bytes - Exact file content.
+ * @param mapping - Mapping object, bundled mapping ID or mapping file path.
+ * @param opts - Declared data origin, timezone override and aliases.
+ * @returns The parsed provider statement.
+ * @throws {@link StatementImportError} When the mapping is for another provider or the import fails.
+ */
 export function importProviderStatement(provider: ReconProvider, bytes: string | Uint8Array, mapping: StatementMapping | string, opts: ImportOptions): ProviderStatement {
   if (provider === 'anthropic') return importAnthropicStatement(bytes, mapping, opts);
   if (provider === 'openai') return importOpenAIStatement(bytes, mapping, opts);

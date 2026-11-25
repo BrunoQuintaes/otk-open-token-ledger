@@ -10,12 +10,18 @@
  * @since W8-C TEAM-09
  */
 
+/**
+ * Spending limits of one team, in US dollars (JS numbers, not exact decimals).
+ */
 export interface TeamBudget {
   teamId: string;
   dailyLimitUsd: number;
   monthlyLimitUsd: number;
 }
 
+/**
+ * Result of {@link TeamBudgetMonitor.checkBudget}.
+ */
 export interface BudgetCheckResult {
   exceeded: boolean;
   limitUsd: number;
@@ -36,6 +42,8 @@ export class TeamBudgetMonitor {
 
   /**
    * Set or overwrite the budget for a team.
+   *
+   * @param budget - Limits to store (copied).
    */
   setBudget(budget: TeamBudget): void {
     this.budgets.set(budget.teamId, { ...budget });
@@ -48,6 +56,7 @@ export class TeamBudgetMonitor {
    * @param teamId         - Team identifier
    * @param currentSpendUsd - The team's total spend in USD for the period
    * @param period          - 'daily' or 'monthly'
+   * @returns `exceeded` when the spend is strictly above the period's limit.
    */
   checkBudget(
     teamId: string,
@@ -69,6 +78,9 @@ export class TeamBudgetMonitor {
   /**
    * Retrieve the budget configuration for a team.
    * Returns null if no budget has been set.
+   *
+   * @param teamId - Team ID.
+   * @returns The stored budget object, or `null`.
    */
   getBudget(teamId: string): TeamBudget | null {
     return this.budgets.get(teamId) ?? null;
@@ -79,6 +91,11 @@ export class TeamBudgetMonitor {
 
 let _monitorInstance: TeamBudgetMonitor | undefined;
 
+/**
+ * Returns the process-wide budget monitor, creating it on first use.
+ *
+ * @returns The shared monitor.
+ */
 export function getTeamBudgetMonitor(): TeamBudgetMonitor {
   if (!_monitorInstance) {
     _monitorInstance = new TeamBudgetMonitor();
@@ -86,6 +103,9 @@ export function getTeamBudgetMonitor(): TeamBudgetMonitor {
   return _monitorInstance;
 }
 
+/**
+ * Drops the shared monitor (tests only); the next get creates an empty one.
+ */
 export function resetTeamBudgetMonitorForTest(): void {
   _monitorInstance = undefined;
 }

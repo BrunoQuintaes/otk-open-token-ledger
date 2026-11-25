@@ -11,7 +11,10 @@
  * Recovery: an admitted operation never started → released (no provider call happened); a started
  *   one whose lease expired → process_lost + uncertain, exposure kept, never re-sent.
  *
- * @module operations/effects
+ * The handlers run inside {@link OutboxWorker} (wired by `src/operations/runtime.ts`); a returned
+ * `{ retryAt: null }` makes the effect dead (kept and visible), a non-null `retryAt` schedules a retry.
+ *
+ * @module src/operations/effects
  */
 import type { AttributionStatementV1, ConferenceReport, DurableOperation, Hex32, ModelSupport, PrivateReceiptV3, TokenizerIdentity } from '../types/d1d8/index.js';
 import { PgAttributionStore } from './attribution.js';
@@ -35,6 +38,10 @@ const sameTokenizer = (a: TokenizerIdentity, b: TokenizerIdentity): boolean =>
  * the same rule the CU uses), not for the requested alias, but only when that model's local tokenizer is identical to
  * the one that produced the local count; otherwise the requested model's support is kept. No alias is added: a returned
  * snapshot that no profile names stays ABSENT.
+ *
+ * @param requested - Model support of the requested model.
+ * @param returned - Model support of the returned model, or `null` when it was not reported or is the same model.
+ * @returns `returned` when both tokenizers are known and identical; otherwise `requested`.
  */
 export function calibrationSupportFor(requested: ModelSupport, returned: ModelSupport | null): ModelSupport {
   if (!returned || !requested.tokenizer || !returned.tokenizer) return requested;
@@ -43,7 +50,17 @@ export function calibrationSupportFor(requested: ModelSupport, returned: ModelSu
 
 const later = (ms: number) => new Date(Date.now() + ms).toISOString();
 
-/** Deterministic receipt of a settled operation (same bytes on every retry). */
+/**
+ * Deterministic receipt of a settled operation (same bytes on every retry).
+ *
+ * Recomputes the CU with the weights frozen at admission and refuses when it differs from the settled CU.
+ * Requires `ctx.crypto` (v3 path); with crypto absent it throws a TypeError.
+ *
+ * @param ctx - Operations context (measurement ports and crypto).
+ * @param op - The operation; must be settled and have usage.
+ * @param publicCommitment - The commitment to embed, or `null`.
+ * @returns The private v3 receipt, or `{ error }` when it cannot be built (not settled, weights missing, CU mismatch).
+ */
 export function buildReceiptV3(ctx: OperationsContext, op: DurableOperation, publicCommitment: string | null): PrivateReceiptV3 | { error: string } {
   if (op.reservation.state !== 'settled' || !op.usage) return { error: 'operation not settled' };
   const cfg = ctx.measurement.cuConfigByRef(op.config.cuWeights);
@@ -70,6 +87,7 @@ export function buildReceiptV3(ctx: OperationsContext, op: DurableOperation, pub
   };
 }
 
+// Compare-and-set with up to 5 re-reads: another writer may move the revision between our read and write.
 async function setEffects(ctx: OperationsContext, op: DurableOperation, patch: Partial<DurableOperation['effects']>): Promise<void> {
   for (let i = 0; i < 5; i++) {
     const cur = i === 0 ? op : (await ctx.store.get(op.key))!;
@@ -176,6 +194,14 @@ async function persistLegacy(ctx: OperationsContext, op: DurableOperation): Prom
   return 'done';
 }
 
+/**
+ * Builds the handler of `persist_receipt` effects: v3 receipt pipeline when crypto is configured, else the
+ * legacy receipt row.
+ *
+ * @param ctx - Operations context.
+ * @returns An idempotent effect handler. Writes to PostgreSQL (openings, receipts, conference, attribution
+ *   statements, outbox) and signs with the operator key.
+ */
 export function persistReceiptHandler(ctx: OperationsContext): (e: ClaimedEffect) => Promise<EffectOutcome> {
   return async (e) => {
     const detail = await ctx.store.getDetail(e.key);
@@ -189,6 +215,14 @@ export function persistReceiptHandler(ctx: OperationsContext): (e: ClaimedEffect
 /**
  * Recovery of operations whose owner is gone (lease expired), during normal operation and at
  * startup. Never re-sends a call and never invents usage (D7 §3).
+ *
+ * Operations streamed by this process are skipped. A revision conflict (someone else moved the operation) is
+ * ignored silently; other per-operation errors are logged and do not stop the loop.
+ *
+ * @param ctx - Operations context.
+ * @param opts - Minimum idle age in ms and maximum operations examined (default 100).
+ * @returns How many were released (never started) and how many were marked lost (started, outcome unknown).
+ * @throws {Error} When listing the incomplete operations fails.
  */
 export async function recoverOrphans(ctx: OperationsContext, opts: { olderThanMs: number; limit?: number }): Promise<{ released: number; lost: number }> {
   const olderThan = new Date(Date.now() - opts.olderThanMs).toISOString();

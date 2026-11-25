@@ -1,13 +1,24 @@
 /**
  * Textos para leigos em português: para cada código, o que aconteceu, o que significa e o que NÃO
  * garante. Nenhum código cru aparece sozinho na tela (critério de aceite do desenho §3(e)).
+ *
+ * (English) Portuguese texts shown to non-specialists for each verdict code. The strings are user-facing
+ * content and are part of the report bytes; changing them changes report hashes.
+ *
+ * @module src/verifier/textos
  */
 import type { Verdict, VerdictCode } from './types.js';
 
+/**
+ * Texts of one verdict code: verdict colour, what happened, what it means, what it does not guarantee, short label.
+ */
 export interface CodeText { verdict: Verdict; reason: string; meaning: string; notGuaranteed: string; short: string }
 
 const NAO_GARANTE_BASE = 'Não garante que o provedor cobrou esse valor, que o contador do OTK estava certo, nem que o operador não poderia ter assinado outro recibo no lugar deste.';
 
+/**
+ * Texts per verdict code.
+ */
 export const TEXTOS: Record<VerdictCode, CodeText> = {
   ok: {
     verdict: 'verde',
@@ -232,6 +243,9 @@ export const NAO_GARANTE: string[] = [
   'O campo "verification" da exportação do operador é a opinião do operador sobre si mesmo e é ignorado; tudo é recalculado aqui.',
 ];
 
+/**
+ * Labels of each verdict colour for the command line and for Portuguese text.
+ */
 export const VERDICT_LABEL: Record<Verdict, { cli: string; pt: string }> = {
   verde: { cli: '[OK]', pt: 'Verde' },
   amarelo: { cli: '[ATENÇÃO]', pt: 'Amarelo' },

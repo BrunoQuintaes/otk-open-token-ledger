@@ -14,7 +14,14 @@
  *   - a source that cannot be read → job `failed` with `error: 'export_source_unavailable'` (never an empty `done`).
  *   The minimum role (M24-DYN-08) is a pending product decision and is NOT changed here.
  *
- * @module api/dataExport
+ * Where it sits: the export routes in `src/api/routes.ts` call `handleCreateExportJob` and
+ * `handleExportJobStatus`; the receipts come from `src/api/gdpr.ts`. Jobs live only in this process's memory,
+ * so a status poll must reach the same replica and jobs are lost on restart.
+ *
+ * Environment variables read: `OTK_EXPORT_JOB_TTL_MS` (finished-job lifetime, ms; default 3 600 000) and
+ * `OTK_EXPORT_MAX_JOBS` (jobs kept per process; default 1000).
+ *
+ * @module src/api/dataExport
  * @since Wave 4 (4C-PACK-4C03 / NEW-4.01)
  */
 
@@ -27,17 +34,26 @@ import { collectTenantReceipts, gdprReceiptsCsv, type GdprReceipt } from './gdpr
 // Types
 // ──────────────────────────────────────────────────────────
 
+/** Lifecycle of an export job. */
 export type ExportJobStatus = 'pending' | 'processing' | 'done' | 'failed';
+/** Output format requested with `?format=`; `csv` adds a `csv` field to the result when it is read. */
 export type ExportFormat = 'json' | 'csv';
 
+/** One export job, held in memory. */
 export interface ExportJob {
+  /** Random 16-hex-character job id. */
   jobId: string;
+  /** Tenant whose data is exported (the caller's tenant). */
   tenantId: string;
   format: ExportFormat;
   status: ExportJobStatus;
+  /** Creation time, epoch ms. */
   createdAt: number;
+  /** Last status change, epoch ms (completion time once `done` or `failed`). */
   updatedAt: number;
+  /** Present only when `done`. */
   result?: ExportResult;
+  /** Error code when `failed` (`export_source_unavailable`). */
   error?: string;
 }
 
@@ -48,12 +64,19 @@ export const EXPORT_NOT_INCLUDED = [
   'operations_v3', 'ledger', 'audit_log', 'dead_letters', 'webhook_deliveries', 'api_keys', 'users', 'memberships',
 ] as const;
 
+/** Content of a finished export. */
 export interface ExportResult {
+  /** The tenant's receipts. */
   records: GdprReceipt[];
+  /** Number of records. */
   count: number;
+  /** Data types included (`EXPORT_TYPES_IMPLEMENTED`). */
   scope: string[];
+  /** Data types that exist but are not exported (`EXPORT_NOT_INCLUDED`). */
   notIncluded: string[];
+  /** Where the receipts were read from (as reported by `collectTenantReceipts`). */
   sources: string[];
+  /** CSV rendering of `records`; added only in the status response when the format is `csv`, never stored. */
   csv?: string;
 }
 
@@ -74,6 +97,7 @@ function _ttlMs(): number { const v = Number(process.env['OTK_EXPORT_JOB_TTL_MS'
 function _maxJobs(): number { const v = Number(process.env['OTK_EXPORT_MAX_JOBS'] ?? 1000); return Number.isFinite(v) && v > 0 ? Math.floor(v) : 1000; }
 const _active = (j: ExportJob) => j.status === 'pending' || j.status === 'processing';
 
+// Drops expired finished jobs, then evicts the oldest finished jobs while the map is at capacity.
 function _prune(now: number = Date.now()): void {
   const ttl = _ttlMs();
   for (const [id, j] of _jobs) if (!_active(j) && now - j.updatedAt >= ttl) _jobs.delete(id);
@@ -81,12 +105,22 @@ function _prune(now: number = Date.now()): void {
   for (const [id, j] of _jobs) { if (_jobs.size < _maxJobs()) break; if (!_active(j)) _jobs.delete(id); } // insertion order = oldest first
 }
 
+/**
+ * Returns an export job by id, after dropping expired jobs.
+ *
+ * @param jobId - Job id returned at creation.
+ * @returns The job, or `undefined` when unknown or expired.
+ */
 export function getExportJob(jobId: string): ExportJob | undefined {
   _prune();
   return _jobs.get(jobId);
 }
 
-/** @internal Test only. */
+/**
+ * Removes every export job.
+ *
+ * @internal Test only.
+ */
 export function clearExportJobsForTest(): void { _jobs.clear(); }
 
 // ──────────────────────────────────────────────────────────
@@ -96,6 +130,13 @@ export function clearExportJobsForTest(): void { _jobs.clear(); }
 /**
  * POST /v1/data/export
  * Creates an async export job for the caller's tenant.
+ *
+ * Answers 202 with the job id, or 400 (bad `format`), 501 (unimplemented `type`), 409 (a job of this tenant
+ * is still active) or 503 (job capacity reached). The data is collected after the response is sent.
+ *
+ * @param req - The request; only its URL query (`format`, `type`) is read.
+ * @param res - Response; it is always sent here.
+ * @param tenantId - Authenticated caller's tenant (resolved by the route, not by this handler).
  */
 export async function handleCreateExportJob(
   req: IncomingMessage,
@@ -168,6 +209,12 @@ export async function handleCreateExportJob(
 /**
  * GET /v1/data/export/status/:jobId
  * Returns current status of an export job. When done, includes inline data.
+ *
+ * Answers 404 (OTK-4040) when the job is unknown. It does not check the caller's tenant; the route does.
+ *
+ * @param _req - Unused.
+ * @param res - Response; it is always sent here.
+ * @param jobId - Job id from the URL.
  */
 export function handleExportJobStatus(
   _req: IncomingMessage,

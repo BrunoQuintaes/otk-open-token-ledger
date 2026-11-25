@@ -8,20 +8,38 @@
  *   - as a Transform (pass-through), when its readable side is consumed (e.g. pipeline).
  * Before RV03 the gateway wrote into the Transform without reading it: after ~16 KB the
  * transform stalled and the final usage event was never parsed.
+ *
+ * Used by `src/proxy/ProxyGateway.ts` and `src/operations/measurementPorts.ts` on streamed responses. It
+ * parses only `data:` lines; it does not decide whether the usage is final (callers check `usageSeen`).
+ *
+ * @module src/proxy/StreamTapper
  */
 
 import { Transform, TransformCallback } from 'node:stream';
 import { StringDecoder } from 'node:string_decoder';
 
+/**
+ * Token usage read from an SSE stream (counts as reported; a missing count is 0).
+ */
 export interface TappedUsage {
+  /** Input tokens. */
   promptTokens: number;
+  /** Output tokens. */
   completionTokens: number;
   /** Anthropic prompt-cache categories (N8); absent for other providers. */
   cacheCreationInputTokens?: number;
+  /** Anthropic cache-read input tokens; absent when not reported. */
   cacheReadInputTokens?: number;
 }
 
-/** Attach cache categories only when the provider reported them. */
+/**
+ * Attach cache categories only when the provider reported them.
+ *
+ * @param base - Input and output counts.
+ * @param creation - Cache-creation tokens, or `undefined` when not reported.
+ * @param read - Cache-read tokens, or `undefined` when not reported.
+ * @returns A new usage object; `base` is not modified.
+ */
 function withCache(base: TappedUsage, creation: number | undefined, read: number | undefined): TappedUsage {
   const out: TappedUsage = { ...base };
   if (creation !== undefined) out.cacheCreationInputTokens = creation;
@@ -29,6 +47,11 @@ function withCache(base: TappedUsage, creation: number | undefined, read: number
   return out;
 }
 
+/**
+ * Reads token usage (and the model and response IDs) from SSE chunks of OpenAI, Anthropic or Gemini.
+ *
+ * Later usage events replace earlier ones; the last one seen wins.
+ */
 export class StreamTapper extends Transform {
   /** Populated once any SSE chunk with a `usage` key is parsed (even if tokens are zero). */
   usage: TappedUsage | null = null;
@@ -43,7 +66,11 @@ export class StreamTapper extends Transform {
   // UTF-8 sequences may be split across chunks
   private readonly _decoder = new StringDecoder('utf8');
 
-  /** Parse one chunk (no pass-through). */
+  /**
+   * Parse one chunk (no pass-through).
+   *
+   * @param chunk - Next chunk of the response body, as bytes or already-decoded text.
+   */
   observe(chunk: Buffer | string): void {
     this._buf += typeof chunk === 'string' ? chunk : this._decoder.write(chunk);
     this._parseLines();
@@ -58,6 +85,13 @@ export class StreamTapper extends Transform {
     }
   }
 
+  /**
+   * Pass-through: parses the chunk, then pushes it unchanged to the readable side.
+   *
+   * @param chunk - Chunk from the writable side.
+   * @param _encoding - Ignored.
+   * @param callback - Called once the chunk is handled.
+   */
   override _transform(
     chunk: Buffer | string,
     _encoding: BufferEncoding,
@@ -68,6 +102,11 @@ export class StreamTapper extends Transform {
     callback();
   }
 
+  /**
+   * Parses the remaining buffered text when the writable side ends.
+   *
+   * @param callback - Called once the remainder is parsed.
+   */
   override _flush(callback: TransformCallback): void {
     this.finish();
     callback();
@@ -115,6 +154,7 @@ export class StreamTapper extends Transform {
    * R10: provider-specific streaming usage. Returns true when the event was handled.
    *   Anthropic: message_start.message.usage.input_tokens, message_delta.usage.output_tokens
    *   Gemini:    usageMetadata.promptTokenCount / candidatesTokenCount (cumulative)
+   * @param parsed - One parsed SSE `data:` payload.
    */
   private _tapOtherFormats(parsed: Record<string, unknown>): boolean {
     const num = (v: unknown): number | undefined => (typeof v === 'number' ? v : undefined);

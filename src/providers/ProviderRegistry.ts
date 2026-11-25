@@ -11,6 +11,11 @@
  * Usage:
  *   const registry = ProviderRegistry.createDefault();
  *   const event = registry.resolve('openai').parseResponse(rawResponse, latencyMs, ts);
+ *
+ * Reads the environment variable NAMES `GEMINI_API_KEY` and `DEEPSEEK_API_KEY` (presence only, never the
+ * value) in `createDefault` to choose between the real and the stub adapter. It never calls a provider.
+ *
+ * @module src/providers/ProviderRegistry
  */
 
 import {
@@ -67,12 +72,18 @@ class AnthropicProviderAdapter implements IProviderAdapter {
 // ProviderRegistry — pluggable adapter registry
 // ---------------------------------------------------------------------------
 
+/**
+ * Registry that maps a provider ID (lowercase) to the adapter that parses that provider's responses.
+ *
+ * Each instance has its own map; there is no global singleton. Use `createDefault()` for the built-in set.
+ */
 export class ProviderRegistry {
   private readonly adapters = new Map<string, IProviderAdapter>();
 
   /**
    * Register an adapter. Provider IDs are normalized to lowercase.
    * @throws RegistryError (DUPLICATE_PROVIDER) if provider already registered
+   * @param adapter - Adapter to add; its `providerId` is lowercased before being stored.
    */
   register(adapter: IProviderAdapter): void {
     const id = adapter.providerId.toLowerCase();
@@ -88,6 +99,8 @@ export class ProviderRegistry {
   /**
    * Resolve an adapter by provider ID (case-insensitive).
    * @throws RegistryError (PROVIDER_NOT_FOUND) if no adapter registered for the given provider
+   * @param providerId - Provider ID, any letter case.
+   * @returns The registered adapter for that provider.
    */
   resolve(providerId: string): IProviderAdapter {
     const adapter = this.adapters.get(providerId.toLowerCase());
@@ -101,12 +114,21 @@ export class ProviderRegistry {
     return adapter;
   }
 
-  /** Check if a provider ID is registered (case-insensitive) */
+  /**
+   * Check if a provider ID is registered (case-insensitive)
+   *
+   * @param providerId - Provider ID, any letter case.
+   * @returns `true` when an adapter is registered for it.
+   */
   isRegistered(providerId: string): boolean {
     return this.adapters.has(providerId.toLowerCase());
   }
 
-  /** List all registered provider IDs (sorted alphabetically) */
+  /**
+   * List all registered provider IDs (sorted alphabetically)
+   *
+   * @returns A new array with the registered (lowercase) provider IDs, sorted.
+   */
   listProviders(): string[] {
     return Array.from(this.adapters.keys()).sort();
   }
@@ -124,6 +146,8 @@ export class ProviderRegistry {
    *
    * Real adapters parse native API response shapes.
    * Stubs accept GenericUsageInput for offline/test use (U11.1 contract unchanged).
+   * @returns A new registry with one adapter per provider ID: openai, anthropic, gemini, deepseek, cohere,
+   *   mistral and meta (gemini and deepseek get the real adapter or the stub, as described above).
    */
   static createDefault(): ProviderRegistry {
     const registry = new ProviderRegistry();

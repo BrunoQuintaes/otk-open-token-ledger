@@ -5,7 +5,10 @@
  * Each schema matches the current manual validation + coercion behavior
  * to ensure zero backward-incompatible changes.
  *
- * @module api/schemas
+ * Used by `src/api/routes.ts` through `validateBody` (`src/api/validate.ts`). Every object schema uses `.strip()`:
+ * unknown fields are dropped silently, not rejected. Field limits are lengths in characters.
+ *
+ * @module src/api/schemas
  * @since Wave 2H (H1.4)
  */
 
@@ -39,6 +42,7 @@ export const ReceiptSubmissionSchema = z.object({
   }).optional(),
 }).strip();
 
+/** Parsed receipt submission (defaults applied, unknown fields removed). */
 export type ReceiptSubmission = z.infer<typeof ReceiptSubmissionSchema>;
 
 /**
@@ -59,12 +63,14 @@ const tenantTokenSchema = z.string().trim()
     if (weakness) ctx.addIssue({ code: z.ZodIssueCode.custom, message: weakness });
   });
 
+/** Body schema for creating a tenant: id, registry token (strength-checked) and optional role. */
 export const TenantCreateSchema = z.object({
   tenantId: z.string().min(1).max(128),
   token: tenantTokenSchema,
   role: z.enum(['OWNER', 'ADMIN', 'OPERATOR', 'MEMBER', 'VIEWER']).optional(),
 }).strip();
 
+/** Parsed tenant creation body. */
 export type TenantCreate = z.infer<typeof TenantCreateSchema>;
 
 /**
@@ -79,6 +85,7 @@ export const TenantUpdateSchema = z.object({
   restoreKeys: z.boolean().optional(),
 }).strip();
 
+/** Parsed tenant update body. */
 export type TenantUpdate = z.infer<typeof TenantUpdateSchema>;
 
 /**
@@ -89,6 +96,7 @@ export const PlanAssignmentSchema = z.object({
   tier: z.enum(['FREE', 'STARTER', 'PRO']),
 }).strip();
 
+/** Parsed plan assignment body. */
 export type PlanAssignment = z.infer<typeof PlanAssignmentSchema>;
 
 /**
@@ -107,8 +115,10 @@ export const ApiKeyCreateSchema = z.object({
   expiresAt: z.string().datetime().optional(),
 }).strip();
 
+/** Parsed API key creation body (`role` defaults to `MEMBER`; `expiresAt` is an ISO-8601 date-time). */
 export type ApiKeyCreate = z.infer<typeof ApiKeyCreateSchema>;
 
+/** Parsed tenants reload body. */
 export type TenantsReload = z.infer<typeof TenantsReloadSchema>;
 
 /**
@@ -121,6 +131,7 @@ export const SignupSchema = z.object({
   orgName: z.string().min(1).max(100),
 }).strip();
 
+/** Parsed signup body. */
 export type SignupInput = z.infer<typeof SignupSchema>;
 
 /**
@@ -131,6 +142,7 @@ export const LoginSchema = z.object({
   password: z.string().min(1).max(128),
 }).strip();
 
+/** Parsed login body. */
 export type LoginInput = z.infer<typeof LoginSchema>;
 
 /**
@@ -140,6 +152,7 @@ export const VerifyEmailSchema = z.object({
   token: z.string().min(1),
 }).strip();
 
+/** Parsed e-mail verification body. */
 export type VerifyEmailInput = z.infer<typeof VerifyEmailSchema>;
 
 /**
@@ -150,6 +163,7 @@ export const WebhookCreateSchema = z.object({
   events: z.array(z.string().min(1).max(64)).optional().default(['*']),
 }).strip();
 
+/** Parsed webhook creation body (`events` defaults to all events). */
 export type WebhookCreate = z.infer<typeof WebhookCreateSchema>;
 
 /**
@@ -161,4 +175,5 @@ export const FeatureFlagUpsertSchema = z.object({
   description: z.string().max(256).optional(),
 }).strip();
 
+/** Parsed feature flag body. */
 export type FeatureFlagUpsert = z.infer<typeof FeatureFlagUpsertSchema>;

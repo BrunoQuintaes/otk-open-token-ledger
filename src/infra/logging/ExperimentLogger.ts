@@ -18,8 +18,14 @@
  * - gasUsed: Gas consumed for on-chain verification [optional]
  * - success: Whether the experiment succeeded (boolean)
  * - metadata: Additional context (JSON object)
+ *
+ * In memory only: nothing is written to disk by this module; the export methods return strings. Note that
+ * `flush()` (and the auto-flush threshold) DISCARDS the records, it does not export them.
+ *
+ * @module src/infra/logging/ExperimentLogger
  */
 
+/** One measured experiment; see the schema in the module comment for units. */
 export interface ExperimentRecord {
   timestamp: number;
   provider: string;
@@ -36,6 +42,7 @@ export interface ExperimentRecord {
   metadata?: Record<string, unknown>;
 }
 
+/** Options of an `ExperimentLogger`. */
 export interface ExperimentLoggerOptions {
   /** Auto-flush after N records (0 = manual flush only) */
   autoFlushThreshold?: number;
@@ -50,6 +57,11 @@ export class ExperimentLogger {
   private records: ExperimentRecord[] = [];
   private options: Required<ExperimentLoggerOptions>;
 
+  /**
+   * Creates an empty logger.
+   *
+   * @param options - Auto-flush threshold (default 0, off) and whether exports include metadata (default true).
+   */
   constructor(options: ExperimentLoggerOptions = {}) {
     this.options = {
       autoFlushThreshold: options.autoFlushThreshold ?? 0,
@@ -59,6 +71,8 @@ export class ExperimentLogger {
 
   /**
    * Log a new experiment record
+   *
+   * @param record - Record to add (copied; `totalTokens` is filled in when missing).
    */
   log(record: ExperimentRecord): void {
     // Calculate totalTokens if not provided
@@ -80,6 +94,8 @@ export class ExperimentLogger {
 
   /**
    * Get all records (read-only)
+   *
+   * @returns A frozen copy of the array (the records themselves are shared).
    */
   getRecords(): readonly ExperimentRecord[] {
     return Object.freeze([...this.records]);
@@ -87,6 +103,8 @@ export class ExperimentLogger {
 
   /**
    * Get record count
+   *
+   * @returns Number of records held.
    */
   count(): number {
     return this.records.length;
@@ -101,6 +119,9 @@ export class ExperimentLogger {
 
   /**
    * Export records as JSON string
+   *
+   * @param pretty - Indent with 2 spaces when true.
+   * @returns JSON array; bigint values become decimal strings.
    */
   exportJSON(pretty = false): string {
     const data = this.options.includeMetadata
@@ -116,6 +137,8 @@ export class ExperimentLogger {
 
   /**
    * Export records as CSV string
+   *
+   * @returns Header line plus one line per record, each ending with a newline.
    */
   exportCSV(): string {
     if (this.records.length === 0) {
@@ -128,6 +151,8 @@ export class ExperimentLogger {
 
   /**
    * Get summary statistics
+   *
+   * @returns Counts, averages and totals over all records (zeros when empty).
    */
   getSummary(): ExperimentSummary {
     if (this.records.length === 0) {
@@ -164,6 +189,9 @@ export class ExperimentLogger {
 
   /**
    * Filter records by criteria
+   *
+   * @param predicate - Test applied to each record.
+   * @returns The matching records (shared objects).
    */
   filter(predicate: (record: ExperimentRecord) => boolean): ExperimentRecord[] {
     return this.records.filter(predicate);
@@ -233,6 +261,7 @@ export class ExperimentLogger {
   }
 }
 
+/** Aggregate figures returned by `ExperimentLogger.getSummary`. */
 export interface ExperimentSummary {
   totalRecords: number;
   successCount: number;
@@ -246,6 +275,11 @@ export interface ExperimentSummary {
 
 /**
  * Create a singleton logger instance (convenience)
+ *
+ * Despite the name, every call returns a NEW logger (no singleton is kept).
+ *
+ * @param options - Logger options.
+ * @returns The new logger.
  */
 export function createLogger(options?: ExperimentLoggerOptions): ExperimentLogger {
   return new ExperimentLogger(options);

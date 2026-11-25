@@ -9,10 +9,17 @@
  *   const gateway = new ProviderGateway(new GlobalKeyStrategy());
  *   const key = await gateway.resolveKey('openai');
  *   // Use key to configure IProviderClient — never log it
+ *
+ * Note: the metered proxy (`src/proxy/ProxyGateway.ts`) uses `GlobalKeyStrategy` directly, not this class.
+ *
+ * @module src/providers/gateway/ProviderGateway
  */
 
 import { KeyStrategy } from "../strategies/KeyStrategy.js";
 
+/**
+ * Resolves provider API keys through one injected {@link KeyStrategy}; it holds no keys itself.
+ */
 export class ProviderGateway {
   private readonly keyStrategy: KeyStrategy;
 

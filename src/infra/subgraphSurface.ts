@@ -13,7 +13,10 @@
  *   - executeSubgraphQuery(): pure evaluator — stub response, no network
  *   - Extension point: inject a fetchFn for production wiring
  *
- * @module infra/subgraphSurface
+ * `fetchSubgraphQuery` is the only function with I/O: one POST to `OTK_SUBGRAPH_URL` when that variable is set.
+ * `executeSubgraphQuery` never fetches, even for an `active` subgraph (it returns `status: 'live'` with no data).
+ *
+ * @module src/infra/subgraphSurface
  * @since G4
  */
 
@@ -32,6 +35,13 @@ import type { ChainRegistry } from './chainRegistry.js';
 /**
  * Build a typed subgraph query.
  * Pure function — validates queryType, returns structured SubgraphQuery.
+ *
+ * Nothing is validated at run time: the query type is checked only by the TypeScript type.
+ *
+ * @param chainId - Chain to query.
+ * @param queryType - Kind of query.
+ * @param filter - Query filter (default empty).
+ * @returns The query object.
  */
 export function buildSubgraphQuery(
   chainId: ChainId,
@@ -59,6 +69,7 @@ export function buildSubgraphQuery(
  * @param query   - Query built with buildSubgraphQuery()
  * @param registry - ChainRegistry to resolve chain + subgraph refs
  * @param subgraphName - Subgraph name to look up (default: 'otk-receipts')
+ * @returns A result with empty `data` and status `error`, `stub` or `live`.
  */
 export function executeSubgraphQuery(
   query: SubgraphQuery,
@@ -104,6 +115,9 @@ export function executeSubgraphQuery(
 /**
  * Build a deployment_info query for a given chain.
  * Convenience wrapper — pure function.
+ *
+ * @param chainId - Chain to query.
+ * @returns The query object with an empty filter.
  */
 export function buildDeploymentInfoQuery(chainId: ChainId): SubgraphQuery {
   return buildSubgraphQuery(chainId, 'deployment_info', {});
@@ -113,8 +127,11 @@ export function buildDeploymentInfoQuery(chainId: ChainId): SubgraphQuery {
 // Live fetch — production wiring via OTK_SUBGRAPH_URL (E6.7 — W5-5B03)
 // ---------------------------------------------------------------------------
 
+/** Body of a GraphQL response. */
 export interface SubgraphFetchResult {
+  /** Query result; null in stub mode or on HTTP error. */
   data: unknown;
+  /** GraphQL or transport errors, when any. */
   errors?: Array<{ message: string }>;
 }
 
@@ -129,6 +146,8 @@ export interface SubgraphFetchResult {
  *
  * @param graphqlQuery  GraphQL query string
  * @param variables     Optional query variables
+ * @returns The parsed response; without `OTK_SUBGRAPH_URL`, or on a non-2xx status, `data: null` with one error.
+ * @throws {Error} When the request fails at the network level or the body is not JSON.
  */
 export async function fetchSubgraphQuery(
   graphqlQuery: string,

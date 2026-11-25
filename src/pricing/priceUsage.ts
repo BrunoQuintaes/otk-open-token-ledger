@@ -16,6 +16,10 @@
  * A missing table, model or base price is 'missing_price' with total null — never US$ 0.
  * Tables are immutable by digest: pricing an operation with its frozen VersionRef gives the
  * same quote after newer tables are published (historical price).
+ *
+ * Pure (no I/O): tables are loaded by the caller (`src/operations/d1d8Ports.ts` reads them from files).
+ *
+ * @module src/pricing/priceUsage
  */
 import type {
   IsoTime, Money, NormalizedUsage, PriceLine, PriceQuote, TokenCategory, TokenCategoryName, VersionRef,
@@ -23,16 +27,22 @@ import type {
 import { canonicalJson, sha256Hex } from '../providers/usage/canonicalJson.js';
 import { categorySide } from '../providers/usage/normalizeUsage.js';
 
+/** Scale of unit prices: units are micro-USD per 1,000,000 tokens. */
 export const UNIT_PRICE_SCALE = 1_000_000n; // micro-USD per MTok
+/** Scale of amounts and totals: units are pico-USD. */
 export const AMOUNT_SCALE = 1_000_000_000_000n; // pico-USD
 const MTOK = 1_000_000n;
 
+/** One published price of one token category of one model, valid in a time window. */
 export interface PriceEntryV1 {
+  /** Provider id (lower case after parsing). */
   provider: string;
+  /** Priced model key (lower case after parsing). */
   model: string;
   category: TokenCategoryName;
   /** micro-USD per 1,000,000 tokens (e.g. US$ 0.15/MTok → 150000n). */
   pricePerMTokMicroUsd: bigint;
+  /** Inclusive start of validity. */
   effectiveFrom: IsoTime;
   /** Exclusive end; null = open. */
   effectiveUntil: IsoTime | null;
@@ -40,8 +50,10 @@ export interface PriceEntryV1 {
   source: string;
 }
 
+/** A versioned, immutable USD price table. */
 export interface PriceTableV1 {
   schema: 'otk.price_table.v1';
+  /** Human-readable version label; the digest of the whole table is what freezes it. */
   version: string;
   currency: 'USD';
   entries: PriceEntryV1[];
@@ -49,6 +61,12 @@ export interface PriceTableV1 {
   aliases: Record<string, string>;
 }
 
+/**
+ * Reference that freezes a table: its version label and the SHA-256 of its canonical JSON.
+ *
+ * @param table - The table.
+ * @returns Version and digest.
+ */
 export function priceTableRef(table: PriceTableV1): VersionRef {
   return { version: table.version, digest: sha256Hex(canonicalJson(table)) };
 }
@@ -57,7 +75,16 @@ function money(units: bigint, scale: bigint): Money {
   return { units, scale, currency: 'USD' };
 }
 
-/** Parse the JSON wire form (prices as decimal strings) into a table; throws on invalid input. */
+/**
+ * Parse the JSON wire form (prices as decimal strings) into a table; throws on invalid input.
+ *
+ * Provider, model and alias keys/values are lower-cased.
+ *
+ * @param raw - Parsed JSON of an `otk.price_table.v1` file.
+ * @returns The table.
+ * @throws {Error} When the schema, currency or version is wrong, an entry field is missing or malformed, an
+ *   alias is not a string, or two windows of the same provider/model/category overlap.
+ */
 export function parsePriceTableV1(raw: unknown): PriceTableV1 {
   if (!raw || typeof raw !== 'object') throw new Error('price table must be an object');
   const t = raw as Record<string, unknown>;
@@ -109,12 +136,30 @@ function effective(e: PriceEntryV1, atMs: number): boolean {
   return Date.parse(e.effectiveFrom) <= atMs && (e.effectiveUntil === null || atMs < Date.parse(e.effectiveUntil));
 }
 
+/** In-memory registry of immutable price tables, keyed by digest. */
 export interface PriceTableRegistry {
-  /** Adds an immutable table and returns its ref (the digest freezes its content). */
+  /**
+   * Adds an immutable table and returns its ref (the digest freezes its content).
+   *
+   * @param table - The table (stored as a deep copy).
+   * @returns Its reference.
+   */
   add(table: PriceTableV1): VersionRef;
+  /**
+   * Returns a deep copy of the table frozen by `ref`.
+   *
+   * @param ref - Version and digest.
+   * @returns The table, or `null` when the digest is unknown or the version label differs.
+   */
   get(ref: VersionRef): PriceTableV1 | null;
 }
 
+/**
+ * Creates a registry pre-loaded with the given tables.
+ *
+ * @param tables - Tables to add.
+ * @returns The registry.
+ */
 export function createPriceTableRegistry(tables: PriceTableV1[] = []): PriceTableRegistry {
   const byDigest = new Map<string, PriceTableV1>();
   const reg: PriceTableRegistry = {
@@ -150,7 +195,9 @@ function findEntry(table: PriceTableV1, provider: string, modelKey: string, cate
  * missing tariff makes the quote partial instead of silently charging the base rate.
  */
 export type CategoryBillingMode = 'separately_priced' | 'billed_as_base';
+/** One documented exception: this provider bills this category at its side's base rate. */
 export interface CategoryPolicyRule { provider: string; category: TokenCategoryName; mode: CategoryBillingMode; docRef: string }
+/** Version 1 of the category billing policy (id stamped in every quote). */
 export const PRICE_CATEGORY_POLICY_V1: { id: string; default: CategoryBillingMode; rules: readonly CategoryPolicyRule[] } = Object.freeze({
   id: 'otk.price_category_policy.v1@2026-10-01',
   default: 'separately_priced' as const,
@@ -162,6 +209,13 @@ export const PRICE_CATEGORY_POLICY_V1: { id: string; default: CategoryBillingMod
   ] as CategoryPolicyRule[]),
 });
 
+/**
+ * Billing mode of an unpriced non-base category for a provider.
+ *
+ * @param provider - Provider id (trimmed, case-insensitive).
+ * @param category - Token category.
+ * @returns `billed_as_base` only for a listed rule; otherwise `separately_priced`.
+ */
 export function categoryBillingMode(provider: string, category: TokenCategoryName): CategoryBillingMode {
   const p = provider.trim().toLowerCase();
   return PRICE_CATEGORY_POLICY_V1.rules.find((r) => r.provider === p && r.category === category)?.mode ?? PRICE_CATEGORY_POLICY_V1.default;
@@ -190,7 +244,18 @@ function line(category: TokenCategoryName, count: bigint, entry: PriceEntryV1 | 
   };
 }
 
-/** Quote for one usage with one table (exported for direct use and tests). */
+/**
+ * Quote for one usage with one table (exported for direct use and tests).
+ *
+ * The returned model is priced (the requested one when none was returned). Status `priced` requires every
+ * line priced and a complete usage; a partial quote still carries the total of its priced lines.
+ *
+ * @param usage - Normalized usage.
+ * @param at - Time whose prices apply (usually the observation time).
+ * @param table - The price table.
+ * @param tableRef - Its reference, stamped in the quote.
+ * @returns `priced`, `partial` (total of known lines) or `missing_price` (total `null`).
+ */
 export function priceUsageWithTable(usage: NormalizedUsage, at: IsoTime, table: PriceTableV1, tableRef: VersionRef): PriceQuote {
   const quote = (status: PriceQuote['status'], lines: PriceLine[], total: Money | null): PriceQuote =>
     ({ schema: 'otk.price_quote.v1', status, total, lines, priceTable: tableRef, pricedAt: at, categoryPolicy: PRICE_CATEGORY_POLICY_V1.id });
@@ -241,7 +306,12 @@ export function priceUsageWithTable(usage: NormalizedUsage, at: IsoTime, table: 
   return quote(status, lines, money(total, AMOUNT_SCALE));
 }
 
-/** PriceUsageFn bound to a registry of immutable tables. */
+/**
+ * PriceUsageFn bound to a registry of immutable tables.
+ *
+ * @param registry - The table registry.
+ * @returns A pricing function; an unknown table reference gives `missing_price`.
+ */
 export function createPriceUsage(registry: PriceTableRegistry) {
   return (usage: NormalizedUsage, at: IsoTime, tableRef: VersionRef): PriceQuote => {
     const table = registry.get(tableRef);
@@ -255,6 +325,11 @@ export function createPriceUsage(registry: PriceTableRegistry) {
 /**
  * Highest price per side for a model across every window of the table (time-independent, so a
  * reservation never depends on the wall clock). null when the model has no base price.
+ *
+ * @param table - The price table.
+ * @param provider - Provider id (trimmed, case-insensitive).
+ * @param model - Model id (aliases resolved).
+ * @returns Highest micro-USD/MTok price on the input side and on the output side, or `null`.
  */
 export function worstCaseSidePrices(table: PriceTableV1, provider: string, model: string): { input: bigint; output: bigint } | null {
   const p = provider.trim().toLowerCase();

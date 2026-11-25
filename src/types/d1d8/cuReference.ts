@@ -14,6 +14,8 @@
  * What the weights are NOT: energy, FLOPs, quality, capability, or a forecast of future prices.
  * The historical multiplicative formula (T_in + T_out) × W_model × W_provider is the profile
  * 'development_legacy' (src/economics/computeCu.ts) and is never rewritten retroactively.
+ *
+ * @module src/types/d1d8/cuReference
  */
 import type { Hex32, IsoTime, OperationKey, Scaled } from './common.js';
 
@@ -49,8 +51,14 @@ export type CuReferenceDefinition =
   | { kind: 'model_category'; provider: string; model: string; category: CuCanonicalCategory }
   | { kind: 'abstract_price'; priceMicroUsdPerMTok: string };
 
+/**
+ * Whether a CU reference profile is a candidate or the final one.
+ */
 export type CuReferenceProfileStatus = 'CANDIDATE' | 'FINAL';
 
+/**
+ * Versioned CU reference profile: frozen base prices and weights of one base period.
+ */
 export interface CuReferenceProfileV1 {
   schema: 'otk.cu.reference.v1';
   profileId: string;
@@ -83,6 +91,9 @@ export interface CuReferenceProfileV1 {
   provenance: { createdAt: IsoTime; createdBy: string; method: string; limitations: string[] };
 }
 
+/**
+ * Outcome of a CU reference computation; only `computed` carries a value.
+ */
 export type CuReferenceStatus =
   | 'computed'
   /** usage absent/partial/invalid, or a subset larger than its base */
@@ -95,6 +106,9 @@ export type CuReferenceStatus =
   | 'reference_undefined'
   | 'invalid_profile';
 
+/**
+ * Result of computing the reference CU of one operation with one profile.
+ */
 export interface CuReferenceResult {
   schema: 'otk.cu_reference_result.v1';
   status: CuReferenceStatus;

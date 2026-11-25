@@ -10,6 +10,8 @@
  *
  * Unit mapping: CuResult.cu = units / scale (scale a power of ten). Circuit usage is micro-CU:
  * usage = units × (10⁶ / scale). A scale finer than 10⁶ is refused instead of rounded.
+ *
+ * @module src/zk/v3/opening
  */
 import type { CommitmentOpening, FieldElement, Hex32, IsoTime, NewCommitmentOpeningFn, OperationKey, Scaled } from '../../types/d1d8/index.js';
 import { domainDigest } from '../../receipt/v3/canonicalEncoding.js';
@@ -18,8 +20,17 @@ import { poseidonHash } from './poseidon.js';
 
 /** ASCII "otk.metering.v3" — must equal TAG_V3 in zk/circuits/metering_v3.circom. */
 export const TAG_V3 = 0x6f746b2e6d65746572696e672e7633n;
+/**
+ * Scale of circuit usage: 10^6 units per CU (micro-CU).
+ */
 export const CIRCUIT_USAGE_SCALE = 1_000_000n;
+/**
+ * Length of a circuit epoch in milliseconds (one hour).
+ */
 export const EPOCH_MS = 3_600_000n;
+/**
+ * Prefix every metering_v3 circuit ID must start with.
+ */
 export const CIRCUIT_V3_PREFIX = 'metering_v3@';
 
 const ALLOWED_CALLER_INPUTS = ['epoch', 'userRef'] as const;
@@ -30,7 +41,14 @@ function isPowerOfTen(x: bigint): boolean {
   return x === 1n;
 }
 
-/** Exact conversion of an accounting CU amount into circuit units (micro-CU). */
+/**
+ * Exact conversion of an accounting CU amount into circuit units (micro-CU).
+ *
+ * @param cu - CU amount as units / scale (scale a power of ten, at most 10^6).
+ * @returns Usage in micro-CU.
+ * @throws {@link FieldInputError} When the amount is not bigint, the scale is not a power of ten or finer than
+ *   10^6, the units are negative, or the result does not fit in 64 bits.
+ */
 export function usageToCircuitUnits(cu: Scaled): bigint {
   if (typeof cu?.units !== 'bigint' || typeof cu?.scale !== 'bigint') throw new FieldInputError('usage', 'Scaled with bigint units/scale required');
   if (!isPowerOfTen(cu.scale)) throw new FieldInputError('usage.scale', 'must be a positive power of ten');
@@ -39,7 +57,13 @@ export function usageToCircuitUnits(cu: Scaled): bigint {
   return assertU64('usage', cu.units * (CIRCUIT_USAGE_SCALE / cu.scale));
 }
 
-/** Hour epoch of an ISO-8601 UTC timestamp (…Z): floor(ms / 3 600 000). No host-timezone parsing. */
+/**
+ * Hour epoch of an ISO-8601 UTC timestamp (…Z): floor(ms / 3 600 000). No host-timezone parsing.
+ *
+ * @param t - ISO-8601 UTC timestamp ending in `Z`.
+ * @returns Hours since the Unix epoch.
+ * @throws {@link FieldInputError} When the timestamp is not in that format or is before 1970.
+ */
 export function epochOf(t: IsoTime): bigint {
   if (typeof t !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/.test(t)) throw new FieldInputError('epoch', `timestamp must be ISO-8601 UTC with Z: ${t}`);
   const ms = Date.parse(t);
@@ -47,6 +71,16 @@ export function epochOf(t: IsoTime): bigint {
   return BigInt(ms) / EPOCH_MS;
 }
 
+/**
+ * Creates a new commitment opening with fresh random blinding and salt (private data; never log it).
+ *
+ * @param key - Operation key (tenant and operation required).
+ * @param usage - Exact CU of the operation.
+ * @param circuitId - Circuit ID; must start with {@link CIRCUIT_V3_PREFIX}.
+ * @param privateInputs - Only `userRef` (field element) and `epoch` (u64) as decimal strings.
+ * @returns The opening, with `createdAt` set to now.
+ * @throws {@link FieldInputError} When any input is missing, not allowed or out of range.
+ */
 export const newCommitmentOpening: NewCommitmentOpeningFn = (key, usage, circuitId, privateInputs) => {
   if (!key || !key.tenantId || !key.operationId) throw new FieldInputError('key', 'tenantId and operationId required');
   if (typeof circuitId !== 'string' || !circuitId.startsWith(CIRCUIT_V3_PREFIX)) {
@@ -68,7 +102,13 @@ export const newCommitmentOpening: NewCommitmentOpeningFn = (key, usage, circuit
   };
 };
 
-/** Validated circuit-side view of an opening. Throws FieldInputError on any inconsistency. */
+/**
+ * Validated circuit-side view of an opening. Throws FieldInputError on any inconsistency.
+ *
+ * @param o - Stored opening.
+ * @returns The circuit values as bigints.
+ * @throws {@link FieldInputError} When the schema, scale or any value is invalid.
+ */
 export function openingValues(o: CommitmentOpening): { usage: bigint; blinding: bigint; userRef: bigint; epoch: bigint; salt: bigint } {
   if (o?.schema !== 'otk.opening.v1') throw new FieldInputError('opening.schema', 'otk.opening.v1 required');
   if (o.usage?.scale !== CIRCUIT_USAGE_SCALE) throw new FieldInputError('opening.usage.scale', 'must be micro-CU (10^6)');
@@ -81,17 +121,36 @@ export function openingValues(o: CommitmentOpening): { usage: bigint; blinding: 
   };
 }
 
-/** Public commitment of an opening (decimal field element). */
+/**
+ * Public commitment of an opening (decimal field element).
+ *
+ * @param o - Stored opening.
+ * @returns The Poseidon commitment as a decimal string.
+ * @throws {@link FieldInputError} The errors of {@link openingValues} (rejected promise).
+ */
 export async function commitmentOf(o: CommitmentOpening): Promise<FieldElement> {
   const v = openingValues(o);
   return (await poseidonHash([TAG_V3, v.usage, v.blinding, v.userRef, v.epoch])).toString();
 }
 
-/** Hiding operation reference: binds tenant + operation without revealing them. */
+/**
+ * Hiding operation reference: binds tenant + operation without revealing them.
+ *
+ * @param key - Operation key.
+ * @param salt - Random salt from the opening.
+ * @returns The `0x`-prefixed keccak256 reference.
+ */
 export function operationRefOf(key: OperationKey, salt: bigint): Hex32 {
   return domainDigest('OTK_OPREF_V1', { operationId: key.operationId, salt, tenantId: key.tenantId });
 }
 
+/**
+ * Operation reference of an opening (its key and salt).
+ *
+ * @param o - Stored opening.
+ * @returns The `0x`-prefixed keccak256 reference.
+ * @throws {@link FieldInputError} When the opening is invalid.
+ */
 export function operationRefOfOpening(o: CommitmentOpening): Hex32 {
   return operationRefOf(o.key, openingValues(o).salt);
 }

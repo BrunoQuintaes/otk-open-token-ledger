@@ -11,7 +11,13 @@
  * OTK_OPERATION_LEASE_MS (30000), OTK_OPERATION_RECOVERY_MS (5000), OTK_SPOOL_DIR (unset = no
  * spool), OTK_SPOOL_MAX_ENTRIES (10000), OTK_INSTANCE_ID.
  *
- * @module operations/runtime
+ * Also read here: OTK_PG_POOL_MAX (10), OTK_ADMISSION_CONCURRENCY (pool size minus 3),
+ * OTK_ADMISSION_QUEUE_TIMEOUT_MS (30000), OTK_PROXY_CLIENT_STALL_MS (30000), OTK_PROXY_FORWARD_HEADERS
+ * (comma-separated, lower-cased), PROVER_URL (the value `disabled` turns the legacy prover effect off),
+ * OTK_REQUIRE_MONEY_BUDGET and OTK_GLOBAL_MONEY_BUDGET_ID. In a deployed environment the PostgreSQL
+ * connection requires TLS with a verified certificate. Creating the runtime runs the schema migrations.
+ *
+ * @module src/operations/runtime
  */
 import pg from 'pg';
 import { randomUUID } from 'node:crypto';
@@ -34,7 +40,9 @@ import { proofHandlers, type ProofPorts } from './proofPipeline.js';
 import type { CryptoPorts, InflightOperation, OperationsContext, ProxyPolicy } from './context.js';
 import { isDeployedEnv } from '../infra/deployEnv.js'; // RV2-RUNS-02 (RUN-S): same rule as the auth guard
 
+/** Inputs of {@link OperationsRuntime.create}. Only `dbUrl` and `measurement` are required. */
 export interface OperationsRuntimeOptions {
+  /** PostgreSQL connection URL (may contain a password: never log it). */
   dbUrl: string;
   /**
    * Measurement ports (fechamento pós-S5, RV2-06 / AUD-3): REQUIRED. The runtime never falls back to a
@@ -42,13 +50,21 @@ export interface OperationsRuntimeOptions {
    * explicitly (tests / legacy profile). The D1–D8 entrypoint passes front B's real ports (bootstrapD1D8).
    */
   measurement: MeasurementPorts;
+  /** v3 receipt crypto; absent/null = legacy receipt rows. */
   crypto?: CryptoPorts | null;
+  /** v3 proof ports; absent/null = v3 proof jobs wait. */
   proof?: ProofPorts | null;
+  /** Spool directory; absent/null = no spool. Requires `instanceId`. */
   spoolDir?: string | null;
+  /** Maximum spooled records (default 10000). */
   spoolMaxEntries?: number;
+  /** Stable unique id of this instance; a random one is generated when absent (not allowed with a spool). */
   instanceId?: string;
+  /** Overrides of the proxy policy; missing fields take the defaults set in `create`. */
   policy?: Partial<ProxyPolicy>;
+  /** Period of the recovery pass, ms (default 5000). */
   recoveryIntervalMs?: number;
+  /** Whether legacy receipts also get a legacy proof effect (default: never). */
   legacyProverEnabled?: () => boolean;
   /** Quota of a tenant in accounting units (default: plan quota, meteringQuota.quotaUnitsFor). */
   quotaFor?: (tenantId: string) => bigint | null;
@@ -66,9 +82,15 @@ export interface OperationsRuntimeOptions {
   admissionQueueTimeoutMs?: number;
 }
 
+// Positive finite number from an environment value, else the default (0, negatives and typos fall back).
 const num = (v: string | undefined, d: number) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : d; };
 
-/** Non-secret configuration from the environment (config vars are allowed outside bootstrap). */
+/**
+ * Non-secret configuration from the environment (config vars are allowed outside bootstrap).
+ *
+ * @param dbUrl - PostgreSQL connection URL, chosen by the caller.
+ * @returns Every option except `measurement` (which the caller must add). Invalid numbers fall back to defaults.
+ */
 export function operationsOptionsFromEnv(dbUrl: string): Omit<OperationsRuntimeOptions, 'measurement'> {
   const e = process.env;
   return {
@@ -96,6 +118,8 @@ export function operationsOptionsFromEnv(dbUrl: string): Omit<OperationsRuntimeO
  * H1-S07 / R-10 (adversarial review): whether a USD ceiling is required to spend the operator key. Only an explicit
  * OTK_REQUIRE_MONEY_BUDGET=0 turns it off and '1' turns it on; any other value ('true', 'yes', '', a typo) keeps the
  * default, which is ON in a deployed environment (before, any value other than '1' turned it off).
+ *
+ * @returns Whether admissions require a money budget.
  */
 export function moneyBudgetRequiredFromEnv(): boolean {
   const v = process.env['OTK_REQUIRE_MONEY_BUDGET']?.trim();
@@ -104,6 +128,12 @@ export function moneyBudgetRequiredFromEnv(): boolean {
   return isDeployedEnv();
 }
 
+/**
+ * The durable operation runtime: PostgreSQL stores, outbox workers, spool and periodic recovery.
+ *
+ * Build it with {@link OperationsRuntime.create}, then {@link OperationsRuntime.start}; it is the
+ * `OperationsContext` passed to the durable proxy and its routes.
+ */
 export class OperationsRuntime implements OperationsContext {
   readonly inflight = new Map<string, InflightOperation>();
   /** F-P1-04: admissions wait here, in memory, instead of holding pool connections behind the quota row lock. */
@@ -142,6 +172,14 @@ export class OperationsRuntime implements OperationsContext {
     });
   }
 
+  /**
+   * Connects to PostgreSQL, applies the schema, and builds the stores, workers and policy (not started).
+   *
+   * @param o - Runtime options.
+   * @returns The runtime.
+   * @throws {Error} When measurement ports are missing, a spool directory is given without a stable instance
+   *   id, or the database/schema setup fails.
+   */
   static async create(o: OperationsRuntimeOptions): Promise<OperationsRuntime> {
     // RV2-06: checked before any connection, also for callers that bypass the type (JS, casts)
     if (!o || !o.measurement) throw new Error('OperationsRuntime: measurement ports are required (front B ports, or legacyMeasurementPorts() explicitly for the legacy/test profile)');
@@ -188,13 +226,30 @@ export class OperationsRuntime implements OperationsContext {
     return rt;
   }
 
+  /**
+   * Whether legacy receipts get a legacy proof effect.
+   *
+   * @returns The configured answer.
+   */
   legacyProverEnabled(): boolean { return this.proverEnabled(); }
 
+  /**
+   * Writes one structured JSON line to stderr with the event name, the instance id and a timestamp.
+   *
+   * @param event - Event name.
+   * @param fields - Extra fields; callers pass no secrets and no prompt/response text.
+   */
   log(event: string, fields: Record<string, unknown>): void {
     process.stderr.write(JSON.stringify({ event, instance: this.instanceId, ...fields, ts: Date.now() }) + '\n');
   }
 
-  /** One recovery pass: spool replay first (late measurements), then orphaned operations. */
+  /**
+   * One recovery pass: spool replay first (late measurements), then orphaned operations.
+   *
+   * Then pending prices and one tick of each worker. Single-flight; each step's failure is logged, not thrown.
+   *
+   * @returns The running pass (shared by concurrent callers).
+   */
   recoverOnce(): Promise<unknown> {
     if (this.recovering) return this.recovering;
     this.recovering = (async () => {
@@ -208,6 +263,7 @@ export class OperationsRuntime implements OperationsContext {
     return this.recovering;
   }
 
+  /** Starts both outbox workers and the periodic recovery (first pass immediately). Idempotent. */
   start(): void {
     this.worker.start();
     this.proofWorker.start();
@@ -217,6 +273,7 @@ export class OperationsRuntime implements OperationsContext {
     void this.recoverOnce();
   }
 
+  /** Stops timers and workers, waits for a running recovery pass, and closes the database pool. */
   async stop(): Promise<void> {
     if (this.recoveryTimer) clearInterval(this.recoveryTimer);
     this.recoveryTimer = null;

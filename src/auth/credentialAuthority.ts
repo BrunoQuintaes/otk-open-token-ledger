@@ -24,7 +24,11 @@
  *   - without stores (development, tests, single process) the process is the authority: nothing changes.
  * Requests already admitted before a revocation commits are not interrupted (in-flight window, see the R2 report).
  *
- * @module auth/credentialAuthority
+ * Callers: `src/api/routes.ts` and `src/proxy/ProxyGateway.ts` (`refreshCredential`), `src/infra/storeBootstrap.ts`
+ * (`setKeyAuthority`) and `src/observability/prometheusMetrics.ts` (`credentialAuthorityStats`). Environment variable
+ * read: OTK_KEY_LOOKUP_MISS_MAX (failed key lookups allowed per source per minute; default 20).
+ *
+ * @module src/auth/credentialAuthority
  */
 
 import { verifyToken, getJwtSecret } from './jwt.js';
@@ -43,6 +47,7 @@ import { AuthFailureLimiter } from '../security/authFailureLimiter.js';
 
 /** Authoritative source of dynamic keys (the PostgreSQL key metadata store in a deployed environment). */
 export interface KeyAuthoritySource {
+  /** Returns the key row for a SHA-256 hash, revoked or not; `null` when unknown. Rejects on a store error. */
   getByHash(tokenHash: string): Promise<ApiKeyMetadata | null>;
 }
 
@@ -65,7 +70,11 @@ const _missLimiter = new AuthFailureLimiter({
   windowMs: 60_000,
   maxEntries: 10_000,
 });
-/** @internal Test only. */
+/**
+ * Clears the per-source lookup-miss limiter.
+ *
+ * @internal Test only.
+ */
 export function resetKeyLookupLimiterForTest(): void { _missLimiter.clear(); }
 
 /**
@@ -73,14 +82,24 @@ export function resetKeyLookupLimiterForTest(): void { _missLimiter.clear(); }
  * same hash on this process must not re-register the key after it (a slow positive answer racing a newer negative one).
  */
 const _revocationGen = new Map<string, number>();
+// Drops the hash locally and bumps its revocation generation; the map is capped at 50 000 hashes (oldest evicted).
 function _dropHash(hash: string): void {
   revokeTokenByHash(hash);
   _revocationGen.set(hash, (_revocationGen.get(hash) ?? 0) + 1);
   if (_revocationGen.size > 50_000) _revocationGen.delete(_revocationGen.keys().next().value as string);
 }
 
-/** Configure the key authority (null = none: the local hash registry is authoritative, single process). */
+/**
+ * Configure the key authority (null = none: the local hash registry is authoritative, single process).
+ *
+ * @param source - The authoritative key store, or `null`.
+ */
 export function setKeyAuthority(source: KeyAuthoritySource | null): void { _source = source; }
+/**
+ * Returns the configured key authority.
+ *
+ * @returns The source, or `null` when none is configured.
+ */
 export function getKeyAuthority(): KeyAuthoritySource | null { return _source; }
 
 /** Counters for /metrics (no key, hash, tenant or user id is recorded). */
@@ -101,10 +120,20 @@ const _stats = {
   subjectCheckFailures: 0,
   failClosed: 0,
 };
+/**
+ * Snapshot of the counters (for the metrics endpoint).
+ *
+ * @returns A copy of the counters; counts since process start or the last test reset.
+ */
 export function credentialAuthorityStats(): Readonly<typeof _stats> { return { ..._stats }; }
-/** @internal Test only. */
+/**
+ * Resets every counter to zero.
+ *
+ * @internal Test only.
+ */
 export function resetCredentialAuthorityStatsForTest(): void { for (const k of Object.keys(_stats) as Array<keyof typeof _stats>) _stats[k] = 0; }
 
+/** Outcome of `refreshCredential`: proceed, or answer 503 with the given error and detail. */
 export type FreshnessResult = { ok: true } | { ok: false; status: 503; error: 'credential_status_unavailable'; detail: string };
 
 const FAIL = (detail: string): FreshnessResult => {
@@ -124,6 +153,10 @@ const SENSITIVE_READ_PREFIXES: readonly string[] = [
 /**
  * True when the request is privileged or spends resources, so the status of its subject must be read from the
  * authoritative store now (fail closed). `routePath` is the path without the /v1 prefix.
+ *
+ * @param method - HTTP method (any case).
+ * @param routePath - Request path without the version prefix.
+ * @returns `true` for any non-read method, or a read under a sensitive prefix.
  */
 export function isStrictRoute(method: string, routePath: string): boolean {
   if (!READ_METHODS.has(method.toUpperCase())) return true;
@@ -133,6 +166,13 @@ export function isStrictRoute(method: string, routePath: string): boolean {
 }
 
 /** The OTK credential of a request: `Authorization: Bearer`, else `x-api-key` / `x-goog-api-key` (proxy SDKs). */
+/**
+ * Extracts the OTK credential presented with a request (description in the line above).
+ *
+ * @param headers - Request headers (lower-case names).
+ * @param opts - `apiKeyHeaders: true` also accepts the provider-SDK key headers (proxy only).
+ * @returns The trimmed credential, or `''` when none is presented.
+ */
 export function presentedCredential(headers: Record<string, string | string[] | undefined> | undefined, opts: { apiKeyHeaders?: boolean } = {}): string {
   const auth = headers?.['authorization'];
   const bearer = typeof auth === 'string' && auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
@@ -150,6 +190,11 @@ export function presentedCredential(headers: Record<string, string | string[] | 
  * caller to answer 503 when the authoritative state cannot be read and the request may not run on stale state.
  *   - strict: privileged / spending request (see isStrictRoute) → subjects re-read now, fail closed;
  *   - dynamicKeys: false for entrypoints that never accept dynamic keys (the MITM proxy accepts registry tokens only).
+ *
+ * @param token - The credential presented with the request; empty means nothing to refresh.
+ * @param opts - `strict` (see above), `dynamicKeys` (default true) and `source` (the client source key used by the
+ *   lookup-miss limiter).
+ * @returns `ok: true` to continue with the usual authentication, or a 503 result (fail closed).
  */
 export async function refreshCredential(token: string, opts: { strict: boolean; dynamicKeys?: boolean; source?: string }): Promise<FreshnessResult> {
   if (!token || !isAuthEnabled()) return { ok: true };
@@ -236,6 +281,10 @@ export async function refreshCredential(token: string, opts: { strict: boolean; 
  *     snapshot for plain reads (same documented residual as A3); a token not known locally cannot be learned and stays
  *     unknown (401).
  * Lookups of values that are not known locally and find no row count as misses of the source (same limiter as R-13).
+ *
+ * @param token - Registry token presented with the request.
+ * @param opts - `strict` and the client `source` key, as for `refreshCredential`.
+ * @returns `ok: true` to continue, or a 503 result.
  */
 async function refreshRegistryToken(token: string, opts: { strict: boolean; source?: string }): Promise<FreshnessResult> {
   const src = getRegistryTokenAuthority();

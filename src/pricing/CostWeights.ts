@@ -8,6 +8,11 @@
  * The canonical source-of-truth for computation is CostUnits.ts.
  *
  * @deprecated Import from CostUnits.ts for new code.
+ *
+ * The float tables below must be kept equal to the integer tables of `CostUnits.ts` by hand; they are not
+ * used for computation. No I/O.
+ *
+ * @module src/pricing/CostWeights
  */
 
 import {
@@ -91,12 +96,13 @@ export const MODEL_WEIGHTS: Record<string, number> = {
 /**
  * Calculate enterprise cost units (facade — delegates to CostUnits.ts bigint engine).
  *
- * @param provider Provider identifier
- * @param model Model identifier
- * @param inputTokens Input token count
- * @param outputTokens Output token count
+ * @param provider - Provider identifier
+ * @param model - Model identifier
+ * @param inputTokens - Input token count
+ * @param outputTokens - Output token count
  * @returns Cost units (integer)
- * @throws Error if provider or model is unknown
+ * @throws {CUError} if provider or model is unknown, a count is negative or not an integer, or the result
+ *   exceeds `Number.MAX_SAFE_INTEGER`
  */
 export function calculateCostUnits(
   provider: string,
@@ -107,22 +113,40 @@ export function calculateCostUnits(
   return calculateCostUnitsV1Number({ provider, model, inputTokens, outputTokens });
 }
 
-/** Check if provider is supported */
+/**
+ * Check if provider is supported
+ *
+ * @param provider - Provider id (case-insensitive).
+ * @returns Whether it has a weight.
+ */
 export function isProviderSupported(provider: string): boolean {
   return _isProviderSupported(provider);
 }
 
-/** Check if model is supported */
+/**
+ * Check if model is supported
+ *
+ * @param model - Model id (case-insensitive).
+ * @returns Whether it has a weight.
+ */
 export function isModelSupported(model: string): boolean {
   return _isModelSupported(model);
 }
 
-/** Get all supported providers */
+/**
+ * Get all supported providers
+ *
+ * @returns Lower-case provider ids.
+ */
 export function getSupportedProviders(): string[] {
   return _getSupportedProviders();
 }
 
-/** Get all supported models */
+/**
+ * Get all supported models
+ *
+ * @returns Lower-case model ids.
+ */
 export function getSupportedModels(): string[] {
   return _getSupportedModels();
 }

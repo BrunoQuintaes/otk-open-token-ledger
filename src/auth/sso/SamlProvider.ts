@@ -12,7 +12,12 @@
  *   OTK_SAML_ENTITY_ID   — SP entity ID (default: https://otk.io/saml/sp)
  *   OTK_SSO_METADATA_URL — IdP metadata URL
  *
- * @module auth/sso/SamlProvider
+ * Status in this version: a STUB. `validateAssertion` checks no signature, certificate, issuer, audience or validity
+ * window; outside a deployed environment it only extracts the NameID, and in a deployed environment it throws. The
+ * SAML assertion route in `src/api/routes.ts` answers 501 and never calls it; only the metadata route uses this class.
+ * Also reads OTK_BASE_URL (callback URL base; default a localhost address).
+ *
+ * @module src/auth/sso/SamlProvider
  * @since Wave 4 (4D-PACK-4D01 / NEW-4.03)
  */
 
@@ -21,6 +26,7 @@
 // ──────────────────────────────────────────────────────────
 
 import { isDeployedEnv } from '../../infra/deployEnv.js'; // RV2-RUNS-02 (RUN-S): same rule as the auth guard
+/** Service-provider settings; each field falls back to its environment variable. */
 export interface SamlConfig {
   idpCert?: string;
   entityId?: string;
@@ -28,6 +34,7 @@ export interface SamlConfig {
   callbackUrl?: string;
 }
 
+/** Identity extracted from an assertion. */
 export interface SamlAssertion {
   nameId: string;
   email?: string;
@@ -40,6 +47,7 @@ export interface SamlAssertion {
 // SamlProvider
 // ──────────────────────────────────────────────────────────
 
+/** SAML service provider (metadata real; assertion validation a stub, see the file header). */
 export class SamlProvider {
   private _config: SamlConfig;
 
@@ -54,6 +62,8 @@ export class SamlProvider {
 
   /**
    * Generate SP metadata XML.
+   *
+   * @returns The SP metadata XML (entity id and HTTP-POST assertion consumer URL).
    */
   getMetadata(): string {
     const entityId = this._config.entityId ?? 'https://otk.io/saml/sp';
@@ -73,6 +83,10 @@ export class SamlProvider {
    * Validate a SAML assertion XML string.
    * When @node-saml/node-saml is available, uses it for real validation.
    * In test environments without the package, performs minimal validation.
+   *
+   * @param samlResponse - Assertion XML as received.
+   * @returns The NameID and, when found, an e-mail; other attributes are empty.
+   * @throws {Error} In a deployed environment (stub not allowed), or when no NameID is found.
    */
   async validateAssertion(samlResponse: string): Promise<SamlAssertion> {
     // Dynamic import to avoid hard dependency
@@ -111,6 +125,11 @@ export class SamlProvider {
     };
   }
 
+  /**
+   * Copy of the effective configuration.
+   *
+   * @returns A shallow copy of the configuration.
+   */
   get config(): SamlConfig {
     return { ...this._config };
   }

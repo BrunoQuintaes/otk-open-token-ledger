@@ -9,10 +9,14 @@
  *   GET /privacy — Privacy Policy
  *   GET /dpa     — Data Processing Agreement
  *
- * @module dashboard/legal
+ * The page bodies are fixed strings inserted without escaping (they contain no user input); the GA readiness
+ * check in `src/api/gaReadinessCheck.ts` also refers to these renderers. No request data is read.
+ *
+ * @module src/dashboard/legal
  * @since Wave 5 (W5-5C02 / P4.4 + NEW-5.02)
  */
 
+// Shared page shell; `title`, `heading` and `sections` must be trusted text because they are not escaped.
 function legalPage(title: string, heading: string, sections: Array<{ h: string; body: string }>): string {
   const content = sections.map(s =>
     `<section><h2>${s.h}</h2><p>${s.body}</p></section>`
@@ -67,6 +71,11 @@ function legalPage(title: string, heading: string, sections: Array<{ h: string; 
 </html>`;
 }
 
+/**
+ * Renders the Terms of Service page (placeholder text).
+ *
+ * @returns A complete HTML document.
+ */
 export function renderTermsPage(): string {
   return legalPage('Terms of Service', 'Terms of Service', [
     {
@@ -100,6 +109,11 @@ export function renderTermsPage(): string {
   ]);
 }
 
+/**
+ * Renders the Privacy Policy page (placeholder text).
+ *
+ * @returns A complete HTML document.
+ */
 export function renderPrivacyPage(): string {
   return legalPage('Privacy Policy', 'Privacy Policy', [
     {
@@ -129,6 +143,11 @@ export function renderPrivacyPage(): string {
   ]);
 }
 
+/**
+ * Renders the Data Processing Agreement page (placeholder text).
+ *
+ * @returns A complete HTML document.
+ */
 export function renderDpaPage(): string {
   return legalPage('Data Processing Agreement', 'Data Processing Agreement (DPA)', [
     {

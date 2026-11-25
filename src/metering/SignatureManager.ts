@@ -5,6 +5,13 @@
  * Implements canonical serialization + keccak256 hashing + ethers.js signing.
  *
  * Part of Dual Receipt Model (ADR-0003).
+ *
+ * Used by the SDK (`src/sdk/OTKSDK.ts`), the receipt-v3 crypto helpers and the benchmark/demo scripts.
+ * It also re-exports the V1 canonical-receipt encoder for callers that import from here. It reads no
+ * environment variables and holds no key: the caller passes the signer. It signs the legacy raw-receipt
+ * hash only; it does not build or sign canonical V2/V3 receipts.
+ *
+ * @module src/metering/SignatureManager
  */
 
 import { ethers } from 'ethers';
@@ -21,7 +28,10 @@ export { hashCanonicalReceiptV1, encodeCanonicalReceiptV1Bytes } from '../receip
  * - BigInt values as hex strings (0x-prefixed)
  * - Nested objects flattened or excluded (metadata is optional)
  *
- * @param raw Raw receipt to hash
+ * Pure: the input is not mutated. Changing the field list or order changes every hash and breaks
+ * verification of receipts signed before the change.
+ *
+ * @param raw - Raw receipt to hash
  * @returns Keccak256 hash (0x-prefixed hex string)
  */
 export function canonicalHash(raw: RawReceipt): string {
@@ -50,9 +60,12 @@ export function canonicalHash(raw: RawReceipt): string {
 /**
  * Sign a RawReceipt
  *
- * @param raw Raw receipt to sign
- * @param signer Ethers.js Wallet or Signer instance
+ * Signs the 32-byte canonical hash as an EIP-191 personal message (see the note in the body).
+ *
+ * @param raw - Raw receipt to sign
+ * @param signer - Ethers.js Wallet or Signer instance
  * @returns Receipt signature with v, r, s components
+ * @throws {Error} When the signer cannot sign or report its address (errors from ethers propagate).
  */
 export async function sign(
   raw: RawReceipt,
@@ -85,9 +98,12 @@ export async function sign(
 /**
  * Verify a RawReceipt signature
  *
- * @param raw Raw receipt (must match the signed data)
- * @param signature Signature to verify
- * @param expectedSigner Expected signer address (optional; if provided, must match)
+ * Never throws: any parsing or recovery error is logged to the console and returns `false`.
+ * Address comparison is case-insensitive.
+ *
+ * @param raw - Raw receipt (must match the signed data)
+ * @param signature - Signature to verify
+ * @param expectedSigner - Expected signer address (optional; if provided, must match)
  * @returns True if signature is valid and matches expectedSigner (if provided)
  */
 export function verify(
@@ -135,7 +151,9 @@ export function verify(
 /**
  * Create a deterministic test signer (ONLY for testing, NOT for production)
  *
- * @param seed Deterministic seed string
+ * The private key is keccak256 of the seed, so anyone who knows the seed knows the key.
+ *
+ * @param seed - Deterministic seed string
  * @returns Ethers.js Wallet instance
  */
 export function createTestSigner(seed: string): ethers.Wallet {

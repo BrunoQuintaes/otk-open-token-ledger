@@ -46,6 +46,10 @@ import {
 
 interface Entry { count: number; windowStart: number }
 
+/**
+ * Limits: `max` failures per source per `windowMs` milliseconds (0 disables), and at most `maxEntries`
+ * sources remembered at once.
+ */
 export interface AuthFailureLimiterOptions { max: number; windowMs: number; maxEntries: number }
 
 function envInt(raw: string | undefined, def: number): number {
@@ -54,7 +58,12 @@ function envInt(raw: string | undefined, def: number): number {
   return Number.isFinite(v) && v >= 0 ? Math.floor(v) : def;
 }
 
-/** Key of a source in the shared counter. */
+/**
+ * Key of a source in the shared counter.
+ *
+ * @param source - Source key from {@link sourceKey}.
+ * @returns `authfail:<source>`.
+ */
 export function sharedAuthFailKey(source: string): string {
   return `authfail:${source}`;
 }
@@ -62,6 +71,9 @@ export function sharedAuthFailKey(source: string): string {
 /**
  * Shared sliding-window configuration equivalent to "blocked after `max` failures": the shared limiter answers
  * "not allowed" from the (maxRequests + 1)-th call of the window on, so maxRequests = max - 1.
+ *
+ * @param opts - Local limits.
+ * @returns The window rounded up to whole seconds (at least 1) and `maxRequests = max - 1` (at least 0).
  */
 export function sharedAuthFailConfig(opts: Pick<AuthFailureLimiterOptions, 'max' | 'windowMs'>): RateLimitConfig {
   return { windowSeconds: Math.max(1, Math.ceil(opts.windowMs / 1000)), maxRequests: Math.max(0, opts.max - 1) };
@@ -69,6 +81,11 @@ export function sharedAuthFailConfig(opts: Pick<AuthFailureLimiterOptions, 'max'
 
 type SharedSource = IDistributedRateLimiter | null | undefined | (() => IDistributedRateLimiter | null | undefined);
 
+/**
+ * Per-source counter of authentication failures, with an optional shared counter across replicas.
+ *
+ * In-memory state per instance; see the file header for the guarantees and their limits.
+ */
 export class AuthFailureLimiter {
   private readonly _entries = new Map<string, Entry>();
   /** source → epoch ms until which the shared counter says the source is over the limit */
@@ -80,7 +97,13 @@ export class AuthFailureLimiter {
     return s ?? null;
   }
 
-  /** Seconds to wait when `source` is throttled now, else 0. */
+  /**
+   * Seconds to wait when `source` is throttled now, else 0.
+   *
+   * @param source - Source key from {@link sourceKey}.
+   * @param now - Current time in epoch milliseconds (injectable for tests).
+   * @returns Whole seconds to wait (at least 1 when throttled), or 0 when the source may try again.
+   */
   throttledFor(source: string, now: number = Date.now()): number {
     if (this._opts.max <= 0) return 0;
     const until = this._sharedBlocked.get(source);
@@ -99,6 +122,10 @@ export class AuthFailureLimiter {
    * Record one authentication failure of `source`. The local count is updated synchronously; the returned promise
    * settles when the shared counter (if any) has been updated. Callers on the request path do not await it; it never
    * rejects.
+   *
+   * @param source - Source key from {@link sourceKey}.
+   * @param now - Current time in epoch milliseconds for the local count.
+   * @returns A promise that always resolves.
    */
   recordFailure(source: string, now: number = Date.now()): Promise<void> {
     if (this._opts.max <= 0) return Promise.resolve();
@@ -141,7 +168,15 @@ export class AuthFailureLimiter {
     this._sharedBlocked.set(source, until);
   }
 
+  /**
+   * Number of sources with a local failure window.
+   *
+   * @returns Source count (shared blocks not included).
+   */
   size(): number { return this._entries.size; }
+  /**
+   * Forgets every local count and every shared block.
+   */
   clear(): void { this._entries.clear(); this._sharedBlocked.clear(); }
 }
 
@@ -149,6 +184,9 @@ export class AuthFailureLimiter {
  * STOPGATE-01 P1.3 (R-12): an X-Forwarded-For entry is used only when it is an IP address ("1.2.3.4", "1.2.3.4:80",
  * "2001:db8::1", "[2001:db8::1]:443"); anything else ("unknown", "evil", an empty item) falls back to the socket peer,
  * so a forged header cannot mint arbitrary source keys.
+ *
+ * @param raw - One item of the X-Forwarded-For list.
+ * @returns The bare IP address (port and brackets removed), or `null`.
  */
 function xffAddress(raw: string): string | null {
   let s = raw.trim();
@@ -192,7 +230,14 @@ function peerIsTrustedProxy(peer: string): boolean {
   return fam !== 0 && bl.check(p, fam === 6 ? 'ipv6' : 'ipv4');
 }
 
-/** Normalised source key of a request (see module doc). */
+/**
+ * Normalised source key of a request (see module doc).
+ *
+ * Reads `OTK_PROXY_TRUSTED_HOPS` and `OTK_PROXY_TRUSTED_ADDRS` on every call.
+ *
+ * @param req - Incoming request (socket peer and forwarding header).
+ * @returns `ip4:<address>`, `ip6:<first four groups>::/64`, or `unknown` when no address is available.
+ */
 export function sourceKey(req: IncomingMessage): string {
   let addr = req.socket?.remoteAddress ?? '';
   const hops = envInt(process.env['OTK_PROXY_TRUSTED_HOPS'], 0);
@@ -230,12 +275,20 @@ function _proxySharedCounter(): IDistributedRateLimiter | null {
   return d instanceof MemoryDistributedRateLimiter ? null : d;
 }
 
-/** Override the shared counter of the proxy limiter (undefined restores the automatic choice). */
+/**
+ * Override the shared counter of the proxy limiter (undefined restores the automatic choice).
+ *
+ * @param counter - Shared counter to use, `null` for none, `undefined` for the automatic choice.
+ */
 export function setProxyAuthFailureSharedCounter(counter: IDistributedRateLimiter | null | undefined): void {
   _sharedOverride = counter;
 }
 
-/** Process-wide limiter of the MITM proxy (configured from the environment on first use). */
+/**
+ * Process-wide limiter of the MITM proxy (configured from the environment on first use).
+ *
+ * @returns The shared limiter; the environment is read only when it is first created.
+ */
 export function getProxyAuthFailureLimiter(): AuthFailureLimiter {
   if (!_proxyLimiter) {
     _proxyLimiter = new AuthFailureLimiter({
@@ -247,7 +300,11 @@ export function getProxyAuthFailureLimiter(): AuthFailureLimiter {
   return _proxyLimiter;
 }
 
-/** @internal Test only: forget every source (and re-read the configuration on next use). */
+/**
+ * Drops the shared proxy limiter so the next call to `getProxyAuthFailureLimiter` creates a new one.
+ *
+ * @internal Test only: forget every source (and re-read the configuration on next use).
+ */
 export function resetProxyAuthFailureLimiterForTest(): void {
   _proxyLimiter = null;
 }

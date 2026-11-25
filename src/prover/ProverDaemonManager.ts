@@ -14,7 +14,11 @@
  *   PROVER_RESTART_DELAY_MS — ms to wait between restarts (default 2000)
  *   PROVER_MAX_RESTARTS — max automatic restarts (default 5)
  *
- * @module prover/ProverDaemonManager
+ * The child receives a filtered environment: only OTK_* variables, PATH, NODE_ENV, HOME and PROVER_PORT.
+ * Other PROVER_* settings of the parent (circuit paths, attempts) therefore do not reach a daemon started
+ * here. A `.ts` script is run with the `tsx` command, which must be on PATH.
+ *
+ * @module src/prover/ProverDaemonManager
  * @since Wave 4 (4B-PACK-4B02 / E5.2)
  */
 
@@ -30,6 +34,7 @@ const ROOT = path.resolve(__dirname, '../..');
 // Types
 // ──────────────────────────────────────────────────────────
 
+/** Supervisor view of the daemon process. */
 export interface ProverDaemonStatus {
   /** Child process PID, or null if not running */
   pid: number | null;
@@ -48,9 +53,13 @@ export interface ProverDaemonStatus {
  * Prometheus-compatible in-memory metrics for the prover subsystem.
  */
 export interface ProverMetrics {
+  /** 1 when a daemon process is running and restarts are not exhausted, else 0. */
   activeProvers: number;
+  /** Always 0 here (the queue is tracked elsewhere). */
   queueDepth: number;
+  /** Times the restart limit was reached in this process (all managers). */
   exhaustionEvents: number;
+  /** ISO time of the last exhaustion, or `null`. */
   lastExhaustionAt: string | null;
 }
 
@@ -62,6 +71,7 @@ export interface ProverMetrics {
 let _exhaustionEvents = 0;
 let _lastExhaustionAt: string | null = null;
 
+/** Spawns the prover daemon as a child process and restarts it after a non-zero exit, up to a limit. */
 export class ProverDaemonManager {
   private _proc: ChildProcess | null = null;
   private _restartCount = 0;
@@ -73,6 +83,11 @@ export class ProverDaemonManager {
   private readonly _restartDelayMs: number;
   private readonly _maxRestarts: number;
 
+  /**
+   * Reads the settings; nothing is started until {@link ProverDaemonManager.start}.
+   *
+   * @param opts - Overrides of OTK_PROVER_SCRIPT, PROVER_RESTART_DELAY_MS (ms) and PROVER_MAX_RESTARTS.
+   */
   constructor(opts?: {
     scriptPath?: string;
     restartDelayMs?: number;
@@ -116,6 +131,11 @@ export class ProverDaemonManager {
     this._lastProofAt = Date.now();
   }
 
+  /**
+   * Current supervisor status.
+   *
+   * @returns PID, restart count, last proof time and health flags.
+   */
   get status(): ProverDaemonStatus {
     return {
       pid: this._proc?.pid ?? null,
@@ -129,6 +149,8 @@ export class ProverDaemonManager {
   /**
    * OPS-01 — Prometheus-compatible metrics for the prover subsystem.
    * queueDepth is always 0 in the daemon manager (queue managed separately by ProductionQueue).
+   *
+   * @returns The prover metrics.
    */
   getProverMetrics(): ProverMetrics {
     return {
@@ -207,6 +229,11 @@ export class ProverDaemonManager {
 
 let _manager: ProverDaemonManager | null = null;
 
+/**
+ * Returns the process-wide manager, creating it (not started) on first use.
+ *
+ * @returns The manager.
+ */
 export function getProverDaemonManager(): ProverDaemonManager {
   if (!_manager) _manager = new ProverDaemonManager();
   return _manager;

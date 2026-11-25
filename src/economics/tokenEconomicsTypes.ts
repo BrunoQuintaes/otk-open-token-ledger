@@ -12,10 +12,11 @@
  *   CU is a purely internal, cross-provider index (see CUEngine.ts, ADR-CU-0001).
  *   Fiat valuation is always a secondary, oracle-sourced, non-deterministic layer.
  *
- * @module economics/tokenEconomicsTypes
+ * @module src/economics/tokenEconomicsTypes
  * @since G3
  */
 
+/** Currencies a valuation can be expressed in. */
 export type CurrencyCode = 'USD' | 'BRL' | 'EUR';
 
 /**

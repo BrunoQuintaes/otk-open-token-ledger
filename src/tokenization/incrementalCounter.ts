@@ -17,23 +17,40 @@
  * exceeds maxPendingChars without one (e.g. one enormous word) or the total exceeds
  * maxTextBytes, counting stops and the result is marked truncated — never silently summed.
  * CPU is bounded too: a regex piece longer than MAX_PIECE_CHARS truncates ('max_piece_chars').
+ *
+ * Used by `localCounter.ts` for streamed output. In-memory only; it never keeps text after counting it.
+ *
+ * @module src/tokenization/incrementalCounter
  */
 import type { Tiktoken } from 'js-tiktoken';
 import { countWith, hasOversizedPiece } from './tokenizerIdentity.js';
 
+/**
+ * Result and diagnostics of an {@link IncrementalCounter}.
+ */
 export interface IncrementalCountState {
+  /** Tokens counted; 0 when `truncated` is true (read `truncated` before using it). */
   count: number;
   truncated: boolean;
   truncationReason: 'max_text_bytes' | 'max_pending_chars' | 'max_piece_chars' | null;
+  /** UTF-8 bytes received (up to the truncation point). */
   bytesSeen: number;
+  /** Largest number of UTF-8 bytes buffered while waiting for a safe cut. */
   peakPendingBytes: number;
+  /** CPU time spent encoding, in microseconds (user + system). */
   cpuMicros: bigint;
 }
 
 const LETTER = /\p{L}/u;
 const DIGIT = /\p{N}/u;
 
-/** Index of the last safe cut point in s (0 = none). Exported for tests. */
+/**
+ * Index of the last safe cut point in s (0 = none). Exported for tests.
+ *
+ *
+ * @param s - Pending text.
+ * @returns UTF-16 index where the text can be cut without changing the token count, or 0.
+ */
 export function lastSafeCut(s: string): number {
   for (let i = s.length - 1; i > 0; i--) {
     const prev = s.charCodeAt(i - 1);
@@ -44,13 +61,25 @@ export function lastSafeCut(s: string): number {
   return 0;
 }
 
-/** True when the UTF-16 unit at i is a BMP letter (surrogate halves are never cut points). */
+/**
+ * True when the UTF-16 unit at i is a BMP letter (surrogate halves are never cut points).
+ *
+ *
+ * @param s - Text.
+ * @param i - UTF-16 index.
+ */
 function isLetterAt(s: string, i: number): boolean {
   const c = s.charCodeAt(i);
   if (c >= 0xd800 && c <= 0xdfff) return false;
   return LETTER.test(s[i]!);
 }
 
+/**
+ * Counts the tokens of text that arrives in pieces, giving the same result as counting the whole text.
+ *
+ * One instance per stream. Limits: `maxTextBytes` (UTF-8 bytes in total), `maxPendingChars` (default 65536)
+ * and `flushAtChars` (how many characters to wait between cut attempts, default 2048).
+ */
 export class IncrementalCounter {
   private pending = '';
   private pendingBytes = 0;
@@ -66,6 +95,11 @@ export class IncrementalCounter {
     this.nextAttemptAt = limits.flushAtChars ?? 2048;
   }
 
+  /**
+   * Adds the next piece of text; ignored after truncation.
+   *
+   * @param text - Next text delta.
+   */
   push(text: string): void {
     if (this.state.truncated || text.length === 0) return;
     const bytes = Buffer.byteLength(text, 'utf8');
@@ -95,6 +129,11 @@ export class IncrementalCounter {
     }
   }
 
+  /**
+   * Counts what is still buffered and returns the final state.
+   *
+   * @returns A copy of the state; `count` is 0 when truncated.
+   */
   finish(): IncrementalCountState {
     if (!this.state.truncated && this.pending.length > 0) this.countNow(this.pending);
     if (this.state.truncated) this.state.count = 0;

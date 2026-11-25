@@ -7,6 +7,10 @@
  * IMPORTANT: This adapter does NOT call the OpenAI API.
  * It parses the JSON response AFTER it has been received.
  * API key management is the caller's responsibility.
+ *
+ * Called by `ProviderRegistry` (through a small wrapper class) to meter an OpenAI response.
+ *
+ * @module src/providers/adapters/OpenAIAdapter
  */
 
 import { calculateCostUnitsV1Number, isModelSupported } from '../../pricing/CostUnits.js';
@@ -24,6 +28,9 @@ import {
  * to match canonical weight table entries.
  *
  * Pattern: model-YYYY-MM-DD → model
+ * @param rawModel - Model ID as returned by the API.
+ * @returns The lowercase ID without the date suffix when that name is in the weight table, else the
+ *   lowercase original.
  */
 function normalizeOpenAIModel(rawModel: string): string {
   const lower = rawModel.toLowerCase();
@@ -36,6 +43,8 @@ function normalizeOpenAIModel(rawModel: string): string {
 /**
  * OpenAI Chat Completion response shape (subset relevant for metering).
  * See: https://platform.openai.com/docs/api-reference/chat/object
+ *
+ * Only `model`, `id`, `created` (Unix seconds) and `usage` are read by this adapter.
  */
 export interface OpenAIChatCompletionResponse {
   id: string;
@@ -57,6 +66,7 @@ export interface OpenAIChatCompletionResponse {
  * @param latencyMs Request latency in milliseconds
  * @returns NormalizedUsageEvent
  * @throws AdapterParseError if required fields are missing or invalid
+ * @throws {@link CUError} From the cost engine, when the normalized model is not in the weight table.
  */
 export function parseOpenAIResponse(
   response: OpenAIChatCompletionResponse,

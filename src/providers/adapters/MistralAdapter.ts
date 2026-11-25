@@ -46,6 +46,7 @@ export interface MistralChatCompletionResponse {
  * @param latencyMs  Request latency in milliseconds
  * @returns NormalizedUsageEvent
  * @throws AdapterParseError if required fields are missing or invalid
+ * @throws {@link CUError} From the cost engine, when the lowercased model is not in the weight table.
  */
 export function parseMistralResponse(
   response: MistralChatCompletionResponse,
@@ -102,10 +103,22 @@ export function parseMistralResponse(
 /**
  * MistralAdapter — IProviderAdapter implementation for Mistral API responses.
  * Used by ProviderRegistry when MISTRAL_API_KEY is set.
+ *
+ * Note: `ProviderRegistry.createDefault()` registers this adapter unconditionally; it does not read
+ * `MISTRAL_API_KEY`.
  */
 export class MistralAdapter implements IProviderAdapter {
   readonly providerId = 'mistral';
 
+  /**
+   * Parses a raw Mistral response; the event time is `created` or, when absent, the current time.
+   *
+   * @param raw - Parsed JSON body of the response.
+   * @param latencyMs - Round-trip latency in milliseconds.
+   * @param _timestamp - Ignored.
+   * @returns The normalized usage event.
+   * @throws {@link AdapterParseError} See {@link parseMistralResponse}.
+   */
   parseResponse(raw: unknown, latencyMs: number, _timestamp: number): NormalizedUsageEvent {
     return parseMistralResponse(raw as MistralChatCompletionResponse, latencyMs);
   }

@@ -10,7 +10,10 @@
  * Output columns produced by `computeStats()`:
  *   count, mean, median, std, min, p50, p95, max, ci95_low, ci95_high
  *
- * @module Stats
+ * Used by the benchmark script `scripts/benchmark/u9_bench_v2.ts`. Environment variable read: BENCH_PRECISION (decimal
+ * places, 0..15; default 6). Empty samples give all-zero results instead of throwing.
+ *
+ * @module src/bench/Stats
  * @since U9.3.1
  */
 
@@ -44,6 +47,10 @@ const Z95 = 1.96;
 /**
  * Round to `decimals` decimal places deterministically.
  * Uses Math.round (ties to nearest, which is deterministic for doubles).
+ *
+ * @param x - Value to round.
+ * @param decimals - Number of decimal places.
+ * @returns The rounded value.
  */
 export function fixedPrec(x: number, decimals: number): number {
   const factor = Math.pow(10, decimals);
@@ -52,6 +59,9 @@ export function fixedPrec(x: number, decimals: number): number {
 
 /**
  * Arithmetic mean of a non-empty sample.
+ *
+ * @param samples - Observations.
+ * @returns The mean, or 0 for an empty sample.
  */
 export function mean(samples: readonly number[]): number {
   if (samples.length === 0) return 0;
@@ -60,6 +70,9 @@ export function mean(samples: readonly number[]): number {
 
 /**
  * Median (P50) of a sample (sorts internally; does not mutate input).
+ *
+ * @param samples - Observations (not mutated).
+ * @returns The median (average of the two middle values for an even count), or 0 for an empty sample.
  */
 export function median(samples: readonly number[]): number {
   if (samples.length === 0) return 0;
@@ -74,6 +87,9 @@ export function median(samples: readonly number[]): number {
 /**
  * Sample standard deviation (n−1 denominator).
  * Returns 0 if n < 2.
+ *
+ * @param samples - Observations.
+ * @returns The standard deviation.
  */
 export function std(samples: readonly number[]): number {
   const n = samples.length;
@@ -86,6 +102,10 @@ export function std(samples: readonly number[]): number {
 /**
  * Arbitrary percentile (0–100) using nearest-rank method (sorted ascending).
  * Returns the value at the floor-indexed position.
+ *
+ * @param samples - Observations (not mutated).
+ * @param p - Percentile, 0 to 100.
+ * @returns The sample value at index floor(p / 100 × n), clamped to the last one; 0 for an empty sample.
  */
 export function percentile(samples: readonly number[], p: number): number {
   if (samples.length === 0) return 0;
@@ -99,6 +119,9 @@ export function percentile(samples: readonly number[], p: number): number {
  * 95 % confidence interval (normal approximation).
  * low  = mean − 1.96 × (std / √n)
  * high = mean + 1.96 × (std / √n)
+ *
+ * @param samples - Observations.
+ * @returns Lower and upper bounds (both equal to the mean when n is 1; both 0 when empty).
  */
 export function ci95(samples: readonly number[]): { low: number; high: number } {
   const n = samples.length;
@@ -157,6 +180,9 @@ export const STATS_CSV_HEADER =
 /**
  * Serialize a Stats object to a CSV row (no trailing newline).
  * Column order matches STATS_CSV_HEADER exactly.
+ *
+ * @param s - Summary to serialize.
+ * @returns Comma-separated values in `STATS_CSV_HEADER` order.
  */
 export function statsToCsvRow(s: Stats): string {
   return [
@@ -176,6 +202,9 @@ export const BENCH_PRECISION: number = (() => {
 
 /**
  * Convenience: compute stats with env-driven precision.
+ *
+ * @param samples - Observations.
+ * @returns The summary rounded to BENCH_PRECISION decimals.
  */
 export function computeStatsBench(samples: readonly number[]): Stats {
   return computeStats(samples, BENCH_PRECISION);

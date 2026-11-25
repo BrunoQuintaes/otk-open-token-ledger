@@ -10,7 +10,12 @@
  *
  * Uses RedisClient from redisClient.ts for connection lifecycle.
  *
- * @module infra/redis/sharedState
+ * As implemented at the evaluated version: `getSharedState()` always builds an in-memory-only manager (no Redis);
+ * Redis mode exists only for a manager constructed with a connected `RedisClient`. Any Redis error falls back to the
+ * in-memory maps of this process, silently. `releaseLock` does not check the lock owner, and `listActiveWorkers`
+ * returns only workers known to this process (it does not scan Redis).
+ *
+ * @module src/infra/redis/sharedState
  * @since Wave 2 Pack 15 (E3.2)
  */
 
@@ -18,8 +23,10 @@ import type { RedisClient } from './redisClient.js';
 
 /** Lock acquisition result */
 export interface LockResult {
+  /** True when the caller now holds the lock. */
   acquired: boolean;
   key: string;
+  /** Lock lifetime in milliseconds. */
   ttlMs: number;
 }
 
@@ -27,12 +34,14 @@ export interface LockResult {
 export interface SessionData {
   tenantId: string;
   data: Record<string, unknown>;
+  /** Expiry time, epoch milliseconds. */
   expiresAt: number;
 }
 
 /** Worker slot info */
 export interface WorkerSlot {
   workerId: string;
+  /** When the slot was claimed, epoch milliseconds. */
   claimedAt: number;
 }
 
@@ -47,6 +56,8 @@ export class SharedStateManager {
   private readonly _workers = new Map<string, number>(); // workerId -> claimedAt
 
   /**
+   * Creates a manager; Redis is used only while the client reports ready.
+   *
    * @param redis RedisClient instance (or null for in-memory-only mode)
    * @param prefix Key namespace prefix (default: 'otk:shared:')
    */
@@ -55,12 +66,21 @@ export class SharedStateManager {
     this._prefix = prefix ?? 'otk:shared:';
   }
 
-  /** Whether we are operating in Redis mode (vs in-memory fallback). */
+  /**
+   * Whether we are operating in Redis mode (vs in-memory fallback).
+   *
+   * @returns True when a Redis client is set and ready.
+   */
   get isRedisMode(): boolean {
     return this._redis !== null && this._redis.isReady;
   }
 
-  /** Full prefixed key. */
+  /**
+   * Full prefixed key.
+   *
+   * @param key - Unprefixed key.
+   * @returns The key with the namespace prefix.
+   */
   private _key(key: string): string {
     return `${this._prefix}${key}`;
   }
@@ -92,6 +112,9 @@ export class SharedStateManager {
   /**
    * Get a value by key.
    * Returns null if not found or expired.
+   *
+   * @param key - Key name (will be prefixed).
+   * @returns The value, or null.
    */
   async get(key: string): Promise<string | null> {
     if (this.isRedisMode) {
@@ -112,6 +135,9 @@ export class SharedStateManager {
   /**
    * Delete a key.
    * Returns true if the key existed.
+   *
+   * @param key - Key name (will be prefixed).
+   * @returns Whether a key was deleted.
    */
   async del(key: string): Promise<boolean> {
     if (this.isRedisMode) {
@@ -158,7 +184,10 @@ export class SharedStateManager {
 
   /**
    * Release a distributed lock.
+   * Deletes the lock whoever holds it (no owner check).
+   *
    * @param key Lock key name
+   * @returns True when a lock was deleted.
    */
   async releaseLock(key: string): Promise<boolean> {
     const lockKey = `lock:${key}`;
@@ -195,6 +224,9 @@ export class SharedStateManager {
   /**
    * Get session data for a tenant.
    * Returns null if no session or expired.
+   *
+   * @param tenantId - Tenant identifier.
+   * @returns The session, or null (also when the stored text is not JSON).
    */
   async getSession(tenantId: string): Promise<SessionData | null> {
     const sessionKey = `session:${tenantId}`;
@@ -213,6 +245,7 @@ export class SharedStateManager {
    * Claim a worker slot (register a worker as active).
    * @param workerId Unique worker identifier
    * @param ttlMs    Heartbeat TTL (default: 60s — worker must re-claim periodically)
+   * @returns Always true (a claim never fails; existing claims are overwritten).
    */
   async claimWorkerSlot(workerId: string, ttlMs = 60_000): Promise<boolean> {
     const workerKey = `worker:${workerId}`;
@@ -238,6 +271,9 @@ export class SharedStateManager {
 
   /**
    * Release a worker slot.
+   *
+   * @param workerId - Worker identifier.
+   * @returns True when the slot existed.
    */
   async releaseWorkerSlot(workerId: string): Promise<boolean> {
     const workerKey = `worker:${workerId}`;
@@ -257,6 +293,8 @@ export class SharedStateManager {
    * List active workers.
    * In Redis mode: scans worker:* keys.
    * In fallback mode: returns from in-memory map.
+   *
+   * @returns The workers registered in this process's memory (in both modes, as implemented).
    */
   async listActiveWorkers(): Promise<WorkerSlot[]> {
     // In-memory mode (always available as fallback)
@@ -282,6 +320,8 @@ let _instance: SharedStateManager | null = null;
 /**
  * Get or create the singleton SharedStateManager.
  * Uses the Redis singleton if available; otherwise in-memory only.
+ *
+ * @returns The shared manager (in-memory only at this version).
  */
 export function getSharedState(): SharedStateManager {
   if (!_instance) {

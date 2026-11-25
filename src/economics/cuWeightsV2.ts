@@ -12,6 +12,12 @@
  *
  * Wire format (JSON): weights are decimal strings ("1100"), never JS numbers.
  * Signed message: 'OTK-CU-WEIGHTS-V2:' + canonicalJson(table without `signature`), EIP-191.
+ *
+ * Used by `cuWeightsRuntimeV2.ts` (file-based loading), `src/providers/d1d8Measurement.ts` and the operation
+ * ports. `loadCuWeights` takes the current time and the trusted signers as arguments; this module reads no
+ * environment variable and no file.
+ *
+ * @module src/economics/cuWeightsV2
  */
 import { verifyMessage } from 'ethers';
 import type { CuWeightsLoadStatus, CuWeightsTableV2, IsoTime, VersionRef } from '../types/d1d8/index.js';
@@ -19,28 +25,40 @@ import type { CuConfig } from '../types/d1d8/index.js';
 import { canonicalJson, sha256Hex } from '../providers/usage/canonicalJson.js';
 import { MODEL_WEIGHTS_INT, PROVIDER_WEIGHTS_INT } from '../pricing/CostUnits.js';
 
+/** Prefix of the EIP-191 message signed for a v2 table. */
 export const CU_WEIGHTS_V2_MESSAGE_PREFIX = 'OTK-CU-WEIGHTS-V2:';
 
 /** Exact multiplicative formula: units = (tIn + tOut) × Wm_milli × Wp_milli, scale 10^6, no rounding. */
 export const CU_FORMULA_EXACT = 'CU_MULT_v2_micro' as const;
 /** Legacy formula: integer CU, round half up (src/pricing/CostUnits.ts). Kept to read history. */
 export const CU_FORMULA_LEGACY = 'CU_MODEL_v1' as const;
+/** Formula names accepted in a `CuConfig`. */
 export const SUPPORTED_CU_FORMULAS: readonly string[] = [CU_FORMULA_EXACT, CU_FORMULA_LEGACY];
 
 /** Weight bounds in milli units: 0 would make usage free, above 10^6 is 1000× the baseline. */
+/** Smallest weight accepted, in milli units. */
 export const MIN_WEIGHT_MILLI = 1n;
+/** Largest weight accepted, in milli units. */
 export const MAX_WEIGHT_MILLI = 1_000_000n;
 
 const KEY_RE = /^[a-z0-9][a-z0-9._:/-]*$/;
 
+/** Outcome of `loadCuWeights`. */
 export interface CuWeightsLoadResult {
+  /** `valid`, or why the table was refused (`missing`, `malformed`, `bad_signature`, …). */
   status: CuWeightsLoadStatus;
+  /** The usable configuration; null unless `status` is `valid`. */
   config: CuConfig | null;
   /** Human-readable reason for any non-valid status (no secrets, no table content). */
   reason: string | null;
 }
 
-/** Body that is signed: every field except `signature`, weights as decimal strings. */
+/**
+ * Body that is signed: every field except `signature`, weights as decimal strings.
+ *
+ * @param table - Table without its signature; `signedBy` is lower-cased in the body.
+ * @returns Canonical JSON text.
+ */
 export function cuWeightsV2SignedBody(table: Omit<CuWeightsTableV2, 'signature'>): string {
   return canonicalJson({
     schema: table.schema,
@@ -54,11 +72,22 @@ export function cuWeightsV2SignedBody(table: Omit<CuWeightsTableV2, 'signature'>
   });
 }
 
+/**
+ * Builds the full message to sign or verify.
+ *
+ * @param table - Table without its signature.
+ * @returns `CU_WEIGHTS_V2_MESSAGE_PREFIX` followed by the signed body.
+ */
 export function cuWeightsV2Message(table: Omit<CuWeightsTableV2, 'signature'>): string {
   return `${CU_WEIGHTS_V2_MESSAGE_PREFIX}${cuWeightsV2SignedBody(table)}`;
 }
 
-/** Digest of the exact validated content including the signature (frozen in operations). */
+/**
+ * Digest of the exact validated content including the signature (frozen in operations).
+ *
+ * @param table - Complete table.
+ * @returns The table version and the SHA-256 hex digest of body plus signature.
+ */
 export function cuWeightsV2Ref(table: CuWeightsTableV2): VersionRef {
   return {
     version: table.version,
@@ -66,7 +95,12 @@ export function cuWeightsV2Ref(table: CuWeightsTableV2): VersionRef {
   };
 }
 
-/** JSON wire form (bigint → string). */
+/**
+ * JSON wire form (bigint → string).
+ *
+ * @param table - Complete table.
+ * @returns A plain object ready for `JSON.stringify`.
+ */
 export function cuWeightsV2ToJson(table: CuWeightsTableV2): Record<string, unknown> {
   const strMap = (m: Record<string, bigint>) => Object.fromEntries(Object.entries(m).map(([k, v]) => [k, v.toString()]));
   return {
@@ -102,7 +136,15 @@ function parseWeightMap(raw: unknown, field: string): Parse<Record<string, bigin
 
 const ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
 
-/** Structural parse of a v2 table (no signature or time checks). */
+/**
+ * Structural parse of a v2 table (no signature or time checks).
+ *
+ * Refuses v1 fields, non-UTC or reversed validity dates, keys that are not lower-case ids, weights outside
+ * [MIN_WEIGHT_MILLI, MAX_WEIGHT_MILLI] and aliases that collide with or point outside the model keys.
+ *
+ * @param raw - Parsed JSON value.
+ * @returns `{ ok: true, value }` or `{ ok: false, reason }`.
+ */
 export function parseCuWeightsTableV2(raw: unknown): Parse<CuWeightsTableV2> {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ok: false, reason: 'table must be an object' };
   const t = raw as Record<string, unknown>;
@@ -148,6 +190,11 @@ export function parseCuWeightsTableV2(raw: unknown): Parse<CuWeightsTableV2> {
 /**
  * LoadCuWeightsFn. Order of checks: missing → malformed → signature → signer authorization →
  * validity window. An empty trustedSigners list authorizes nobody (no development fallback).
+ *
+ * @param raw - Parsed JSON table, or null/undefined when none was found.
+ * @param opts - `now` (ISO time used for the window), `trustedSigners` (addresses, any case) and `formula`
+ *   (default `CU_MULT_v2_micro`).
+ * @returns The status, the configuration when valid, and a reason otherwise. Never throws.
  */
 export function loadCuWeights(raw: unknown, opts: { now: IsoTime; trustedSigners: readonly string[]; formula?: string }): CuWeightsLoadResult {
   if (raw === undefined || raw === null) return { status: 'missing', config: null, reason: 'no table provided' };
@@ -180,6 +227,9 @@ export function loadCuWeights(raw: unknown, opts: { now: IsoTime; trustedSigners
  * Unsigned v2 body migrated from the static v1 tables in src/pricing/CostUnits.ts (same values,
  * same multiplicative meaning). The operator signs it; nothing here holds a production key.
  * Dated Anthropic snapshots previously mapped by weightModelKey() become explicit aliases.
+ *
+ * @param args - Version, validity window, signer address and optional aliases (default `DEFAULT_V2_ALIASES`).
+ * @returns The table body, ready to be signed.
  */
 export function staticTablesAsV2Body(args: { version: string; validFrom: IsoTime; validUntil: IsoTime; signedBy: string;
   aliases?: Record<string, string> }): Omit<CuWeightsTableV2, 'signature'> {
@@ -213,6 +263,9 @@ export const DEFAULT_V2_ALIASES: Readonly<Record<string, string>> = Object.freez
 /**
  * Development profile (D4 §1): the static tables, flagged developmentProfile = true and with a
  * version that says so. Never returned by loadCuWeights; callers must opt in explicitly.
+ *
+ * @param formula - Formula name (default `CU_MULT_v2_micro`).
+ * @returns The historical development configuration (unsigned, `developmentProfile: true`).
  */
 export function developmentCuConfig(formula: string = CU_FORMULA_EXACT): CuConfig {
   return developmentProfileConfig(DEV_PROFILE_HISTORICAL, formula);
@@ -224,8 +277,15 @@ export function developmentCuConfig(formula: string = CU_FORMULA_EXACT): CuConfi
  * profile is the historical table plus explicit additions, with a version that says what was added. None of
  * them is calibrated: they are development weights, flagged developmentProfile = true in every result.
  */
-export interface DevelopmentProfileSpec { version: string; extraModelWeightsMilli: Readonly<Record<string, bigint>>; note: string }
+export interface DevelopmentProfileSpec {
+  /** Version string recorded in the configuration reference. */
+  version: string;
+  /** Model weights (milli) added to the historical table; they override same-named keys. */
+  extraModelWeightsMilli: Readonly<Record<string, bigint>>;
+  /** Human-readable description of the profile. */
+  note: string }
 const DEV_PROFILE_HISTORICAL: DevelopmentProfileSpec = { version: 'dev-static-from-CostUnits.ts', extraModelWeightsMilli: {}, note: 'static tables of src/pricing/CostUnits.ts' };
+/** Development profiles by name; `development` is the historical one. */
 export const DEVELOPMENT_PROFILES: Readonly<Record<string, DevelopmentProfileSpec>> = Object.freeze({
   development: DEV_PROFILE_HISTORICAL,
   // gemini-2.5-flash-lite inherits the weight of the same family already in the table (gemini-2.0-flash = 600):
@@ -244,6 +304,13 @@ export const DEVELOPMENT_PROFILES: Readonly<Record<string, DevelopmentProfileSpe
   },
 });
 
+/**
+ * Builds an unsigned development configuration from a profile.
+ *
+ * @param spec - Profile to build.
+ * @param formula - Formula name (default `CU_MULT_v2_micro`).
+ * @returns A configuration flagged `developmentProfile: true`, valid from 2000 to 2100, signer the zero address.
+ */
 export function developmentProfileConfig(spec: DevelopmentProfileSpec, formula: string = CU_FORMULA_EXACT): CuConfig {
   const base = staticTablesAsV2Body({
     version: spec.version,

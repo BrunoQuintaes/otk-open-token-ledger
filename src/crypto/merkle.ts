@@ -11,6 +11,12 @@
  *   BatchReceiptRegistry.sol uses the same hashNode scheme.
  *
  * ADR: docs/architecture/adr/ADR-0100-batch-settlement-merkle.md
+ *
+ * Used by `src/batch/BatchAggregator.ts`. Leaves and inner nodes are hashed without a domain prefix, so a 64-byte
+ * leaf is indistinguishable from an inner node; `src/crypto/merkleV3.ts` is the domain-separated scheme used by the
+ * V3 registry. Pure functions, no I/O, no environment variables.
+ *
+ * @module src/crypto/merkle
  */
 
 import { ethers } from 'ethers';
@@ -19,8 +25,10 @@ import { ethers } from 'ethers';
 // Types
 // ---------------------------------------------------------------------------
 
+/** 0x-prefixed 32-byte hex hash (66 characters). */
 export type MerkleHash = `0x${string}`;
 
+/** Inclusion proof of one leaf: its index and the sibling hashes from the leaf level up. */
 export interface MerkleProof {
   /** Leaf index in the original array (0-based). */
   index: number;
@@ -56,8 +64,11 @@ export class MerkleTree {
   private readonly levels: MerkleHash[][];
 
   /**
+   * Hashes the leaves and builds every level eagerly (memory proportional to 2 × leaves).
+   *
    * @param rawLeaves - Array of raw byte arrays (e.g., SPEC-RECEIPT encoded bytes).
    *                   Must be non-empty.
+   * @throws {Error} When `rawLeaves` is empty.
    */
   constructor(rawLeaves: Uint8Array[]) {
     if (rawLeaves.length === 0) throw new Error('MerkleTree: rawLeaves must be non-empty');
@@ -70,12 +81,20 @@ export class MerkleTree {
   // Public API
   // ---------------------------------------------------------------------------
 
-  /** Merkle root of the tree. */
+  /**
+   * Merkle root of the tree.
+   *
+   * @returns The root hash (the leaf hash itself for a single leaf).
+   */
   get root(): MerkleHash {
     return this.levels[this.levels.length - 1][0];
   }
 
-  /** Number of leaves. */
+  /**
+   * Number of leaves.
+   *
+   * @returns The leaf count (before padding).
+   */
   get count(): number {
     return this.leaves.length;
   }
@@ -83,6 +102,10 @@ export class MerkleTree {
   /**
    * Compute Merkle inclusion proof for leaf at `index`.
    * Proof can be verified with `MerkleTree.verify()`.
+   *
+   * @param index - Zero-based leaf index.
+   * @returns The proof; a missing right sibling is ZERO_HASH.
+   * @throws {RangeError} When `index` is outside 0..count-1.
    */
   getProof(index: number): MerkleProof {
     if (index < 0 || index >= this.leaves.length) {
@@ -109,6 +132,7 @@ export class MerkleTree {
    * @param leafData - The raw bytes of the leaf (will be hashed internally).
    * @param proof    - Proof from getProof().
    * @param root     - Expected Merkle root.
+   * @returns `true` when the recomputed root equals `root` (case-insensitive hex).
    */
   static verify(leafData: Uint8Array, proof: MerkleProof, root: MerkleHash): boolean {
     let hash: MerkleHash = ethers.keccak256(leafData) as MerkleHash;
@@ -132,6 +156,12 @@ export class MerkleTree {
   // Private helpers
   // ---------------------------------------------------------------------------
 
+  /**
+   * Hashes level by level up to the root, padding odd levels with ZERO_HASH.
+   *
+   * @param leaves - Leaf hashes.
+   * @returns All levels, leaves first and the root level last.
+   */
   private _buildLevels(leaves: MerkleHash[]): MerkleHash[][] {
     const levels: MerkleHash[][] = [leaves];
     let current = leaves;
@@ -155,12 +185,23 @@ export class MerkleTree {
 // Internal hash functions (exported for BatchReceiptRegistry Solidity compat)
 // ---------------------------------------------------------------------------
 
-/** Hash a single leaf: keccak256(data). */
+/**
+ * Hash a single leaf: keccak256(data).
+ *
+ * @param data - Raw leaf bytes.
+ * @returns The leaf hash.
+ */
 export function hashLeaf(data: Uint8Array): MerkleHash {
   return ethers.keccak256(data) as MerkleHash;
 }
 
-/** Hash two child nodes: keccak256(concat(left, right)). */
+/**
+ * Hash two child nodes: keccak256(concat(left, right)).
+ *
+ * @param left - Left child hash.
+ * @param right - Right child hash.
+ * @returns The parent hash (positional: order matters).
+ */
 function _hashNode(left: MerkleHash, right: MerkleHash): MerkleHash {
   const packed = ethers.concat([ethers.getBytes(left), ethers.getBytes(right)]);
   return ethers.keccak256(packed) as MerkleHash;

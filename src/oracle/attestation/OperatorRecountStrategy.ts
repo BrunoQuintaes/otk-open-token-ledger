@@ -12,7 +12,7 @@
  * not prove the provider measured correctly (oracle problem §5.2). For stronger guarantees see
  * FutureProofStrategy (TEE/TLSNotary).
  *
- * @module oracle/attestation/OperatorRecountStrategy
+ * @module src/oracle/attestation/OperatorRecountStrategy
  * @since U12.9.1 (as ProviderSignedStrategy); renamed in run 20260930-1625 (D1-G07)
  */
 
@@ -26,6 +26,7 @@ import type {
   AttestationResult,
 } from './IAttestationStrategy.js';
 
+/** Default attestation strategy: delegates to the operator-side {@link OracleAttestationEngine}. */
 export class OperatorRecountStrategy implements IAttestationStrategy {
   readonly strategyId = 'operator_recount' as const;
   readonly description =
@@ -34,10 +35,21 @@ export class OperatorRecountStrategy implements IAttestationStrategy {
 
   private readonly engine: OracleAttestationEngine;
 
+  /**
+   * Creates the strategy over an attestation engine.
+   *
+   * @param engine - Engine to delegate to; defaults to the shared engine.
+   */
   constructor(engine: OracleAttestationEngine = defaultOracleEngine) {
     this.engine = engine;
   }
 
+  /**
+   * Produces a level-C attestation (hashes, local recount and discrepancy check). Pure; no I/O.
+   *
+   * @param input - Provider counts and raw texts.
+   * @returns The attestation with the local count and the discrepancy.
+   */
   attest(input: AttestationInput): AttestationResult {
     return this.engine.attest(input);
   }

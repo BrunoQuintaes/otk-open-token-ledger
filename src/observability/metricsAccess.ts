@@ -12,7 +12,11 @@
  *     Without OTK_METRICS_TOKEN configured only the platform operator can read them (fail closed). Comparisons are
  *     constant time. The metrics token is not a tenant credential: it opens the metrics routes and nothing else.
  *
- * @module observability/metricsAccess
+ * Called by the metrics routes in `src/api/routes.ts` and by the prover daemon's metrics endpoint
+ * (`src/prover/ProverDaemon.ts`). Secrets are read through `src/infra/secretsBootstrap.ts`, never directly
+ * from the environment here. It does not log, count or rate-limit refused attempts.
+ *
+ * @module src/observability/metricsAccess
  */
 
 import crypto from 'node:crypto';
@@ -28,7 +32,15 @@ function sameSecret(presented: string, expected: string): boolean {
   return crypto.timingSafeEqual(a, b);
 }
 
-/** True when the request may read the metrics routes. */
+/**
+ * True when the request may read the metrics routes.
+ *
+ * Header names must be lower case (as Node delivers them); array-valued headers are refused.
+ *
+ * @param headers - Incoming request headers, or `undefined` (treated as no credentials).
+ * @returns `true` in local/test environments, or when a configured operator key or metrics token matches;
+ *   `false` otherwise, including when neither secret is configured in a deployed environment.
+ */
 export function metricsAccessAllowed(headers: Headers): boolean {
   if (!isDeployedEnv()) return true;
   const adminKey = getAdminKey();

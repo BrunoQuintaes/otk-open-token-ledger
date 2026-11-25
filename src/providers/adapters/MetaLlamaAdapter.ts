@@ -46,6 +46,7 @@ export interface MetaLlamaChatCompletionResponse {
  * @param latencyMs  Request latency in milliseconds
  * @returns NormalizedUsageEvent
  * @throws AdapterParseError if required fields are missing or invalid
+ * @throws {@link CUError} From the cost engine, when the lowercased model is not in the weight table.
  */
 export function parseMetaLlamaResponse(
   response: MetaLlamaChatCompletionResponse,
@@ -102,10 +103,22 @@ export function parseMetaLlamaResponse(
 /**
  * MetaLlamaAdapter — IProviderAdapter implementation for Meta Llama API responses.
  * Used by ProviderRegistry when META_API_KEY is set.
+ *
+ * Note: `ProviderRegistry.createDefault()` registers this adapter unconditionally; it does not read
+ * `META_API_KEY`.
  */
 export class MetaLlamaAdapter implements IProviderAdapter {
   readonly providerId = 'meta';
 
+  /**
+   * Parses a raw Meta Llama response; the event time is `created` or, when absent, the current time.
+   *
+   * @param raw - Parsed JSON body of the response.
+   * @param latencyMs - Round-trip latency in milliseconds.
+   * @param _timestamp - Ignored.
+   * @returns The normalized usage event.
+   * @throws {@link AdapterParseError} See {@link parseMetaLlamaResponse}.
+   */
   parseResponse(raw: unknown, latencyMs: number, _timestamp: number): NormalizedUsageEvent {
     return parseMetaLlamaResponse(raw as MetaLlamaChatCompletionResponse, latencyMs);
   }

@@ -7,6 +7,10 @@
  * IMPORTANT: This adapter does NOT call the Anthropic API.
  * It parses the JSON response AFTER it has been received.
  * API key management is the caller's responsibility.
+ *
+ * Called by `ProviderRegistry` (through a small wrapper class) to meter an Anthropic response.
+ *
+ * @module src/providers/adapters/AnthropicAdapter
  */
 
 import { calculateCostUnitsV1Number, isModelSupported } from '../../pricing/CostUnits.js';
@@ -24,6 +28,9 @@ import {
  * to match canonical weight table entries.
  *
  * Pattern: model-YYYYMMDD → model
+ * @param rawModel - Model ID as returned by the API.
+ * @returns The lowercase ID without the date suffix when that name is in the weight table, else the
+ *   lowercase original.
  */
 function normalizeAnthropicModel(rawModel: string): string {
   const lower = rawModel.toLowerCase();
@@ -36,6 +43,8 @@ function normalizeAnthropicModel(rawModel: string): string {
 /**
  * Anthropic Messages API response shape (subset relevant for metering).
  * See: https://docs.anthropic.com/en/docs/api-reference/messages
+ *
+ * Only `model`, `id` and `usage` are read by this adapter.
  */
 export interface AnthropicMessageResponse {
   id: string;
@@ -57,6 +66,7 @@ export interface AnthropicMessageResponse {
  * @param timestamp Unix timestamp in seconds (Anthropic responses don't include created timestamp)
  * @returns NormalizedUsageEvent
  * @throws AdapterParseError if required fields are missing or invalid
+ * @throws {@link CUError} From the cost engine, when the normalized model or provider is not in the weight table.
  */
 export function parseAnthropicResponse(
   response: AnthropicMessageResponse,

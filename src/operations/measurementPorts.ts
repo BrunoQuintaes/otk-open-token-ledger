@@ -14,7 +14,10 @@
  *   - reservation: input upper bound = request body bytes + 64 (BPE tokens cover ≥ 1 byte);
  *   - no price table (money null) and no local counter (no conference report).
  *
- * @module operations/measurementPorts
+ * The durable profile started by `src/api/server.ts` uses the real ports from `d1d8Ports.ts`; the legacy
+ * adapters here remain for tests and embedded contexts. Pure computation: no I/O, no environment variables.
+ *
+ * @module src/operations/measurementPorts
  */
 import type {
   BuildConferenceReportFn, ConferenceThreshold, CreateLocalCounterFn, CreateStreamUsageAccumulatorFn,
@@ -27,14 +30,25 @@ import { StreamTapper } from '../proxy/StreamTapper.js';
 import { MODEL_WEIGHTS_INT, PROVIDER_WEIGHTS_INT, calculateCostUnitsV1, weightModelKey } from '../pricing/CostUnits.js';
 import { canonicalJson, sha256Hex } from './ids.js';
 
+/** Everything the durable proxy needs to measure usage, compute CU, reserve and price an operation. */
 export interface MeasurementPorts {
   /** Frozen weights/formula for a new admission; null → admission refused (D4 §7). */
   activeCuConfig(): CuConfig | null;
   /** Configuration frozen into the operation (A/S4 fill chain/circuit when they are wired). */
   frozenConfig(cfg: CuConfig): FrozenConfigRef;
+  /** Normalizes a non-stream response body into usage categories. */
   normalizeUsage: NormalizeUsageFn;
+  /** Creates the stream parser that accumulates usage from streamed chunks. */
   createStreamUsageAccumulator: CreateStreamUsageAccumulatorFn;
+  /**
+   * Computes the CU of a normalized usage with the given configuration.
+   *
+   * @param usage - Normalized usage.
+   * @param cfg - Weights and formula.
+   * @returns The CU result; `cu` is `null` when not computable.
+   */
   computeCu(usage: NormalizedUsage, cfg: CuConfig): CuResult;
+  /** Worst-case CU (and money, when priced) reserved at admission. May throw RangeError when no bound exists. */
   estimateReservation: EstimateReservationFn;
   /** Whether this implementation can measure the API (and its stream form); otherwise refused. */
   supportsApi(api: UsageApi, stream: boolean): boolean;
@@ -42,8 +56,11 @@ export interface MeasurementPorts {
   inputBoundable(api: UsageApi, body: unknown): boolean;
   /** Upper bound of input tokens for the reservation (B: inputTokensUpperBound). */
   estimateInputTokens(api: UsageApi, body: unknown, bodyBytes: number): bigint;
+  /** Prices a usage with a frozen price table; `null` = no pricing (money stays null, never zero). */
   priceUsage: PriceUsageFn | null;
+  /** Local tokenizer support of (provider, api, model); `null` = no local counter. */
   resolveModelSupport: ResolveModelSupportFn | null;
+  /** Creates the in-memory auxiliary token counter; `null` = not available. */
   createLocalCounter: CreateLocalCounterFn | null;
   /**
    * OVERNIGHT 20261005 / Phase 1: load every local tokenizer this measurement can use, once, before the server
@@ -53,6 +70,7 @@ export interface MeasurementPorts {
    * measurements without a local counter have nothing to load. Returns what was loaded and how long it took.
    */
   warmUp?: () => Array<{ encoding: string; ms: number }>;
+  /** Builds the provider-vs-local conference report; `null` = no report. */
   buildConferenceReport: BuildConferenceReportFn | null;
   /** Threshold used when no calibration selector exists (the heuristic HEURISTIC_THRESHOLD_V0 in B's ports). */
   conferenceThreshold: ConferenceThreshold | null;
@@ -69,6 +87,7 @@ export interface MeasurementPorts {
   streamTextHooks: ((acc: { onTextDelta(t: string): void; onNonTextOutput(reason: string): void }) => {
     create: CreateStreamUsageAccumulatorFn;
   }) | null;
+  /** Extracts output text from a non-stream body for the in-memory counter; `null` = not available. */
   extractOutputText: ((api: UsageApi, body: unknown) => { texts: string[]; nonText: boolean }) | null;
   /** CU configuration of an admitted operation by its frozen reference (B: runtime.byRef). */
   cuConfigByRef(ref: VersionRef): CuConfig | null;
@@ -86,6 +105,7 @@ const LEGACY_DOC = { url: 'otk:legacy/src/proxy/UsageExtractor.ts', retrievedAt:
 const LEGACY_NORMALIZER = 'legacy-extractUsage@9a42ff2';
 const LEGACY_T_RULE = 'legacy.input_plus_output@1';
 
+// Cache read/write are separate addends so they never inflate the legacy T_in (same as the legacy CU).
 function legacyCategories(api: UsageApi, input: number | null, output: number | null, cacheWrite?: number, cacheRead?: number): TokenCategory[] {
   const base = api.startsWith('anthropic') ? 'usage' : api.startsWith('gemini') ? 'usageMetadata' : 'usage';
   const cats: TokenCategory[] = [
@@ -128,6 +148,16 @@ function usageField(api: UsageApi, body: Record<string, unknown>): unknown {
   return body['usage'];
 }
 
+/**
+ * Legacy usage normalizer over `extractUsage`.
+ *
+ * The Responses API and bodies without a usage field yield `completeness: 'missing'` with null counts.
+ *
+ * @param api - Provider API of the response.
+ * @param responseBody - Parsed response body; non-objects are treated as empty.
+ * @param ctx - Provider, requested model, origin and observation time.
+ * @returns The normalized usage.
+ */
 export const legacyNormalizeUsage: NormalizeUsageFn = (api, responseBody, ctx) => {
   const body = (responseBody && typeof responseBody === 'object' ? responseBody : {}) as Record<string, unknown>;
   const raw = usageField(api, body);
@@ -150,6 +180,11 @@ export const legacyNormalizeUsage: NormalizeUsageFn = (api, responseBody, ctx) =
  * provider's end marker was seen (OpenAI `[DONE]` after a usage chunk, Anthropic `message_stop`
  * after `message_delta`, Gemini a chunk with `finishReason`); a cut stream with intermediate
  * usage is 'partial', without usage 'missing' (D7 §3).
+ *
+ * @param api - Provider API of the stream.
+ * @param ctx - Usage context.
+ * @param limits - Parser bounds; a line longer than `maxBufferedBytes` is dropped.
+ * @returns An accumulator: `push` chunks, then `finish()` once for the usage.
  */
 export const legacyCreateStreamUsageAccumulator: CreateStreamUsageAccumulatorFn = (api, ctx, limits) => {
   const tapper = new StreamTapper();
@@ -201,7 +236,13 @@ export const legacyCreateStreamUsageAccumulator: CreateStreamUsageAccumulatorFn 
   return acc;
 };
 
-/** Legacy CU: CU_MODEL_v1 integer (round half up) of tIn + tOut with the static weights. */
+/**
+ * Legacy CU: CU_MODEL_v1 integer (round half up) of tIn + tOut with the static weights.
+ *
+ * @param usage - Normalized usage.
+ * @param cfg - Configuration stamped on the result (the weights used are the static tables).
+ * @returns `computed` with whole CU (scale 1), or `usage_not_computable` / `unsupported_model` with `cu: null`.
+ */
 export function legacyComputeCu(usage: NormalizedUsage, cfg: CuConfig): CuResult {
   const fail = (status: CuResult['status']): CuResult => ({ schema: 'otk.cu_result.v1', status, cu: null, formula: cfg.formula, weights: cfg.ref, tIn: usage.tIn, tOut: usage.tOut, wModelMilli: null, wProviderMilli: null, developmentProfile: cfg.developmentProfile });
   if (usage.tIn === null || usage.tOut === null) return fail('usage_not_computable');
@@ -217,7 +258,14 @@ export function legacyComputeCu(usage: NormalizedUsage, cfg: CuConfig): CuResult
   return { schema: 'otk.cu_result.v1', status: 'computed', cu: { units: cu, scale: 1n }, formula: cfg.formula, weights: cfg.ref, tIn: usage.tIn, tOut: usage.tOut, wModelMilli: wm, wProviderMilli: wp, developmentProfile: cfg.developmentProfile };
 }
 
-/** Worst case for an unknown CU: CU(inputUpperBound + maxOutputTokens) with the frozen weights. */
+/**
+ * Worst case for an unknown CU: CU(inputUpperBound + maxOutputTokens) with the frozen weights.
+ *
+ * @param req - Provider, requested model, estimated input tokens and maximum output tokens.
+ * @param cfg - Configuration whose formula id is stamped in the basis.
+ * @returns Whole CU rounded up (scale 1) and `money: null`.
+ * @throws {RangeError} When the provider or model has no static weight.
+ */
 export const legacyEstimateReservation: EstimateReservationFn = (req, cfg) => {
   const model = weightModelKey(req.provider, req.modelRequested);
   const wp = PROVIDER_WEIGHTS_INT[req.provider.toLowerCase()];
@@ -230,6 +278,11 @@ export const legacyEstimateReservation: EstimateReservationFn = (req, cfg) => {
   return { cu: { units: cu, scale: 1n }, money: null, basis: `worst_case_input_bytes_plus_max_output@legacy:${cfg.formula}` };
 };
 
+/**
+ * Builds the legacy measurement ports (static weights flagged as a development profile, no prices, no counter).
+ *
+ * @returns The ports, labelled `legacy-measurement@9a42ff2`.
+ */
 export function legacyMeasurementPorts(): MeasurementPorts {
   const cfg: CuConfig = {
     table: { schema: 'otk.cu_weights.v2', version: 'static', validFrom: '1970-01-01T00:00:00.000Z', validUntil: '9999-12-31T23:59:59.999Z', providerWeightsMilli: { ...PROVIDER_WEIGHTS_INT }, modelWeightsMilli: { ...MODEL_WEIGHTS_INT }, aliases: {}, signedBy: 'none', signature: 'none' },
@@ -266,5 +319,10 @@ export function legacyMeasurementPorts(): MeasurementPorts {
   };
 }
 
-/** Request body bytes as the input upper bound of the legacy reservation. */
+/**
+ * Request body bytes as the input upper bound of the legacy reservation.
+ *
+ * @param bodyBytes - Request body size, bytes.
+ * @returns `bodyBytes + 64` tokens (a BPE token covers at least one byte; 64 is a margin).
+ */
 export const legacyInputUpperBound = (bodyBytes: number): bigint => BigInt(bodyBytes) + 64n;

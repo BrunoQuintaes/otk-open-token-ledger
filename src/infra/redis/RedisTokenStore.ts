@@ -4,7 +4,10 @@
  * Stores bearer token entries in Redis for cross-instance token resolution.
  * Key pattern: otk:token:{hash} → JSON (TokenEntry)
  *
- * @module infra/redis/RedisTokenStore
+ * Entries are keyed by the token's hash (the token itself is never stored here) and have no expiry. Errors and a
+ * disconnected client are swallowed: a failed `revoke` leaves the entry in Redis without telling the caller.
+ *
+ * @module src/infra/redis/RedisTokenStore
  * @since Wave 3A (PACK 3A-03)
  */
 
@@ -14,9 +17,15 @@ import type { RedisClient } from './redisClient.js';
 const KEY_PREFIX = 'token:';
 const SCAN_PATTERN_SUFFIX = 'token:*';
 
+/** `ITokenStore` stored in Redis, one key per token hash. */
 export class RedisTokenStore implements ITokenStore {
   private readonly _redis: RedisClient;
 
+  /**
+   * Wraps the shared Redis client; nothing is read or written here.
+   *
+   * @param redis - Shared Redis client wrapper (prefix and raw client).
+   */
   constructor(redis: RedisClient) {
     this._redis = redis;
   }
@@ -25,6 +34,12 @@ export class RedisTokenStore implements ITokenStore {
     return `${this._redis.prefix}${KEY_PREFIX}${tokenHash}`;
   }
 
+  /**
+   * Stores (replaces) the entry of a token hash.
+   *
+   * @param tokenHash - Hash of the token.
+   * @param entry - Tenant and metadata of the token.
+   */
   async register(tokenHash: string, entry: TokenEntry): Promise<void> {
     const raw = this._redis.rawClient;
     if (!raw) return;
@@ -35,6 +50,12 @@ export class RedisTokenStore implements ITokenStore {
     }
   }
 
+  /**
+   * Looks up a token hash.
+   *
+   * @param tokenHash - Hash of the token.
+   * @returns The entry, or null when absent, unavailable or unreadable.
+   */
   async resolve(tokenHash: string): Promise<TokenEntry | null> {
     const raw = this._redis.rawClient;
     if (!raw) return null;
@@ -47,6 +68,11 @@ export class RedisTokenStore implements ITokenStore {
     }
   }
 
+  /**
+   * Deletes the entry of a token hash (errors are swallowed).
+   *
+   * @param tokenHash - Hash of the token.
+   */
   async revoke(tokenHash: string): Promise<void> {
     const raw = this._redis.rawClient;
     if (!raw) return;
@@ -57,6 +83,7 @@ export class RedisTokenStore implements ITokenStore {
     }
   }
 
+  /** Deletes every token key under the client prefix (destructive; used by tests). */
   async clear(): Promise<void> {
     const raw = this._redis.rawClient;
     if (!raw) return;

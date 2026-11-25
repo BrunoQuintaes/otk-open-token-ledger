@@ -22,7 +22,13 @@
  * E1.2: live reload via loadTenantsFromString() — called by POST /admin/tenants/reload.
  * E1.4: per-token role bootstrap via "tenantId/ROLE:token" format.
  *
- * @module api/tenantKeyRegistry
+ * In-process only: each replica holds its own copy. The registry tokens are kept here in plain text (they come from
+ * OTK_TENANTS or the tenant CRUD); dynamic API keys are held only by SHA-256 hash in a second map. Used by the
+ * credential checks in `src/auth/`, by `src/api/tenantCrud.ts`, `src/api/apiKeyManager.ts` and `src/api/routes.ts`.
+ * Environment variables read: OTK_TENANTS (at module load) and NODE_ENV through `src/infra/deployEnv.ts` (the clear
+ * functions refuse to run in deployed environments).
+ *
+ * @module src/api/tenantKeyRegistry
  * @since u12.alpha.d | u12.closure.b (format documented, clearRegistry guarded)
  * @since E1.2 (2026-03-13) — TokenContext, resolveTokenContext, loadTenantsFromString
  * @since E1.4 (2026-03-14) — role bootstrap via tenantId/ROLE:token format
@@ -30,10 +36,12 @@
 
 /** Canonical role set for E1 (ADR-0206). RBAC enforcement in E1.3. Role bootstrap via env in E1.4. */
 import { isDeployedEnv } from '../infra/deployEnv.js'; // RV2-RUNS-02 (RUN-S): same rule as the auth guard
+/** Tenant roles, from most to least privileged; permissions per role are defined in `src/security/rbac.ts`. */
 export type TenantRole = 'OWNER' | 'ADMIN' | 'OPERATOR' | 'MEMBER' | 'VIEWER';
 
 /** Context resolved from a bearer token. */
 export interface TokenContext {
+  /** Tenant the token belongs to. */
   tenantId: string;
   /** Role for this token.
    * Defaults to 'OPERATOR' when format is "tenantId:token".
@@ -62,6 +70,9 @@ const VALID_ROLES: ReadonlySet<string> = new Set<TenantRole>(['OWNER', 'ADMIN', 
  * If raw is empty or all pairs are invalid, auth is disabled (authEnabled=false).
  *
  * Safe to call at any time — clears previous state atomically.
+ *
+ * @param raw - OTK_TENANTS-format string.
+ * @returns Number of entries loaded (distinct tokens).
  */
 export function loadTenantsFromString(raw: string): { loaded: number } {
   const next = parseTenantsString(raw);
@@ -74,12 +85,20 @@ export function loadTenantsFromString(raw: string): { loaded: number } {
 
 /** STOPGATE-01 R-13b: the entries of the last OTK_TENANTS-format load (env or reload), to diff a reload. */
 let _staticSet = new Map<string, TokenContext>();
+/**
+ * Copy of the entries of the last OTK_TENANTS-format load.
+ *
+ * @returns A new map from token to context (changes do not affect the registry).
+ */
 export function staticRegistrySnapshot(): ReadonlyMap<string, TokenContext> { return new Map(_staticSet); }
 
 /**
  * Parse an OTK_TENANTS-format string WITHOUT touching the registry (format rules above). AUD-FC-01 (FINAL CLOSURE):
  * the HTTP reload validates with this first, so a reload that would load nothing (and disable auth) is refused
  * before any state changes.
+ *
+ * @param raw - OTK_TENANTS-format string.
+ * @returns Map from token to context; a later duplicate token overwrites an earlier one.
  */
 export function parseTenantsString(raw: string): Map<string, TokenContext> {
   const next = new Map<string, TokenContext>();
@@ -119,7 +138,13 @@ if (_rawEnv.trim()) {
   loadTenantsFromString(_rawEnv);
 }
 
-/** Returns true when auth enforcement is active (OTK_TENANTS is set or was reloaded). */
+/**
+ * Returns true when auth enforcement is active (OTK_TENANTS is set or was reloaded).
+ *
+ * Registering any token or key hash at runtime also turns it on.
+ *
+ * @returns Whether authentication is enforced.
+ */
 export function isAuthEnabled(): boolean {
   return _authEnabled;
 }
@@ -130,6 +155,9 @@ export function isAuthEnabled(): boolean {
  * Returns 'default' when auth is disabled.
  *
  * Backward-compatible: behavior unchanged from pre-E1.2.
+ *
+ * @param bearerToken - Raw registry token presented by the client.
+ * @returns The tenant id, `'default'` when auth is disabled, or `null`.
  */
 export function resolveTenantId(bearerToken: string): string | null {
   if (!_authEnabled) return 'default';
@@ -144,6 +172,9 @@ export function resolveTenantId(bearerToken: string): string | null {
  *
  * E1.2 addition — used by admin endpoints that need role context.
  * Full RBAC enforcement deferred to E1.3.
+ *
+ * @param bearerToken - Raw registry token presented by the client.
+ * @returns The context (a stored object, not a copy), the default context, or `null`.
  */
 export function resolveTokenContext(bearerToken: string): TokenContext | null {
   if (!_authEnabled) return { tenantId: 'default', role: 'OPERATOR' };
@@ -154,6 +185,12 @@ export function resolveTokenContext(bearerToken: string): TokenContext | null {
  * Register a token → tenantId mapping programmatically.
  * Used in integration tests and runtime re-configuration.
  * Role defaults to 'OPERATOR' for backward compatibility.
+ *
+ * Turns auth enforcement on.
+ *
+ * @param token - Raw registry token.
+ * @param tenantId - Tenant it belongs to.
+ * @param role - Role granted (default `OPERATOR`).
  */
 export function registerToken(token: string, tenantId: string, role: TenantRole = 'OPERATOR'): void {
   _registry.set(token, { tenantId, role });
@@ -161,11 +198,21 @@ export function registerToken(token: string, tenantId: string, role: TenantRole 
 }
 
 /** H1-S06 (INF05-F02): true when the bearer token is already registered for some tenant (static registry). */
+/**
+ * Checks whether a registry token is already bound to a tenant.
+ *
+ * @param token - Raw registry token.
+ * @returns Whether the token is in the registry.
+ */
 export function isTokenRegistered(token: string): boolean {
   return _registry.has(token);
 }
 
-/** Remove a token registration. */
+/**
+ * Remove a token registration.
+ *
+ * @param token - Raw registry token; unknown tokens are ignored. Auth enforcement stays on.
+ */
 export function revokeToken(token: string): void {
   _registry.delete(token);
 }
@@ -177,7 +224,9 @@ export function revokeToken(token: string): void {
 // Multi-instance note: this cache is per-process; warm-up from IApiKeyMetadataStore
 // at startup (Wave 4B) ensures cross-instance consistency after restarts.
 
+/** Context of a dynamic API key, held by key hash. */
 export interface HashTokenContext extends TokenContext {
+  /** ISO-8601 expiry; `null` means no expiry. */
   expiresAt: string | null;
   /** H1 lane B: creation instant (ISO) — compared with revocation "not before" instants of the tenant and the author */
   createdAt?: string;
@@ -187,13 +236,24 @@ export interface HashTokenContext extends TokenContext {
 
 const _hashRegistry = new Map<string, HashTokenContext>();
 
-/** Register a token hash → context mapping (called from apiKeyManager.createApiKey). */
+/**
+ * Register a token hash → context mapping (called from apiKeyManager.createApiKey).
+ *
+ * Turns auth enforcement on.
+ *
+ * @param hash - SHA-256 hex hash of the raw key.
+ * @param ctx - The key's context.
+ */
 export function registerTokenByHash(hash: string, ctx: HashTokenContext): void {
   _hashRegistry.set(hash, ctx);
   _authEnabled = true;
 }
 
-/** Revoke a token hash entry (called from apiKeyManager.revokeApiKey). */
+/**
+ * Revoke a token hash entry (called from apiKeyManager.revokeApiKey).
+ *
+ * @param hash - SHA-256 hex hash of the raw key; unknown hashes are ignored.
+ */
 export function revokeTokenByHash(hash: string): void {
   _hashRegistry.delete(hash);
 }
@@ -201,6 +261,9 @@ export function revokeTokenByHash(hash: string): void {
 /**
  * Resolve a token hash to its context.
  * Returns null if not found or if the key has expired.
+ *
+ * @param hash - SHA-256 hex hash of the raw key.
+ * @returns Tenant and role, or `null`.
  */
 export function resolveByHash(hash: string): TokenContext | null {
   const ctx = _hashRegistry.get(hash);
@@ -212,6 +275,9 @@ export function resolveByHash(hash: string): TokenContext | null {
 /**
  * Full context of a dynamic key hash (tenant, role, creation instant, author), or null if unknown or expired.
  * Used by the auth path to apply revocations that depend on when and by whom the key was minted.
+ *
+ * @param hash - SHA-256 hex hash of the raw key.
+ * @returns A copy of the context, or `null`.
  */
 export function resolveHashContext(hash: string): HashTokenContext | null {
   const ctx = _hashRegistry.get(hash);
@@ -220,7 +286,11 @@ export function resolveHashContext(hash: string): HashTokenContext | null {
   return { ...ctx };
 }
 
-/** Clear hash registry (test only). */
+/**
+ * Clear hash registry (test only).
+ *
+ * @throws {Error} In a deployed environment (any NODE_ENV other than development, dev or test).
+ */
 export function clearHashRegistryForTest(): void {
   if (isDeployedEnv()) {
     throw new Error('[TenantKeyRegistry] clearHashRegistryForTest() is not permitted in production.');
@@ -236,6 +306,7 @@ export function clearHashRegistryForTest(): void {
  * @internal Test/development only — NOT for production use.
  * In production (NODE_ENV=production), throws to prevent accidental invocation.
  * Use revokeToken() to remove individual tokens in production.
+ * @throws {Error} In a deployed environment (any NODE_ENV other than development, dev or test).
  */
 export function clearRegistry(): void {
   if (isDeployedEnv()) {
@@ -249,6 +320,9 @@ export function clearRegistry(): void {
  * H1-S01 (FA-06): true when some registered credential (static registry token or dynamic key hash) belongs to the
  * tenant. Used to refuse plan assignments to tenants that do not exist (a typo or an unknown id used to create a
  * phantom paid assignment that a later tenant with that id would inherit).
+ *
+ * @param tenantId - Tenant id.
+ * @returns Whether a registry token or a dynamic key hash of this process belongs to it.
  */
 export function hasRegisteredTenant(tenantId: string): boolean {
   for (const ctx of _registry.values()) if (ctx.tenantId === tenantId) return true;

@@ -29,6 +29,9 @@ import { resolveModelSupport } from '../providers/catalog/modelCatalog.js';
 // Versioning — increment when encoding schema changes
 // ---------------------------------------------------------------------------
 
+/**
+ * Version suffix of the legacy tokenizer IDs (`tiktoken@<encoding>@v1`).
+ */
 export const TOKENIZER_SCHEMA_VERSION = 'v1';
 
 // ---------------------------------------------------------------------------
@@ -65,6 +68,9 @@ export interface TokenDiscrepancy {
 // ITokenizer interface
 // ---------------------------------------------------------------------------
 
+/**
+ * A text tokenizer with a stable identifier.
+ */
 export interface ITokenizer {
   /** Stable identifier: 'tiktoken@{encoding}@{schemaVersion}' */
   readonly tokenizerId: string;
@@ -91,11 +97,23 @@ export class TiktokenTokenizer implements ITokenizer {
     this.tokenizerId = `tiktoken@${encodingName}@${TOKENIZER_SCHEMA_VERSION}`;
   }
 
+  /**
+   * Counts tokens; special-token strings follow js-tiktoken defaults.
+   *
+   * @param text - Text to count.
+   * @returns Token count; 0 for an empty string.
+   */
   countTokens(text: string): number {
     if (!text || text.length === 0) return 0;
     return this.enc.encode(text).length;
   }
 
+  /**
+   * Commitment to a text: keccak256 of its UTF-8 bytes.
+   *
+   * @param text - Text to hash (empty for none).
+   * @returns `0x`-prefixed hex digest.
+   */
   hashText(text: string): string {
     const bytes = text ? ethers.toUtf8Bytes(text) : new Uint8Array(0);
     return ethers.keccak256(bytes);
@@ -158,6 +176,10 @@ export class TokenizerRegistry {
   /**
    * Resolve tokenizer by provider (and optionally model).
    * Falls back to defaultTokenizer (cl100k_base) if no match found.
+   *
+   * @param provider - Provider ID (exact, lowercase expected).
+   * @param model - Optional model ID.
+   * @returns The tokenizer for the model, else the provider's, else cl100k_base.
    */
   resolve(provider: string, model?: string): ITokenizer {
     if (model) {
@@ -183,6 +205,7 @@ export class TokenizerRegistry {
    * @param model    - Model identifier (e.g., 'gpt-4', 'claude-opus-4')
    * @param promptText     - Raw prompt text sent to provider
    * @param completionText - Raw completion text received from provider
+   * @returns Input, output and total counts with the tokenizer ID used.
    */
   countClientTokens(
     provider: string,
@@ -210,6 +233,7 @@ export class TokenizerRegistry {
    * @param thresholdPct   - Flag if delta exceeds this % of provider count (default: 20%;
    *                         heuristic, not a calibrated precision). A provider count of 0 with
    *                         a positive local count is always flagged.
+   * @returns The deltas, percentages and the `flagged` result.
    */
   detectDiscrepancy(
     providerInput: number,
@@ -248,6 +272,11 @@ export class TokenizerRegistry {
    *
    * This commitment is included in CanonicalReceiptV2.oracle.tokenCountCommitment
    * and can be independently verified by any party with access to the same data.
+   *
+   * @param inputTokens - Local input count.
+   * @param outputTokens - Local output count.
+   * @param tokenizerId - Tokenizer ID.
+   * @returns `0x`-prefixed keccak256 hex digest.
    */
   static computeTokenCountCommitment(
     inputTokens: number,
@@ -259,5 +288,10 @@ export class TokenizerRegistry {
   }
 }
 
-/** Singleton default registry — safe to use across modules */
+/**
+ * Singleton default registry — safe to use across modules
+ *
+ *
+ * Building it loads the encodings at import time.
+ */
 export const defaultTokenizerRegistry = new TokenizerRegistry();

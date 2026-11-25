@@ -15,16 +15,28 @@ import { getPath, lexemeOf, parseJsonLossless } from './parse.js';
 import type { JsonValue } from './parse.js';
 import { sha256Hex } from './importers/engine.js';
 
+/**
+ * Scale of OTK money: 10^12 units per USD (pico-USD).
+ */
 export const PICO = 1_000_000_000_000n;
 
+/**
+ * OTK records loaded from one source, with what was left out and the digests of what was read.
+ */
 export interface OtkLoadResult {
   records: OtkRecord[];
   excluded: Array<{ id: string; reason: string }>;
+  /** SHA-256 hex digests of the data read (rows or file bytes). */
   digests: string[];
   description: string;
 }
 
-/** Provider of a model id by its documented family prefix (explicit list; anything else is refused). */
+/**
+ * Provider of a model id by its documented family prefix (explicit list; anything else is refused).
+ *
+ * @param model - Model ID (any case; surrounding whitespace ignored).
+ * @returns The provider, or `null` for an unknown family.
+ */
 export function providerOfModel(model: string): ReconProvider | null {
   const m = model.trim().toLowerCase();
   if (m.startsWith('claude-')) return 'anthropic';
@@ -39,7 +51,15 @@ const toQuantities = (m: Map<UsageCategory, bigint>): OtkCategoryQuantity[] =>
 
 interface UsageCategoryJson { name: string; count: string | null; inclusion: string }
 
-/** NormalizedUsage.categories (wire form) → statement categories. */
+/**
+ * NormalizedUsage.categories (wire form) → statement categories.
+ *
+ * @param categories - Categories of a stored normalized usage (counts as decimal strings or null).
+ * @param notes - Receives a note for each absent or inconsistent category (mutated).
+ * @returns Quantities sorted by category; input is the base minus its subsets, output includes thinking
+ *   reported as a separate addend.
+ * @throws {SyntaxError} When a count is not an integer string (from `BigInt`).
+ */
 export function quantitiesFromNormalizedUsage(categories: UsageCategoryJson[], notes: string[]): OtkCategoryQuantity[] {
   const get = (n: string) => categories.find((c) => c.name === n);
   const val = (c: UsageCategoryJson | undefined): bigint | null => (c && c.count !== null && c.count !== undefined ? BigInt(c.count) : null);
@@ -82,6 +102,12 @@ const isoOf = (v: unknown): string => (v instanceof Date ? v.toISOString() : new
 /**
  * Operations of one tenant and provider observed in [start, end) (observedAt of the usage, else
  * created_at). Every operation is returned; one without confirmed money keeps confirmedMoney null.
+ *
+ * Read-only: one SELECT on `otk_operations`.
+ *
+ * @param db - PostgreSQL connection or pool.
+ * @param q - Tenant, provider and half-open window `[start, end)` (ISO instants).
+ * @returns The records ordered by operation ID, with a digest of the records read.
  */
 export async function loadOtkFromPostgres(db: PgQueryable, q: { tenantId: string; provider: ReconProvider; start: string; end: string }): Promise<OtkLoadResult> {
   const r = await db.query<{
@@ -125,7 +151,11 @@ export async function loadOtkFromPostgres(db: PgQueryable, q: { tenantId: string
   return { records, excluded, digests: [digest], description: `PostgreSQL otk_operations tenant=${q.tenantId} provider=${q.provider} window=[${q.start}, ${q.end})` };
 }
 
+/**
+ * Options for {@link loadOtkFromPilotLedger}.
+ */
 export interface PilotLedgerOptions {
+  /** Label of the ledger file, used in excluded IDs and the description. */
   sourceName: string;
   /** Keep only this provider (others go to excluded). */
   provider?: ReconProvider;
@@ -140,6 +170,11 @@ const lex = (v: JsonValue | undefined): string | null => lexemeOf(v);
  * Pilot budget ledger (JSONL of reserve/settle events written by scripts/pilot). Read-only.
  * Money: settle.costUsd was written by the runner as a JS number; its exact lexeme is parsed and
  * rounded half-even to pico-USD (moneyRoundingHalfUnits = 1 when digits were dropped).
+ *
+ * @param text - Whole JSONL ledger content.
+ * @param opts - Source label, provider filter, frozen price table and tenant.
+ * @returns Settled, successful operations as records; everything else is listed in `excluded` with a reason.
+ * @throws {@link StatementParseError} When a non-blank line is not valid JSON.
  */
 export function loadOtkFromPilotLedger(text: string, opts: PilotLedgerOptions): OtkLoadResult {
   const reserves = new Map<string, JsonValue>();
@@ -213,6 +248,12 @@ export function loadOtkFromPilotLedger(text: string, opts: PilotLedgerOptions): 
  * SYNTHETIC OTK records from a fixture file (tests and documented demonstrations only). The file must carry a
  * top-level "_synthetic" marker; records come out with source 'fixture' so the report can never present them
  * as measured data.
+ *
+ * @param text - Fixture JSON text.
+ * @param sourceName - Label used in errors and in the description.
+ * @returns Records with `source: 'fixture'`.
+ * @throws {Error} When the `_synthetic` marker is missing, `records` is not an array, or a record has an
+ *   unsupported provider (and JSON parse errors).
  */
 export function loadOtkFromFixtureJson(text: string, sourceName: string): OtkLoadResult {
   const doc = JSON.parse(text) as { _synthetic?: unknown; records?: unknown };
@@ -238,7 +279,12 @@ export function loadOtkFromFixtureJson(text: string, sourceName: string): OtkLoa
   return { records, excluded: [], digests: [sha256Hex(Buffer.from(text, 'utf8'))], description: `SYNTHETIC OTK fixture ${sourceName}` };
 }
 
-/** Concatenate several loads (e.g. three pilot ledgers). */
+/**
+ * Concatenate several loads (e.g. three pilot ledgers).
+ *
+ * @param loads - Loads to combine, in order.
+ * @returns A new load with records, exclusions and digests concatenated.
+ */
 export function mergeOtkLoads(loads: OtkLoadResult[]): OtkLoadResult {
   return {
     records: loads.flatMap((l) => l.records),

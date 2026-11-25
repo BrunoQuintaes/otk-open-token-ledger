@@ -10,7 +10,11 @@
  * signs, the submitter key only pays gas. Deployment addresses come from deploy_v3.js output
  * (OTK_V3_DEPLOYMENT_FILE). Nothing here logs a key, an opening or an exact usage.
  *
- * @module operations/d1d8ProofPorts
+ * Called once at startup by `bootstrapD1D8.ts`, which passes the keys and paths in (this file reads no
+ * environment variable itself; the variable names in messages are for the operator). Network use: only the
+ * chain submitter, and only when both an RPC URL and a submitter key are configured.
+ *
+ * @module src/operations/d1d8ProofPorts
  */
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -24,43 +28,90 @@ import type { CryptoPorts } from './context.js';
 import type { ChainSubmitter, ProofPorts, Target } from './proofPipeline.js';
 import type { FrozenProofConfig } from './d1d8Ports.js';
 
+/** Shape of the deployment file written by the v3 deploy script. */
 export interface V3Deployment {
   schema: 'otk.deploy_v3.v1';
+  /** Chain id as a decimal string. */
   chainId: string;
+  /** Operator address that must match the configured operator key. */
   signer: string;
+  /** Circuit id that must match `zk/v3/MANIFEST.json`. */
   circuitId: string;
+  /** Chain domain of the registry; `chainId` is a decimal string. */
   domain: { chainId: string; registry: string; verifier: string; schemaVersion: string };
 }
 
+/**
+ * Reads and minimally checks a v3 deployment file (schema id and registry address present).
+ *
+ * @param file - Path of the deploy script's JSON output.
+ * @returns The parsed deployment.
+ * @throws {Error} When the file cannot be read, is not JSON, or is not a v3 deployment output.
+ */
 export function readDeployment(file: string): V3Deployment {
   const d = JSON.parse(readFileSync(file, 'utf8')) as V3Deployment;
   if (d.schema !== 'otk.deploy_v3.v1' || !d.domain?.registry) throw new Error(`${file} is not a deploy_v3.js output`);
   return d;
 }
 
+/**
+ * Converts a deployment's domain to the contract's chain domain (chain id as bigint).
+ *
+ * @param d - The deployment.
+ * @returns The chain domain.
+ * @throws {SyntaxError} When `domain.chainId` is not an integer string.
+ */
 export function chainDomainOf(d: V3Deployment): ChainDomain {
   return { chainId: BigInt(d.domain.chainId), registry: d.domain.registry as `0x${string}`, verifier: d.domain.verifier as `0x${string}`, schemaVersion: d.domain.schemaVersion };
 }
 
-/** Pseudonymous user reference inside a tenant: a field element, private (circuit input only). */
+/**
+ * Pseudonymous user reference inside a tenant: a field element, private (circuit input only).
+ *
+ * Depends only on the tenant id, so every operation of a tenant gets the same reference.
+ *
+ * @param key - Operation key (only `tenantId` is used).
+ * @returns keccak256 of a domain-separated tenant string, reduced modulo the BN254 field order, as decimal.
+ */
 export function userRefOf(key: OperationKey): string {
   return (BigInt(ethers.keccak256(ethers.toUtf8Bytes(`otk.user_ref.v1\n${key.tenantId}`))) % BN254_R).toString(10);
 }
 
+/** Inputs of {@link createV3Ports}. Keys are secrets: never log this object. */
 export interface V3PortsOptions {
+  /** Repository root; circuit artifacts and `zk/v3/MANIFEST.json` are resolved from it. */
   root: string;
+  /** Operator private key (secret) that signs receipts, statements and public authorizations. */
   operatorKey: string;
+  /** Key id written in signed envelopes. */
   operatorKeyId: string;
   /** Other keys known to verifiers (rotation/revocation), besides the active operator key. */
   extraKeys?: KeyEntry[];
+  /** Deployed registry; `null` = no chain domain, no proof target. */
   deployment: V3Deployment | null;
   /** RPC + submitter key: without them proofs are produced but submission waits (visible). */
   rpcUrl: string | null;
+  /** Private key (secret) that only pays gas for submissions. */
   submitterKey: string | null;
 }
 
+/**
+ * The composed v3 crypto and proof ports, plus the operator address, the proof adapter and `destroy()` to
+ * close the RPC provider (when one was created).
+ */
 export interface V3Ports { crypto: CryptoPorts; proof: ProofPorts; proofConfig: FrozenProofConfig; operatorAddress: string; adapter: ProofAdapter; destroy(): void }
 
+/**
+ * Builds the v3 receipt crypto, proof adapter and (optionally) the on-chain submitter.
+ *
+ * Without RPC URL and submitter key, the submitter's methods reject and `currentTarget()` is `null`, so
+ * proofs are produced and submission waits.
+ *
+ * @param o - Keys, paths, deployment and RPC settings.
+ * @returns The ports.
+ * @throws {Error} When the manifest or circuit artifacts cannot be read or do not match their recorded
+ *   hashes, or the deployment's circuit or signer does not match the manifest or the operator key.
+ */
 export async function createV3Ports(o: V3PortsOptions): Promise<V3Ports> {
   const manifest = JSON.parse(readFileSync(path.join(o.root, 'zk/v3/MANIFEST.json'), 'utf8')) as { circuitId: string; files: Record<string, string> };
   const circuitId = manifest.circuitId;

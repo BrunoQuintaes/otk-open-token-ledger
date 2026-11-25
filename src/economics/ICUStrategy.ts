@@ -8,7 +8,12 @@
  * Selected via OTK_CU_STRATEGY env var (read at call time for hot-switch).
  * Defaults to 'linear' — preserves all existing behaviour.
  *
- * @module economics/ICUStrategy
+ * `CUEngine.computePublishedCU` calls `getActiveStrategy()` on every computation. Environment variable read:
+ * `OTK_CU_STRATEGY` (`nonlinear` selects the sqrt strategy; any other value or none gives linear). The nonlinear
+ * strategy uses weight 1000 (neutral) for an unknown provider or model instead of refusing it, unlike linear.
+ * Not to be confused with `strategies/ICUStrategy.ts`, the provider-capability strategies of `CUStrategyFactory`.
+ *
+ * @module src/economics/ICUStrategy
  * @since Wave 4 (4A-PACK-4A02 / S5.3)
  */
 
@@ -26,14 +31,19 @@ const _WEIGHT_SCALE = 1000n;
 // Interface
 // ──────────────────────────────────────────────────────────
 
+/** Names of the selectable CU formulas. */
 export type CUStrategyName = 'linear' | 'nonlinear';
 
+/** One CU formula: maps provider usage to raw (unbucketed) CU. */
 export interface ICUStrategy {
   /** Strategy identifier */
   readonly name: CUStrategyName;
   /**
    * Compute raw CU from provider usage input.
    * Returns bigint — float-free and ZK-compatible.
+   *
+   * @param input - Provider, model and token counts.
+   * @returns Raw CU.
    */
   compute(input: CostUnitsInput): bigint;
 }
@@ -58,8 +68,16 @@ function bigintSqrt(n: bigint): bigint {
 // LinearCUStrategy — wraps calculateCostUnitsV1 (no change)
 // ──────────────────────────────────────────────────────────
 
+/** The CU_MODEL_v1 formula (`calculateCostUnitsV1`); throws `CUError` for an unknown provider or model. */
 export const LinearCUStrategy: ICUStrategy = {
   name: 'linear',
+  /**
+   * Computes CU with `calculateCostUnitsV1`.
+   *
+   * @param input - Provider, model and token counts.
+   * @returns Raw CU.
+   * @throws {@link CUError} For an unknown provider or model, or on overflow.
+   */
   compute(input: CostUnitsInput): bigint {
     return calculateCostUnitsV1(input);
   },
@@ -74,8 +92,15 @@ export const LinearCUStrategy: ICUStrategy = {
 // volume pricing where large batches should cost less per-CU.
 // ──────────────────────────────────────────────────────────
 
+/** Square-root volume discount: floor(isqrt(t_in + t_out) x W_p x W_m / 1000). */
 export const NonlinearCUStrategy: ICUStrategy = {
   name: 'nonlinear',
+  /**
+   * Computes the square-root-discounted CU.
+   *
+   * @param input - Provider, model and token counts.
+   * @returns Raw CU.
+   */
   compute(input: CostUnitsInput): bigint {
     const total = BigInt(input.inputTokens + input.outputTokens);
     const sqrtTokens = bigintSqrt(total);
@@ -94,7 +119,11 @@ export const NonlinearCUStrategy: ICUStrategy = {
 // Strategy factory — reads OTK_CU_STRATEGY at call time
 // ──────────────────────────────────────────────────────────
 
-/** Return the active ICUStrategy based on OTK_CU_STRATEGY env var. Defaults to linear. */
+/**
+ * Return the active ICUStrategy based on OTK_CU_STRATEGY env var. Defaults to linear.
+ *
+ * @returns `NonlinearCUStrategy` when the variable is exactly `nonlinear`, otherwise `LinearCUStrategy`.
+ */
 export function getActiveStrategy(): ICUStrategy {
   const name = process.env['OTK_CU_STRATEGY'];
   if (name === 'nonlinear') return NonlinearCUStrategy;

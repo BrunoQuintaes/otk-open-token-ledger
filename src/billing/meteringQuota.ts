@@ -14,13 +14,24 @@
  * another replica no longer resets consumption to 0. Replicas still race between the check
  * and the debit: two concurrent requests can both pass just below the limit.
  *
- * @module billing/meteringQuota
+ * Called by the receipt and proxy entry points (`src/api/routes.ts`, `src/proxy/ProxyGateway.ts`) and by
+ * `src/operations/runtime.ts` (`quotaUnitsFor`). The epoch is derived from the time with `deriveEpoch`.
+ * It does NOT debit anything: the debit happens when the receipt is stored.
+ *
+ * @module src/billing/meteringQuota
  */
 import { checkQuota, getTenantPlanDefinition, getTenantPlanAsync } from './PlanRegistry.js';
 import { quotaUnits } from '../operations/accounting.js';
 import { getAccountingLayer, sharedBalance } from '../security/talRuntime.js';
 import { deriveEpoch } from '../types/receipt.js';
 
+/**
+ * Checks the tenant's quota against this process's accounting layer only (cached plan tier).
+ *
+ * @param tenantId - Tenant to check.
+ * @param nowSec - Current time in Unix seconds; selects the epoch.
+ * @returns Whether the quota is reached, the quota and the current CU (quota 0n = no hard limit).
+ */
 export function checkMeteringQuota(
   tenantId: string,
   nowSec: number = Math.floor(Date.now() / 1000),
@@ -33,9 +44,13 @@ export function checkMeteringQuota(
 /** CU admitted in this process whose durable write has not finished, by tenant and epoch. */
 const _inFlightCU = new Map<string, bigint>();
 
+/** Result of `reserveMeteringQuota`: the quota check plus a handle to free the reserved CU. */
 export interface QuotaReservation {
+  /** True when the tenant has already reached the quota (nothing was reserved). */
   exceeded: boolean;
+  /** Plan quota in CU per epoch; 0n means no hard limit. */
   quota: bigint;
+  /** CU counted at check time (stored plus in flight in this process). */
   current: bigint;
   /** Call once the receipt was stored, refused or failed (idempotent). */
   release(): void;
@@ -49,6 +64,12 @@ export interface QuotaReservation {
  * 20 simultaneous requests of 3000 CU all pass a 10000 CU quota in one instance (session
  * 2026-09-30, S7c). Replicas still race with each other.
  * H1-S01: the tier is read from the plan store first (see checkMeteringQuotaAsync).
+ *
+ * @param tenantId - Tenant to check.
+ * @param cu - CU of the receipt about to be stored.
+ * @param nowSec - Receipt time in Unix seconds; selects the epoch.
+ * @returns The check result; unless `exceeded`, `cu` stays reserved until `release()` is called.
+ * @throws {Error} When the plan store or the shared balance cannot be read.
  */
 export async function reserveMeteringQuota(
   tenantId: string,
@@ -78,7 +99,14 @@ export async function reserveMeteringQuota(
   };
 }
 
-/** Same rule, reading the balance shared across instances (N11). */
+/**
+ * Same rule, reading the balance shared across instances (N11).
+ *
+ * @param tenantId - Tenant to check.
+ * @param nowSec - Current time in Unix seconds; selects the epoch.
+ * @returns Whether the quota is reached, the quota and the shared CU total.
+ * @throws {Error} When the plan store or the shared balance cannot be read.
+ */
 export async function checkMeteringQuotaAsync(
   tenantId: string,
   nowSec: number = Math.floor(Date.now() / 1000),
@@ -94,6 +122,9 @@ export async function checkMeteringQuotaAsync(
 /**
  * RV30-05: plan quota of the tenant in accounting units (micro-CU) for the check made inside
  * the PostgreSQL transaction (same rule, global across instances). null = no hard limit.
+ *
+ * @param tenantId - Tenant to look up (cached plan tier).
+ * @returns The quota in micro-CU, or null when the plan has no hard limit.
  */
 export function quotaUnitsFor(tenantId: string): bigint | null {
   return quotaUnits(getTenantPlanDefinition(tenantId).cuQuotaPerEpoch);

@@ -6,10 +6,15 @@
  * measurement, delivery and accounting effects are separate state axes: a closed app changes
  * delivery, not measurement; an explicit cancel is not an upstream failure (D7 §2–3).
  * Prompt/response text is not stored by default (D2 §7, D7 §1).
+ *
+ * @module src/types/d1d8/operation
  */
 import type { Hex32, IsoTime, Money, OperationKey, Scaled, FrozenConfigRef, VersionRef } from './common.js';
 import type { NormalizedUsage, UsageApi } from './usage.js';
 
+/**
+ * Execution axis of a durable operation (from admission to a final state).
+ */
 export type ExecutionState =
   | 'admitted'
   | 'upstream_started'
@@ -29,6 +34,9 @@ export type ExecutionState =
  */
 export type MeasurementState = 'none' | 'partial' | 'final' | 'uncertain';
 
+/**
+ * Delivery axis of a durable operation: whether the client received the answer.
+ */
 export type DeliveryState = 'pending' | 'streaming' | 'delivered' | 'client_disconnected';
 
 /**
@@ -99,6 +107,9 @@ export interface Reservation {
  */
 export type MoneyState = 'held' | 'pending_price' | 'settled' | 'held_uncertain' | 'released';
 
+/**
+ * Money axis of a durable operation: what is held, confirmed or released, and why.
+ */
 export interface MoneySettlement {
   state: MoneyState;
   /** Worst case held at admission; never changes after admission. */
@@ -118,6 +129,9 @@ export interface MoneySettlement {
   origin?: 'legacy_pre_s4';
 }
 
+/**
+ * Durable operation record `otk.operation.v1`, written before the provider is called.
+ */
 export interface DurableOperation {
   schema: 'otk.operation.v1';
   key: OperationKey;
@@ -196,6 +210,9 @@ export type AdmitResult =
  *   spentConfirmed + heldWorstCase + request.worstCase ≤ ceiling (no crossing allowed).
  */
 export const D1D8_QUOTA_ADMISSION_RULE = 'check_before_crossing_admitted@1' as const;
+/**
+ * Identifier of the money admission rule (strict ceiling with the worst-case cost).
+ */
 export const D1D8_MONEY_ADMISSION_RULE = 'strict_ceiling_worst_case@1' as const;
 
 /** One durable side effect, executed at-least-once and deduplicated by effectId. */

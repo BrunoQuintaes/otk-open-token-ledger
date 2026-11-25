@@ -6,6 +6,10 @@
  *   ProofAdapter               → createProofAdapterV3       (./proofAdapter.ts)
  *   BuildBatchStatementFn      → createBatchStatementBuilder (./batch.ts)
  * Specification: docs/_ops/EXECUCAO_D1_D8_20260930/runs/20260930-1625/A/01_design.md
+ *
+ * Barrel module of the metering_v3 implementation: re-exports only.
+ *
+ * @module src/zk/v3/index
  */
 export * from './field.js';
 export { poseidonHash } from './poseidon.js';

@@ -43,6 +43,9 @@ import {
 // Domain constant (increment if V2 encoding changes)
 // ---------------------------------------------------------------------------
 
+/**
+ * Domain separator (ASCII) that starts every V2 encoding; frozen.
+ */
 export const RECEIPT_DOMAIN_V2 = 'OTK_RECEIPT_V2';
 
 // ---------------------------------------------------------------------------
@@ -140,6 +143,15 @@ function appendUtf8(arr: number[], s: string): void {
  *   promptHash | completionHash | tokenizerId |
  *   clientInputTokens | clientOutputTokens | tokenCountCommitment |
  *   discrepancyFlagged | discrepancyThresholdPct
+ *
+ * Note: the encoded oracle list starts with `level`, before `promptHash` (the order above omits it), and
+ * `discrepancyDeltaInputPct`/`discrepancyDeltaOutputPct` are not encoded. Unlike V1, the V1 fields are not
+ * validated here (no non-empty check, no total check, a negative bigint is written with a minus sign).
+ *
+ * @param r - Receipt fields plus the oracle attestation (not modified).
+ * @returns The canonical bytes.
+ * @throws {Error} When `oracle` or one of `promptHash`, `completionHash`, `tokenizerId`,
+ *   `tokenCountCommitment` is missing or empty.
  */
 export function encodeCanonicalReceiptV2Bytes(r: CanonicalReceiptV2): Uint8Array {
   if (!r.oracle) throw new Error('CanonicalReceiptV2: oracle attestation required');
@@ -192,6 +204,8 @@ export function encodeCanonicalReceiptV2Bytes(r: CanonicalReceiptV2): Uint8Array
  * AND the oracle attestation (client token counts, discrepancy flag).
  *
  * @returns 0x-prefixed hex string (66 chars)
+ * @param r - Receipt fields plus the oracle attestation.
+ * @throws {Error} The validation errors of {@link encodeCanonicalReceiptV2Bytes}.
  */
 export function hashCanonicalReceiptV2(r: CanonicalReceiptV2): string {
   const bytes = encodeCanonicalReceiptV2Bytes(r);

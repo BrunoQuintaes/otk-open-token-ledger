@@ -4,12 +4,13 @@
  * Informational: maxAgeSecs and purgeable are hints for infra/ops tooling.
  * No automated purge is performed by this module.
  *
- * @module privacy/retentionPolicy
+ * @module src/privacy/retentionPolicy
  * @since F2.2
  */
 
 import type { RetentionHint } from './complianceTypes.js';
 
+/** Concrete retention parameters of one hint. */
 export type RetentionPolicy = {
   retentionHint: RetentionHint;
   /** Maximum age in seconds (Number.MAX_SAFE_INTEGER = indefinite). */
@@ -25,12 +26,22 @@ const POLICIES: Record<RetentionHint, RetentionPolicy> = {
   permanent:  { retentionHint: 'permanent',  maxAgeSecs: Number.MAX_SAFE_INTEGER, purgeable: false },
 };
 
-/** Returns the canonical RetentionPolicy for the given hint. */
+/**
+ * Returns the canonical RetentionPolicy for the given hint.
+ *
+ * @param hint - Retention hint.
+ * @returns The shared policy object (do not mutate): 1 hour, 30 days, 365 days or indefinite.
+ */
 export function getRetentionPolicy(hint: RetentionHint): RetentionPolicy {
   return POLICIES[hint];
 }
 
-/** Returns true if records with this hint may be purged by infra tooling. */
+/**
+ * Returns true if records with this hint may be purged by infra tooling.
+ *
+ * @param hint - Retention hint.
+ * @returns `true` for `ephemeral` and `short_term`.
+ */
 export function isPurgeable(hint: RetentionHint): boolean {
   return POLICIES[hint].purgeable;
 }

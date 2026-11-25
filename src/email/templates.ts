@@ -4,19 +4,28 @@
  * Each function returns { subject, html, text } for an EmailMessage.
  * Templates are minimal and self-contained — no external templating engine.
  *
- * @module email/templates
+ * Used by `src/notifications/NotificationService.ts` (key events) and `src/api/routes.ts` (welcome). Values are
+ * HTML-escaped in `html`; `subject` and `text` carry them unescaped.
+ *
+ * @module src/email/templates
  * @since Wave 3C (PACK 3C-02)
  */
 
 import { escapeHtml } from '../dashboard/sanitize.js';
 
+/** Subject and bodies of one e-mail. */
 export interface EmailTemplate {
   subject: string;
   html: string;
   text: string;
 }
 
-/** API key created notification. */
+/**
+ * API key created notification.
+ *
+ * @param params - Key id, key label and tenant id.
+ * @returns The e-mail content.
+ */
 export function keyCreatedTemplate(params: { keyId: string; label: string; tenantId: string }): EmailTemplate {
   return {
     subject: `[OTK] API key created: ${params.label}`,
@@ -25,7 +34,12 @@ export function keyCreatedTemplate(params: { keyId: string; label: string; tenan
   };
 }
 
-/** API key revoked notification. */
+/**
+ * API key revoked notification.
+ *
+ * @param params - Key id and tenant id.
+ * @returns The e-mail content.
+ */
 export function keyRevokedTemplate(params: { keyId: string; tenantId: string }): EmailTemplate {
   return {
     subject: `[OTK] API key revoked: ${params.keyId}`,
@@ -34,7 +48,12 @@ export function keyRevokedTemplate(params: { keyId: string; tenantId: string }):
   };
 }
 
-/** API key rotated notification. */
+/**
+ * API key rotated notification.
+ *
+ * @param params - Old and new key ids and tenant id.
+ * @returns The e-mail content.
+ */
 export function keyRotatedTemplate(params: { oldKeyId: string; newKeyId: string; tenantId: string }): EmailTemplate {
   return {
     subject: `[OTK] API key rotated`,
@@ -43,7 +62,14 @@ export function keyRotatedTemplate(params: { oldKeyId: string; newKeyId: string;
   };
 }
 
-/** Welcome email for new user registration (with verification link). */
+/**
+ * Welcome email for new user registration (with verification link).
+ *
+ * The verification link is a relative path (`/verify-email?token=…`); no host name is added.
+ *
+ * @param params - User name, organization name and optional verification token.
+ * @returns The e-mail content.
+ */
 export function welcomeTemplate(params: { name: string; orgName: string; verifyToken?: string }): EmailTemplate {
   const verifySection = params.verifyToken
     ? `<p>Verify your email: <a href="/verify-email?token=${escapeHtml(params.verifyToken)}">Click here</a></p>`

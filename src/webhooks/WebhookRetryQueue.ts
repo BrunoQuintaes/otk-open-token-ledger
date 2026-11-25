@@ -21,14 +21,23 @@ import { WebhookDelivery, type HttpPostFn } from './WebhookDelivery.js';
 // Retry delays (ms)
 // ──────────────────────────────────────────────────────────
 
+/**
+ * Delay before each attempt, in milliseconds (index 0 = attempt 1).
+ */
 export const RETRY_DELAYS_MS = [0, 1_000, 5_000, 30_000, 300_000]; // attempt 1-5
 
+/**
+ * Number of attempts before an event goes to the dead-letter list.
+ */
 export const MAX_ATTEMPTS = RETRY_DELAYS_MS.length;
 
 // ──────────────────────────────────────────────────────────
 // WebhookRetryQueue
 // ──────────────────────────────────────────────────────────
 
+/**
+ * One pending delivery attempt.
+ */
 export interface RetryJob {
   endpoint: WebhookEndpoint;
   eventKind: string;
@@ -36,6 +45,12 @@ export interface RetryJob {
   attempt: number;
 }
 
+/**
+ * In-process retry queue for webhook deliveries, based on timers (pending retries are lost on restart).
+ *
+ * Note: the body recorded in the log and dead letter is rebuilt for logging, so its timestamp may differ
+ * from the one actually sent.
+ */
 export class WebhookRetryQueue {
   private _delivery: WebhookDelivery;
   private _store: IWebhookStore;
@@ -48,6 +63,10 @@ export class WebhookRetryQueue {
 
   /**
    * Enqueue delivery for an endpoint. Schedules attempt 1 immediately.
+   *
+   * @param endpoint - Destination.
+   * @param eventKind - Event name.
+   * @param data - Event data.
    */
   enqueue(endpoint: WebhookEndpoint, eventKind: string, data: unknown): void {
     this._scheduleAttempt({ endpoint, eventKind, data, attempt: 1 }, 0);
@@ -55,6 +74,10 @@ export class WebhookRetryQueue {
 
   /**
    * Dispatch an event to all matching active endpoints.
+   *
+   * @param eventKind - Event name; endpoints subscribed to it or to `*` receive it.
+   * @param data - Event data.
+   * @param tenantId - Tenant whose endpoints receive it; when absent, active endpoints of ALL tenants do.
    */
   async dispatch(eventKind: string, data: unknown, tenantId?: string): Promise<void> {
     const endpoints = await this._store.listEndpoints(tenantId);
@@ -106,5 +129,10 @@ export class WebhookRetryQueue {
     this._timers.clear();
   }
 
+  /**
+   * Number of scheduled attempts not yet started.
+   *
+   * @returns Pending timer count.
+   */
   get pendingCount(): number { return this._timers.size; }
 }

@@ -4,7 +4,12 @@
  * Stores governance trail entries in PostgreSQL for cross-instance durability.
  * Table: otk_governance
  *
- * @module infra/pg/PgGovernanceStore
+ * Each row stores `chainHash(previous hash, event)`, so the table is a hash chain starting at
+ * sha256("governance-genesis"). Installed by `src/infra/storeBootstrap.ts`. Query errors propagate. `append`
+ * reads the head and then inserts without a lock, so two concurrent appends can fork the chain (detected later by
+ * `verifyIntegrity`).
+ *
+ * @module src/infra/pg/PgGovernanceStore
  * @since Wave 3A (PACK 3A-03)
  */
 
@@ -13,7 +18,15 @@ import type { GovernanceEvent, GovernanceEntry } from '../../security/Governance
 import { sha256Hex, chainHash } from '../../security/AuditLogChain.js';
 import { isDeployedEnv } from '../deployEnv.js'; // RV2-RUNS-02 (RUN-S): same rule as the auth guard
 
+/** The part of a `pg.Pool` this store uses. */
 export interface PgPool {
+  /**
+   * Runs one parameterized query.
+   *
+   * @param text - SQL text with `$n` placeholders.
+   * @param params - Parameter values.
+   * @returns The result rows.
+   */
   query(text: string, params?: unknown[]): Promise<{ rows: Record<string, unknown>[] }>;
 }
 
@@ -33,14 +46,25 @@ CREATE TABLE IF NOT EXISTS otk_governance (
 const CREATE_TS_INDEX = `
 CREATE INDEX IF NOT EXISTS idx_governance_ts ON otk_governance (ts)`;
 
+/** `IGovernanceStore` in the PostgreSQL table `otk_governance` (append-only hash chain). */
 export class PgGovernanceStore implements IGovernanceStore {
   private readonly _pool: PgPool;
   private _initialized = false;
 
+  /**
+   * Wraps a pool; nothing is queried until the first call.
+   *
+   * @param pool - PostgreSQL pool.
+   */
   constructor(pool: PgPool) {
     this._pool = pool;
   }
 
+  /**
+   * Creates the table and index if missing (idempotent, once per instance).
+   *
+   * @throws {Error} When a DDL statement fails.
+   */
   async init(): Promise<void> {
     if (this._initialized) return;
     await this._pool.query(CREATE_TABLE);
@@ -48,6 +72,13 @@ export class PgGovernanceStore implements IGovernanceStore {
     this._initialized = true;
   }
 
+  /**
+   * Appends one event to the chain.
+   *
+   * @param event - Governance event.
+   * @param prevHash - Hash to chain from; the current head when omitted.
+   * @returns The event with its sequence number and hash.
+   */
   async append(event: GovernanceEvent, prevHash?: string): Promise<GovernanceEntry> {
     await this.init();
     const prev = prevHash ?? await this.head();
@@ -78,6 +109,12 @@ export class PgGovernanceStore implements IGovernanceStore {
     return { ...event, seq, hash };
   }
 
+  /**
+   * Lists entries in chain order.
+   *
+   * @param opts - `limit` (default 100) and `offset` (default 0).
+   * @returns The page of entries.
+   */
   async list(opts?: { limit?: number; offset?: number }): Promise<GovernanceEntry[]> {
     await this.init();
     const limit = opts?.limit ?? 100;
@@ -92,6 +129,11 @@ export class PgGovernanceStore implements IGovernanceStore {
     return rows.map(r => this._toEntry(r));
   }
 
+  /**
+   * Returns the hash of the last entry.
+   *
+   * @returns The head hash, or the genesis hash when the table is empty.
+   */
   async head(): Promise<string> {
     await this.init();
     const { rows } = await this._pool.query(
@@ -100,6 +142,11 @@ export class PgGovernanceStore implements IGovernanceStore {
     return rows.length > 0 ? (rows[0]!.hash as string) : GENESIS_HASH;
   }
 
+  /**
+   * Counts entries.
+   *
+   * @returns Number of rows.
+   */
   async count(): Promise<number> {
     await this.init();
     const { rows } = await this._pool.query(
@@ -108,6 +155,11 @@ export class PgGovernanceStore implements IGovernanceStore {
     return (rows[0]?.cnt as number) ?? 0;
   }
 
+  /**
+   * Recomputes the whole chain from genesis (reads every row).
+   *
+   * @returns `valid: true`, or `valid: false` with the sequence number of the first broken entry.
+   */
   async verifyIntegrity(): Promise<{ valid: boolean; brokenAt?: number }> {
     await this.init();
     const { rows } = await this._pool.query(
@@ -132,6 +184,11 @@ export class PgGovernanceStore implements IGovernanceStore {
     return { valid: true };
   }
 
+  /**
+   * Deletes every entry (tests only).
+   *
+   * @throws {Error} In a deployed environment (`isDeployedEnv()`).
+   */
   async clear(): Promise<void> {
     // SEC-07: Guard unbounded DELETE in production — requires explicit tenant scope
     if (isDeployedEnv()) {

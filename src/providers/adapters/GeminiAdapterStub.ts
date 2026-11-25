@@ -8,6 +8,10 @@
  *   { id: string, model: string, inputTokens: number, outputTokens: number }
  *
  * Valid models: 'gemini-2.0-flash', 'gemini-pro', 'gemini-ultra'
+ *
+ * Registered by `ProviderRegistry.createDefault()` when `GEMINI_API_KEY` is not set.
+ *
+ * @module src/providers/adapters/GeminiAdapterStub
  */
 
 import { calculateCostUnitsV1Number } from '../../pricing/CostUnits.js';
@@ -19,6 +23,7 @@ import {
   IProviderAdapter,
 } from '../types.js';
 
+// Throws AdapterParseError (missing model, missing counts, or non-integer/negative counts).
 function validateInput(raw: unknown): GenericUsageInput {
   const input = raw as Partial<GenericUsageInput>;
   if (!input.model || typeof input.model !== 'string') {
@@ -39,9 +44,22 @@ function validateInput(raw: unknown): GenericUsageInput {
   return input as GenericUsageInput;
 }
 
+/**
+ * Stub Gemini adapter that reads the simplified {@link GenericUsageInput} shape (offline and tests).
+ */
 export class GeminiAdapterStub implements IProviderAdapter {
   readonly providerId = 'gemini';
 
+  /**
+   * Validates a {@link GenericUsageInput} and returns the normalized event with the model lowercased.
+   *
+   * @param raw - Object in the {@link GenericUsageInput} shape.
+   * @param latencyMs - Round-trip latency in milliseconds.
+   * @param timestamp - Unix timestamp in seconds to put in the event.
+   * @returns The normalized usage event; `requestId` is the input `id`.
+   * @throws {@link AdapterParseError} When the model or a token count is missing, or a count is not a
+   *   non-negative integer.
+   */
   parseResponse(raw: unknown, latencyMs: number, timestamp: number): NormalizedUsageEvent {
     const input = validateInput(raw);
     const model = input.model.toLowerCase();

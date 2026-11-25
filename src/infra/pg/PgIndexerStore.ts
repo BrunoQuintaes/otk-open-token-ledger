@@ -4,13 +4,24 @@
  * Stores indexed receipt data in PostgreSQL for cross-instance visibility.
  * Table: otk_indexed_receipts
  *
- * @module infra/pg/PgIndexerStore
+ * Installed by `src/infra/storeBootstrap.ts` with `setIndexerStore()`. Every method first runs `init()`. Query
+ * errors propagate (the dashboard indexer ignores them). Re-indexing a request id only updates `indexed_at`.
+ *
+ * @module src/infra/pg/PgIndexerStore
  * @since Wave 3A (PACK 3A-03)
  */
 
 import type { IIndexerStore, IndexedReceipt, TenantSummary } from '../../dashboard/IIndexerStore.js';
 
+/** The part of a `pg.Pool` this store uses. */
 export interface PgPool {
+  /**
+   * Runs one parameterized query.
+   *
+   * @param text - SQL text with `$n` placeholders.
+   * @param params - Parameter values.
+   * @returns The result rows.
+   */
   query(text: string, params?: unknown[]): Promise<{ rows: Record<string, unknown>[] }>;
 }
 
@@ -34,14 +45,25 @@ CREATE INDEX IF NOT EXISTS idx_indexed_receipts_tenant ON otk_indexed_receipts (
 const CREATE_TIMESTAMP_INDEX = `
 CREATE INDEX IF NOT EXISTS idx_indexed_receipts_ts ON otk_indexed_receipts (indexed_at DESC)`;
 
+/** `IIndexerStore` in the PostgreSQL table `otk_indexed_receipts`. */
 export class PgIndexerStore implements IIndexerStore {
   private readonly _pool: PgPool;
   private _initialized = false;
 
+  /**
+   * Wraps a pool; nothing is queried until the first call.
+   *
+   * @param pool - PostgreSQL pool.
+   */
   constructor(pool: PgPool) {
     this._pool = pool;
   }
 
+  /**
+   * Creates the table and indexes if missing (idempotent, once per instance).
+   *
+   * @throws {Error} When a DDL statement fails.
+   */
   async init(): Promise<void> {
     if (this._initialized) return;
     await this._pool.query(CREATE_TABLE);
@@ -50,6 +72,11 @@ export class PgIndexerStore implements IIndexerStore {
     this._initialized = true;
   }
 
+  /**
+   * Inserts a receipt summary (upsert by request id).
+   *
+   * @param receipt - Receipt summary.
+   */
   async index(receipt: IndexedReceipt): Promise<void> {
     await this.init();
     await this._pool.query(
@@ -74,6 +101,12 @@ export class PgIndexerStore implements IIndexerStore {
     );
   }
 
+  /**
+   * Lists receipts by `indexed_at`, newest first.
+   *
+   * @param opts - `limit` (default 50), `offset` (default 0) and optional tenant filter.
+   * @returns The page of receipts.
+   */
   async getRecentReceipts(opts?: { limit?: number; offset?: number; tenantId?: string }): Promise<IndexedReceipt[]> {
     await this.init();
     const limit = opts?.limit ?? 50;
@@ -94,6 +127,11 @@ export class PgIndexerStore implements IIndexerStore {
     return rows.map(r => this._toReceipt(r));
   }
 
+  /**
+   * Aggregates count, CU and last activity per tenant over the whole table.
+   *
+   * @returns One summary per tenant, most recently active first.
+   */
   async getTenantSummary(): Promise<TenantSummary[]> {
     await this.init();
     const { rows } = await this._pool.query(
@@ -114,12 +152,18 @@ export class PgIndexerStore implements IIndexerStore {
     }));
   }
 
+  /**
+   * Counts stored receipts.
+   *
+   * @returns Number of rows.
+   */
   async size(): Promise<number> {
     await this.init();
     const { rows } = await this._pool.query(`SELECT COUNT(*)::int AS cnt FROM otk_indexed_receipts`);
     return (rows[0]?.cnt as number) ?? 0;
   }
 
+  /** Deletes every row of `otk_indexed_receipts` (tests; destructive). */
   async clear(): Promise<void> {
     await this.init();
     await this._pool.query(`DELETE FROM otk_indexed_receipts`);

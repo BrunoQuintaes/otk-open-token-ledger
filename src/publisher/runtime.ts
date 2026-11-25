@@ -7,6 +7,10 @@
  *
  * The singleton is reset-safe: call getDispatcher().reset() in tests.
  *
+ * The dispatcher is created when this module is first imported; nothing else runs at import.
+ *
+ * @module src/publisher/runtime
+ *
  * @since F3.2
  */
 
@@ -17,6 +21,8 @@ const _dispatcher = new EventDispatcher();
 /**
  * Returns the process-level EventDispatcher singleton.
  * Same instance on every call — guaranteed by module scope.
+ *
+ * @returns The shared dispatcher (buffer of 100 envelopes).
  */
 export function getDispatcher(): EventDispatcher {
   return _dispatcher;

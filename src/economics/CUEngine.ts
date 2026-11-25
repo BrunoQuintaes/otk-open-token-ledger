@@ -12,7 +12,11 @@
  * ADR-CU-0001: docs/architecture/adr/ADR-CU-0001-cost-units-economic-justification.md
  * Formal spec: docs/architecture/U1_COST_UNIT_FORMAL_SPEC.md
  *
- * @module CUEngine
+ * Most names are re-exported from `src/pricing/CostUnits.ts`; this file adds the published value (raw or
+ * bucketed) computed with the active strategy of `ICUStrategy.ts`. Environment variables read once at load:
+ * `CU_MODE` (or the older `CU_PUBLISH_MODE`) and `CU_BUCKET_SIZE`.
+ *
+ * @module src/economics/CUEngine
  * @since U1.8 (F5) | bucketing U5.3
  */
 
@@ -112,7 +116,9 @@ export const CU_ENGINE_BUCKET_SIZE: bigint = _resolveBucketSize();
  * for on-chain submission. It applies the engine-level bucketing policy
  * configured via CU_MODE and CU_BUCKET_SIZE environment variables.
  *
+ * @param input - Provider, model and token counts.
  * @returns Published CU (bigint) — the value stored on-chain.
+ * @throws {@link CUError} When the active strategy refuses the input (unknown provider or model, overflow).
  */
 export function computePublishedCU(input: CostUnitsInput): bigint {
   const raw = getActiveStrategy().compute(input);
@@ -124,6 +130,11 @@ export function computePublishedCU(input: CostUnitsInput): bigint {
  *
  * Suitable for `RawReceipt.costUnits` and adapter `NormalizedUsageEvent.costUnits`.
  * Throws CUError if value exceeds Number.MAX_SAFE_INTEGER.
+ *
+ * @param input - Provider, model and token counts.
+ * @returns Published CU as a safe integer Number.
+ * @throws {@link CUError} `UINT64_OVERFLOW` when the value exceeds `Number.MAX_SAFE_INTEGER`, or any error of
+ *   `computePublishedCU`.
  */
 export function computePublishedCUNumber(input: CostUnitsInput): number {
   const cu = computePublishedCU(input);
@@ -151,10 +162,19 @@ export function computePublishedCUNumber(input: CostUnitsInput): number {
 export const CU_WEIGHTS_V1_REJECTED = 'CU_WEIGHTS_V1_REJECTED' as const;
 
 /**
+ * Former dynamic-weights entry point; now only a guard that refuses v1 weight tables.
+ *
  * @deprecated D5/S0-F01. With `cwJson = null` it returns the static computePublishedCU()
  * (unchanged). A v1 table is refused with CUError(CU_WEIGHTS_V1_REJECTED) instead of being
  * applied as a weighted sum or silently replaced by static constants. Use computeCu() with a
  * validated CuConfig (loadCuWeights / createCuWeightsRuntime).
+ *
+ * Kept for compatibility: computes CU, either statically or (for a v1 table) not at all.
+ *
+ * @param input - Provider, model and token counts.
+ * @param cwJson - A v1 CW table, or null for the static computation.
+ * @returns The static published CU when `cwJson` is null.
+ * @throws {@link CUError} `CU_WEIGHTS_V1_REJECTED` whenever `cwJson` is not null.
  */
 export function computePublishedCUWithCW(
   input: CostUnitsInput,
@@ -171,6 +191,12 @@ export function computePublishedCUWithCW(
 /**
  * Number variant of computePublishedCUWithCW.
  * Suitable for RawReceipt.costUnits when dynamic governance is active.
+ *
+ * @param input - Provider, model and token counts.
+ * @param cwJson - A v1 CW table, or null for the static computation.
+ * @returns Published CU as a safe integer Number.
+ * @throws {@link CUError} `CU_WEIGHTS_V1_REJECTED` when `cwJson` is not null, or `UINT64_OVERFLOW` above
+ *   `Number.MAX_SAFE_INTEGER`.
  */
 export function computePublishedCUWithCWNumber(
   input: CostUnitsInput,

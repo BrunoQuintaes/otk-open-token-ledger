@@ -15,7 +15,13 @@
  * @module reconciliation/types
  */
 
+/**
+ * Providers supported by reconciliation.
+ */
 export type ReconProvider = 'anthropic' | 'openai' | 'gemini';
+/**
+ * All {@link ReconProvider} values, frozen.
+ */
 export const RECON_PROVIDERS: readonly ReconProvider[] = Object.freeze(['anthropic', 'openai', 'gemini']);
 
 /** ISO-8601 UTC instant with milliseconds, e.g. 2026-10-03T22:10:17.717Z. */
@@ -26,6 +32,9 @@ export type IsoUtc = string;
  * code execution, storage...) that OTK does not meter; 'unknown' = the row could not be interpreted.
  */
 export type UsageCategory = 'input' | 'output' | 'cache_read' | 'cache_write' | 'thinking' | 'other' | 'unknown';
+/**
+ * All {@link UsageCategory} values, frozen.
+ */
 export const USAGE_CATEGORIES: readonly UsageCategory[] = Object.freeze(['input', 'output', 'cache_read', 'cache_write', 'thinking', 'other', 'unknown']);
 
 /** Fixed-point amount: value = units / scale; scale is a positive power of ten. */
@@ -40,16 +49,26 @@ export type LineKind = 'usage' | 'tax' | 'credit' | 'adjustment';
 /** Where the provider-side data came from. FIXTURE = synthetic, built for tests; proves nothing about a provider. */
 export type DataOrigin = 'REAL' | 'FIXTURE';
 
+/**
+ * How well a statement mapping is backed by official documentation.
+ */
 export type MappingProvenanceStatus = 'VERIFIED_OFFICIAL_DOC' | 'PARTIALLY_VERIFIED' | 'UNVERIFIED_ASSUMPTION';
 
+/**
+ * Where each assumption of a statement mapping comes from.
+ */
 export interface MappingProvenance {
   status: MappingProvenanceStatus;
+  /** Official pages used: URL, access date (YYYY-MM-DD) and what each page covers. */
   sources: Array<{ url: string; accessedOn: string; covers: string }>;
   /** Parts of the mapping that are assumptions (column names, vocabularies, semantics). */
   unverified: string[];
   notes: string;
 }
 
+/**
+ * One line of a provider statement after import (usage, tax, credit or adjustment).
+ */
 export interface StatementLine {
   /** Deterministic id: `<mappingId>#<row>[.<sub>]` (row = 1-based record index in the source). */
   lineId: string;
@@ -72,7 +91,9 @@ export interface StatementLine {
    * mapping's declared precision, or 15 significant digits for binary-float sources). null when amount is null.
    */
   amountPrecisionDecimals: number | null;
+  /** Currency code as exported (e.g. `USD`); null when the row has no amount. */
   currency: string | null;
+  /** Inclusive start of the period the line covers. */
   periodStart: IsoUtc;
   /** Exclusive end. */
   periodEnd: IsoUtc;
@@ -90,6 +111,9 @@ export interface StatementLine {
   issues: string[];
 }
 
+/**
+ * A whole provider statement after import, with its provenance and coverage.
+ */
 export interface ProviderStatement {
   schema: 'otk.provider_statement.v1';
   provider: ReconProvider;
@@ -123,8 +147,12 @@ export interface ReconciliationWindow {
   tenantId: string | null;
 }
 
+/**
+ * Token count of one category in an OTK record.
+ */
 export interface OtkCategoryQuantity {
   category: UsageCategory;
+  /** Tokens (non-negative). */
   count: bigint;
 }
 
@@ -143,11 +171,13 @@ export interface OtkRecord {
   priceTableVersion: string | null;
   /** Confirmed money of the operation (null when not settled). */
   confirmedMoney: ScaledAmount | null;
+  /** Money state of the operation as recorded (e.g. confirmed); null when unknown. */
   moneyState: string | null;
   /** How confirmedMoney was obtained (e.g. 'otk_operations.money.confirmed'). */
   moneyOrigin: string;
   /** Half-units of the money scale lost when the source value was rounded to scale (0 = exact). */
   moneyRoundingHalfUnits: bigint;
+  /** When the operation was observed (ISO UTC); used to place it in a period. */
   observedAt: IsoUtc;
   notes: string[];
 }
@@ -169,6 +199,9 @@ export interface OtkRecord {
 export type Classification =
   | 'MATCH' | 'ROUNDING' | 'TIMING_WINDOW' | 'MODEL_ALIAS' | 'CACHE_CATEGORY'
   | 'PRICE_VERSION' | 'MISSING_OTK' | 'MISSING_PROVIDER' | 'UNMATCHED' | 'UNKNOWN';
+/**
+ * All {@link Classification} values in report order, frozen.
+ */
 export const CLASSIFICATIONS: readonly Classification[] = Object.freeze([
   'MATCH', 'ROUNDING', 'TIMING_WINDOW', 'MODEL_ALIAS', 'CACHE_CATEGORY',
   'PRICE_VERSION', 'MISSING_OTK', 'MISSING_PROVIDER', 'UNMATCHED', 'UNKNOWN',
@@ -191,8 +224,14 @@ export interface Comparison {
   relDiffNote: string | null;
 }
 
+/**
+ * Granularity of a reconciliation result row.
+ */
 export type ResultLevel = 'request' | 'category' | 'model_period' | 'statement_line' | 'otk_record' | 'total';
 
+/**
+ * What a result row refers to; `null` members mean "all" at that level.
+ */
 export interface ResultKey {
   provider: ReconProvider;
   model: string | null;
@@ -202,6 +241,9 @@ export interface ResultKey {
   requestId: string | null;
 }
 
+/**
+ * One reconciliation result row: what was compared, how it was classified and why.
+ */
 export interface ReconciliationDifference {
   id: string;
   level: ResultLevel;
@@ -226,6 +268,9 @@ export interface ReconciliationMatch {
   otkOperationIds: string[];
 }
 
+/**
+ * Complete reconciliation report for one provider and window; serialized by `report.ts`.
+ */
 export interface ReconciliationReport {
   schema: 'otk.reconciliation_report.v1';
   provider: ReconProvider;

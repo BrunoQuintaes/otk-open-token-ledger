@@ -12,7 +12,17 @@
  *
  * Schema: see scripts/ops/pa07_migration.sql
  *
+ * Also owns the transactional "durable write" path (`storeDurable`): in one PostgreSQL transaction it checks
+ * the tenant's quota, inserts the receipt, writes its ledger debit and enqueues its outbox effects
+ * (`src/operations/ledger.ts`, `src/operations/PgEffectOutbox.ts`). Tables: `otk_receipts`,
+ * `otk_proof_jobs` (created by `init`), plus the ledger/quota/outbox tables from `src/operations/schema.ts`.
+ *
+ * Configuration: the connection string is passed by the caller (`src/api/receiptStore.ts` reads `OTK_DB_URL`);
+ * this file reads no environment variable. It does NOT decide quotas or prices: the caller passes the
+ * receipt's units and the quota.
+ *
  * @since PA-07 (2026-03-13)
+ * @module src/api/PostgresReceiptStore
  */
 
 import { Pool, type PoolConfig } from 'pg';
@@ -36,6 +46,10 @@ export interface DurableWriteOptions {
   enqueueProof: boolean;
 }
 
+/**
+ * Outcome of `storeDurable`: stored, already present for the same tenant, already present for another tenant,
+ * or refused because the tenant's quota would be exceeded (`quota` and `current` in accounting units, micro-CU).
+ */
 export type DurableWriteResult =
   | { outcome: 'inserted' }
   | { outcome: 'duplicate' }
@@ -46,6 +60,10 @@ export type DurableWriteResult =
  * Legacy receipts have no operation id: their outbox key is (tenant, 'rcpt:' + requestId), a
  * namespace operations never use (review M3: a receipt X and an operation X of the same tenant
  * used to share effect ids, and the second projection was silently dropped).
+ *
+ * @param tenantId - Tenant of the receipt.
+ * @param requestId - The receipt's requestId.
+ * @returns The outbox key `{ tenantId, operationId: 'rcpt:<requestId>' }`.
  */
 export const legacyKey = (tenantId: string, requestId: string) => ({ tenantId, operationId: `rcpt:${requestId}` });
 
@@ -72,6 +90,12 @@ interface ReceiptRow {
   created_at: Date;
 }
 
+/**
+ * PostgreSQL-backed receipt store with its own connection pool (max 5 connections, 5 s connect timeout,
+ * overridable through `poolConfig`).
+ *
+ * Constructing it opens no connection; call `init()` before use and `close()` on shutdown.
+ */
 export class PostgresReceiptStore {
   private readonly pool: Pool;
 
@@ -133,7 +157,12 @@ export class PostgresReceiptStore {
   /** Receipts marked 'legacy-unknown' when init() created the proof-job table. */
   legacyMarked = 0;
 
-  /** Record (or replace) the proof job accepted for a receipt. */
+  /**
+   * Record (or replace) the proof job accepted for a receipt.
+   *
+   * @param requestId - The receipt's requestId.
+   * @param jobId - Prover job id returned when the proof was accepted.
+   */
   async setProofJob(requestId: string, jobId: string): Promise<void> {
     await this.pool.query(
       `INSERT INTO otk_proof_jobs (request_id, job_id) VALUES ($1, $2)
@@ -142,7 +171,12 @@ export class PostgresReceiptStore {
     );
   }
 
-  /** Proof job recorded for one receipt (any instance may have recorded it). */
+  /**
+   * Proof job recorded for one receipt (any instance may have recorded it).
+   *
+   * @param requestId - The receipt's requestId.
+   * @returns The job id, or `undefined` when none is recorded.
+   */
   async getProofJob(requestId: string): Promise<string | undefined> {
     const r = await this.pool.query<{ job_id: string }>('SELECT job_id FROM otk_proof_jobs WHERE request_id = $1', [requestId]);
     return r.rows[0]?.job_id;
@@ -154,6 +188,12 @@ export class PostgresReceiptStore {
    * the receipt, its ledger debit (identity receipt:<requestId>) and its outbox effects
    * (project_redis, enqueue_proof). If the commit lands after the caller stopped waiting, the
    * effects still exist and any instance runs them; the counters are already right.
+   *
+   * @param receipt - The receipt to store; `tenantId` absent means tenant `'default'`.
+   * @param opts - Epoch, units and quota of this write, and whether to enqueue a proof.
+   * @returns The outcome; a duplicate or tenant mismatch changes nothing.
+   * @throws {Error} Database errors other than a unique-key race on the same requestId (the transaction is
+   *   rolled back first).
    */
   async storeDurable(receipt: RawReceipt, opts: DurableWriteOptions): Promise<DurableWriteResult> {
     const tenantId = receipt.tenantId ?? 'default';
@@ -208,6 +248,9 @@ export class PostgresReceiptStore {
    * N14/RV30-03: give receipts that still lack a proof job a durable enqueue_proof effect
    * (idempotent: effectId per (tenant, requestId); an existing effect is left untouched).
    * Same set that N14 re-sent from memory after a restart; now any instance dispatches it.
+   *
+   * @param receipts - Receipts to cover (typically those restored without a proof job).
+   * @returns Number of effects newly enqueued (existing ones are not counted).
    */
   async ensureProofEffects(receipts: RawReceipt[]): Promise<number> {
     let added = 0;
@@ -225,6 +268,13 @@ export class PostgresReceiptStore {
    * (idempotent), then the PostgreSQL counters of the touched (tenant, epoch) are rebuilt from the
    * ledger. Receipts written for durable operations are skipped (their debit is the operation's).
    * Returns the number of ledger rows added.
+   *
+   * @param receipts - Receipts to backfill; those without requestId, with the operation prefix or with
+   *   non-convertible cost are skipped.
+   * @param epochOf - Maps a receipt to its quota epoch id.
+   * @param toUnits - Converts CU to accounting units (micro-CU); `null` means "cannot convert" and skips the receipt.
+   * @returns Number of ledger rows added.
+   * @throws {Error} Database errors (the transaction is rolled back first).
    */
   async backfillLedger(receipts: RawReceipt[], epochOf: (r: RawReceipt) => string, toUnits: (cu: number) => bigint | null): Promise<number> {
     const rows = receipts.filter((r) => r.requestId && !r.requestId.startsWith(OPERATION_RECEIPT_PREFIX))
@@ -254,17 +304,32 @@ export class PostgresReceiptStore {
     }
   }
 
-  /** Confirmed CU of (tenant, epoch) from the durable ledger, in accounting units. */
+  /**
+   * Confirmed CU of (tenant, epoch) from the durable ledger, in accounting units.
+   *
+   * @param tenantId - Tenant id.
+   * @param epochId - Quota epoch id.
+   * @returns Total units (micro-CU) and the number of ledger entries.
+   */
   async ledgerBalance(tenantId: string, epochId: string): Promise<{ units: bigint; entries: number }> {
     return ledgerTotal(this.pool, tenantId, epochId);
   }
 
-  /** Outbox over this store's pool (shared tables). */
+  /**
+   * Outbox over this store's pool (shared tables).
+   *
+   * @param opts - Outbox options; `maxAttempts` caps delivery attempts per effect.
+   * @returns A new outbox bound to this pool.
+   */
   outbox(opts: { maxAttempts?: number } = {}): PgEffectOutbox {
     return new PgEffectOutbox(this.pool, opts);
   }
 
-  /** All recorded proof jobs, by requestId. */
+  /**
+   * All recorded proof jobs, by requestId.
+   *
+   * @returns Map from requestId to proof job id.
+   */
   async getProofJobs(): Promise<Map<string, string>> {
     const r = await this.pool.query<{ request_id: string; job_id: string }>('SELECT request_id, job_id FROM otk_proof_jobs');
     return new Map(r.rows.map(x => [x.request_id, x.job_id]));
@@ -273,6 +338,9 @@ export class PostgresReceiptStore {
   /**
    * Insert a receipt. Returns true if inserted (new), false if duplicate (ON CONFLICT).
    * Idempotent by request_id.
+   *
+   * @param receipt - Receipt to insert (bigint fields are stored as strings).
+   * @returns `true` when inserted, `false` when the requestId already existed.
    */
   async store(receipt: RawReceipt): Promise<boolean> {
     const serialized = {
@@ -289,7 +357,12 @@ export class PostgresReceiptStore {
     return (result.rowCount ?? 0) > 0;
   }
 
-  /** Retrieve a single receipt by requestId. Returns undefined if not found. */
+  /**
+   * Retrieve a single receipt by requestId. Returns undefined if not found.
+   *
+   * @param requestId - The receipt's requestId.
+   * @returns The receipt, or `undefined`.
+   */
   async get(requestId: string): Promise<RawReceipt | undefined> {
     const result = await this.pool.query<ReceiptRow>(
       'SELECT receipt_json FROM otk_receipts WHERE request_id = $1',
@@ -299,7 +372,11 @@ export class PostgresReceiptStore {
     return this._deserialize(result.rows[0].receipt_json);
   }
 
-  /** Load all receipts (for startup restore into in-memory Map). */
+  /**
+   * Load all receipts (for startup restore into in-memory Map).
+   *
+   * @returns Every stored receipt, oldest first.
+   */
   async getAll(): Promise<RawReceipt[]> {
     const result = await this.pool.query<ReceiptRow>(
       'SELECT receipt_json FROM otk_receipts ORDER BY created_at ASC',
@@ -311,6 +388,11 @@ export class PostgresReceiptStore {
    * H1R2 S23-F02: one page of the receipts of a tenant, keyset-paginated by request_id (read-only).
    * Pass the last requestId of the previous page as `afterRequestId` ('' for the first page); a page shorter
    * than `limit` is the last one. Rows with no tenantId (legacy) belong to 'default', as in storeReceipt().
+   *
+   * @param tenantId - Tenant whose receipts are listed.
+   * @param afterRequestId - Exclusive lower bound on requestId; `''` for the first page.
+   * @param limit - Maximum number of rows.
+   * @returns Up to `limit` receipts, ordered by requestId.
    */
   async listReceiptsPageForTenant(tenantId: string, afterRequestId: string, limit: number): Promise<RawReceipt[]> {
     const result = await this.pool.query<ReceiptRow>(
@@ -322,19 +404,31 @@ export class PostgresReceiptStore {
     return result.rows.map((r) => ({ ...this._deserialize(r.receipt_json), requestId: r.request_id }));
   }
 
-  /** Delete all receipts. Returns row count before deletion. */
+  /**
+   * Delete all receipts. Returns row count before deletion.
+   *
+   * @returns Number of rows before the deletion.
+   */
   async deleteAll(): Promise<number> {
     const count = await this.count();
     await this.pool.query('DELETE FROM otk_receipts');
     return count;
   }
 
-  /** Delete a single receipt. */
+  /**
+   * Delete a single receipt.
+   *
+   * @param requestId - The receipt's requestId; unknown ids are ignored.
+   */
   async delete(requestId: string): Promise<void> {
     await this.pool.query('DELETE FROM otk_receipts WHERE request_id = $1', [requestId]);
   }
 
-  /** Current receipt count. */
+  /**
+   * Current receipt count.
+   *
+   * @returns Number of rows in `otk_receipts`.
+   */
   async count(): Promise<number> {
     const result = await this.pool.query<{ count: string }>(
       'SELECT COUNT(*) AS count FROM otk_receipts',
@@ -347,6 +441,12 @@ export class PostgresReceiptStore {
     await this.pool.end();
   }
 
+  /**
+   * Rebuilds a RawReceipt from its JSONB form (strings back to bigint and numbers).
+   *
+   * @param row - The stored `receipt_json` value.
+   * @returns The receipt with `userId` and `nonce` as bigint.
+   */
   private _deserialize(row: ReceiptRow['receipt_json']): RawReceipt {
     return {
       provider: row.provider,

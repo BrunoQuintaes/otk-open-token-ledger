@@ -9,7 +9,13 @@
  * Falls back gracefully when DB is unavailable (returns empty results, no crash).
  * Uses existing OTK_DB_URL connection pattern from PostgresReceiptStore.
  *
- * @module archive/ReceiptArchive
+ * It opens its own pool (max 3 connections) on `init()`; TLS is required in deployed environments (rule of
+ * `src/infra/deployEnv.ts`). Table: `otk_receipt_archive`, with indexes on tenant, epoch, provider and timestamp.
+ * In this version no module under `src/` calls it (only its unit tests). Its `epoch_id` is the UTC day number
+ * (timestamp / 86 400), not the receipt epoch of `deriveEpoch` (hourly).
+ * Environment variable read: OTK_DB_URL (by `getReceiptArchive`).
+ *
+ * @module src/archive/ReceiptArchive
  * @since Wave 2 Pack 14 (E3.1)
  */
 
@@ -18,27 +24,39 @@ import { isDeployedEnv } from '../infra/deployEnv.js'; // RV2-RUNS-02 (RUN-S): s
 
 /** Query filter for receipt archive */
 export interface ArchiveQuery {
+  /** Exact tenant id. */
   tenantId?: string;
+  /** Exact archive epoch id (UTC day number as a string). */
   epochId?: string;
   provider?: string;
   model?: string;
+  /** Lower bound on the receipt timestamp, seconds since epoch (inclusive). */
   from?: number;
+  /** Upper bound on the receipt timestamp, seconds since epoch (inclusive). */
   to?: number;
+  /** Page size; default 100, capped at 1000. */
   limit?: number;
+  /** Rows to skip; default 0. */
   offset?: number;
 }
 
 /** Archive statistics */
 export interface ArchiveStats {
+  /** Number of archived receipts. */
   count: number;
+  /** Smallest receipt timestamp (seconds), or `null` when empty. */
   oldest: number | null;
+  /** Largest receipt timestamp (seconds), or `null` when empty. */
   newest: number | null;
 }
 
 /** Result of an archive query */
 export interface ArchiveQueryResult {
+  /** Receipts of the requested page, newest first. */
   receipts: RawReceipt[];
+  /** Number of rows matching the filters (all pages). */
   total: number;
+  /** The query as received. */
   query: ArchiveQuery;
 }
 
@@ -60,6 +78,8 @@ export class ReceiptArchive {
   /**
    * Initialize the archive table if it does not exist.
    * Returns true on success, false on failure (DB unreachable).
+   *
+   * @returns `true` when the table and indexes exist, `false` when the database could not be reached.
    */
   async init(): Promise<boolean> {
     try {
@@ -100,7 +120,11 @@ export class ReceiptArchive {
     }
   }
 
-  /** Whether the archive has been successfully initialized. */
+  /**
+   * Whether the archive has been successfully initialized.
+   *
+   * @returns `true` after a successful `init()` and before `close()`.
+   */
   get isReady(): boolean {
     return this._initialized && this._pool !== null;
   }
@@ -108,6 +132,9 @@ export class ReceiptArchive {
   /**
    * Archive a receipt into PostgreSQL.
    * Returns true if stored, false on duplicate or DB failure.
+   *
+   * @param receipt - Receipt to archive; its archive epoch is derived from the timestamp (seconds).
+   * @returns `true` when inserted; `false` for a duplicate requestId, before `init()` or on any database error.
    */
   async archiveReceipt(receipt: RawReceipt): Promise<boolean> {
     if (!this._pool) return false;
@@ -147,6 +174,9 @@ export class ReceiptArchive {
   /**
    * Query archived receipts with parametric filters.
    * Returns empty results on DB failure.
+   *
+   * @param query - Filters and paging; all filters are exact matches combined with AND.
+   * @returns The page and the total count; an empty result before `init()` or on any database error.
    */
   async queryReceipts(query: ArchiveQuery = {}): Promise<ArchiveQueryResult> {
     const empty: ArchiveQueryResult = { receipts: [], total: 0, query };
@@ -227,6 +257,8 @@ export class ReceiptArchive {
   /**
    * Get archive statistics: count, oldest, newest.
    * Returns zeroed stats on DB failure.
+   *
+   * @returns Count and timestamp range; zeroed before `init()` or on any database error.
    */
   async getArchiveStats(): Promise<ArchiveStats> {
     const empty: ArchiveStats = { count: 0, oldest: null, newest: null };
@@ -265,6 +297,8 @@ let _instance: ReceiptArchive | null = null;
 /**
  * Get or create the singleton archive.
  * Returns null if OTK_DB_URL is not configured.
+ *
+ * @returns The shared archive (not yet initialized on first call), or `null` without OTK_DB_URL.
  */
 export function getReceiptArchive(): ReceiptArchive | null {
   const url = process.env['OTK_DB_URL'];

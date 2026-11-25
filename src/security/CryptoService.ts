@@ -5,8 +5,15 @@
  * Concrete implementations (AES-256-GCM, KMS-backed, etc.) extend this base.
  *
  * Status: Base class with abstract methods — no production implementation yet.
+ *
+ * Not used by the vault (`ProviderKeyVault.ts` has its own AES-256-GCM code); kept as an extension point.
+ *
+ * @module src/security/CryptoService
  */
 
+/**
+ * Abstract encrypt/decrypt service; implementations choose the algorithm and the text encoding.
+ */
 export abstract class CryptoService {
   /**
    * Encrypt plaintext data.

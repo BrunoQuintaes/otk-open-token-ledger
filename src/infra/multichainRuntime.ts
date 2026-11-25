@@ -7,7 +7,7 @@
  * Default: built-in NETWORKS + DEPLOYMENTS from chainRegistry.ts.
  * Override: setChainRegistry() for operator injection (e.g. production deployments).
  *
- * @module infra/multichainRuntime
+ * @module src/infra/multichainRuntime
  * @since G4
  */
 
@@ -15,7 +15,11 @@ import { ChainRegistry } from './chainRegistry.js';
 
 let _registry = new ChainRegistry();
 
-/** Get the process-level ChainRegistry singleton. */
+/**
+ * Get the process-level ChainRegistry singleton.
+ *
+ * @returns The registry in use.
+ */
 export function getChainRegistry(): ChainRegistry {
   return _registry;
 }
@@ -23,6 +27,8 @@ export function getChainRegistry(): ChainRegistry {
 /**
  * Override the process-level ChainRegistry.
  * Use for operator injection of production deployment addresses.
+ *
+ * @param registry - Registry to use from now on.
  */
 export function setChainRegistry(registry: ChainRegistry): void {
   _registry = registry;

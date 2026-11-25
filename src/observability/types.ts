@@ -4,8 +4,11 @@
  * These types define the contract for the in-memory collector.
  * They are intentionally decoupled from the CU/ZK/Registry core.
  * No external dependencies; pure value objects.
+ *
+ * @module src/observability/types
  */
 
+/** `degraded` when at least half of the requests failed; `unknown` when no request was seen. */
 export type HealthStatus = 'healthy' | 'degraded' | 'unknown';
 
 /**
@@ -18,8 +21,11 @@ export type ProviderMetricEntry = {
   requestCount: number;
   successCount: number;
   errorCount: number;
+  /** Sum of request latencies, milliseconds. */
   totalLatencyMs: number;
+  /** `totalLatencyMs / requestCount`, milliseconds. */
   avgLatencyMs: number;
+  /** Sum of the events' cost, in cost units (CU). */
   totalCostUnits: number;
   lastSeenAt: number;        // unix seconds
   healthStatus: HealthStatus;

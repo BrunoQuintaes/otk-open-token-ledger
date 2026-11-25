@@ -3,7 +3,7 @@
  * suggested a provider signature that does not exist; this module only re-exports the new names
  * so existing imports keep working (explicit alias, specification A/ESPEC_NOMES_D1G07.md).
  *
- * @module oracle/attestation/ProviderSignedStrategy
+ * @module src/oracle/attestation/ProviderSignedStrategy
  */
 export {
   OperatorRecountStrategy as ProviderSignedStrategy,

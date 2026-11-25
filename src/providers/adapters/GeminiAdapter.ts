@@ -10,6 +10,8 @@
  *
  * Fallback: ProviderRegistry.createDefault() uses GeminiAdapterStub when
  * GEMINI_API_KEY is absent. This adapter is selected when key is present.
+ *
+ * @module src/providers/adapters/GeminiAdapter
  */
 
 import { calculateCostUnitsV1Number, isModelSupported } from '../../pricing/CostUnits.js';
@@ -42,6 +44,8 @@ export interface GeminiGenerateContentResponse {
  * Normalize Gemini model name to canonical weight table entry.
  * Strips version suffixes (e.g., "gemini-1.5-pro-002" → "gemini-1.5-pro").
  * Falls through to lowercase original if unknown.
+ * @param rawModel - Model version as returned by the API.
+ * @returns The lowercase name without a 3-digit suffix when that name is in the weight table, else the lowercase original.
  */
 function normalizeGeminiModel(rawModel: string): string {
   const lower = rawModel.toLowerCase();
@@ -58,6 +62,7 @@ function normalizeGeminiModel(rawModel: string): string {
  * @param timestamp  Unix timestamp in seconds (caller-supplied, Gemini doesn't embed one)
  * @returns NormalizedUsageEvent
  * @throws AdapterParseError if required fields are missing or invalid
+ * @throws {@link CUError} From the cost engine, when the normalized model is not in the weight table.
  */
 export function parseGeminiResponse(
   response: GeminiGenerateContentResponse,
@@ -121,6 +126,15 @@ export function parseGeminiResponse(
 export class GeminiAdapter implements IProviderAdapter {
   readonly providerId = 'gemini';
 
+  /**
+   * Parses a raw Gemini generateContent response.
+   *
+   * @param raw - Parsed JSON body of the Gemini response.
+   * @param latencyMs - Round-trip latency in milliseconds.
+   * @param timestamp - Unix timestamp in seconds (Gemini responses carry none).
+   * @returns The normalized usage event.
+   * @throws {@link AdapterParseError} See {@link parseGeminiResponse}.
+   */
   parseResponse(raw: unknown, latencyMs: number, timestamp: number): NormalizedUsageEvent {
     return parseGeminiResponse(raw as GeminiGenerateContentResponse, latencyMs, timestamp);
   }

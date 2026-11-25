@@ -88,6 +88,11 @@ export interface PublishPolicyState {
  * CU_PUBLISH_POLICY: 'off' | 'window_k' (default 'window_k')
  * PUBLISH_WINDOW_MS:  positive integer ms (default 60 000)
  * PUBLISH_MIN_BATCH_K: positive integer (default 10)
+ *
+ * Any other value of `CU_PUBLISH_POLICY` falls back to `window_k`; an invalid number falls back to its default.
+ *
+ * @param overrides - Values that replace the ones read from the environment (applied last, not validated here).
+ * @returns The resolved options (no `now` unless given in `overrides`).
  */
 export function optionsFromEnv(overrides?: Partial<PublishPolicyOptions>): PublishPolicyOptions {
   const rawMode = process.env['CU_PUBLISH_POLICY'] ?? 'window_k';
@@ -129,21 +134,43 @@ export class PublishPolicy<T> {
     this._now = opts.now ?? Date.now;
   }
 
-  /** Create a PublishPolicy from environment variables. */
+  /**
+   * Create a PublishPolicy from environment variables.
+   *
+   * @param overrides - Values that replace the ones read from the environment.
+   * @returns A new policy with an empty pending batch.
+   * @throws {RangeError} When an override sets `windowMs` <= 0 or `minBatchK` < 1.
+   */
   static fromEnv<T>(overrides?: Partial<PublishPolicyOptions>): PublishPolicy<T> {
     return new PublishPolicy<T>(optionsFromEnv(overrides));
   }
 
-  /** Active mode. */
+  /**
+   * Active mode.
+   *
+   * @returns The mode fixed at construction.
+   */
   get mode(): PublishPolicyMode { return this._mode; }
 
-  /** Configured minimum window (ms). */
+  /**
+   * Configured minimum window (ms).
+   *
+   * @returns Minimum window in milliseconds.
+   */
   get windowMs(): number { return this._windowMs; }
 
-  /** Configured minimum batch size. */
+  /**
+   * Configured minimum batch size.
+   *
+   * @returns Minimum batch size (receipts).
+   */
   get minBatchK(): number { return this._minBatchK; }
 
-  /** Number of receipts currently held in the pending batch. */
+  /**
+   * Number of receipts currently held in the pending batch.
+   *
+   * @returns Pending receipt count.
+   */
   get pendingCount(): number { return this._pending.length; }
 
   /**
@@ -153,6 +180,12 @@ export class PublishPolicy<T> {
    * when the receipt has been buffered but the batch is not yet ready.
    *
    * In 'off' mode, always returns a single-element array immediately.
+   *
+   * The window is checked only when a receipt is added: a batch that meets the window later is released by
+   * the next `add()` or by `flush()`, never by a timer.
+   *
+   * @param receipt - Receipt to queue (stored by reference).
+   * @returns The released batch (all pending receipts, oldest first), or `null` while the batch is held.
    */
   add(receipt: T): T[] | null {
     if (this._mode === 'off') {
@@ -174,6 +207,7 @@ export class PublishPolicy<T> {
    *
    * Returns the pending receipts (may be empty). Resets internal state.
    * Use during graceful shutdown or explicit flush.
+   * @returns The pending receipts, oldest first; an empty array when none.
    */
   flush(): T[] {
     return this._release();
@@ -181,6 +215,7 @@ export class PublishPolicy<T> {
 
   /**
    * Read-only snapshot of current state (for diagnostics / monitoring).
+   * @returns A new state object; `batchOpenSince`/`elapsedMs` are `null` when no batch is open.
    */
   inspect(): PublishPolicyState {
     const now = this._now();

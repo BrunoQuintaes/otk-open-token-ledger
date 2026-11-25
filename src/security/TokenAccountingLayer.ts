@@ -19,12 +19,16 @@
 // Types
 // ---------------------------------------------------------------------------
 
+/**
+ * One CU debit of a metered request.
+ */
 export type TALEntry = {
   tenantId: string;
   epochId: string;
   requestId: string;
   provider: string;
   model: string;
+  /** Cost units debited (CU, not money). */
   cu: bigint;
   ts: number;        // unix ms
   /**
@@ -35,6 +39,9 @@ export type TALEntry = {
   outputTokens?: number;
 };
 
+/**
+ * Aggregate of the debits of one tenant and epoch.
+ */
 export type TALBalance = {
   tenantId: string;
   epochId: string;
@@ -42,6 +49,9 @@ export type TALBalance = {
   entryCount: number;
 };
 
+/**
+ * Comparison of the off-chain ledger with an on-chain CU total for one tenant and epoch.
+ */
 export type ReconcileResult = {
   tenantId: string;
   epochId: string;
@@ -55,12 +65,17 @@ export type ReconcileResult = {
 // Implementation
 // ---------------------------------------------------------------------------
 
+/**
+ * In-memory CU ledger; each instance has its own list of entries (lost on restart).
+ */
 export class TokenAccountingLayer {
   private readonly ledger: TALEntry[] = [];
 
   /**
    * Record a CU debit for a metered request.
    * Idempotent by requestId within (tenantId, epochId).
+   *
+   * @param entry - Debit to record (copied); a repeated requestId in the same tenant and epoch is ignored.
    */
   debit(entry: TALEntry): void {
     const dup = this.ledger.find(
@@ -75,6 +90,10 @@ export class TokenAccountingLayer {
 
   /**
    * Return cumulative CU balance for a (tenantId, epochId) pair.
+   *
+   * @param tenantId - Tenant ID.
+   * @param epochId - Epoch ID.
+   * @returns Total CU and entry count (zero when there is none).
    */
   balance(tenantId: string, epochId: string): TALBalance {
     const entries = this.ledger.filter(
@@ -90,6 +109,10 @@ export class TokenAccountingLayer {
 
   /**
    * List all entries for a tenant+epoch (for export/audit).
+   *
+   * @param tenantId - Tenant ID.
+   * @param epochId - Epoch ID.
+   * @returns A new array with the matching entries (the entry objects themselves are shared).
    */
   entries(tenantId: string, epochId: string): ReadonlyArray<TALEntry> {
     return this.ledger.filter(
@@ -100,6 +123,11 @@ export class TokenAccountingLayer {
   /**
    * Reconcile off-chain ledger vs an on-chain CU total.
    * Returns delta = offChainCU - onChainCU (positive = unsubmitted receipts).
+   *
+   * @param tenantId - Tenant ID.
+   * @param epochId - Epoch ID.
+   * @param onChainCU - CU total submitted on-chain.
+   * @returns Both totals, their difference and `ok` when they are equal.
    */
   reconcile(tenantId: string, epochId: string, onChainCU: bigint): ReconcileResult {
     const { totalCU: offChainCU } = this.balance(tenantId, epochId);
@@ -114,7 +142,11 @@ export class TokenAccountingLayer {
     };
   }
 
-  /** Total entries in ledger (for monitoring). */
+  /**
+   * Total entries in ledger (for monitoring).
+   *
+   * @returns Number of entries, all tenants.
+   */
   size(): number {
     return this.ledger.length;
   }

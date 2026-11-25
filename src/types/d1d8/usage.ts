@@ -4,6 +4,8 @@
  * One NormalizedUsage describes what one provider API reported for one operation, keeping
  * every category separately with its source field and inclusion rule, so totals are never
  * omitted or double-counted (D5-G02) and "absent" never becomes zero (D4-G04).
+ *
+ * @module src/types/d1d8/usage
  */
 import type { Hex32, IsoTime } from './common.js';
 
@@ -52,6 +54,9 @@ export type TokenCategoryName =
  */
 export type CategoryInclusion = 'base' | 'subset_of_input' | 'subset_of_output' | 'separate_addend';
 
+/**
+ * One token category as reported, with its source field and inclusion rule; `count` null = absent or invalid.
+ */
 export interface TokenCategory {
   name: TokenCategoryName;
   /** null = the provider did not report this category (absent). 0n = reported zero. */
@@ -79,6 +84,9 @@ export interface UsageIssue {
   detail?: string;
 }
 
+/**
+ * Normalized usage `otk.usage.v1` of one operation.
+ */
 export interface NormalizedUsage {
   schema: 'otk.usage.v1';
   api: UsageApi;
@@ -124,6 +132,9 @@ export interface NormalizedUsage {
 /** Model/API support as declared by the catalog (D4 §4). 'generic_fallback' is never 'exact'. */
 export type SupportLevel = 'exact' | 'alias_known' | 'generic_fallback' | 'unsupported';
 
+/**
+ * Local tokenizer coverage of one provider, API and model (from the model catalog).
+ */
 export interface ModelSupport {
   provider: string;
   api: UsageApi;

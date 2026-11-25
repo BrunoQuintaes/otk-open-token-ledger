@@ -3,14 +3,26 @@
  *
  * Tables: otk_organizations, otk_users, otk_memberships, otk_invites
  *
- * @module infra/pg/PgUserStore
+ * Installed by `src/infra/storeBootstrap.ts`. Every method first runs `init()` (creates the four tables, the
+ * `deprovisioned_at` column and the indexes if missing). Stores only password hashes. Query errors propagate,
+ * including unique violations (duplicate e-mail or slug) and foreign-key violations.
+ *
+ * @module src/infra/pg/PgUserStore
  * @since Wave 3C (PACK 3C-03)
  */
 
 import type { IUserStore } from '../../users/IUserStore.js';
 import type { Organization, User, Membership, Invite, InviteStatus } from '../../users/types.js';
 
+/** The part of a `pg.Pool` this store uses. */
 export interface PgPool {
+  /**
+   * Runs one parameterized query.
+   *
+   * @param text - SQL text with `$n` placeholders.
+   * @param params - Parameter values.
+   * @returns The result rows.
+   */
   query(text: string, params?: unknown[]): Promise<{ rows: Record<string, unknown>[] }>;
 }
 
@@ -59,12 +71,23 @@ const INIT_SQL = [
   `CREATE INDEX IF NOT EXISTS idx_orgs_slug ON otk_organizations (slug)`,
 ];
 
+/** `IUserStore` over organizations, users, memberships and invites in PostgreSQL. */
 export class PgUserStore implements IUserStore {
   private readonly _pool: PgPool;
   private _initialized = false;
 
+  /**
+   * Wraps a pool; nothing is queried until the first call.
+   *
+   * @param pool - PostgreSQL pool.
+   */
   constructor(pool: PgPool) { this._pool = pool; }
 
+  /**
+   * Creates tables, columns and indexes if missing (idempotent, once per instance).
+   *
+   * @throws {Error} When a DDL statement fails.
+   */
   async init(): Promise<void> {
     if (this._initialized) return;
     for (const sql of INIT_SQL) await this._pool.query(sql);
@@ -73,6 +96,11 @@ export class PgUserStore implements IUserStore {
 
   // -- Organizations --
 
+  /**
+   * Inserts an organization.
+   *
+   * @param org - Organization to create.
+   */
   async createOrg(org: Organization): Promise<void> {
     await this.init();
     await this._pool.query(
@@ -81,18 +109,36 @@ export class PgUserStore implements IUserStore {
     );
   }
 
+  /**
+   * Reads an organization by id.
+   *
+   * @param id - Organization id.
+   * @returns The organization, or null.
+   */
   async getOrg(id: string): Promise<Organization | null> {
     await this.init();
     const { rows } = await this._pool.query(`SELECT * FROM otk_organizations WHERE id = $1`, [id]);
     return rows.length ? this._toOrg(rows[0]) : null;
   }
 
+  /**
+   * Reads an organization by slug.
+   *
+   * @param slug - Unique slug.
+   * @returns The organization, or null.
+   */
   async getOrgBySlug(slug: string): Promise<Organization | null> {
     await this.init();
     const { rows } = await this._pool.query(`SELECT * FROM otk_organizations WHERE slug = $1`, [slug]);
     return rows.length ? this._toOrg(rows[0]) : null;
   }
 
+  /**
+   * Lists organizations, newest first.
+   *
+   * @param opts - `limit` (default 100) and `offset` (default 0).
+   * @returns The page of organizations.
+   */
   async listOrgs(opts?: { limit?: number; offset?: number }): Promise<Organization[]> {
     await this.init();
     const { rows } = await this._pool.query(
@@ -104,6 +150,11 @@ export class PgUserStore implements IUserStore {
 
   // -- Users --
 
+  /**
+   * Inserts a user.
+   *
+   * @param user - User to create (password already hashed, or null).
+   */
   async createUser(user: User): Promise<void> {
     await this.init();
     await this._pool.query(
@@ -112,18 +163,37 @@ export class PgUserStore implements IUserStore {
     );
   }
 
+  /**
+   * Reads a user by id.
+   *
+   * @param id - User id.
+   * @returns The user, or null.
+   */
   async getUser(id: string): Promise<User | null> {
     await this.init();
     const { rows } = await this._pool.query(`SELECT * FROM otk_users WHERE id = $1`, [id]);
     return rows.length ? this._toUser(rows[0]) : null;
   }
 
+  /**
+   * Reads a user by e-mail (exact match, case-sensitive).
+   *
+   * @param email - E-mail address.
+   * @returns The user, or null.
+   */
   async getUserByEmail(email: string): Promise<User | null> {
     await this.init();
     const { rows } = await this._pool.query(`SELECT * FROM otk_users WHERE email = $1`, [email]);
     return rows.length ? this._toUser(rows[0]) : null;
   }
 
+  /**
+   * Updates the given fields of a user and sets `updated_at` to now.
+   *
+   * @param id - User id.
+   * @param updates - Fields to change; undefined fields are left as they are.
+   * @returns The updated user, or null when unknown.
+   */
   async updateUser(id: string, updates: Partial<Pick<User, 'name' | 'emailVerified' | 'passwordHash' | 'deprovisionedAt'>>): Promise<User | null> {
     await this.init();
     const sets: string[] = ['updated_at = NOW()'];
@@ -142,6 +212,11 @@ export class PgUserStore implements IUserStore {
 
   // -- Memberships --
 
+  /**
+   * Adds a user to an organization.
+   *
+   * @param m - Membership to create.
+   */
   async addMembership(m: Membership): Promise<void> {
     await this.init();
     await this._pool.query(
@@ -150,18 +225,37 @@ export class PgUserStore implements IUserStore {
     );
   }
 
+  /**
+   * Lists a user's memberships.
+   *
+   * @param userId - User id.
+   * @returns The memberships.
+   */
   async getMemberships(userId: string): Promise<Membership[]> {
     await this.init();
     const { rows } = await this._pool.query(`SELECT * FROM otk_memberships WHERE user_id = $1`, [userId]);
     return rows.map(r => this._toMembership(r));
   }
 
+  /**
+   * Lists an organization's memberships.
+   *
+   * @param orgId - Organization id.
+   * @returns The memberships.
+   */
   async getOrgMembers(orgId: string): Promise<Membership[]> {
     await this.init();
     const { rows } = await this._pool.query(`SELECT * FROM otk_memberships WHERE org_id = $1`, [orgId]);
     return rows.map(r => this._toMembership(r));
   }
 
+  /**
+   * Removes a user from an organization.
+   *
+   * @param userId - User id.
+   * @param orgId - Organization id.
+   * @returns True when a membership was removed.
+   */
   async removeMembership(userId: string, orgId: string): Promise<boolean> {
     await this.init();
     const { rows } = await this._pool.query(
@@ -172,6 +266,11 @@ export class PgUserStore implements IUserStore {
 
   // -- Invites --
 
+  /**
+   * Inserts an invite.
+   *
+   * @param invite - Invite to create.
+   */
   async createInvite(invite: Invite): Promise<void> {
     await this.init();
     await this._pool.query(
@@ -180,12 +279,25 @@ export class PgUserStore implements IUserStore {
     );
   }
 
+  /**
+   * Reads an invite by id.
+   *
+   * @param id - Invite id.
+   * @returns The invite, or null.
+   */
   async getInvite(id: string): Promise<Invite | null> {
     await this.init();
     const { rows } = await this._pool.query(`SELECT * FROM otk_invites WHERE id = $1`, [id]);
     return rows.length ? this._toInvite(rows[0]) : null;
   }
 
+  /**
+   * Lists an organization's invites, newest first.
+   *
+   * @param orgId - Organization id.
+   * @param status - Only invites with this status, when given.
+   * @returns The invites.
+   */
   async listInvitesByOrg(orgId: string, status?: InviteStatus): Promise<Invite[]> {
     await this.init();
     const params: unknown[] = [orgId];
@@ -196,6 +308,13 @@ export class PgUserStore implements IUserStore {
     return rows.map(r => this._toInvite(r));
   }
 
+  /**
+   * Sets an invite's status (`accepted` also records `accepted_at`).
+   *
+   * @param id - Invite id.
+   * @param status - New status.
+   * @returns The updated invite, or null when unknown.
+   */
   async updateInviteStatus(id: string, status: InviteStatus): Promise<Invite | null> {
     await this.init();
     const sql = status === 'accepted'
@@ -205,6 +324,7 @@ export class PgUserStore implements IUserStore {
     return rows.length ? this._toInvite(rows[0]) : null;
   }
 
+  /** Deletes every row of the four tables (tests; destructive). */
   async clear(): Promise<void> {
     await this.init();
     await this._pool.query(`DELETE FROM otk_invites`);
@@ -215,6 +335,7 @@ export class PgUserStore implements IUserStore {
 
   // -- Mappers --
 
+  // A missing timestamp becomes "now" rather than failing the read.
   private _ts(v: unknown): string {
     return v ? new Date(v as string).toISOString() : new Date().toISOString();
   }

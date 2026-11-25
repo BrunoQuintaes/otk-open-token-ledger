@@ -5,6 +5,8 @@
  * when a proof bundle is given for every member, the Groth16 proof and its public signals. The
  * declared level says which of the two happened. The registry only stores root, cardinality and
  * the declared level; it does not verify N proofs, and nothing may claim that it does.
+ *
+ * @module src/zk/v3/batch
  */
 import { ethers } from 'ethers';
 import type { BatchStatement, BuildBatchStatementFn, ChainDomain, ProofAdapter } from '../../types/d1d8/index.js';
@@ -14,6 +16,9 @@ import { BATCH_TYPES, BATCH_V3_NAME, BATCH_V3_SCHEMA, batchDigest, MEMBER_VALIDA
 import { verifyPublicAuthorization, type AuthorizationExpectation } from './publicAuthorization.js';
 import { expectedPublicSignals } from './proofAdapter.js';
 
+/**
+ * Options of {@link createBatchStatementBuilder}.
+ */
 export interface BatchBuilderOptions {
   keyRing: KeyRing;
   signer: { keyId: string; wallet: ethers.Signer };
@@ -23,11 +28,26 @@ export interface BatchBuilderOptions {
   expect: AuthorizationExpectation;
 }
 
-/** Leaves of a batch, in member order: each member's authorizationDigest. */
+/**
+ * Leaves of a batch, in member order: each member's authorizationDigest.
+ *
+ * @param members - Batch members.
+ * @returns Their authorization digests, in order.
+ */
 export function batchLeaves(members: Array<{ auth: { authorizationDigest: string } }>): Bytes32[] {
   return members.map((m) => m.auth.authorizationDigest as Bytes32);
 }
 
+/**
+ * Creates the function that checks every member and signs a batch statement (Merkle root of the members).
+ *
+ * The returned function rejects with an `Error` when the domain version is wrong, the batch is empty, a member
+ * is rejected, on another chain, duplicated or with a proof that does not verify, or the signing key is not
+ * active. `signedAt` is the current time.
+ *
+ * @param opts - Key ring, signer, optional proof adapter and the expected circuit and policy.
+ * @returns The batch statement builder.
+ */
 export function createBatchStatementBuilder(opts: BatchBuilderOptions): BuildBatchStatementFn {
   return async ({ domain, members }: Parameters<BuildBatchStatementFn>[0]): Promise<BatchStatement> => {
     if (domain.schemaVersion !== BATCH_V3_SCHEMA) throw new Error(`batch domain.schemaVersion must be ${BATCH_V3_SCHEMA}`);

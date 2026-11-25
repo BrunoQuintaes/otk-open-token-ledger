@@ -8,7 +8,14 @@
  * on each call (pull model) rather than subscribing to events (push model),
  * keeping the implementation minimal and avoiding coupling with store internals.
  *
- * @module dashboard/indexer
+ * At the evaluated version `ReceiptIndexer.index()` is called by the receipt route in `src/api/routes.ts` after a
+ * receipt is stored, and each entry is also forwarded to the `IIndexerStore` backend (fire and forget). The other
+ * dashboard and billing modules read the process-wide instance through `getIndexer()`. USD figures use the seed
+ * prices of `CostBridge` (0 for an unknown provider or model).
+ *
+ * It is a view for dashboards only: in memory, bounded, lost on restart, and NOT a source of truth for billing.
+ *
+ * @module src/dashboard/indexer
  * @since Wave 2 Pack 19 (P2.1)
  */
 
@@ -20,16 +27,24 @@ const START_TIME = Date.now();
 
 /** Shape of a receipt entry in the index. */
 export interface IndexedReceipt {
+  /** Request id of the receipt. */
   requestId: string;
   provider: string;
   model: string;
   costUsd?: number;   // USD-01: live or seed price (0 if provider/model unknown)
+  /** Input tokens reported in the receipt. */
   inputTokens: number;
+  /** Output tokens reported in the receipt. */
   outputTokens: number;
+  /** Compute units (CU) charged. */
   costUnits: number;
+  /** Upstream latency in milliseconds. */
   latencyMs: number;
+  /** Receipt time in Unix seconds. */
   timestamp: number;
+  /** Tenant (`'default'` when the receipt had none). */
   tenantId: string;
+  /** When it was indexed, epoch milliseconds. */
   indexedAt: number;
   teamId?: string;    // TEAM-05: optional team attribution (from x-otk-team-id header)
 }
@@ -37,16 +52,21 @@ export interface IndexedReceipt {
 /** Per-tenant summary. */
 export interface TenantSummary {
   tenantId: string;
+  /** Receipts indexed for the tenant since start (eviction does not reduce it). */
   totalReceipts: number;
+  /** Sum of CU of those receipts. */
   totalCU: number;
   totalCostUsd: number;  // USD-01
+  /** `indexedAt` of the tenant's latest receipt, epoch milliseconds. */
   lastActivityAt: number;
 }
 
 /** Per-team usage breakdown (TEAM-06). */
 export interface TeamUsage {
   teamId: string;
+  /** Sum of CU of the team's receipts in the buffer. */
   totalCU: number;
+  /** Sum of their seed-price USD cost. */
   totalUsd: number;
   requestCount: number;
 }
@@ -55,10 +75,13 @@ export interface TeamUsage {
 export interface ProviderUsage {
   provider: string;
   model: string;
+  /** Receipts in the buffer for this provider and model. */
   requests: number;
   totalCU: number;
   totalCostUsd: number;  // USD-04
+  /** Mean latency in ms, rounded. */
   avgLatencyMs: number;
+  /** Input plus output tokens. */
   totalTokens: number;
 }
 
@@ -67,6 +90,7 @@ export interface ProviderHealth {
   provider: string;
   requests: number;
   avgLatencyMs: number;
+  /** 95th-percentile latency in ms (nearest-rank) over the receipts in the buffer. */
   p95LatencyMs: number;
   maxLatencyMs: number;
   totalCU: number;
@@ -78,9 +102,13 @@ export interface SystemOverview {
   totalTenants: number;
   totalCU: number;
   totalSpendUsd: number;  // USD-02: Total Spend (USD) KPI
+  /** Milliseconds since this module was loaded. */
   uptimeMs: number;
+  /** Receipts held by the receipt store (`receiptStore.size()`). */
   queueDepth: number;
+  /** Current head hash of the receipt store's chain. */
   chainHead: string;
+  /** Entries in the receipt store's audit log. */
   auditEntries: number;
 }
 
@@ -95,6 +123,11 @@ export class ReceiptIndexer {
   private _tenantStats: Map<string, { totalReceipts: number; totalCU: number; totalCostUsd: number; lastActivityAt: number }> = new Map();
   private _maxSize: number;
 
+  /**
+   * Creates an empty indexer.
+   *
+   * @param opts - `maxSize`: receipts kept in the buffer (default 1000).
+   */
   constructor(opts?: { maxSize?: number }) {
     this._maxSize = opts?.maxSize ?? 1000;
   }
@@ -102,6 +135,10 @@ export class ReceiptIndexer {
   /**
    * Index a receipt. Called after a receipt is stored.
    * Maintains insertion-order array and per-tenant aggregation.
+   *
+   * Side effect: also sends the entry to the `IIndexerStore` backend without awaiting; its errors are ignored.
+   *
+   * @param receipt - Receipt fields to index; a missing `tenantId` becomes `'default'`.
    */
   index(receipt: {
     requestId: string;
@@ -165,6 +202,9 @@ export class ReceiptIndexer {
 
   /**
    * Get the most recent receipts in reverse-chronological order.
+   *
+   * @param limit - Maximum receipts returned (default 50).
+   * @returns Newest first.
    */
   getRecentReceipts(limit = 50): IndexedReceipt[] {
     const start = Math.max(0, this._receipts.length - limit);
@@ -173,6 +213,10 @@ export class ReceiptIndexer {
 
   /**
    * Get receipts for a specific tenant in reverse-chronological order.
+   *
+   * @param tenantId - Tenant to filter on.
+   * @param limit - Maximum receipts returned (default 50).
+   * @returns Newest first.
    */
   getReceiptsByTenant(tenantId: string, limit = 50): IndexedReceipt[] {
     const filtered = this._receipts.filter(r => r.tenantId === tenantId);
@@ -182,6 +226,8 @@ export class ReceiptIndexer {
 
   /**
    * Get per-tenant summary.
+   *
+   * @returns One entry per tenant, most recently active first.
    */
   getTenantSummary(): TenantSummary[] {
     const result: TenantSummary[] = [];
@@ -199,6 +245,8 @@ export class ReceiptIndexer {
 
   /**
    * Get system-wide overview.
+   *
+   * @returns Totals over every tenant plus receipt-store figures.
    */
   getSystemOverview(): SystemOverview {
     let totalCU = 0;
@@ -222,6 +270,9 @@ export class ReceiptIndexer {
   /**
    * Get usage breakdown by provider+model (P2.3, Wave 3D).
    * Optionally filtered by tenantId.
+   *
+   * @param tenantId - Only this tenant's receipts; all receipts in the buffer when undefined.
+   * @returns One entry per provider and model, highest CU first.
    */
   getUsageByProvider(tenantId?: string): ProviderUsage[] {
     const source = tenantId
@@ -260,6 +311,9 @@ export class ReceiptIndexer {
    * Get provider health metrics (P2.6, Wave 3D).
    * Aggregates latency stats per provider from recent receipts.
    * Optionally filtered by tenantId (M24-SEC-03: a tenant caller must not read other tenants' CU and counts).
+   *
+   * @param tenantId - Only this tenant's receipts; all receipts in the buffer when undefined.
+   * @returns One entry per provider, most requests first.
    */
   getProviderHealth(tenantId?: string): ProviderHealth[] {
     const source = tenantId ? this._receipts.filter(r => r.tenantId === tenantId) : this._receipts;
@@ -290,6 +344,9 @@ export class ReceiptIndexer {
   /**
    * Get usage aggregated by teamId (TEAM-06).
    * Only includes receipts that have a teamId set. Optionally filtered by tenantId (M24-DYN-05).
+   *
+   * @param tenantId - Only this tenant's receipts; all receipts in the buffer when undefined.
+   * @returns One entry per team, highest CU first.
    */
   getUsageByTeam(tenantId?: string): TeamUsage[] {
     const map = new Map<string, { totalCU: number; totalUsd: number; requestCount: number }>();
@@ -309,7 +366,11 @@ export class ReceiptIndexer {
     return result.sort((a, b) => b.totalCU - a.totalCU);
   }
 
-  /** Total indexed receipt count. */
+  /**
+   * Total indexed receipt count.
+   *
+   * @returns Receipts currently in the buffer.
+   */
   get size(): number {
     return this._receipts.length;
   }
@@ -324,11 +385,17 @@ export class ReceiptIndexer {
 // ── Singleton instance ──────────────────────────────────────────────
 let _instance: ReceiptIndexer | null = null;
 
+/**
+ * Returns the process-wide indexer, creating it on first call.
+ *
+ * @returns The shared instance.
+ */
 export function getIndexer(): ReceiptIndexer {
   if (!_instance) _instance = new ReceiptIndexer();
   return _instance;
 }
 
+/** Clears and drops the shared indexer (tests). */
 export function resetIndexerForTest(): void {
   if (_instance) _instance.reset();
   _instance = null;

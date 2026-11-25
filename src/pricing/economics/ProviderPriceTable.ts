@@ -3,15 +3,24 @@
  *
  * Versioned deterministic price table.
  * No external calls. Update version tag when prices change.
+ *
+ * Static estimates for reports (`CostBridge.ts`), not the frozen, versioned price tables used to settle
+ * money in the durable runtime (`src/pricing/priceUsage.ts`). Keys are lower case; Gemini models are listed
+ * under both `google` and `gemini`.
+ *
+ * @module src/pricing/economics/ProviderPriceTable
  */
 
+/** Price of one model in USD per 1000 tokens (floating point). */
 export type ModelPrice = {
   inputUsdPer1K: number;
   outputUsdPer1K: number;
 };
 
+/** Version label of {@link PROVIDER_PRICE_TABLE}. */
 export const PRICE_TABLE_VERSION = "2026-04";
 
+/** Provider → model → price (lower-case keys). */
 export const PROVIDER_PRICE_TABLE: Readonly<Record<string, Record<string, ModelPrice>>> = {
   openai: {
     "gpt-4o":        { inputUsdPer1K: 0.005,    outputUsdPer1K: 0.015 },

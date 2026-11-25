@@ -8,6 +8,8 @@
  * Wire rule for every type in this folder: bigint fields travel as base-10 strings in JSON,
  * never as JS numbers; absent optional counts stay absent (null), they are never written as 0.
  * The byte-level canonical encoding used for hashing/signing is A's specification, not JSON.
+ *
+ * @module src/types/d1d8/common
  */
 
 /** 0x-prefixed, lowercase, 32-byte hex string (keccak256 / sha256 digest). */

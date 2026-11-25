@@ -17,15 +17,22 @@
  *     committed); no row → the local registry decides (OTK_TENANTS deployments keep working unchanged);
  *   - without an authority (development, tests, single process) the queue is not used and nothing changes.
  *
- * @module auth/registryTokenAuthority
+ * Callers: `src/api/tenantCrud.ts` and `src/api/routes.ts` queue and flush changes; `src/auth/credentialAuthority.ts`
+ * reads rows; `src/infra/storeBootstrap.ts` installs the PostgreSQL source. Reads no environment variable. State is
+ * per process (queue, pending drops, generations).
+ *
+ * @module src/auth/registryTokenAuthority
  */
 
 import crypto from 'node:crypto';
 
 /** Authoritative row of a registry token. */
 export interface RegistryTokenRow {
+  /** Tenant the token belongs to. */
   tenantId: string;
+  /** Role name as stored (checked against the five tenant roles by the reader). */
   role: string;
+  /** `true` once the token was revoked for good. */
   revoked: boolean;
   /** tenant deactivated: refused until the tenant is reactivated (soft delete keeps the token) */
   suspended: boolean;
@@ -33,6 +40,7 @@ export interface RegistryTokenRow {
 
 /** Authoritative source of registry tokens (the PostgreSQL table otk_tenant_tokens in a deployed environment). */
 export interface RegistryTokenSource {
+  /** The row for a token hash (SHA-256 hex), or `null` when none exists. */
   getByHash(tokenHash: string): Promise<RegistryTokenRow | null>;
   /** upsert: the token belongs to tenantId with role; not revoked; suspended as given */
   put(tokenHash: string, tenantId: string, role: string, suspended: boolean): Promise<void>;
@@ -44,6 +52,7 @@ export interface RegistryTokenSource {
   hasTenant(tenantId: string): Promise<boolean>;
 }
 
+/** One queued change; tokens appear only as their SHA-256 hash. */
 export type RegistryTokenChange =
   | { op: 'put'; hash: string; tenantId: string; role: string; suspended: boolean }
   | { op: 'revoke'; hash: string; tenantId: string }
@@ -70,25 +79,51 @@ const _pendingTenants = new Map<string, number>();
 const inc = (m: Map<string, number>, k: string) => m.set(k, (m.get(k) ?? 0) + 1);
 const dec = (m: Map<string, number>, k: string) => { const n = (m.get(k) ?? 0) - 1; if (n > 0) m.set(k, n); else m.delete(k); };
 
-/** True when a local revocation of the hash or a suspension of the tenant is still waiting to be written. */
+/**
+ * True when a local revocation of the hash or a suspension of the tenant is still waiting to be written.
+ *
+ * @param hash - SHA-256 hex hash of the token.
+ * @param tenantId - Tenant of the row being considered.
+ * @returns Whether a pending local drop must win over the row read from the authority.
+ */
 export function registryDropPending(hash: string, tenantId: string): boolean {
   return _pendingHashes.has(hash) || _pendingTenants.has(tenantId);
 }
 
-/** Number of changes dropped because the token belongs to another tenant since the last call (and resets it). */
+/**
+ * Number of changes dropped because the token belongs to another tenant since the last call (and resets it).
+ *
+ * @returns The count since the previous call.
+ */
 export function takeRegistryTokenConflicts(): number { const n = _conflicts; _conflicts = 0; return n; }
 let _flushing: Promise<boolean> = Promise.resolve(true);
 
-/** Same digest as the dynamic keys (api/apiKeyManager.hashKey). */
+/**
+ * Same digest as the dynamic keys (api/apiKeyManager.hashKey).
+ *
+ * @param token - Raw registry token.
+ * @returns Lowercase hex SHA-256 digest.
+ */
 export function registryTokenHash(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
-/** Configure the authority (null = none: the process registry is authoritative, single process). */
+/**
+ * Configure the authority (null = none: the process registry is authoritative, single process).
+ *
+ * Passing `null` also discards the queue and the pending drops.
+ *
+ * @param source - The shared registry store, or `null`.
+ */
 export function setRegistryTokenAuthority(source: RegistryTokenSource | null): void {
   _source = source;
   if (!source) { _queue.length = 0; _pendingHashes.clear(); _pendingTenants.clear(); }
 }
+/**
+ * Returns the configured authority.
+ *
+ * @returns The source, or `null`.
+ */
 export function getRegistryTokenAuthority(): RegistryTokenSource | null { return _source; }
 
 /**
@@ -96,13 +131,28 @@ export function getRegistryTokenAuthority(): RegistryTokenSource | null { return
  * register it again after (a slow positive answer racing a newer local change).
  */
 const _gen = new Map<string, number>();
+/**
+ * Current local revocation generation of a hash.
+ *
+ * @param hash - SHA-256 hex hash of the token.
+ * @returns The generation (0 when never revoked here).
+ */
 export function registryTokenGeneration(hash: string): number { return _gen.get(hash) ?? 0; }
+/**
+ * Increments the local revocation generation of a hash; at most 50 000 hashes are tracked (oldest evicted).
+ *
+ * @param hash - SHA-256 hex hash of the token.
+ */
 export function bumpRegistryTokenGeneration(hash: string): void {
   _gen.set(hash, (_gen.get(hash) ?? 0) + 1);
   if (_gen.size > 50_000) _gen.delete(_gen.keys().next().value as string);
 }
 
-/** Queue a registry change for the authority (no-op without an authority). Tokens are hashed here. */
+/**
+ * Queue a registry change for the authority (no-op without an authority). Tokens are hashed here.
+ *
+ * @param change - The change, with the raw token for `put` and `revoke`.
+ */
 export function queueRegistryTokenChange(
   change:
     | { op: 'put'; token: string; tenantId: string; role: string; suspended: boolean }
@@ -123,12 +173,18 @@ export function queueRegistryTokenChange(
   }
 }
 
-/** Number of changes not yet written to the authority. */
+/**
+ * Number of changes not yet written to the authority.
+ *
+ * @returns Queue length.
+ */
 export function pendingRegistryTokenChanges(): number { return _queue.length; }
 
 /**
  * Write the queued changes to the authority, in order, one flush at a time. True when the queue is empty afterwards;
  * false when the authority failed (the failed change and the ones after it stay queued for the next flush).
+ *
+ * @returns Resolves to `true` when nothing is left queued, `false` after a store failure (never rejects).
  */
 export function flushRegistryTokenChanges(): Promise<boolean> {
   const run = async (): Promise<boolean> => {
@@ -156,7 +212,11 @@ export function flushRegistryTokenChanges(): Promise<boolean> {
   return _flushing;
 }
 
-/** @internal Test only. */
+/**
+ * Clears the authority, queue, generations, pending drops and conflict count.
+ *
+ * @internal Test only.
+ */
 export function resetRegistryTokenAuthorityForTest(): void {
   _source = null;
   _queue.length = 0;

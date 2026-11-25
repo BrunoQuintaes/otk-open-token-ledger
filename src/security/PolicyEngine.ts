@@ -17,8 +17,14 @@
 // Types
 // ---------------------------------------------------------------------------
 
+/**
+ * Accounting period of a quota.
+ */
 export type PolicyPeriod = 'hourly' | 'daily' | 'monthly';
 
+/**
+ * Limit on cost units (CU) consumed per period.
+ */
 export type QuotaPolicy = {
   type: 'quota';
   /** Max CU allowed per period */
@@ -26,6 +32,9 @@ export type QuotaPolicy = {
   period: PolicyPeriod;
 };
 
+/**
+ * Limit on requests per time window.
+ */
 export type RateLimitPolicy = {
   type: 'rate_limit';
   /** Max requests per window */
@@ -34,14 +43,23 @@ export type RateLimitPolicy = {
   windowSeconds: number;
 };
 
+/**
+ * Maximum acceptable p99 latency.
+ */
 export type SLAPolicy = {
   type: 'sla';
   /** Max allowed p99 latency in ms */
   maxLatencyP99Ms: number;
 };
 
+/**
+ * Any policy the engine evaluates.
+ */
 export type Policy = QuotaPolicy | RateLimitPolicy | SLAPolicy;
 
+/**
+ * Snapshot of the state a policy is evaluated against; absent counters count as 0, absent latency passes.
+ */
 export type PolicyEvalContext = {
   /** CU consumed so far in the current period */
   consumedCU?: bigint;
@@ -51,6 +69,9 @@ export type PolicyEvalContext = {
   observedP99Ms?: number;
 };
 
+/**
+ * Result of a policy evaluation: allowed, or refused with a reason and the policy type.
+ */
 export type PolicyDecision =
   | { allowed: true }
   | { allowed: false; reason: string; policy: Policy['type'] };
@@ -101,6 +122,10 @@ function evalSLA(policy: SLAPolicy, ctx: PolicyEvalContext): PolicyDecision {
 
 /**
  * Evaluate a single policy against context.
+ *
+ * @param policy - Policy to evaluate.
+ * @param ctx - Current counters.
+ * @returns The decision; quota and rate limit refuse at `>=` the limit, SLA refuses at `>` the maximum.
  */
 export function evaluatePolicy(policy: Policy, ctx: PolicyEvalContext): PolicyDecision {
   switch (policy.type) {
@@ -112,6 +137,10 @@ export function evaluatePolicy(policy: Policy, ctx: PolicyEvalContext): PolicyDe
 
 /**
  * Evaluate all policies. Returns first denial or allowed if all pass.
+ *
+ * @param policies - Policies in evaluation order.
+ * @param ctx - Current counters.
+ * @returns The first refusal, or `allowed: true` (also for an empty list).
  */
 export function evaluateAll(policies: Policy[], ctx: PolicyEvalContext): PolicyDecision {
   for (const p of policies) {
@@ -136,6 +165,7 @@ import type { IBudgetTracker } from '../economics/IBudgetTracker.js';
  * @param tenantId  Tenant identifier
  * @param epochId   Current epoch ID (string, e.g. "709")
  * @param budgetTracker  Injected budget tracker (getBudgetTracker() in production)
+ * @returns A context with only `consumedCU` set.
  */
 export async function buildContextForTenant(
   tenantId: string,

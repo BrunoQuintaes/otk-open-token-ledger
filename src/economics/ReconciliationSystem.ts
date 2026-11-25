@@ -10,16 +10,23 @@
  * Invariant: reconcile() is deterministic when nowIso is provided.
  * Without nowIso, defaults to wall-clock (acceptable at report boundary only).
  *
- * @module economics/ReconciliationSystem
+ * Records are matched by transaction hash; expected USD uses the seed prices of `CostBridge`. Called by
+ * `ReconciliationScheduler`. The only clock read is the default of `nowIso`.
+ *
+ * @module src/economics/ReconciliationSystem
  * @since RB-054
  */
 
 import { calculateUsdCostSync } from '../pricing/economics/CostBridge.js';
 
+/** One platform receipt as input to reconciliation. */
 export type OTKRecord = {
+  /** Transaction hash; the matching key. */
   txHash: string;
   userId: string;
+  /** Compute units of the receipt. */
   costUnits: bigint;
+  /** Accounting epoch of the receipt. */
   epoch: number;
   // USD-07: optional fields for USD reconciliation
   provider?: string;
@@ -30,6 +37,7 @@ export type OTKRecord = {
   receiptId?: string;
 };
 
+/** One record from the external billing source. */
 export type ExternalBillingRecord = {
   txHash: string;
   userId: string;
@@ -37,10 +45,13 @@ export type ExternalBillingRecord = {
   billedUsd: number;
 };
 
+/** Reconciliation result for one transaction hash. */
 export type ReconciliationLineItem = {
   txHash: string;
   userId: string;
+  /** Sum of CU of the transaction's receipts; null when there are none. */
   otkCU: bigint | null;
+  /** Sum of `billedUsd` of the external records; null when there are none. */
   externalUsd: number | null;
   /** USD-07: OTK's expected USD cost (from CostBridge seed, null if provider/model unknown) */
   expectedUsd: number | null;
@@ -65,10 +76,15 @@ export type ReconciliationLineItem = {
   externalRecordCount: number;
 };
 
+/** Batch reconciliation report. */
 export type ReconciliationReport = {
+  /** Report time, ISO 8601. */
   generatedAt: string;
+  /** Number of platform receipts given. */
   totalOTK: number;
+  /** Number of external records given. */
   totalExternal: number;
+  /** Line items present on both sides. */
   matched: number;
   otkOnly: number;
   externalOnly: number;
@@ -78,10 +94,14 @@ export type ReconciliationReport = {
 /**
  * Reconcile OTK receipts against external billing records.
  *
+ * @param otkRecords - Platform receipts.
+ * @param externalRecords - External billing records.
  * @param nowIso - Timestamp for generatedAt (injectable for determinism/tests).
  *                 Defaults to wall-clock (acceptable at report boundary only).
  *
  * Pure when nowIso provided — no I/O, no side effects.
+ *
+ * @returns One line item per transaction hash seen on either side, in first-seen order, plus counts.
  */
 export function reconcile(
   otkRecords: OTKRecord[],

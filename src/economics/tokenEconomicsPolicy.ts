@@ -9,7 +9,7 @@
  *   evaluateTokenValuation returns fiat as a secondary view.
  *   The amountCU field is always the authoritative value.
  *
- * @module economics/tokenEconomicsPolicy
+ * @module src/economics/tokenEconomicsPolicy
  * @since G3
  */
 
@@ -27,6 +27,9 @@ import { DEFAULT_VALUATION_POLICY } from './tokenEconomicsTypes.js';
  * @param referenceRate  - Oracle/fixed rate snapshot
  * @param policy         - Valuation policy (defaults to DEFAULT_VALUATION_POLICY)
  * @param computedAt     - Evaluation epoch (injectable for tests)
+ * @returns The CU amount with its USD valuation (`Number(amountCU) x usdPerCU`, float); `computedAt` defaults to
+ *   the rate's snapshot epoch.
+ * @throws {Error} When `amountCU` is negative.
  */
 export function evaluateTokenValuation(
   amountCU: bigint,
@@ -50,6 +53,8 @@ export function evaluateTokenValuation(
  *
  * @param valuationUsd - USD valuation from evaluateTokenValuation
  * @param rateToCurrency - Multiplier (e.g. 5.10 for USD→BRL)
+ * @returns `valuationUsd x rateToCurrency`.
+ * @throws {Error} When `rateToCurrency` is 0 or negative.
  */
 export function convertValuation(valuationUsd: number, rateToCurrency: number): number {
   if (rateToCurrency <= 0) throw new Error(`convertValuation: rate=${rateToCurrency} must be > 0`);
@@ -59,6 +64,9 @@ export function convertValuation(valuationUsd: number, rateToCurrency: number): 
 /**
  * Assert the fundamental CU non-negativity invariant.
  * Throws with a descriptive message if violated.
+ *
+ * @param amountCU - CU amount to check.
+ * @throws {Error} When `amountCU` is negative.
  */
 export function assertCUInvariant(amountCU: bigint): void {
   if (amountCU < 0n) {

@@ -5,6 +5,8 @@
  *     CU = (T_entrada + T_saida) × W_modelo × W_provedor
  * with scale and rounding versioned in `formula`. Latency, benefit and price never enter CU.
  * CU (normalization) and Money (commercial price) are separate results.
+ *
+ * @module src/types/d1d8/cu
  */
 import type { Hex32, IsoTime, Money, Scaled, VersionRef } from './common.js';
 import type { TokenCategoryName } from './usage.js';
@@ -39,6 +41,9 @@ export type CuWeightsLoadStatus =
   | 'malformed'
   | 'source_unavailable_using_snapshot';
 
+/**
+ * Outcome of a CU computation; only `computed` carries a value.
+ */
 export type CuStatus =
   | 'computed'
   /** model/provider has no authorized weight — not 0, not a default constant */
@@ -48,6 +53,9 @@ export type CuStatus =
   /** frozen config invalid for the operational profile */
   | 'invalid_config';
 
+/**
+ * Result of one CU computation, with the configuration and formula versions used.
+ */
 export interface CuResult {
   schema: 'otk.cu_result.v1';
   status: CuStatus;
@@ -64,8 +72,14 @@ export interface CuResult {
   developmentProfile: boolean;
 }
 
+/**
+ * Outcome of pricing a usage: fully priced, no price found, or only some categories priced.
+ */
 export type PriceStatus = 'priced' | 'missing_price' | 'partial';
 
+/**
+ * Price of one token category of a usage.
+ */
 export interface PriceLine {
   category: TokenCategoryName;
   count: bigint;
@@ -81,6 +95,9 @@ export interface PriceLine {
   amount: Money | null;
 }
 
+/**
+ * Money quote of one usage against one versioned price table.
+ */
 export interface PriceQuote {
   schema: 'otk.price_quote.v1';
   status: PriceStatus;

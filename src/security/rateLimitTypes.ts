@@ -39,6 +39,9 @@ export type RateLimitKey = {
 /**
  * Build a canonical string key from RateLimitKey parts.
  * Format: `tenantId::userId::provider` (wildcards where absent).
+ *
+ * @param parts - Tenant (required), optional user and provider.
+ * @returns The key text; parts are joined without escaping, so values containing `::` can collide.
  */
 export function buildRateLimitKey(parts: RateLimitKey): string {
   return [

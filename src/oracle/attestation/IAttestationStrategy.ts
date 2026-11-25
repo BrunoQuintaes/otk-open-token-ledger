@@ -16,7 +16,7 @@
  *
  * See: docs/architecture/adr/ADR-0004 (oracle limitation), dissertacao §5.2 (limitations)
  *
- * @module oracle/attestation/IAttestationStrategy
+ * @module src/oracle/attestation/IAttestationStrategy
  * @since U12.9.1
  */
 
@@ -27,6 +27,7 @@ import type {
 
 /** Re-export for convenience so consumers only import from this module. */
 export type AttestationInput  = OracleAttestationInput;
+/** Result of an attestation (same shape as the engine's result). */
 export type AttestationResult = OracleAttestationResult;
 
 /** Supported attestation strategy identifiers. */
@@ -65,6 +66,12 @@ export class AttestationNotImplementedError extends Error {
   readonly code = 'ATTESTATION_NOT_IMPLEMENTED' as const;
   readonly strategyId: AttestationStrategyId;
 
+  /**
+   * Builds the error with a stable code for programmatic matching.
+   *
+   * @param strategyId - The strategy that is not implemented.
+   * @param detail - Human-readable explanation.
+   */
   constructor(strategyId: AttestationStrategyId, detail: string) {
     super(`NOT_IMPLEMENTED: ${detail} (strategyId=${strategyId})`);
     this.name = 'AttestationNotImplementedError';

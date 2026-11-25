@@ -4,14 +4,26 @@
  * Stores API key metadata in PostgreSQL for cross-instance visibility.
  * Table: otk_api_keys
  *
- * @module infra/pg/PgApiKeyMetadataStore
+ * Stores only the hash of each key (`token_hash`), never the key itself. Every method first runs `init()` (create
+ * table, indexes and the `created_by` column if missing, once per instance). Query errors propagate to the caller.
+ * Installed by `src/infra/storeBootstrap.ts` when PostgreSQL is configured.
+ *
+ * @module src/infra/pg/PgApiKeyMetadataStore
  * @since Wave 3C (PACK 3C-01)
  */
 
 import type { IApiKeyMetadataStore, ApiKeyMetadata } from '../../api/IApiKeyMetadataStore.js';
 import type { TenantRole } from '../../api/tenantKeyRegistry.js';
 
+/** The part of a `pg.Pool` this store uses. */
 export interface PgPool {
+  /**
+   * Runs one parameterized query.
+   *
+   * @param text - SQL text with `$n` placeholders.
+   * @param params - Parameter values.
+   * @returns The result rows.
+   */
   query(text: string, params?: unknown[]): Promise<{ rows: Record<string, unknown>[] }>;
 }
 
@@ -42,14 +54,25 @@ ALTER TABLE otk_api_keys ADD COLUMN IF NOT EXISTS created_by TEXT`;
 const CREATE_CREATOR_INDEX = `
 CREATE INDEX IF NOT EXISTS idx_api_keys_created_by ON otk_api_keys (created_by)`;
 
+/** `IApiKeyMetadataStore` in the PostgreSQL table `otk_api_keys`. */
 export class PgApiKeyMetadataStore implements IApiKeyMetadataStore {
   private readonly _pool: PgPool;
   private _initialized = false;
 
+  /**
+   * Wraps a pool; nothing is queried until the first call.
+   *
+   * @param pool - PostgreSQL pool.
+   */
   constructor(pool: PgPool) {
     this._pool = pool;
   }
 
+  /**
+   * Creates the table, indexes and columns if missing (idempotent, once per instance).
+   *
+   * @throws {Error} When a DDL statement fails.
+   */
   async init(): Promise<void> {
     if (this._initialized) return;
     await this._pool.query(CREATE_TABLE);
@@ -60,6 +83,12 @@ export class PgApiKeyMetadataStore implements IApiKeyMetadataStore {
     this._initialized = true;
   }
 
+  /**
+   * Inserts the metadata of a new key.
+   *
+   * @param meta - Key metadata, including the token hash and role.
+   * @throws {Error} When the key id already exists or the query fails.
+   */
   async create(meta: ApiKeyMetadata): Promise<void> {
     await this.init();
     await this._pool.query(
@@ -69,6 +98,12 @@ export class PgApiKeyMetadataStore implements IApiKeyMetadataStore {
     );
   }
 
+  /**
+   * Reads one key's metadata, revoked or not.
+   *
+   * @param keyId - Key id.
+   * @returns The metadata, or null when unknown.
+   */
   async get(keyId: string): Promise<ApiKeyMetadata | null> {
     await this.init();
     const { rows } = await this._pool.query(`SELECT * FROM otk_api_keys WHERE key_id = $1`, [keyId]);
@@ -76,6 +111,13 @@ export class PgApiKeyMetadataStore implements IApiKeyMetadataStore {
     return this._toMeta(rows[0]);
   }
 
+  /**
+   * Lists a tenant's non-revoked keys, newest first.
+   *
+   * @param tenantId - Tenant.
+   * @param opts - `limit` (default 100) and `offset` (default 0).
+   * @returns The page of keys.
+   */
   async listByTenant(tenantId: string, opts?: { limit?: number; offset?: number }): Promise<ApiKeyMetadata[]> {
     await this.init();
     const limit = opts?.limit ?? 100;
@@ -88,6 +130,12 @@ export class PgApiKeyMetadataStore implements IApiKeyMetadataStore {
     return rows.map(r => this._toMeta(r));
   }
 
+  /**
+   * Lists the non-revoked keys created by one user, newest first.
+   *
+   * @param userId - Creator's user id.
+   * @returns The keys.
+   */
   async listByCreator(userId: string): Promise<ApiKeyMetadata[]> {
     await this.init();
     const { rows } = await this._pool.query(
@@ -97,6 +145,12 @@ export class PgApiKeyMetadataStore implements IApiKeyMetadataStore {
     return rows.map(r => this._toMeta(r));
   }
 
+  /**
+   * Marks a key as revoked now.
+   *
+   * @param keyId - Key id.
+   * @returns The updated metadata, or null when the key is unknown or already revoked.
+   */
   async revoke(keyId: string): Promise<ApiKeyMetadata | null> {
     await this.init();
     const { rows } = await this._pool.query(
@@ -108,7 +162,14 @@ export class PgApiKeyMetadataStore implements IApiKeyMetadataStore {
     return this._toMeta(rows[0]);
   }
 
-  /** H1R2 R-13: authoritative lookup by token hash (indexed: idx_api_keys_hash); revoked rows are returned too. */
+  /**
+   * H1R2 R-13: authoritative lookup by token hash (indexed: idx_api_keys_hash); revoked rows are returned too.
+   *
+   * When several rows share the hash, a revoked one is returned first, then the newest.
+   *
+   * @param tokenHash - Hash of the presented key.
+   * @returns The metadata, or null when no row has that hash.
+   */
   async getByHash(tokenHash: string): Promise<ApiKeyMetadata | null> {
     await this.init();
     const { rows } = await this._pool.query(
@@ -118,6 +179,11 @@ export class PgApiKeyMetadataStore implements IApiKeyMetadataStore {
     return rows.length === 0 ? null : this._toMeta(rows[0]);
   }
 
+  /**
+   * Sets `last_used_at` to now.
+   *
+   * @param keyId - Key id.
+   */
   async updateLastUsed(keyId: string): Promise<void> {
     await this.init();
     await this._pool.query(
@@ -126,6 +192,11 @@ export class PgApiKeyMetadataStore implements IApiKeyMetadataStore {
     );
   }
 
+  /**
+   * Sets `last_used_at` to now for every row with this hash.
+   *
+   * @param tokenHash - Hash of the key.
+   */
   async updateLastUsedByHash(tokenHash: string): Promise<void> {
     await this.init();
     await this._pool.query(
@@ -134,6 +205,7 @@ export class PgApiKeyMetadataStore implements IApiKeyMetadataStore {
     );
   }
 
+  /** Deletes every row of `otk_api_keys` (tests; destructive). */
   async clear(): Promise<void> {
     await this.init();
     await this._pool.query(`DELETE FROM otk_api_keys`);

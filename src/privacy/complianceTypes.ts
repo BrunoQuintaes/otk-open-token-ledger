@@ -20,7 +20,7 @@
  *   - encryption-at-rest or in-transit enforcement
  *   - dynamic regulatory policy fetching from external sources
  *
- * @module privacy/complianceTypes
+ * @module src/privacy/complianceTypes
  * @since F2.1
  */
 
@@ -48,6 +48,7 @@ export type MinimizationMode = 'full' | 'aggregate' | 'redacted';
 
 /** Composite compliance policy applied to a data item or export surface. */
 export type ComplianceProfile = {
+  /** Sensitivity of the data. */
   dataClass: DataClass;
   retentionHint: RetentionHint;
   minimizationMode: MinimizationMode;

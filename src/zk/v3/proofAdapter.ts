@@ -9,6 +9,10 @@
  *   [0] commitment  [1] epoch  [2] minUsage  [3] maxUsage
  *
  * ProofBundle.proof is in the Solidity verifier layout (pi_b coordinates swapped per G2 element).
+ *
+ * Reads the circuit artifacts (wasm, zkey, vkey) from disk once, when the adapter is created.
+ *
+ * @module src/zk/v3/proofAdapter
  */
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -17,14 +21,23 @@ import type { CommitmentOpening, Hex32, ProofAdapter, ProofBundle, PublicAuthori
 import { openingValues } from './opening.js';
 import { authorizationValues } from './publicAuthorization.js';
 
+/**
+ * Public signals of metering_v3, in circuit order.
+ */
 export const METERING_V3_PUBLIC_SIGNALS = ['commitment', 'epoch', 'minUsage', 'maxUsage'] as const;
 
+/**
+ * ABI fragments of the receipt registry v3 used by the operator.
+ */
 export const REGISTRY_V3_SUBMIT_ABI = [
   'function submitReceipt((bytes32 circuitId, address verifier, uint256 commitment, uint64 epoch, uint64 minUsage, uint64 maxUsage, bytes32 bucketPolicy, bytes32 operationRef) auth, bytes signature, (uint256[2] a, uint256[2][2] b, uint256[2] c, uint256[4] pubSignals) proof) external',
   'function registeredDigest(bytes32 operationRef) view returns (bytes32)',
   'function hashAuthorization((bytes32 circuitId, address verifier, uint256 commitment, uint64 epoch, uint64 minUsage, uint64 maxUsage, bytes32 bucketPolicy, bytes32 operationRef) auth) view returns (bytes32)',
 ] as const;
 
+/**
+ * Paths and expected SHA-256 digests of the metering_v3 artifacts.
+ */
 export interface ProofArtifactsV3 {
   circuitId: string;
   wasmPath: string;
@@ -34,6 +47,9 @@ export interface ProofArtifactsV3 {
   expected: { wasm: Hex32; zkey: Hex32; vkey: Hex32 };
 }
 
+/**
+ * Raised when the circuit artifacts do not match the manifest or each other.
+ */
 export class ArtifactMismatchError extends Error {
   constructor(message: string) {
     super(message);
@@ -41,6 +57,13 @@ export class ArtifactMismatchError extends Error {
   }
 }
 
+/**
+ * SHA-256 of a file (synchronous read).
+ *
+ * @param p - File path.
+ * @returns `0x`-prefixed hex digest.
+ * @throws {Error} When the file cannot be read.
+ */
 export function sha256File(p: string): Hex32 {
   return ('0x' + createHash('sha256').update(readFileSync(p)).digest('hex')) as Hex32;
 }
@@ -74,19 +97,36 @@ function fromSolidity(p: ProofBundle['proof']): SnarkProof {
  * instead of sending again. 'registered_same' = this exact authorization is on chain (done, no new
  * transaction); 'registered_conflict' = another authorization used this operationRef (stop, alert);
  * 'not_registered' = safe to (re)submit the same calldata.
+ *
+ * @param onChainDigest - Value of `registeredDigest(operationRef)` read from the chain.
+ * @param auth - Authorization that was submitted.
+ * @returns The classification.
  */
 export function classifyRegistration(onChainDigest: string, auth: PublicAuthorization): 'not_registered' | 'registered_same' | 'registered_conflict' {
   if (/^0x0{64}$/i.test(onChainDigest)) return 'not_registered';
   return onChainDigest.toLowerCase() === auth.authorizationDigest.toLowerCase() ? 'registered_same' : 'registered_conflict';
 }
 
-/** Public signals the circuit must output for this authorization. */
+/**
+ * Public signals the circuit must output for this authorization.
+ *
+ * @param auth - Public authorization.
+ * @returns commitment, epoch, minUsage and maxUsage as decimal strings.
+ */
 export function expectedPublicSignals(auth: PublicAuthorization): string[] {
   return [auth.commitment, auth.epoch.toString(), auth.bucket.min.toString(), auth.bucket.max.toString()];
 }
 
 const sha256Bytes = (b: Uint8Array): Hex32 => ('0x' + createHash('sha256').update(b).digest('hex')) as Hex32;
 
+/**
+ * Creates the metering_v3 proof adapter after checking the artifacts.
+ *
+ * @param a - Artifact paths and expected digests.
+ * @returns The adapter, with the measured artifact digests.
+ * @throws {@link ArtifactMismatchError} When a digest differs from the manifest, the zkey's verification key differs
+ *   from the vkey file, or the number of public signals is not 4 (rejected promise); file errors propagate.
+ */
 export async function createProofAdapterV3(a: ProofArtifactsV3): Promise<ProofAdapter & { readonly artifacts: ProofBundle['artifacts'] }> {
   // Bytes are read ONCE: the hashed bytes are the bytes used to prove (no later file swap).
   const wasmBytes = new Uint8Array(readFileSync(a.wasmPath));

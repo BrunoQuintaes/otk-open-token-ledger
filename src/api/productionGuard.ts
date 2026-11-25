@@ -5,6 +5,12 @@
  * exists. Development and test keep the permissive A0 mode by design.
  *
  * Secrets are read only through the existing boundaries (tenant registry, secretsBootstrap); values are never logged.
+ *
+ * Called at startup by `src/api/server.ts` (`productionAuthProblems`, refusing an unsafe start) and on every
+ * request by `src/api/routes.ts` (`isProductionEnv`, `PRODUCTION_A0_OPEN_ROUTES`). The environment is decided by
+ * `src/infra/deployEnv.ts` from `NODE_ENV`; the settings checked are `OTK_TENANTS` and `OTK_ADMIN_KEY`.
+ *
+ * @module src/api/productionGuard
  */
 import { isAuthEnabled } from './tenantKeyRegistry.js';
 import { getAdminKey } from '../infra/secretsBootstrap.js';
@@ -16,6 +22,8 @@ import { isDeployedEnv } from '../infra/deployEnv.js';
  * value except development / dev / test (case and surrounding spaces ignored) is deployed, so "Production", "prod",
  * "live" or "qa" no longer reopen the auth-disabled mode. An unset NODE_ENV keeps the permissive A0 mode (Node
  * convention for local runs and tests; documented limitation).
+ *
+ * @returns `true` in any deployed environment (everything except development, dev, test or unset).
  */
 export function isProductionEnv(): boolean {
   return isDeployedEnv();
@@ -26,7 +34,11 @@ export const ADMIN_KEY_MIN_LENGTH = 32;
 /** Values published with the demo dashboard and the seed script; never acceptable outside development. */
 export const KNOWN_PUBLIC_ADMIN_KEYS: ReadonlySet<string> = new Set(['demo-otk-2026']);
 
-/** Configuration problems that make a production or staging start unsafe (empty elsewhere). */
+/**
+ * Configuration problems that make a production or staging start unsafe (empty elsewhere).
+ *
+ * @returns Human-readable problems (names of settings, never their values); empty when safe or not deployed.
+ */
 export function productionAuthProblems(): string[] {
   if (!isProductionEnv()) return [];
   const problems: string[] = [];

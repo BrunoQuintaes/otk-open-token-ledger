@@ -26,6 +26,9 @@ import {
 
 const MAX_BATCH = 100;
 
+/**
+ * Batch prover that runs one Groth16 proof per input, one after the other (no on-chain saving).
+ */
 export class SequentialBatchProver implements IBatchProver {
   readonly strategyId = 'sequential_v1';
   readonly description =
@@ -34,6 +37,16 @@ export class SequentialBatchProver implements IBatchProver {
   readonly maxBatchSize = MAX_BATCH;
   readonly reducesOnChainCost = false;
 
+  /**
+   * Proves every input in order, reading the circuit files from disk on each proof (CPU-heavy).
+   *
+   * @param inputs - Circuit inputs (1 to 100).
+   * @param wasmPath - Path of the circuit wasm file.
+   * @param zkeyPath - Path of the proving key file.
+   * @returns The proofs (public signals read in the metering_v1 order: commitment, epoch, maxUsage), timings and
+   *   a zero-savings gas estimate.
+   * @throws {@link BatchError} `BATCH_EMPTY` or `BATCH_TOO_LARGE` (rejected promise); snarkjs errors propagate.
+   */
   async prove(
     inputs: CircuitInput[],
     wasmPath: string,

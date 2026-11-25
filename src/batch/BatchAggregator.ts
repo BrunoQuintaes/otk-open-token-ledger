@@ -10,6 +10,12 @@
  *   N=100 → ~2.906  gas/receipt + batch overhead
  *
  * ADR: docs/architecture/adr/ADR-0100-batch-settlement-merkle.md
+ *
+ * Used by `src/api/receiptStore.ts` (`flushBatch`). Leaves are the canonical receipt bytes
+ * (`src/receipt/canonicalReceiptV1.ts`), hashed by `src/crypto/merkle.ts`; the CU total is bucketed by
+ * `src/privacy/bucketing.ts`. Reads no environment variable and does no I/O.
+ *
+ * @module src/batch/BatchAggregator
  */
 
 import { ethers } from 'ethers';
@@ -58,8 +64,11 @@ export interface BatchResult {
 
 /** State snapshot for diagnostics. */
 export interface BatchAggregatorState {
+  /** Receipts added so far. */
   count: number;
+  /** Epoch of the first receipt, or `null` when empty. */
   pendingEpoch: bigint | null;
+  /** Whether `finalizeBatch` was called. */
   isFinalized: boolean;
 }
 
@@ -98,6 +107,7 @@ export class BatchAggregator {
    * Add a receipt to the batch.
    * @throws if the batch has already been finalized.
    * @throws if epoch changes mid-batch (enforces single-epoch batches).
+   * @param receipt - Canonical receipt; it is encoded immediately.
    */
   addReceipt(receipt: CanonicalReceiptV1): void {
     if (this._isFinalized) {
@@ -130,6 +140,7 @@ export class BatchAggregator {
    * Can be called multiple times — returns the same result.
    *
    * @throws if no receipts have been added.
+   * @returns Header, one inclusion proof per receipt and the encoded receipts; `createdAt` is set on each call.
    */
   finalizeBatch(): BatchResult {
     if (this._encoded.length === 0) {
@@ -169,6 +180,9 @@ export class BatchAggregator {
   /**
    * Get an inclusion proof for a specific receipt index.
    * @throws if not finalized yet.
+   *
+   * @param index - Zero-based receipt index in insertion order.
+   * @returns The inclusion proof (the tree is rebuilt on each call).
    */
   getProof(index: number): MerkleProof {
     if (!this._isFinalized) {
@@ -182,6 +196,11 @@ export class BatchAggregator {
   // Diagnostics
   // ---------------------------------------------------------------------------
 
+  /**
+   * State snapshot for diagnostics.
+   *
+   * @returns Count, pending epoch and finalized flag.
+   */
   inspect(): BatchAggregatorState {
     return {
       count: this._receipts.length,
@@ -190,6 +209,11 @@ export class BatchAggregator {
     };
   }
 
+  /**
+   * Number of receipts added so far.
+   *
+   * @returns The count.
+   */
   get count(): number {
     return this._receipts.length;
   }
@@ -202,6 +226,12 @@ export class BatchAggregator {
 /**
  * Encode a BatchHeader for EIP-191 signature by a trusted signer.
  * Canonical encoding: keccak256("OTK_BATCH_V1" || 0x1f || root || 0x1f || count || ...)
+ *
+ * Note: despite the formula above, this returns the UTF-8 bytes of the joined fields (separator 0x1F), not a hash;
+ * `hashBatchHeader` applies keccak256 to them.
+ *
+ * @param header - Batch header.
+ * @returns UTF-8 bytes of `OTK_BATCH_V1`, root, count, totalCUBucket, policyId, epoch and createdAt joined by 0x1F.
  */
 export function encodeBatchHeaderForSigning(header: BatchHeader): Uint8Array {
   const domain = 'OTK_BATCH_V1';
@@ -220,6 +250,9 @@ export function encodeBatchHeaderForSigning(header: BatchHeader): Uint8Array {
 
 /**
  * Compute keccak256 hash of a BatchHeader (for on-chain submission).
+ *
+ * @param header - Batch header.
+ * @returns 0x-prefixed hex keccak256 digest of `encodeBatchHeaderForSigning(header)`.
  */
 export function hashBatchHeader(header: BatchHeader): string {
   return ethers.keccak256(encodeBatchHeaderForSigning(header));

@@ -15,7 +15,12 @@
  *   'submit_completed' — on-chain submission succeeded
  *   'submit_failed'    — on-chain submission failed
  *
- * @module automation/AutoLoop
+ * Environment variables read at module load (defaults of the config): OTK_AUTO_LOOP_INTERVAL_MS, PUBLISH_MIN_BATCH_K
+ * (default 10) and OTK_AUTO_SUBMIT (`true` enables submission). The receipt count, the flush and the on-chain submit
+ * are injected (`AutoLoopDeps`); this class calls no store or chain by itself. In this version no module under `src/`
+ * constructs it (only tests).
+ *
+ * @module src/automation/AutoLoop
  * @since Wave 2 Pack 16 (S4.2 + S4.3)
  */
 
@@ -46,6 +51,7 @@ export interface AutoLoopDeps {
 }
 
 /** AutoLoop event types */
+/** Names of the events emitted by `AutoLoop` (`loop_tick` and `loop_error` besides those in the file header). */
 export type AutoLoopEvent =
   | 'batch_triggered'
   | 'submit_initiated'
@@ -55,6 +61,7 @@ export type AutoLoopEvent =
   | 'loop_error';
 
 /** Loop state for diagnostics */
+/** Counters and timestamps of a loop (timestamps in ms from the injected clock; `null` = not yet). */
 export interface AutoLoopState {
   running: boolean;
   tickCount: number;
@@ -75,6 +82,11 @@ const DEFAULT_CONFIG: AutoLoopConfig = {
 
 /**
  * AutoLoop — orchestrates automated batch + submit cycle.
+ */
+/**
+ * Polls the receipt count on a timer, flushes a batch when the threshold is reached and optionally submits it on-chain.
+ *
+ * Ticks do not overlap-protect each other: a slow on-chain submit can run while the next tick starts.
  */
 export class AutoLoop extends EventEmitter {
   private readonly _config: AutoLoopConfig;
@@ -102,12 +114,20 @@ export class AutoLoop extends EventEmitter {
     this._now = config?.now ?? Date.now;
   }
 
-  /** Whether the auto-loop is currently running. */
+  /**
+   * Whether the auto-loop is currently running.
+   *
+   * @returns `true` between `start()` and `stop()`.
+   */
   isRunning(): boolean {
     return this._running;
   }
 
-  /** Current state snapshot (for diagnostics). */
+  /**
+   * Current state snapshot (for diagnostics).
+   *
+   * @returns A shallow copy of the state.
+   */
   inspect(): AutoLoopState {
     return { ...this._state };
   }
@@ -156,13 +176,18 @@ export class AutoLoop extends EventEmitter {
     });
   }
 
-  /** Execute a single tick (exposed for testing). */
+  /**
+   * Execute a single tick (exposed for testing).
+   *
+   * @returns Resolves when the tick, including any on-chain submit, has finished.
+   */
   async tick(): Promise<void> {
     return this._tick();
   }
 
   // ── Internal ────────────────────────────────────────────────
 
+  // One poll: flush when the count reaches the threshold, then submit when enabled; submit errors are counted, not thrown.
   private async _tick(): Promise<void> {
     const now = this._now();
     this._state.tickCount++;
@@ -207,6 +232,7 @@ export class AutoLoop extends EventEmitter {
     this.emit('loop_tick', { receiptCount, tickCount: this._state.tickCount });
   }
 
+  // Forwards a structured log entry to the injected logger, if any.
   private _log(level: string, event: string, extra?: Record<string, unknown>): void {
     if (this._deps.log) {
       this._deps.log({ level, event, ts: this._now(), ...extra });

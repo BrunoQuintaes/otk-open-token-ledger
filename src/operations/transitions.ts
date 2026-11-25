@@ -5,21 +5,34 @@
  * invariants that keep partial or missing usage from being settled as final, and keep an
  * uncertain measurement from releasing its exposure (D7 §9).
  *
- * @module operations/transitions
+ * Pure functions (no I/O). `PgOperationStore.transition` calls {@link applyPatch} under a row lock, so every
+ * stored change passes these rules; `codec.ts` validates stored state values with {@link assertStateValues}.
+ *
+ * @module src/operations/transitions
  */
 import type {
   DeliveryState, DurableOperation, ExecutionState, MeasurementState, MoneySettlement, MoneyState, SettlementState,
 } from '../types/d1d8/index.js';
 
-/** Structural equality of JSON-like values with bigint (no import from codec: avoids a cycle). */
+/**
+ * Structural equality of JSON-like values with bigint (no import from codec: avoids a cycle).
+ *
+ * @param a - First value.
+ * @param b - Second value.
+ * @returns `true` when both serialize identically (key order matters).
+ */
 const sameJson = (a: unknown, b: unknown): boolean => {
   const enc = (v: unknown) => JSON.stringify(v, (_k, x) => (typeof x === 'bigint' ? `${x}n` : x));
   return enc(a) === enc(b);
 };
 
+/** Every execution state, in lifecycle order. */
 export const EXECUTION_STATES: readonly ExecutionState[] = ['admitted', 'upstream_started', 'completed', 'cancel_requested', 'cancelled', 'upstream_failed', 'process_lost'];
+/** Every measurement state. */
 export const MEASUREMENT_STATES: readonly MeasurementState[] = ['none', 'partial', 'final', 'uncertain'];
+/** Every delivery state. */
 export const DELIVERY_STATES: readonly DeliveryState[] = ['pending', 'streaming', 'delivered', 'client_disconnected'];
+/** Every CU reservation (settlement) state. */
 export const SETTLEMENT_STATES: readonly SettlementState[] = ['held', 'settled', 'held_uncertain', 'released'];
 
 const EXECUTION_NEXT: Record<ExecutionState, readonly ExecutionState[]> = {
@@ -64,6 +77,10 @@ const MONEY_NEXT: Record<MoneyState, readonly MoneyState[]> = {
  * Money follows a CU reservation transition unless the patch states it explicitly: released →
  * released, held_uncertain → held_uncertain, settled (CU) → pending_price (no complete quote
  * given). Never derives 'settled': only a complete quote settles money.
+ *
+ * @param cur - Current operation.
+ * @param patch - Requested patch.
+ * @returns The money to apply, or `undefined` when money does not change.
  */
 function derivedMoney(cur: DurableOperation, patch: OperationPatch): MoneySettlement | undefined {
   if (!cur.money || patch.money !== undefined || !patch.reservation || patch.reservation.state === cur.reservation.state) return patch.money;
@@ -75,7 +92,13 @@ function derivedMoney(cur: DurableOperation, patch: OperationPatch): MoneySettle
   return undefined;
 }
 
+/** Thrown when a patch breaks a transition table, a write-once rule or a cross-axis invariant. */
 export class IllegalTransitionError extends Error {
+  /**
+   * Builds the error.
+   *
+   * @param message - Which axis or rule was violated.
+   */
   constructor(message: string) { super(message); this.name = 'IllegalTransitionError'; }
 }
 
@@ -84,10 +107,20 @@ function check<T extends string>(axis: string, table: Record<T, readonly T[]>, f
   if (!(table[from] ?? []).includes(to)) throw new IllegalTransitionError(`${axis}: ${from} → ${to} is not allowed`);
 }
 
+/** Fields a transition may change; absent fields keep their current value. */
 export type OperationPatch = Partial<Pick<DurableOperation,
   'execution' | 'measurement' | 'delivery' | 'usage' | 'providerRequestId' | 'cancellation' | 'effects' | 'reservation' | 'money'>>;
 
-/** Apply a patch, or throw IllegalTransitionError. Returns the merged next state (without revision/time). */
+/**
+ * Apply a patch, or throw IllegalTransitionError. Returns the merged next state (without revision/time).
+ *
+ * Pure: neither argument is mutated.
+ *
+ * @param cur - Current operation.
+ * @param patchIn - Requested changes.
+ * @returns The next operation state.
+ * @throws {@link IllegalTransitionError} When any transition, immutability or invariant rule is broken.
+ */
 export function applyPatch(cur: DurableOperation, patchIn: OperationPatch): DurableOperation {
   const money = derivedMoney(cur, patchIn);
   const patch: OperationPatch = money === undefined ? patchIn : { ...patchIn, money };
@@ -134,7 +167,12 @@ export function applyPatch(cur: DurableOperation, patchIn: OperationPatch): Dura
   return next;
 }
 
-/** Cross-axis invariants (checked after every transition and on admission). */
+/**
+ * Cross-axis invariants (checked after every transition and on admission).
+ *
+ * @param op - The operation state to check.
+ * @throws {@link IllegalTransitionError} When an invariant does not hold.
+ */
 export function assertInvariants(op: DurableOperation): void {
   if (op.measurement === 'final' && op.usage === null) throw new IllegalTransitionError('final measurement requires usage');
   if (op.measurement === 'final' && op.usage && op.usage.completeness !== 'complete') {
@@ -164,10 +202,22 @@ export function assertInvariants(op: DurableOperation): void {
   }
 }
 
+/**
+ * Whether an execution state is not terminal yet.
+ *
+ * @param execution - Execution state.
+ * @returns `true` for admitted, upstream started and cancel requested.
+ */
 export function isIncomplete(execution: ExecutionState): boolean {
   return execution === 'admitted' || execution === 'upstream_started' || execution === 'cancel_requested';
 }
 
+/**
+ * Checks that stored state strings are known values (used when decoding a database row).
+ *
+ * @param op - The four state values.
+ * @throws {@link IllegalTransitionError} When a value is unknown.
+ */
 export function assertStateValues(op: { execution: string; measurement: string; delivery: string; reservation: { state: string } }): void {
   if (!(EXECUTION_STATES as readonly string[]).includes(op.execution)) throw new IllegalTransitionError(`unknown execution ${op.execution}`);
   if (!(MEASUREMENT_STATES as readonly string[]).includes(op.measurement)) throw new IllegalTransitionError(`unknown measurement ${op.measurement}`);

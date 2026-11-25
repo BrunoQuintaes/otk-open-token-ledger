@@ -6,12 +6,23 @@
  * Table: otk_subject_status. The "not before" instants only grow (GREATEST), so a late or replayed write never
  * re-validates old credentials; the inactive flag is last-writer-wins.
  *
- * @module infra/pg/PgSubjectStatusStore
+ * Installed by `src/infra/storeBootstrap.ts`. Every method first runs `init()`. Query errors propagate. Times are
+ * Unix seconds (fractions are floored on write).
+ *
+ * @module src/infra/pg/PgSubjectStatusStore
  */
 
 import type { ISubjectStatusStore, SubjectStatusRecord, SubjectKind } from '../../auth/subjectStatus.js';
 
+/** The part of a `pg.Pool` this store uses. */
 export interface PgPool {
+  /**
+   * Runs one parameterized query.
+   *
+   * @param text - SQL text with `$n` placeholders.
+   * @param params - Parameter values.
+   * @returns The result rows.
+   */
   query(text: string, params?: unknown[]): Promise<{ rows: Record<string, unknown>[] }>;
 }
 
@@ -26,16 +37,32 @@ CREATE TABLE IF NOT EXISTS otk_subject_status (
   PRIMARY KEY (kind, id)
 )`;
 
+/** `ISubjectStatusStore` in the PostgreSQL table `otk_subject_status`. */
 export class PgSubjectStatusStore implements ISubjectStatusStore {
   private _initialized = false;
+  /**
+   * Wraps a pool; nothing is queried until the first call.
+   *
+   * @param _pool - PostgreSQL pool.
+   */
   constructor(private readonly _pool: PgPool) {}
 
+  /**
+   * Creates the table if missing (idempotent, once per instance).
+   *
+   * @throws {Error} When the DDL statement fails.
+   */
   async init(): Promise<void> {
     if (this._initialized) return;
     await this._pool.query(CREATE_TABLE);
     this._initialized = true;
   }
 
+  /**
+   * Upserts a subject's status; "not before" instants never move back, `inactive` is overwritten.
+   *
+   * @param rec - Kind, id, inactive flag and "not before" instants in Unix seconds.
+   */
   async put(rec: SubjectStatusRecord): Promise<void> {
     await this.init();
     await this._pool.query(
@@ -50,6 +77,11 @@ export class PgSubjectStatusStore implements ISubjectStatusStore {
     );
   }
 
+  /**
+   * Reads every stored subject status.
+   *
+   * @returns All rows with a known kind (`tenant` or `user`).
+   */
   async listAll(): Promise<SubjectStatusRecord[]> {
     await this.init();
     const { rows } = await this._pool.query(
@@ -58,7 +90,12 @@ export class PgSubjectStatusStore implements ISubjectStatusStore {
     return this._map(rows);
   }
 
-  /** H1R2 A3: rows of the given subjects only (primary-key lookups), for the per-request authoritative check. */
+  /**
+   * H1R2 A3: rows of the given subjects only (primary-key lookups), for the per-request authoritative check.
+   *
+   * @param subjects - Kind and id of each subject to read.
+   * @returns The rows found (subjects never deactivated have none).
+   */
   async getMany(subjects: ReadonlyArray<{ kind: SubjectKind; id: string }>): Promise<SubjectStatusRecord[]> {
     await this.init();
     if (subjects.length === 0) return [];
@@ -71,6 +108,7 @@ export class PgSubjectStatusStore implements ISubjectStatusStore {
     return this._map(rows);
   }
 
+  // Drops rows with an unknown kind or a non-string id instead of failing the whole read.
   private _map(rows: Record<string, unknown>[]): SubjectStatusRecord[] {
     const out: SubjectStatusRecord[] = [];
     for (const r of rows) {

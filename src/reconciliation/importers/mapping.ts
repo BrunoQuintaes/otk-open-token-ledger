@@ -18,15 +18,27 @@ import type { LineKind, MappingProvenance, ReconProvider, UsageCategory } from '
 import { RECON_PROVIDERS, USAGE_CATEGORIES } from '../types.js';
 import { assertTimezone } from '../time.js';
 
+/**
+ * Where the records live in the exported file and how they are split.
+ */
 export type MappingRecords =
   | { kind: 'csv_rows'; delimiter: string }
   | { kind: 'json_buckets'; bucketsPath: string; resultsPath: string }
   | { kind: 'json_array'; rowsPath: string | null }
   | { kind: 'ndjson' };
 
+/**
+ * Assigns a usage category when `field` equals `equals` or matches `pattern` (exactly one of the two is set).
+ */
 export interface CategoryRule { field: string; equals?: string; pattern?: string; flags?: string; category: UsageCategory }
+/**
+ * Assigns a line kind (usage, tax, credit, adjustment) when `field` equals `equals` or matches `pattern`.
+ */
 export interface KindRule { field: string; equals?: string; pattern?: string; flags?: string; kind: LineKind }
 
+/**
+ * Declarative description of one provider export format, with provenance for each assumption.
+ */
 export interface StatementMapping {
   schema: 'otk.reconciliation_mapping.v1';
   id: string;
@@ -59,13 +71,24 @@ export interface StatementMapping {
   description: string[];
 }
 
+/**
+ * Raised when a mapping file fails structural validation.
+ */
 export class MappingError extends Error {
   constructor(message: string) { super(message); this.name = 'MappingError'; }
 }
 
 const isStr = (x: unknown): x is string => typeof x === 'string' && x.length > 0;
 
-/** Structural validation; throws MappingError with the first problem. */
+/**
+ * Structural validation; throws MappingError with the first problem.
+ *
+ * @param raw - Parsed mapping JSON.
+ * @returns The same object, typed (it is not copied).
+ * @throws {@link MappingError} With the first structural problem found.
+ * @throws {@link TimestampError} When the declared timezone is unknown.
+ * @throws {SyntaxError} When a category or model regular expression does not compile.
+ */
 export function validateMapping(raw: unknown): StatementMapping {
   const m = raw as StatementMapping;
   const fail = (msg: string): never => { throw new MappingError(`mapping ${(m && (m as { id?: string }).id) ?? '?'}: ${msg}`); };
@@ -114,7 +137,12 @@ export function validateMapping(raw: unknown): StatementMapping {
   return m;
 }
 
-/** Every field the mapping reads (used to check a CSV header before importing). */
+/**
+ * Every field the mapping reads (used to check a CSV header before importing).
+ *
+ * @param m - A validated mapping.
+ * @returns Sorted, de-duplicated field names (bucket-level `$bucket.` fields excluded).
+ */
 export function referencedFields(m: StatementMapping): string[] {
   const f = new Set<string>();
   if ('day' in m.period) f.add(m.period.day); else { f.add(m.period.start); f.add(m.period.end); }
@@ -132,14 +160,28 @@ export function referencedFields(m: StatementMapping): string[] {
   return [...f].filter((x) => !x.startsWith('$bucket.')).sort();
 }
 
+/**
+ * Folder of the bundled mapping files (`mappings/` next to this module).
+ */
 export const MAPPINGS_DIR = join(dirname(fileURLToPath(import.meta.url)), 'mappings');
 
-/** Load a bundled mapping by id, or a mapping file by path (a value ending in .json). */
+/**
+ * Load a bundled mapping by id, or a mapping file by path (a value ending in .json).
+ *
+ * Reads the file from disk synchronously.
+ *
+ * @param idOrPath - Bundled mapping ID (file `MAPPINGS_DIR/<id>.json`), or a path ending in `.json`.
+ * @returns The validated mapping.
+ * @throws {Error} When the file cannot be read or is not JSON, plus the errors of {@link validateMapping}.
+ */
 export function loadMapping(idOrPath: string): StatementMapping {
   const path = idOrPath.endsWith('.json') ? idOrPath : join(MAPPINGS_DIR, `${idOrPath}.json`);
   return validateMapping(JSON.parse(readFileSync(path, 'utf8')));
 }
 
+/**
+ * IDs of the mapping files bundled for each provider.
+ */
 export const BUNDLED_MAPPING_IDS: Readonly<Record<ReconProvider, readonly string[]>> = Object.freeze({
   anthropic: ['anthropic_cost_report_json', 'anthropic_usage_report_json', 'anthropic_console_csv'],
   openai: ['openai_costs_json', 'openai_usage_completions_json', 'openai_dashboard_csv'],

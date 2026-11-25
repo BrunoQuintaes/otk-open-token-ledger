@@ -10,6 +10,11 @@
  * Envelope (alg eip191-secp256k1): EIP-191 personal_sign over
  *   envelopeDigest = keccak256("OTK_ENVELOPE_V1" ‖ 00 ‖ CE1({alg, domain, keyId, payloadDigest, schema, signedAt, signer}))
  * so the payload kind, key id and signing time are authenticated together with the payload digest.
+ *
+ * Pure cryptography over in-memory values: no I/O, no key storage. The private key stays in the ethers
+ * Signer passed in the options; verification needs only the key ring.
+ *
+ * @module src/receipt/v3/receiptCrypto
  */
 import { ethers } from 'ethers';
 import type {
@@ -22,17 +27,30 @@ import { hashCanonicalReceiptV2, type CanonicalReceiptV2 } from '../canonicalRec
 import { CanonicalEncodingError, domainDigest } from './canonicalEncoding.js';
 import { ISO_UTC, type KeyRing } from './keyRing.js';
 
+/**
+ * Digest domain of the private receipt v3.
+ */
 export const RECEIPT_V3_DOMAIN = 'OTK_PRIVATE_RECEIPT_V3' as const;
+/**
+ * Digest domain of the conference report v1.
+ */
 export const CONFERENCE_V1_DOMAIN = 'OTK_CONFERENCE_V1' as const;
 /** v1.4 (OVERNIGHT 20261005, Phase 7): attribution statement bound to a receipt. */
 export const ATTRIBUTION_V1_DOMAIN = 'OTK_ATTRIBUTION_V1' as const;
 /** v1.5 (OVERNIGHT 2): CU-reference statement bound to a receipt (the receipt v3 schema is untouched). */
 export const CU_REFERENCE_V1_DOMAIN = 'OTK_CU_REFERENCE_V1' as const;
+/**
+ * Digest domain of the signature envelope.
+ */
 export const ENVELOPE_V1_DOMAIN = 'OTK_ENVELOPE_V1' as const;
 
 type EnvelopeDomain = SignedEnvelope['domain'];
 
+/**
+ * Options for {@link createReceiptCrypto}.
+ */
 export interface ReceiptCryptoOptions {
+  /** Keys accepted when verifying and checked before signing. */
   keyRing: KeyRing;
   /** Signing key; omitted for verify-only instances. The wallet comes from the secrets boundary. */
   signer?: { keyId: string; wallet: ethers.Signer };
@@ -55,7 +73,14 @@ function requireKey(key: unknown, what: string): void {
   }
 }
 
-/** keccak256 over CE1 of the receipt, domain OTK_PRIVATE_RECEIPT_V3. */
+/**
+ * keccak256 over CE1 of the receipt, domain OTK_PRIVATE_RECEIPT_V3.
+ *
+ * @param r - Receipt v3 (not modified).
+ * @returns The `0x`-prefixed keccak256 digest.
+ * @throws {Error} When the schema is not `otk.receipt.v3`, the key lacks `tenantId`/`operationId`,
+ *   `contentDigests` is not null, or the receipt is not CE1-encodable ({@link CanonicalEncodingError}).
+ */
 export function digestReceiptV3(r: PrivateReceiptV3): Hex32 {
   requireSchema(r, 'otk.receipt.v3', 'receipt');
   requireKey(r.key, 'receipt');
@@ -64,7 +89,14 @@ export function digestReceiptV3(r: PrivateReceiptV3): Hex32 {
   return domainDigest(RECEIPT_V3_DOMAIN, r);
 }
 
-/** keccak256 over CE1 of the report, domain OTK_CONFERENCE_V1. */
+/**
+ * keccak256 over CE1 of the report, domain OTK_CONFERENCE_V1.
+ *
+ * @param rep - Conference report v1 (not modified).
+ * @returns The `0x`-prefixed keccak256 digest.
+ * @throws {Error} When the schema or key is wrong, a divergence verdict comes with a state other than
+ *   `compared`, or the report is not CE1-encodable.
+ */
 export function digestConferenceV1(rep: ConferenceReport): Hex32 {
   requireSchema(rep, 'otk.conference.v1', 'conference');
   requireKey(rep.key, 'conference');
@@ -77,7 +109,14 @@ export function digestConferenceV1(rep: ConferenceReport): Hex32 {
 
 const LABEL = /^[A-Za-z0-9._:-]{1,128}$/;
 
-/** keccak256 over CE1 of the attribution statement, domain OTK_ATTRIBUTION_V1. */
+/**
+ * keccak256 over CE1 of the attribution statement, domain OTK_ATTRIBUTION_V1.
+ *
+ * @param st - Attribution statement v1 (not modified).
+ * @returns The `0x`-prefixed keccak256 digest.
+ * @throws {Error} When the schema or key is wrong, `receiptDigest` is not a 32-byte hex digest, or the
+ *   attribution does not have exactly the five label fields (each null or a 1-128 character label).
+ */
 export function digestAttributionV1(st: AttributionStatementV1): Hex32 {
   requireSchema(st, 'otk.attribution.v1', 'attribution');
   requireKey(st.key, 'attribution');
@@ -92,7 +131,14 @@ export function digestAttributionV1(st: AttributionStatementV1): Hex32 {
   return domainDigest(ATTRIBUTION_V1_DOMAIN, st);
 }
 
-/** keccak256 over CE1 of the CU-reference statement, domain OTK_CU_REFERENCE_V1. */
+/**
+ * keccak256 over CE1 of the CU-reference statement, domain OTK_CU_REFERENCE_V1.
+ *
+ * @param st - CU-reference statement v1 (not modified).
+ * @returns The `0x`-prefixed keccak256 digest.
+ * @throws {Error} When the schema, key, digests, kind, formula version, label, base period (YYYY-MM),
+ *   profile ID, `computedAt` (ISO-8601 UTC), exact fraction or quantities (decimal strings) are invalid.
+ */
 export function digestCuReferenceV1(st: CuReferenceStatementV1): Hex32 {
   requireSchema(st, 'otk.cu_reference_statement.v1', 'cuReference');
   requireKey(st.key, 'cuReference');
@@ -113,6 +159,14 @@ export function digestCuReferenceV1(st: CuReferenceStatementV1): Hex32 {
   return domainDigest(CU_REFERENCE_V1_DOMAIN, st);
 }
 
+/**
+ * Digest that the operator key signs: CE1 of the envelope fields (digest and signer lowercased), under
+ * the envelope domain.
+ *
+ * @param env - Envelope fields without the signature.
+ * @returns The `0x`-prefixed keccak256 digest.
+ * @throws {@link CanonicalEncodingError} When a field is not encodable (e.g. not a string).
+ */
 export function envelopeDigest(env: Pick<SignedEnvelope, 'alg' | 'domain' | 'keyId' | 'payloadDigest' | 'schema' | 'signedAt' | 'signer'>): Hex32 {
   return domainDigest(ENVELOPE_V1_DOMAIN, {
     alg: env.alg, domain: env.domain, keyId: env.keyId, payloadDigest: env.payloadDigest.toLowerCase(),
@@ -138,6 +192,16 @@ function recover(digest: string, signature: string): string | null {
   }
 }
 
+/**
+ * Creates the {@link ReceiptCrypto} implementation: digests, signing (when a signer is given) and
+ * verification of receipts, conference reports, statements and legacy formats.
+ *
+ * Verification never throws: it returns `{ ok: false, reason }`. Signing rejects (async `Error`) when no
+ * signer is configured, the key is not `active` in the key ring, or the wallet address does not match the key.
+ *
+ * @param opts - Key ring, optional signer and optional clock.
+ * @returns A new object; it keeps references to `opts.keyRing` and the signer.
+ */
 export function createReceiptCrypto(opts: ReceiptCryptoOptions): ReceiptCrypto {
   const now = opts.now ?? (() => new Date());
 

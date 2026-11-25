@@ -6,6 +6,8 @@
  * public field. The commitment is randomized with a secret blinding value from a CSPRNG
  * (never a nonce, date, requestId or public seed). A fixes the construction, the field-element
  * bounds and the exact public-signal order; this file fixes only what C and S4 exchange.
+ *
+ * @module src/types/d1d8/publicAuthorization
  */
 import type { ChainDomain, Hex32, IsoTime, OperationKey, Scaled } from './common.js';
 import type { SignedEnvelope } from './receipt.js';

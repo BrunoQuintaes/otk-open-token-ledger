@@ -17,11 +17,25 @@
  * @module security/tokenStrength
  */
 
+/**
+ * Minimum number of distinct characters in a tenant token.
+ */
 export const MIN_TOKEN_DISTINCT_CHARS = 8;
+/**
+ * Minimum Shannon estimate, in bits per character.
+ */
 export const MIN_TOKEN_BITS_PER_CHAR = 3;
+/**
+ * Minimum Shannon estimate for the whole token, in bits (bits per character × length).
+ */
 export const MIN_TOKEN_TOTAL_BITS = 72;
 
-/** Shannon estimate in bits per character of the character distribution of `s`. */
+/**
+ * Shannon estimate in bits per character of the character distribution of `s`.
+ *
+ * @param s - Text (counted by code point).
+ * @returns Bits per character; 0 for an empty string.
+ */
 export function shannonBitsPerChar(s: string): number {
   const chars = [...s];
   if (chars.length === 0) return 0;
@@ -32,7 +46,11 @@ export function shannonBitsPerChar(s: string): number {
   return h;
 }
 
-/** Smallest period p (1 <= p <= len/2) such that s is a repetition of its first p characters, or 0. */
+/**
+ * Smallest period p (1 <= p <= len/2) such that s is a repetition of its first p characters, or 0.
+ *
+ * @param chars - Code points of the text.
+ */
 function shortPeriod(chars: string[]): number {
   const n = chars.length;
   for (let p = 1; p <= Math.floor(n / 2); p++) {
@@ -43,7 +61,12 @@ function shortPeriod(chars: string[]): number {
   return 0;
 }
 
-/** Reason why `token` is too weak to be registered, or null when it passes. */
+/**
+ * Reason why `token` is too weak to be registered, or null when it passes.
+ *
+ * @param token - Candidate token (counted by code point).
+ * @returns A short English reason, or `null` when none of the rules in the file header rejects it.
+ */
 export function tenantTokenWeakness(token: string): string | null {
   const chars = [...token];
   if (chars.length === 0) return 'token is empty';

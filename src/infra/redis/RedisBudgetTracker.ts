@@ -9,7 +9,10 @@
  * Uses INCRBY for atomic spend accumulation.
  * BigInt values stored as decimal strings.
  *
- * @module infra/redis/RedisBudgetTracker
+ * Keys start with the client's configured prefix (`otk:` above). Errors are swallowed: when Redis is not connected
+ * or a command fails, writes are lost silently and reads return 0n / null, so a budget check fails open.
+ *
+ * @module src/infra/redis/RedisBudgetTracker
  * @since Wave 3A (PACK 3A-03)
  */
 
@@ -20,9 +23,15 @@ import type { RedisClient } from './redisClient.js';
 const SPEND_PREFIX = 'budget:spend:';
 const POLICY_PREFIX = 'budget:policy:';
 
+/** `IBudgetTracker` stored in Redis; see the module comment for the failure behaviour. */
 export class RedisBudgetTracker implements IBudgetTracker {
   private readonly _redis: RedisClient;
 
+  /**
+   * Wraps the shared Redis client; nothing is read or written here.
+   *
+   * @param redis - Shared Redis client wrapper (prefix and raw client).
+   */
   constructor(redis: RedisClient) {
     this._redis = redis;
   }
@@ -35,6 +44,13 @@ export class RedisBudgetTracker implements IBudgetTracker {
     return `${this._redis.prefix}${POLICY_PREFIX}${tenantId}`;
   }
 
+  /**
+   * Adds CU to the tenant's spend (Redis INCRBY; no expiry is set on the key).
+   *
+   * @param tenantId - Tenant.
+   * @param epochId - Accounting epoch.
+   * @param cuAmount - CU to add.
+   */
   async recordSpend(tenantId: string, epochId: string, cuAmount: bigint): Promise<void> {
     const raw = this._redis.rawClient;
     if (!raw) return;
@@ -46,6 +62,13 @@ export class RedisBudgetTracker implements IBudgetTracker {
     }
   }
 
+  /**
+   * Reads the tenant's spend in one epoch.
+   *
+   * @param tenantId - Tenant.
+   * @param epochId - Accounting epoch.
+   * @returns CU spent; 0n when absent, when Redis is unavailable or on error.
+   */
   async getCurrentSpend(tenantId: string, epochId: string): Promise<bigint> {
     const raw = this._redis.rawClient;
     if (!raw) return 0n;
@@ -58,6 +81,12 @@ export class RedisBudgetTracker implements IBudgetTracker {
     }
   }
 
+  /**
+   * Reads the tenant's budget policy.
+   *
+   * @param tenantId - Tenant.
+   * @returns The policy, or null when absent, unavailable or unreadable.
+   */
   async getBudget(tenantId: string): Promise<BudgetPolicy | null> {
     const raw = this._redis.rawClient;
     if (!raw) return null;
@@ -75,6 +104,12 @@ export class RedisBudgetTracker implements IBudgetTracker {
     }
   }
 
+  /**
+   * Stores the tenant's budget policy (`maxCU` as a decimal string).
+   *
+   * @param tenantId - Tenant.
+   * @param policy - Policy to store.
+   */
   async setBudget(tenantId: string, policy: BudgetPolicy): Promise<void> {
     const raw = this._redis.rawClient;
     if (!raw) return;
@@ -91,6 +126,7 @@ export class RedisBudgetTracker implements IBudgetTracker {
     }
   }
 
+  /** Deletes every `budget:*` key under the client prefix, for all tenants (destructive; used by tests). */
   async clear(): Promise<void> {
     const raw = this._redis.rawClient;
     if (!raw) return;

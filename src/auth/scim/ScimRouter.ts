@@ -12,7 +12,14 @@
  *
  * Auth: Bearer token from OTK_SCIM_BEARER_TOKEN env var.
  *
- * @module auth/scim/ScimRouter
+ * Also accepts PATCH on a user (replace of `active` / `displayName` only). Called from `src/api/routes.ts` with the
+ * path already stripped of the version prefix. Every request must present the configured SCIM token (see the line
+ * above); without a configured token every SCIM request is refused (401). Deprovisioning (DELETE, or `active=false`)
+ * marks the user in `src/auth/subjectStatus.ts`, revokes the API keys the user minted and records the event in the
+ * governance trail. This file is read as text by `scripts/ops/extract_routes.mjs`; comments here describe routes in
+ * words only.
+ *
+ * @module src/auth/scim/ScimRouter
  * @since Wave 4 (4D-PACK-4D02 / NEW-4.04)
  */
 
@@ -32,6 +39,7 @@ import { getLogger } from '../../infra/logging/StructuredLogger.js';
 
 const SCIM_CONTENT_TYPE = 'application/scim+json';
 
+// Sends a SCIM JSON response with the SCIM content type.
 function sendScim(res: ServerResponse, status: number, body: unknown): void {
   const json = JSON.stringify(body);
   res.writeHead(status, { 'Content-Type': SCIM_CONTENT_TYPE, 'Content-Length': Buffer.byteLength(json) });
@@ -42,6 +50,9 @@ function sendScim(res: ServerResponse, status: number, body: unknown): void {
  * H1 R-09: SCIM PatchOp (RFC 7644 §3.5.2) reduced to the attributes this server manages: `active` and `displayName`.
  * Accepts {op:"replace", path:"active", value:false}, {op:"Replace", value:{active:"False"}} (Entra sends strings and
  * capitalised ops). Any other operation → null (400), never a silent success.
+ *
+ * @param body - Parsed PatchOp request body.
+ * @returns The attributes to apply, or `null` when any operation is unsupported.
  */
 function patchToScimUser(body: unknown): ScimUser | null {
   const ops = (body as { Operations?: unknown })?.Operations;
@@ -68,10 +79,12 @@ function patchToScimUser(body: unknown): ScimUser | null {
   return out as ScimUser;
 }
 
+// Sends a SCIM error document (RFC 7644 error schema).
 function sendScimError(res: ServerResponse, status: number, detail: string, scimType?: string): void {
   sendScim(res, status, makeScimError(status, detail, scimType));
 }
 
+// Reads the whole body as JSON (no size limit or timeout here); an empty body is {} and bad JSON rejects.
 async function readBody(req: IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -88,6 +101,7 @@ async function readBody(req: IncomingMessage): Promise<unknown> {
   });
 }
 
+// Compares the presented credential header with the configured SCIM token in constant time; no token configured = deny.
 function checkScimAuth(req: IncomingMessage): boolean {
   const token = process.env['OTK_SCIM_BEARER_TOKEN'];
   if (!token) return false; // fail-closed: no token configured → deny all SCIM requests
@@ -105,6 +119,10 @@ function checkScimAuth(req: IncomingMessage): boolean {
  * logged for operator review. Returns false when the revocation (or the write of the status to the shared store) could
  * not be completed (the caller answers 503 so that
  * the identity provider retries; the deprovisioning itself is already recorded and enforced at authentication time).
+ *
+ * @param userId - Deprovisioned user id.
+ * @param userStore - User store, used to list the user's organizations.
+ * @returns `true` when the keys were revoked and the status reached the shared store.
  */
 async function revokeKeysOfDeprovisionedUser(userId: string, userStore: IUserStore): Promise<boolean> {
   const log = getLogger();
@@ -135,6 +153,13 @@ async function revokeKeysOfDeprovisionedUser(userId: string, userStore: IUserSto
 
 /**
  * Handle a SCIM 2.0 request. Returns true if the route was handled, false if not a SCIM route.
+ *
+ * @param req - Incoming request.
+ * @param res - Response; written when the route is handled.
+ * @param routePath - Request path without the version prefix.
+ * @param method - HTTP method.
+ * @param userStore - User store, or `null` when none is configured (lists are then empty and writes answer 503 or 404).
+ * @returns `true` when the path is under the SCIM prefix (a response was sent), `false` otherwise.
  */
 export async function handleScimRequest(
   req: IncomingMessage,

@@ -7,6 +7,12 @@
  *   reportToCsv / renderHuman          → planilha e saída de terminal
  *   parsePublicKeyRing / serializePublicKeyRing → chaveiro otk.keyring.public.v1 (impressão digital = sha256 do arquivo)
  *   convertBridgeKeyRing(Bytes)        → anel público do bot (otk.bridge.keyring_file.v1) convertido sem perda
+ *
+ * (English) Public API of the offline OTK receipt verifier. It only re-exports; the same code runs in Node
+ * (the `otk verify` command in `scripts/verify/otk.ts`) and in the browser (esbuild bundle), so nothing in
+ * this folder may import Node modules.
+ *
+ * @module src/verifier/index
  */
 export { verifyBundle, verifyBundleDetailed, VerifierUsageError, VERIFIER_VERSION } from './core.js';
 export { serializeReport, reportSha256, reportToCsv, renderHuman } from './report.js';

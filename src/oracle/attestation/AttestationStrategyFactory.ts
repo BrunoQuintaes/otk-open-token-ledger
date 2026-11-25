@@ -10,7 +10,10 @@
  *   const strategy = AttestationStrategyFactory.resolve();
  *   const result   = strategy.attest(input);
  *
- * @module oracle/attestation/AttestationStrategyFactory
+ * In this version only the unit tests import this module; the durable proxy does not use it. The default
+ * strategy is resolved once, when the module is first imported.
+ *
+ * @module src/oracle/attestation/AttestationStrategyFactory
  * @since U12.9.1
  */
 
@@ -30,6 +33,13 @@ const REGISTRY: Record<AttestationStrategyId, IAttestationStrategy> = {
  * explicit read alias (D1-G07).
  */
 let legacyWarned = false;
+/**
+ * Reads ATTESTATION_MODE and maps it to a registered strategy id.
+ *
+ * Side effect: the first time the legacy value is read, one JSON warning line is written to stderr.
+ *
+ * @returns The strategy id; `operator_recount` for unset, unknown or legacy values.
+ */
 export function resolveAttestationMode(): AttestationStrategyId {
   const raw = process.env['ATTESTATION_MODE'] ?? '';
   if (raw === 'provider_signed') {
@@ -41,10 +51,13 @@ export function resolveAttestationMode(): AttestationStrategyId {
     : 'operator_recount';
 }
 
+/** Static accessors for the registered attestation strategies. */
 export class AttestationStrategyFactory {
   /**
    * Resolve the strategy configured by ATTESTATION_MODE env.
    * Always returns a registered, non-null strategy.
+   *
+   * @returns The configured strategy (`tee_tls_notary` resolves to a stub whose `attest` throws).
    */
   static resolve(): IAttestationStrategy {
     return REGISTRY[resolveAttestationMode()];
@@ -53,6 +66,10 @@ export class AttestationStrategyFactory {
   /**
    * Resolve a strategy by explicit id (ignores env).
    * Throws if the id is unknown.
+   *
+   * @param id - Strategy id; the legacy `provider_signed` returns the operator-recount strategy.
+   * @returns The registered strategy.
+   * @throws {Error} When the id is not registered.
    */
   static get(id: AttestationStrategyId | LegacyAttestationStrategyId): IAttestationStrategy {
     const s = id === 'provider_signed' ? REGISTRY.operator_recount : REGISTRY[id];
@@ -60,7 +77,11 @@ export class AttestationStrategyFactory {
     return s;
   }
 
-  /** List all registered strategy ids. */
+  /**
+   * List all registered strategy ids.
+   *
+   * @returns The ids (the legacy alias is not included).
+   */
   static listStrategies(): AttestationStrategyId[] {
     return Object.keys(REGISTRY) as AttestationStrategyId[];
   }

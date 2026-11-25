@@ -8,7 +8,11 @@
  * Enable via OTK_PRICE_SCRAPE_ENABLED=true.
  * First run fires immediately on start, then every 24h.
  *
- * @module pricing/PriceScheduler
+ * Side effects of a run: outbound HTTPS requests to provider pricing pages (see `PriceScraper.ts`), writes
+ * through `PriceStore.ts`, and a `price.updated` webhook dispatch to registered subscribers. Scheduler state is
+ * per process and in memory.
+ *
+ * @module src/pricing/PriceScheduler
  * @since W7 (PI-04)
  */
 
@@ -26,6 +30,11 @@ let _lastResult: { updated: string[]; failed: string[]; } | null = null;
 /**
  * Run one price scrape cycle.
  * Writes successful scrapes to PriceStore and emits webhook.
+ *
+ * Runs regardless of OTK_PRICE_SCRAPE_ENABLED (only the scheduler checks it). Webhook failures are ignored.
+ *
+ * @returns Providers whose prices were stored and providers whose store write failed. Providers whose scrape
+ *   failed are in neither list.
  */
 export async function runPriceScrape(): Promise<{ updated: string[]; failed: string[] }> {
   const results = await scrapeAllProviders();
@@ -64,6 +73,9 @@ export async function runPriceScrape(): Promise<{ updated: string[]; failed: str
  * Start the 24h price scrape scheduler.
  * No-op if OTK_PRICE_SCRAPE_ENABLED is not 'true'.
  * No-op if already running.
+ *
+ * In this version no code under `src/` calls this function, so the scheduler only runs when an embedding
+ * caller starts it.
  */
 export function startPriceScheduler(): void {
   if (process.env['OTK_PRICE_SCRAPE_ENABLED'] !== 'true') return;
@@ -92,6 +104,8 @@ export function stopPriceScheduler(): void {
 
 /**
  * Get scheduler status (for health/status endpoints).
+ *
+ * @returns Whether the timer runs, whether it is enabled by the environment, and the last run's time and result.
  */
 export function getPriceSchedulerStatus(): {
   running: boolean;

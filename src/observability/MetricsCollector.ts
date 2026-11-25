@@ -9,6 +9,12 @@
  * - Health is derived from counters, not from heuristics.
  *
  * Key = "provider::model" — each pair tracked independently.
+ *
+ * The process-wide instance lives in `src/observability/runtime.ts`; its snapshot is served by the metrics
+ * route in `src/api/routes.ts`. In this version no server path inside `src/` calls `record()`; the SDK
+ * example `examples/typescript/basic_metering.ts` does. Counters live only in memory and reset on restart.
+ *
+ * @module src/observability/MetricsCollector
  */
 
 import type { NormalizedUsageEvent } from '../providers/types.js';
@@ -17,14 +23,18 @@ import type { HealthStatus, ObservabilitySnapshot, ProviderMetricEntry } from '.
 /** Error rate at or above this threshold → 'degraded' */
 const DEGRADED_ERROR_RATE_THRESHOLD = 0.5;
 
+/** In-memory per-(provider, model) counters with a derived health status. */
 export class MetricsCollector {
   private readonly data = new Map<string, ProviderMetricEntry>();
 
   /**
    * Record a completed request.
    *
-   * @param event   NormalizedUsageEvent produced by an adapter
-   * @param isError Whether this request ended in an error (default: false)
+   * Latency and cost are summed as given (`latencyMs` in ms, `costUnits` in CU); `lastSeenAt` takes the
+   * event timestamp even when it is older than the stored one. The event is not mutated.
+   *
+   * @param event - NormalizedUsageEvent produced by an adapter
+   * @param isError - Whether this request ended in an error (default: false)
    */
   record(event: NormalizedUsageEvent, isError = false): void {
     const key = `${event.provider}::${event.model}`;
@@ -72,7 +82,10 @@ export class MetricsCollector {
   /**
    * Return a point-in-time snapshot of all tracked providers.
    *
-   * @param nowSeconds Injectable unix timestamp (defaults to Date.now()/1000)
+   * The entries are the stored objects, not copies; treat them as read-only.
+   *
+   * @param nowSeconds - Injectable unix timestamp (defaults to Date.now()/1000)
+   * @returns The capture time in unix seconds and one entry per (provider, model) pair seen so far.
    */
   snapshot(nowSeconds?: number): ObservabilitySnapshot {
     return {

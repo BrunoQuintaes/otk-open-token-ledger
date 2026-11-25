@@ -3,6 +3,18 @@
  *
  * SECURITY: MUST NOT include prompts, raw responses, headers, authorization, or secrets.
  * Only normalized, non-sensitive metering fields are permitted.
+ *
+ * Written by {@link UsageLedger} (`src/metering/ledger/UsageLedger.ts`), which rejects forbidden keys at
+ * append time; read back by the economics reports under `src/pricing/economics/`.
+ *
+ * @module src/metering/ledger/UsageEvent
+ */
+
+/**
+ * One metered provider call, as stored in one line of the usage JSONL ledger.
+ *
+ * Token fields are counts in tokens; `latencyMs` is wall-clock milliseconds. Optional fields absent means
+ * "not recorded", never zero.
  */
 export type UsageEvent = {
   tsUnix: number;                         // Unix timestamp (seconds)

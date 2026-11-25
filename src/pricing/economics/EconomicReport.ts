@@ -6,12 +6,19 @@
  *
  * SECURITY: reads only metering fields (no prompts/headers/secrets).
  * Uses CostBridge (USD) + MarginEngine (markup/FX) + CostReconciliation (U3.7).
+ *
+ * Reads one JSONL file and overwrites one CSV file (creating its directory). The `UsageEvent` type below is
+ * a local copy of `src/metering/ledger/UsageEvent.ts`. Called by the economics report script under
+ * `scripts/ops/`.
+ *
+ * @module src/pricing/economics/EconomicReport
  */
 import fs from "node:fs";
 import path from "node:path";
 import { calculateMargin } from "./MarginEngine.js";
 import { reconcileCost } from "./CostReconciliation.js";
 
+/** Paths and pricing parameters of one report run. */
 export type EconomicReportConfig = {
   ledgerJsonlPath: string;   // e.g. docs/_ops/_usage_ledger/usage_events.jsonl
   outCsvPath: string;        // e.g. docs/_ops/_usage_ledger/reports/econ_report.csv
@@ -46,6 +53,15 @@ const CSV_HEADER = [
   "sessionTag", "requestId",
 ].join(",");
 
+/**
+ * Builds the economic CSV report from a usage ledger (one row per event, in ledger order).
+ *
+ * USD amounts are written with 6 decimals; empty cells mean "not available".
+ *
+ * @param cfg - Ledger path, output path, markup percent and optional USD→BRL rate.
+ * @throws {Error} When the ledger is missing, a line is not JSON, an event's provider/model is not in the seed
+ *   table, or the markup is negative.
+ */
 export function buildEconomicReport(cfg: EconomicReportConfig): void {
   if (!fs.existsSync(cfg.ledgerJsonlPath)) {
     throw new Error(`EconomicReport: ledger not found at ${cfg.ledgerJsonlPath}`);

@@ -12,6 +12,8 @@
  *    uncovered, and the counter reports 'incomplete' instead of a misleading number.
  * Content is kept only in memory, bounded by maxTextBytes, and never persisted or logged.
  * The counter is an auxiliary observation: it does not replace provider usage or decide billing.
+ *
+ * @module src/tokenization/localCounter
  */
 import type {
   AssembledInput, LocalCountResult, LocalCounter, ModelSupport, TokenCategoryName, UsageApi,
@@ -19,8 +21,14 @@ import type {
 import { IncrementalCounter } from './incrementalCounter.js';
 import { countWith, hasOversizedPiece, loadEncoding, type LocalEncoding } from './tokenizerIdentity.js';
 
+/**
+ * Version of this counter; a calibration profile must name the same version to be compatible.
+ */
 export const COUNTER_VERSION = 'otk.local_counter.b3@1';
 
+/**
+ * Text extracted from a request or response, and whether something non-text was left out.
+ */
 export interface TextExtraction {
   texts: string[];
   /** Non-text parts or tools present: the text count does not cover this side. */
@@ -47,7 +55,14 @@ function textOfParts(content: unknown, textTypes: readonly string[], out: TextEx
   }
 }
 
-/** Text parts of a request body under assembly otk.assembly.text_parts@1. */
+/**
+ * Text parts of a request body under assembly otk.assembly.text_parts@1.
+ *
+ *
+ * @param api - Usage API of the request.
+ * @param body - Parsed request body (not modified).
+ * @returns The text parts in order, with `nonText` and reasons when coverage is incomplete.
+ */
 export function extractInputText(api: UsageApi, body: unknown): TextExtraction {
   const out: TextExtraction = { texts: [], nonText: false, reasons: [] };
   if (!body || typeof body !== 'object') { out.nonText = true; out.reasons.push('no_body'); return out; }
@@ -106,6 +121,9 @@ export function extractInputText(api: UsageApi, body: unknown): TextExtraction {
 /**
  * Visible output text of a non-streaming response body. Hidden reasoning, tool calls and media
  * set nonText; the conference then treats output as uncovered.
+ * @param api - Usage API of the response.
+ * @param body - Parsed response body (not modified).
+ * @returns The visible output text parts, with `nonText` and reasons when coverage is incomplete.
  */
 export function extractOutputText(api: UsageApi, body: unknown): TextExtraction {
   const out: TextExtraction = { texts: [], nonText: false, reasons: [] };
@@ -157,6 +175,9 @@ export function extractOutputText(api: UsageApi, body: unknown): TextExtraction 
   return out;
 }
 
+/**
+ * Local counter with extra methods used by the stream path.
+ */
 export interface LocalCounterImpl extends LocalCounter {
   /** Declare that output had non-text content (tool calls, media, hidden reasoning). */
   markOutputUncovered(reason: string): void;
@@ -184,7 +205,17 @@ function unsupportedCounter(): LocalCounterImpl {
   };
 }
 
-/** CreateLocalCounterFn. One counter per operation; not reusable. */
+/**
+ * CreateLocalCounterFn. One counter per operation; not reusable.
+ *
+ *
+ * Never throws: an unsupported model gives a counter that reports `unsupported`, and an encoder that cannot
+ * be loaded gives one that reports `failed`.
+ *
+ * @param support - Tokenizer coverage of the operation's model (from `resolveModelSupport`).
+ * @param limits - `maxTextBytes`: UTF-8 bytes of text kept per side before counting stops.
+ * @returns A new counter for one operation.
+ */
 export function createLocalCounter(support: ModelSupport, limits: { maxTextBytes: number }): LocalCounterImpl {
   if (support.support === 'unsupported' || !support.tokenizer) return unsupportedCounter();
   let encoder: ReturnType<typeof loadEncoding>['encoder'];

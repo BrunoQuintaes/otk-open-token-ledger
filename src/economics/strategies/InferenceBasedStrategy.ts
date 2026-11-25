@@ -10,13 +10,17 @@
  * This is a scaffold. The actual formula and weight tables will be
  * determined in U12/future research (non-linear CU model).
  *
- * @module InferenceBasedStrategy
+ * Supported providers (case-insensitive): stability, runway, elevenlabs, whisper-local. At the evaluated version
+ * the formula is CU = round(latencyMs) x 10, uncalibrated.
+ *
+ * @module src/economics/strategies/InferenceBasedStrategy
  * @since U5.2
  */
 
 import type { ICUStrategy, CUStrategyInput } from './ICUStrategy.js';
 import { CUError, CU_ERROR } from '../../pricing/CostUnits.js';
 
+/** Strategy id of this placeholder (`inference_v0`). */
 export const INFERENCE_STRATEGY_ID = 'inference_v0' as const;
 
 /** Providers that offer latency-based billing (no token count) */
@@ -29,11 +33,20 @@ const INFERENCE_PROVIDERS = new Set(['stability', 'runway', 'elevenlabs', 'whisp
 const LATENCY_CU_SCALE = 10n;
 const LATENCY_SCALE_DENOM = 1n;
 
+/** Latency-based CU placeholder for providers that bill by inference time. */
 export class InferenceBasedStrategy implements ICUStrategy {
   readonly strategyId = INFERENCE_STRATEGY_ID;
   readonly description =
     'Inference-time CU (CU_MODEL_inference_v0): CU = latencyMs × LATENCY_SCALE (stub — future work)';
 
+  /**
+   * Computes CU from latency.
+   *
+   * @param input - Usage figures; `latencyMs` is required.
+   * @returns round(latencyMs) x 10.
+   * @throws {@link CUError} `UNKNOWN_PROVIDER` for an unsupported provider; `NEGATIVE_TOKENS` when `latencyMs` is
+   *   missing or negative.
+   */
   compute(input: CUStrategyInput): bigint {
     if (!this.supports(input.provider, input.model)) {
       throw new CUError(
@@ -52,6 +65,13 @@ export class InferenceBasedStrategy implements ICUStrategy {
     return (latencyBigint * LATENCY_CU_SCALE) / LATENCY_SCALE_DENOM;
   }
 
+  /**
+   * Tells whether the provider bills by inference time.
+   *
+   * @param provider - Provider id (case-insensitive).
+   * @param _model - Ignored.
+   * @returns True for the four inference providers.
+   */
   supports(provider: string, _model: string): boolean {
     return INFERENCE_PROVIDERS.has(provider.toLowerCase());
   }

@@ -7,7 +7,11 @@
  *
  * Route: GET /v1/admin/ga-readiness (admin:chain-head)
  *
- * @module api/gaReadinessCheck
+ * Called by the admin readiness route in `src/api/routes.ts`. It reads no environment variable and makes no
+ * network call; the only runtime check is whether `src/dashboard/legal` exists on disk. It does NOT run the
+ * pentest, drill or load test: those stay `pending` until the code is updated by hand.
+ *
+ * @module src/api/gaReadinessCheck
  * @since GA infrastructure (2026-04-07)
  */
 
@@ -17,6 +21,7 @@ import { dirname, resolve } from 'node:path';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+/** Readiness of one General Availability requirement. */
 export interface GARequirement {
   /** Machine-readable identifier. */
   id: string;
@@ -168,6 +173,8 @@ function checkFirstPayingCustomer(): GARequirement {
 /**
  * Returns the current GA readiness status for all 6 requirements.
  * Order matches docs/GA_READINESS.md.
+ *
+ * @returns Six requirements; only the legal-pages item is computed, the others are fixed values.
  */
 export function checkGAReadiness(): GARequirement[] {
   return [
@@ -182,6 +189,9 @@ export function checkGAReadiness(): GARequirement[] {
 
 /**
  * Returns true only when every requirement has status 'pass'.
+ *
+ * @param requirements - Output of `checkGAReadiness`.
+ * @returns `true` when every item is `pass` (also `true` for an empty list).
  */
 export function isGAReady(requirements: GARequirement[]): boolean {
   return requirements.every(r => r.status === 'pass');

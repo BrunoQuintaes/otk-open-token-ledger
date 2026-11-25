@@ -3,7 +3,10 @@
  *
  * Standard security headers applied to every response.
  *
- * @module api/securityHeaders
+ * Called by `src/api/routes.ts` and `src/proxy/ProxyGateway.ts`. Environment variable read: OTK_TLS_ENABLED
+ * (`true` adds Strict-Transport-Security for one year).
+ *
+ * @module src/api/securityHeaders
  * @since Wave 2H (H1.9)
  */
 
@@ -19,6 +22,13 @@ const _CSP_API = "default-src 'none'; script-src 'none'; style-src 'none'; frame
 const _CSP_DASHBOARD = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'";
 const _CSP_DEFAULT = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'";
 
+/**
+ * Sets the standard security headers, a route-specific Content-Security-Policy and `cache-control: no-store`.
+ *
+ * @param res - Response whose headers are set; nothing is sent.
+ * @param opts - `route` selects the CSP: `api` (strictest), `dashboard` (inline scripts and styles allowed) or
+ *   `default` (the default).
+ */
 export function applySecurityHeaders(res: ServerResponse, opts?: { route?: 'api' | 'dashboard' | 'default' }): void {
   res.setHeader('x-content-type-options', 'nosniff');
   res.setHeader('x-frame-options', 'DENY');

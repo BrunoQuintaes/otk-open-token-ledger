@@ -69,6 +69,9 @@ function appendUtf8(arr: number[], s: string): void {
  *
  * @throws if validation fails (empty required fields, negative bigints,
  *         total_tokens mismatch)
+ * @param r - Receipt fields (not modified); strings are written as UTF-8 without escaping, so a string that
+ *   contains the 0x1f separator would make two encodings ambiguous (no check is made for it).
+ * @returns The canonical bytes.
  */
 export function encodeCanonicalReceiptV1Bytes(r: CanonicalReceiptV1): Uint8Array {
   // Validate required strings
@@ -118,6 +121,8 @@ export function encodeCanonicalReceiptV1Bytes(r: CanonicalReceiptV1): Uint8Array
  * This is the `raw_hash` that the runtime MUST sign (per spec §3).
  *
  * @returns 0x-prefixed hex string (66 chars)
+ * @param r - Receipt fields.
+ * @throws {Error} The validation errors of {@link encodeCanonicalReceiptV1Bytes}.
  */
 export function hashCanonicalReceiptV1(r: CanonicalReceiptV1): string {
   const bytes = encodeCanonicalReceiptV1Bytes(r);

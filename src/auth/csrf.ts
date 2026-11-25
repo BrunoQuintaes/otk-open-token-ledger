@@ -4,7 +4,11 @@
  * HMAC-SHA256 CSRF tokens tied to session ID.
  * Validates on state-changing dashboard form submissions.
  *
- * @module auth/csrf
+ * Used by the dashboard (`src/dashboard/app.ts`). Environment variable read: OTK_CSRF_SECRET. Loading the module
+ * throws in a deployed environment when it is missing; elsewhere a random per-process secret is used, so tokens do not
+ * survive a restart.
+ *
+ * @module src/auth/csrf
  * @since Wave 2H (H6.3)
  */
 
@@ -22,6 +26,9 @@ let _csrfSecret = _envCsrfSecret ?? crypto.randomBytes(32).toString('hex');
 /**
  * Generate a CSRF token for a given session ID.
  * Token = HMAC-SHA256(sessionId, secret) — not predictable without the secret.
+ *
+ * @param sessionId - Dashboard session id.
+ * @returns 64-character lowercase hex HMAC.
  */
 export function generateCsrfToken(sessionId: string): string {
   return crypto.createHmac('sha256', _csrfSecret).update(sessionId).digest('hex');
@@ -31,11 +38,23 @@ export function generateCsrfToken(sessionId: string): string {
  * Validate a CSRF token against a session ID.
  * Uses timing-safe comparison to prevent timing attacks.
  */
-/** Reset CSRF secret (for tests). */
+/**
+ * Reset CSRF secret (for tests).
+ *
+ * @param secret - New secret; a random one when omitted.
+ */
 export function resetCsrfForTest(secret?: string): void {
   _csrfSecret = secret ?? crypto.randomBytes(32).toString('hex');
 }
 
+/**
+ * Checks a submitted CSRF token against the one expected for the session, in constant time (see the misplaced
+ * description above `resetCsrfForTest`).
+ *
+ * @param token - Token submitted with the form.
+ * @param sessionId - Dashboard session id.
+ * @returns Whether the token matches.
+ */
 export function validateCsrfToken(token: string, sessionId: string): boolean {
   const expected = generateCsrfToken(sessionId);
   if (token.length !== expected.length) return false;

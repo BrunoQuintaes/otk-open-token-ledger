@@ -3,11 +3,17 @@
  * the pages were read for this implementation; the rule summary and quotes are recorded in
  * docs/_ops/EXECUCAO_D1_D8_20260930/runs/20260930-1625/B/USAGE_MATRIX.md.
  * A synthetic fixture following these pages does not prove a live integration (D5-G02).
+ *
+ * @module src/providers/usage/usageDocRefs
  */
 import type { IsoTime, UsageApi } from '../../types/d1d8/index.js';
 
+/**
+ * Pointer to the official page that defines a usage API's token fields.
+ */
 export interface UsageDocRef {
   url: string;
+  /** When the page was read (ISO 8601, UTC). */
   retrievedAt: IsoTime;
 }
 
@@ -16,6 +22,9 @@ const RETRIEVED: IsoTime = '2026-09-30T23:58:00.000Z';
 
 // platform.openai.com answered HTTP 403 to the fetcher; OpenAI's official OpenAPI spec
 // (schemas CompletionUsage, ResponseUsage) and developers.openai.com guides were used instead.
+/**
+ * Documentation page followed by each usage API's adapter, keyed by usage API name.
+ */
 export const USAGE_DOC_REFS: Readonly<Record<UsageApi, UsageDocRef>> = Object.freeze({
   'openai.chat_completions': { url: 'https://raw.githubusercontent.com/openai/openai-openapi/master/openapi.yaml#/components/schemas/CompletionUsage', retrievedAt: RETRIEVED },
   'openai.responses': { url: 'https://raw.githubusercontent.com/openai/openai-openapi/master/openapi.yaml#/components/schemas/ResponseUsage', retrievedAt: RETRIEVED },

@@ -25,6 +25,9 @@
 
 import type { AdaptiveRateLimitConfig, AdaptiveRateLimitDecision } from './rateLimitTypes.js';
 
+/**
+ * In-memory sliding-window limiter that answers allow, throttle or deny per key (one process only).
+ */
 export class AdaptiveRateLimiter {
   /** key → sorted array of request timestamps in ms */
   private readonly _windows = new Map<string, number[]>();
@@ -38,6 +41,8 @@ export class AdaptiveRateLimiter {
    * @param key      Canonical key string (from buildRateLimitKey)
    * @param config   Rate limit configuration
    * @param nowMs    Current time in ms (injectable for determinism; defaults to Date.now())
+   * @returns The decision with the count in the window, remaining requests, window reset time (Unix seconds)
+   *   and, for deny/throttle, `retryAfterMs` (0 for throttle).
    */
   evaluate(key: string, config: AdaptiveRateLimitConfig, nowMs?: number): AdaptiveRateLimitDecision {
     const now = nowMs ?? Date.now();
@@ -101,7 +106,11 @@ export class AdaptiveRateLimiter {
     this._windows.set(key, ts);
   }
 
-  /** List all currently-tracked key strings (for monitoring). */
+  /**
+   * List all currently-tracked key strings (for monitoring).
+   *
+   * @returns A new array with every key that has (possibly empty) history.
+   */
   keys(): string[] {
     return Array.from(this._windows.keys());
   }
@@ -109,6 +118,7 @@ export class AdaptiveRateLimiter {
   /**
    * Reset state for a specific key, or all keys if omitted.
    * Useful for tests and graceful restart.
+   * @param key - Key to forget; when omitted every key is forgotten.
    */
   reset(key?: string): void {
     if (key !== undefined) {

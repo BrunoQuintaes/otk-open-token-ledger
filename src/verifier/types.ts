@@ -6,6 +6,11 @@
  *
  * Determinismo: o relatório não tem relógio, caminho absoluto nem ordem de chegada. Mesma entrada
  * (nomes + bytes) e mesmas opções → mesmos bytes de `serializeReport` → mesmo sha256.
+ *
+ * (English) Public types of the offline verifier. No Node dependency; the report has no clock or absolute
+ * path, so the same input and options give the same report bytes and SHA-256.
+ *
+ * @module src/verifier/types
  */
 
 /** Um arquivo de entrada. `name` é o caminho relativo com "/" (o comando usa o caminho relativo à
@@ -15,6 +20,9 @@ export interface InputFile {
   bytes: Uint8Array;
 }
 
+/**
+ * Verdict colour of an item: green (ok), yellow (attention) or red (failed).
+ */
 export type Verdict = 'verde' | 'amarelo' | 'vermelho';
 
 /** Códigos estáveis. Os de VerifyFailure (src/types/d1d8/receipt.ts) mantêm o mesmo nome. */
@@ -47,6 +55,9 @@ export type VerdictCode =
   | 'no_receipts'
   | 'not_in_totals';
 
+/**
+ * What a report item refers to.
+ */
 export type ItemKind = 'receipt' | 'conference' | 'legacy_receipt' | 'record' | 'file' | 'keyring' | 'bundle';
 
 /** Formato detectado de cada arquivo de entrada. */
@@ -59,12 +70,18 @@ export type InputFormat =
   | 'not_json'               // arquivo .json/.jsonl que não é JSON nem JSONL
   | 'ignored';               // extensão que não é .json nem .jsonl
 
+/**
+ * A non-fatal warning attached to an item.
+ */
 export interface Warning {
   code: VerdictCode;
   verdict: Verdict;
   textPt: string;
 }
 
+/**
+ * One verified item (receipt, conference, legacy receipt, record, file, key ring or bundle) with its verdict.
+ */
 export interface ReportItem {
   /** "tenantId/operationId" quando conhecido; senão "<arquivo>#<linha>". */
   id: string;
@@ -95,6 +112,9 @@ export interface ReportItem {
   counted: boolean;
 }
 
+/**
+ * Facts read from a receipt (tenant, operation, provider, models, token counts, CU) for display and totals.
+ */
 export interface ReceiptFacts {
   tenantId: string;
   operationId: string;
@@ -111,6 +131,9 @@ export interface ReceiptFacts {
   cuStatus: string | null;
 }
 
+/**
+ * One key of the public key ring.
+ */
 export interface PublicKeyEntry {
   keyId: string;
   address: string;
@@ -126,6 +149,9 @@ export interface PublicKeyRingFile {
   keys: PublicKeyEntry[];
 }
 
+/**
+ * How the key ring was loaded and whether its fingerprint is anchored.
+ */
 export interface KeyringSummary {
   name: string | null;
   /** sha256 dos bytes exatos do arquivo (hex minúsculo, sem 0x) = impressão digital. */
@@ -141,6 +167,9 @@ export interface KeyringSummary {
   convertedFrom?: 'otk.bridge.keyring_file.v1';
 }
 
+/**
+ * Summary of the input files.
+ */
 export interface InputSummary {
   name: string;
   sha256: string;
@@ -149,8 +178,14 @@ export interface InputSummary {
   records: number;
 }
 
+/**
+ * Count of items per verdict colour.
+ */
 export interface Tally { verde: number; amarelo: number; vermelho: number }
 
+/**
+ * Verdict counts and token/CU sums of one group (month, day or provider/model) of receipts.
+ */
 export interface GroupSummary extends Tally {
   key: string;
   /** Recibos que entraram nas somas. */
@@ -163,6 +198,9 @@ export interface GroupSummary extends Tally {
   cu: { sum: string | null; unknown: number };
 }
 
+/**
+ * Totals of the whole report.
+ */
 export interface ReportSummary {
   total: Tally;
   receipts: Tally;
@@ -174,6 +212,9 @@ export interface ReportSummary {
   redItems: string[];
 }
 
+/**
+ * Verification report `otk.verification_report.v1`.
+ */
 export interface VerificationReport {
   schema: 'otk.verification_report.v1';
   verifierVersion: string;
@@ -189,6 +230,9 @@ export interface VerificationReport {
   notGuaranteedPt: string[];
 }
 
+/**
+ * Options of {@link verifyBundle}.
+ */
 export interface VerifyOptions {
   /** Impressão digital do chaveiro digitada pelo usuário (sha256 hex; aceita 0x, espaços, ':' e maiúsculas). */
   fingerprint?: string | null;

@@ -10,7 +10,15 @@
  *   GET /app/api/receipts  — JSON recent receipts
  *   GET /app/api/tenants   — JSON tenant summary
  *
- * @module dashboard/app
+ * Further JSON routes handled here: `/app/api/usage`, `/app/api/admin/summary`, `/app/api/dead-letters`,
+ * `/app/api/providers/health`, and the HTML page `/app/webhooks` (rendered by `webhooks.ts`). Data comes from the
+ * in-memory `ReceiptIndexer`, tenant CRUD, the dead-letter store, the governance trail and the webhook store.
+ *
+ * Access control: only `/app` itself checks the caller here (redirect to the login page when auth is enabled and
+ * the caller is unknown). The JSON branches return platform-wide data and do no check of their own;
+ * `src/api/routes.ts` answers or refuses non-platform callers of `/app/api/*` before calling this function.
+ *
+ * @module src/dashboard/app
  * @since Wave 2 Pack 19 (P2.1)
  */
 
@@ -26,6 +34,7 @@ import { getGovernanceTrail } from '../security/GovernanceTrail.js';
 
 // ── JSON helper ─────────────────────────────────────────────────────
 
+// Local copy of a JSON responder (sets an exact content-length); not the one from `src/api/errors.ts`.
 function sendJson(res: ServerResponse, code: number, body: unknown): void {
   const data = JSON.stringify(body);
   res.statusCode = code;
@@ -43,6 +52,14 @@ function sendHtml(res: ServerResponse, code: number, html: string): void {
 
 // ── Dashboard HTML (self-contained) ─────────────────────────────────
 
+/**
+ * Returns the single-page dashboard as a complete HTML document with inline style and script.
+ *
+ * A CSRF token bound to the session id is embedded in the page.
+ *
+ * @param opts - `sessionId` (the caller's tenant id when auth is enabled; `'anonymous'` by default).
+ * @returns The HTML text.
+ */
 export function getDashboardHtml(opts?: { sessionId?: string }): string {
   // H6.3: CSRF token embedded for any dashboard form submissions (future-proof)
   const sessionId = opts?.sessionId ?? 'anonymous';
@@ -947,6 +964,13 @@ export function getDashboardHtml(opts?: { sessionId?: string }): string {
  * Returns true if the request was handled, false otherwise.
  *
  * Called from handleRequest in routes.ts for paths starting with /app.
+ *
+ * @param req - Incoming request; method and URL are read.
+ * @param res - Response, written only when the request is handled.
+ * @param pathname - Request path without the query string.
+ * @param _resolveCallerContext - Resolves the caller's tenant and role from the request; null when unknown.
+ * @returns True when a response was sent, false when the path is not a dashboard route.
+ * @throws {Error} When a backing store (dead letters, webhooks) fails.
  */
 export async function handleDashboardRequest(
   req: IncomingMessage,

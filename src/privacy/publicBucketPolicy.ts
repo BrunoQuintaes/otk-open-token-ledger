@@ -10,11 +10,16 @@
  *
  * Width 1 000 CU is an experimental candidate, not a promise of indistinguishability: an observer
  * still learns the window index, the hour (epoch) and how many registrations happen.
+ *
+ * Used through `src/zk/v3/` (public authorization and its index). Pure; no I/O.
+ *
+ * @module src/privacy/publicBucketPolicy
  */
 import { ethers } from 'ethers';
 import type { PublicBucket, VersionRef } from '../types/d1d8/index.js';
 import { domainDigest } from '../receipt/v3/canonicalEncoding.js';
 
+/** A fixed-width bucket policy; changing any field requires a new `version`. */
 export interface FixedWidthBucketPolicy {
   /** Unique id of this exact parameter set; the registry stores keccak256(utf8(version)). */
   version: string;
@@ -33,6 +38,14 @@ export const PUBLIC_BUCKET_POLICY_FIXED_1000CU: FixedWidthBucketPolicy = Object.
 
 const U64_MAX = (1n << 64n) - 1n;
 
+/**
+ * The public window that contains a usage.
+ *
+ * @param policy - Bucket policy.
+ * @param usageUnits - Exact usage in circuit units (micro-CU for the default policy).
+ * @returns `[min, max]` of the aligned window plus the policy version.
+ * @throws {Error} When the width is not positive, the usage is negative, or `max` exceeds 2^64 - 1.
+ */
 export function bucketFor(policy: FixedWidthBucketPolicy, usageUnits: bigint): PublicBucket {
   if (policy.widthUnits <= 0n) throw new Error('bucket policy width must be > 0');
   if (usageUnits < 0n) throw new Error('usage must be non-negative');
@@ -42,12 +55,22 @@ export function bucketFor(policy: FixedWidthBucketPolicy, usageUnits: bigint): P
   return { min, max, policyVersion: policy.version };
 }
 
-/** Identity of the policy for FrozenConfigRef.bucketPolicy (digest of its CE1 definition). */
+/**
+ * Identity of the policy for FrozenConfigRef.bucketPolicy (digest of its CE1 definition).
+ *
+ * @param policy - Bucket policy.
+ * @returns Version and domain-separated digest of the policy fields.
+ */
 export function bucketPolicyRef(policy: FixedWidthBucketPolicy): VersionRef {
   return { version: policy.version, digest: domainDigest('OTK_BUCKET_POLICY_V1', { ...policy }) };
 }
 
-/** bytes32 the registry stores and every authorization carries. */
+/**
+ * bytes32 the registry stores and every authorization carries.
+ *
+ * @param policy - Bucket policy.
+ * @returns keccak256 of the UTF-8 version string.
+ */
 export function bucketPolicyId(policy: FixedWidthBucketPolicy): `0x${string}` {
   return ethers.keccak256(ethers.toUtf8Bytes(policy.version)) as `0x${string}`;
 }

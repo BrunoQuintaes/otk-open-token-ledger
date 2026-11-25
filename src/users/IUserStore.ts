@@ -7,6 +7,12 @@
 
 import type { Organization, User, Membership, Invite, InviteStatus } from './types.js';
 
+/**
+ * Storage backend for organizations, users, memberships and invitations.
+ *
+ * `get*` methods return `null` (or an empty list) when nothing matches; `update*` methods return the
+ * updated record, or `null` when the ID is unknown.
+ */
 export interface IUserStore {
   // Organizations
   createOrg(org: Organization): Promise<void>;
@@ -37,6 +43,19 @@ export interface IUserStore {
 }
 
 let _store: IUserStore | null = null;
+/**
+ * Returns the process-wide user store.
+ *
+ * @returns The store, or `null` when none was set (there is no default).
+ */
 export function getUserStore(): IUserStore | null { return _store; }
+/**
+ * Sets the process-wide user store.
+ *
+ * @param store - Backend to use.
+ */
 export function setUserStore(store: IUserStore): void { _store = store; }
+/**
+ * Removes the process-wide user store (tests only).
+ */
 export function resetUserStoreForTest(): void { _store = null; }

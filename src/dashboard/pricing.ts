@@ -4,7 +4,11 @@
  * Reads FREE/STARTER/PRO plans from PlanRegistry and renders a tier
  * comparison table with CTA links to /app/signup.
  *
- * @module dashboard/pricing
+ * Called by the public pricing route in `src/api/routes.ts`. Environment variable read:
+ * `OTK_PRICE_PER_CU_USD` (USD per CU, default 0.001). The STARTER price shown is computed here as
+ * quota x price per CU x 0.8; it is NOT the plan's `priceUsd` field, and PRO is shown as "Custom".
+ *
+ * @module src/dashboard/pricing
  * @since Wave 4 (4C-PACK-4C01 / P4.1)
  */
 
@@ -15,6 +19,11 @@ import { escapeHtml as escape } from './sanitize.js';
 // Pricing page generator
 // ──────────────────────────────────────────────────────────
 
+/**
+ * Renders the public pricing page as a complete HTML document (no network or store access).
+ *
+ * @returns The HTML text; plan names and numbers are HTML-escaped.
+ */
 export function renderPricingPage(): string {
   const free = getPlan('FREE');
   const starter = getPlan('STARTER');

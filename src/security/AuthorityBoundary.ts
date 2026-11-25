@@ -21,6 +21,9 @@
 // Types
 // ---------------------------------------------------------------------------
 
+/**
+ * Who is acting, on which tenant's resource, and what operation is attempted.
+ */
 export type BoundaryContext = {
   /** The tenant performing the operation */
   actorTenantId: string;
@@ -30,6 +33,9 @@ export type BoundaryContext = {
   operation: string;
 };
 
+/**
+ * Result of {@link checkTenantBoundary}: allowed, or refused with a reason and the context.
+ */
 export type BoundaryResult =
   | { allowed: true }
   | { allowed: false; reason: string; context: BoundaryContext };
@@ -49,6 +55,8 @@ export type BoundaryResult =
  *   operation: 'read_receipt',
  * });
  * if (!result.allowed) throw new Error(result.reason);
+ * @param ctx - Actor tenant, resource tenant and operation (not modified).
+ * @returns `allowed: true` only when both tenant IDs are non-blank and exactly equal.
  */
 export function checkTenantBoundary(ctx: BoundaryContext): BoundaryResult {
   if (!ctx.actorTenantId || ctx.actorTenantId.trim() === '') {
@@ -70,6 +78,9 @@ export function checkTenantBoundary(ctx: BoundaryContext): BoundaryResult {
 /**
  * Assert — throws if boundary check fails.
  * Use at entry points (API route handlers, service methods).
+ *
+ * @param ctx - Actor tenant, resource tenant and operation.
+ * @throws {@link AuthorityBoundaryError} When {@link checkTenantBoundary} refuses the access.
  */
 export function assertTenantBoundary(ctx: BoundaryContext): void {
   const result = checkTenantBoundary(ctx);
@@ -88,6 +99,11 @@ const SYSTEM_TENANT_ID = '__otk_system__';
  * Create a context for system-level operations that bypass tenant checks.
  * Only for internal OTK runtime use (ProverDaemon, BatchAggregator).
  * Never expose this to external callers.
+ *
+ * @param _resourceTenantId - Ignored: both actor and resource are set to the system tenant, so the
+ *   context always passes {@link checkTenantBoundary}.
+ * @param operation - Operation label for logs.
+ * @returns A context for the reserved system tenant.
  */
 export function systemContext(_resourceTenantId: string, operation: string): BoundaryContext {
   return {
@@ -97,6 +113,12 @@ export function systemContext(_resourceTenantId: string, operation: string): Bou
   };
 }
 
+/**
+ * Tells whether a tenant ID is the reserved system tenant.
+ *
+ * @param actorTenantId - Tenant ID to test.
+ * @returns `true` for the system tenant.
+ */
 export function isSystemActor(actorTenantId: string): boolean {
   return actorTenantId === SYSTEM_TENANT_ID;
 }
@@ -105,6 +127,9 @@ export function isSystemActor(actorTenantId: string): boolean {
 // Error class
 // ---------------------------------------------------------------------------
 
+/**
+ * Raised by {@link assertTenantBoundary}; `context` holds the refused access.
+ */
 export class AuthorityBoundaryError extends Error {
   public readonly context: BoundaryContext;
 

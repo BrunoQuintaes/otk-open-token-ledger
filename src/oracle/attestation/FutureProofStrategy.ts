@@ -26,7 +26,7 @@
  * - Intel SGX SDK — TEE attestation framework
  * - Dissertação FGV §5.3: "Mitigações Level D — WebProofs/TEE"
  *
- * @module oracle/attestation/FutureProofStrategy
+ * @module src/oracle/attestation/FutureProofStrategy
  * @since U12.9.1
  */
 
@@ -37,6 +37,7 @@ import type {
 } from './IAttestationStrategy.js';
 import { AttestationNotImplementedError } from './IAttestationStrategy.js';
 
+/** Placeholder strategy for TEE/TLSNotary attestation; every call to `attest` throws. */
 export class FutureProofStrategy implements IAttestationStrategy {
   readonly strategyId = 'tee_tls_notary' as const;
   readonly description =
@@ -47,6 +48,8 @@ export class FutureProofStrategy implements IAttestationStrategy {
   /**
    * Always throws — this strategy is not implemented.
    *
+   * @param _input - Ignored.
+   * @returns Never returns.
    * @throws {AttestationNotImplementedError} always.
    */
   attest(_input: AttestationInput): AttestationResult {

@@ -12,25 +12,59 @@
  * MEMORY, in arrival order, without holding a connection. A wait longer than `queueTimeoutMs` is refused as
  * backpressure (503 admission_busy), named as such, before anything is reserved or sent.
  *
- * @module operations/admissionGate
+ * In-process only: the limit is per process, not cluster-wide. Waiters are served first in, first out.
+ *
+ * @module src/operations/admissionGate
  */
+/** Rejection of a waiter that did not get a slot within `queueTimeoutMs`. */
 export class AdmissionQueueTimeout extends Error {
+  /**
+   * Builds the error naming the wait limit.
+   *
+   * @param ms - The queue timeout that was exceeded, ms.
+   */
   constructor(ms: number) { super(`admission waited more than ${ms} ms for a slot`); this.name = 'AdmissionQueueTimeout'; }
 }
 
+/** Counting semaphore for admission transactions, with a bounded in-memory wait. */
 export class AdmissionGate {
   private active = 0;
   private readonly waiting: Array<{ go: () => void; timer: ReturnType<typeof setTimeout> | null }> = [];
   /** Highest number of waiters seen (observability). */
   maxQueued = 0;
 
+  /**
+   * Creates a gate with `limit` concurrent slots.
+   *
+   * @param limit - Maximum admissions running at once; keep it below the database pool size.
+   * @param queueTimeoutMs - Longest wait for a slot, ms, before {@link AdmissionQueueTimeout}.
+   * @throws {RangeError} When `limit` is not a positive integer.
+   */
   constructor(readonly limit: number, readonly queueTimeoutMs: number) {
     if (!Number.isInteger(limit) || limit < 1) throw new RangeError('admission limit must be a positive integer');
   }
 
+  /**
+   * Admissions currently holding a slot.
+   *
+   * @returns Number of running admissions.
+   */
   get inFlight(): number { return this.active; }
+  /**
+   * Admissions waiting for a slot.
+   *
+   * @returns Number of waiters.
+   */
   get queued(): number { return this.waiting.length; }
 
+  /**
+   * Runs `fn` once a slot is free and releases the slot when it settles.
+   *
+   * @param fn - The admission work.
+   * @returns Whatever `fn` resolves to.
+   * @throws {@link AdmissionQueueTimeout} When no slot frees up within `queueTimeoutMs` (`fn` is not called).
+   * @throws {Error} Re-throws any error from `fn`.
+   */
   async run<T>(fn: () => Promise<T>): Promise<T> {
     await this.acquire();
     try { return await fn(); } finally { this.release(); }

@@ -9,7 +9,10 @@
  *   OTK_AUDIT_RETENTION_DAYS    — days before audit entries are archived (default: 365)
  *   OTK_RETENTION_INTERVAL_MS   — interval between runs in ms (default: 86400000 = 24h)
  *
- * @module infra/retention/RetentionWorker
+ * Archiving only sets `archived_at`; no row is deleted. Without a database client every run is a no-op that reports
+ * success. The retention days are inserted into the SQL text as numbers taken from configuration (not from requests).
+ *
+ * @module src/infra/retention/RetentionWorker
  * @since Wave 4 (4B-PACK-4B03 / E5.3)
  */
 
@@ -17,22 +20,38 @@
 // Types
 // ──────────────────────────────────────────────────────────
 
+/** Retention settings. */
 export interface RetentionConfig {
+  /** Receipts older than this many days are archived. */
   receiptRetentionDays: number;
+  /** Audit entries older than this many days are archived. */
   auditRetentionDays: number;
+  /** Milliseconds between runs. */
   intervalMs: number;
 }
 
+/** Outcome of one retention pass. */
 export interface RetentionRunResult {
   ok: boolean;
+  /** Receipts newly marked as archived. */
   receiptsArchived: number;
+  /** Audit entries newly marked as archived (0 when the table is missing). */
   auditEntriesArchived: number;
+  /** Duration of the pass in milliseconds. */
   durationMs: number;
+  /** Error message when `ok` is false. */
   error?: string;
 }
 
 /** Minimal PG client interface (compatible with pg.Pool / pg.Client) */
 export interface IPgClient {
+  /**
+   * Runs one SQL statement.
+   *
+   * @param sql - SQL text.
+   * @param params - Parameter values.
+   * @returns The number of affected rows (null when the driver does not report it).
+   */
   query(sql: string, params?: unknown[]): Promise<{ rowCount: number | null }>;
 }
 
@@ -40,12 +59,19 @@ export interface IPgClient {
 // RetentionWorker
 // ──────────────────────────────────────────────────────────
 
+/** Periodically marks old receipts and audit entries as archived. */
 export class RetentionWorker {
   private _timer: ReturnType<typeof setInterval> | null = null;
   private _config: RetentionConfig;
   private _db: IPgClient | null;
   private _lastRun: RetentionRunResult | null = null;
 
+  /**
+   * Creates a stopped worker.
+   *
+   * @param db - Database client, or null for a no-op worker.
+   * @param config - Overrides of the environment-derived settings.
+   */
   constructor(db: IPgClient | null = null, config?: Partial<RetentionConfig>) {
     this._db = db;
     this._config = {
@@ -74,7 +100,11 @@ export class RetentionWorker {
     }
   }
 
-  /** Run one retention pass. Resolves with result (never rejects). */
+  /**
+   * Run one retention pass. Resolves with result (never rejects).
+   *
+   * @returns Counts of archived rows, or `ok: false` with the error when the receipts update fails.
+   */
   async run(): Promise<RetentionRunResult> {
     const start = Date.now();
     let receiptsArchived = 0;
@@ -135,10 +165,20 @@ export class RetentionWorker {
     }
   }
 
+  /**
+   * Effective settings.
+   *
+   * @returns A copy of the configuration.
+   */
   get config(): RetentionConfig {
     return { ...this._config };
   }
 
+  /**
+   * Result of the most recent pass.
+   *
+   * @returns The result, or null before the first pass.
+   */
   get lastRun(): RetentionRunResult | null {
     return this._lastRun;
   }

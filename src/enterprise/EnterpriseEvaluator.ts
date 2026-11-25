@@ -12,7 +12,10 @@
  * Deterministic: all time/seed inputs are injectable via EnterpriseRequest.
  * No I/O, no side effects.
  *
- * @module enterprise/EnterpriseEvaluator
+ * "No side effects" means nothing is written: the debited token and the new audit hash are returned, and the
+ * caller must persist them.
+ *
+ * @module src/enterprise/EnterpriseEvaluator
  * @since E4
  */
 
@@ -38,6 +41,12 @@ import type { EnterpriseRequest, EnterpriseResult } from './EnterpriseContext.js
  * Allowed path:
  *   - all fields populated
  *   - budgetAlert evaluated on consumedCU + costCU (post-debit total)
+ *
+ * @param req - Tenant, policies, usage snapshot, token, cost, pricing input, budget, previous audit hash and the
+ *   injected clock values.
+ * @returns The decisions and new states of every step.
+ * @throws {Error} When the tenant id is missing or blank, when the token debit fails (expired or insufficient
+ *   balance), or when the budget's `maxCU` is not positive; errors of the pricing step propagate too.
  */
 export function evaluateEnterprise(req: EnterpriseRequest): EnterpriseResult {
   // 1. Tenant guard (throws if tenantId missing/blank)

@@ -4,6 +4,10 @@
  * Re-exports the adaptive rate limiting layer.
  * Existing PolicyEngine, AuditLogChain, TenantIsolation, etc. retain direct imports.
  *
+ * Barrel module: re-exports only; no code of its own.
+ *
+ * @module src/security/index
+ *
  * @since F4
  */
 

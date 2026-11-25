@@ -8,7 +8,11 @@
  *   GET /app/login   — Login page HTML
  *   GET /app/logout  — Clear session, redirect to login
  *
- * @module dashboard/login
+ * `handleLoginRequest` is called by the request dispatcher in `src/api/routes.ts`. The page's own script talks to
+ * the API from the browser and keeps the session token in `localStorage`; this module only serves HTML and the
+ * logout redirect. It does NOT check credentials and does NOT clear anything on the server at logout.
+ *
+ * @module src/dashboard/login
  * @since Wave 2 Pack 20 (P2.2)
  */
 
@@ -16,6 +20,11 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 
 // ── Login Page HTML ─────────────────────────────────────────────────
 
+/**
+ * Returns the self-contained login and sign-up page.
+ *
+ * @returns A complete HTML document with inline style and script.
+ */
 export function getLoginHtml(): string {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -270,6 +279,11 @@ function handleLogin(e) {
 /**
  * Handle login/logout-related requests.
  * Returns true if the request was handled, false otherwise.
+ *
+ * @param req - Incoming request; only the method is read.
+ * @param res - Response, written only when the request is handled.
+ * @param pathname - Request path without the query string.
+ * @returns True after answering the login page (200) or the logout redirect (302 to the login page).
  */
 export function handleLoginRequest(
   req: IncomingMessage,

@@ -8,7 +8,16 @@
  * Usage:
  *   API_PORT=8787 npx tsx src/api/server.ts
  *
- * @module api/server
+ * Startup when run directly: load secrets, refuse to start on an unsafe production configuration
+ * (`src/api/productionGuard.ts`) or non-durable money-relevant stores, bootstrap the stores, load the CU weights,
+ * start the HTTP server and the proof recovery loop, and optionally the durable proxy. Importing the module (tests)
+ * does none of this.
+ *
+ * Environment variables read here: API_PORT (default 8787), OTK_SHUTDOWN_TIMEOUT_MS (default 10 000 ms),
+ * OTK_PROXY_ENABLED, OTK_DB_URL, OTK_PG_RECONNECT_MS, OTK_PROXY_PORT (default 8788). The bootstrap modules read
+ * their own.
+ *
+ * @module src/api/server
  * @since RB-062
  */
 
@@ -22,17 +31,31 @@ import { productionAuthProblems, isProductionEnv } from './productionGuard.js';
 import { initCWRuntime } from '../economics/cwRuntime.js';
 import { startProofRecovery, stopProofRecovery, proofRecoveryRunning, circuitBreakerStatus } from './receiptStore.js';
 
+/** Options of `startServer`. */
 export type ApiServerOpts = {
+  /** TCP port; defaults to API_PORT, then 8787. */
   port?: number;
 };
 
 let _shuttingDown = false;
 
-/** H1.7: Check if server is shutting down (used by routes to reject new work). */
+/**
+ * H1.7: Check if server is shutting down (used by routes to reject new work).
+ *
+ * @returns `true` once `gracefulShutdown` has started (until `resetShutdownForTest`).
+ */
 export function isShuttingDown(): boolean {
   return _shuttingDown;
 }
 
+/**
+ * Creates the HTTP server, starts listening and routes every request to `handleRequest`.
+ *
+ * During shutdown new requests get 503; an error escaping the router gets 500.
+ *
+ * @param opts - Server options.
+ * @returns The listening server (listening starts asynchronously).
+ */
 export function startServer(opts: ApiServerOpts = {}): Server {
   const port = opts.port ?? Number(process.env['API_PORT'] ?? 8787);
   const server = createServer((req, res) => {
@@ -55,6 +78,10 @@ export function startServer(opts: ApiServerOpts = {}): Server {
 /**
  * H1.7: Graceful shutdown — stops accepting connections, waits for in-flight,
  * then exits. Called on SIGTERM/SIGINT.
+ *
+ * @param server - The server to close.
+ * @returns Resolves when connections are drained and stores are closed, or after OTK_SHUTDOWN_TIMEOUT_MS; it does
+ *   not call `process.exit` itself.
  */
 export function gracefulShutdown(server: Server): Promise<void> {
   const timeoutMs = Number(process.env['OTK_SHUTDOWN_TIMEOUT_MS'] ?? 10_000);
@@ -83,6 +110,9 @@ export function gracefulShutdown(server: Server): Promise<void> {
  * Start the durable proxy profile when OTK_PROXY_ENABLED=1. Exits the process when the profile is
  * requested without OTK_DB_URL (a proxy that cannot record operations durably must not relay).
  * While PostgreSQL is unreachable the proxy port stays closed and creation is retried.
+ *
+ * @returns The proxy server and its operations runtime, or `null` when OTK_PROXY_ENABLED is not `1`. The promise does
+ *   not resolve while the operations store stays unreachable (it retries every OTK_PG_RECONNECT_MS).
  */
 export async function startDurableProxyIfEnabled(): Promise<{ server: Server; runtime: import('../operations/runtime.js').OperationsRuntime } | null> {
   if (process.env['OTK_PROXY_ENABLED'] !== '1') return null;

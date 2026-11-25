@@ -1,17 +1,31 @@
 /**
  * Provider Adapter Layer — Type Definitions
  * Part of U7 multi-provider integration (skeleton implementation)
+ *
+ * Shared types for the provider adapter layer: the normalized usage event every adapter returns, the
+ * adapter contract used by `ProviderRegistry`, and the stable error classes and codes. Types only, plus two
+ * small error classes; no I/O.
+ *
+ * @module src/providers/types
  */
 
+/**
+ * Configuration for an `IProviderClient` (early multi-provider skeleton).
+ */
 export interface ProviderConfig {
   name: string;
   apiKey?: string;
   baseURL?: string;
+  /** Request timeout; the unit is defined by the client implementation (none in this repository uses it). */
   timeout?: number;
   retryAttempts?: number;
 }
 
+/**
+ * Metering event attached to a `ProviderResponse` and passed to `ProviderRouter` metering hooks.
+ */
 export interface MeteringEvent {
+  /** Event time; the unit is set by the producing client (no producer exists in this repository). */
   timestamp: number;
   provider: string;
   model: string;
@@ -22,6 +36,9 @@ export interface MeteringEvent {
   userId?: string;
 }
 
+/**
+ * Result of one `IProviderClient.request` call; `success: false` comes with an `error` message.
+ */
 export interface ProviderResponse {
   success: boolean;
   data?: any;
@@ -29,6 +46,9 @@ export interface ProviderResponse {
   meteringEvent?: MeteringEvent;
 }
 
+/**
+ * Aggregate metrics reported by an `IProviderClient`.
+ */
 export interface ProviderMetrics {
   totalRequests: number;
   successRate: number;
@@ -75,6 +95,9 @@ export class AdapterParseError extends Error {
   }
 }
 
+/**
+ * Stable codes carried by {@link AdapterParseError}.
+ */
 export const ADAPTER_ERROR = {
   MISSING_USAGE: 'ADAPTER_MISSING_USAGE',
   MISSING_MODEL: 'ADAPTER_MISSING_MODEL',
@@ -122,6 +145,9 @@ export class RegistryError extends Error {
   }
 }
 
+/**
+ * Stable codes carried by {@link RegistryError}.
+ */
 export const REGISTRY_ERROR = {
   PROVIDER_NOT_FOUND: 'REGISTRY_PROVIDER_NOT_FOUND',
   DUPLICATE_PROVIDER: 'REGISTRY_DUPLICATE_PROVIDER',

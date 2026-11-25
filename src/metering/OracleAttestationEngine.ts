@@ -12,7 +12,12 @@
  *  4. Compute tokenCountCommitment (binding client count into receipt hash)
  *  5. Return complete OracleAttestation
  *
- * @module metering/OracleAttestationEngine
+ * Called by the operator-recount attestation strategy
+ * (`src/oracle/attestation/OperatorRecountStrategy.ts`). It calls the tokenizer registry only; it does no
+ * network I/O, reads no environment variables and writes nothing. The local count is an operator-side
+ * recount, NOT a proof of what the provider billed.
+ *
+ * @module src/metering/OracleAttestationEngine
  * @since U12-oracle-level-ac
  */
 
@@ -28,6 +33,7 @@ import type { OracleAttestation } from '../receipt/canonicalReceiptV2.js';
 // Input/Output types
 // ---------------------------------------------------------------------------
 
+/** Input of {@link OracleAttestationEngine.attest}: provider-reported counts plus the raw texts. */
 export interface OracleAttestationInput {
   /** Provider identifier (e.g., 'openai', 'anthropic', 'gemini', 'deepseek') */
   provider: string;
@@ -37,9 +43,9 @@ export interface OracleAttestationInput {
   promptText: string;
   /** Raw completion text received from provider (used for completionHash + client count) */
   completionText: string;
-  /** Input tokens as reported by provider API */
+  /** Input tokens as reported by provider API (tokens, integer >= 0). */
   providerInputTokens: number;
-  /** Output tokens as reported by provider API */
+  /** Output tokens as reported by provider API (tokens, integer >= 0). */
   providerOutputTokens: number;
   /**
    * Discrepancy threshold (%).
@@ -54,9 +60,13 @@ export interface OracleAttestationInput {
   discrepancyThresholdPct?: number;
 }
 
+/** Output of {@link OracleAttestationEngine.attest}. */
 export interface OracleAttestationResult {
+  /** The level-C attestation ready to embed in a receipt. */
   attestation: OracleAttestation;
+  /** The local (operator-side) token count the attestation commits to. */
   clientCount: ClientTokenCount;
+  /** Provider-vs-local comparison; `flagged` is true when a delta exceeds the threshold. */
   discrepancy: TokenDiscrepancy;
 }
 
@@ -75,12 +85,19 @@ export interface OracleAttestationResult {
 export class OracleAttestationEngine {
   private registry: TokenizerRegistry;
 
+  /**
+   * Creates an engine bound to a tokenizer registry.
+   *
+   * @param registry - Registry used to resolve tokenizers, hash texts and count tokens; defaults to the shared one.
+   */
   constructor(registry: TokenizerRegistry = defaultTokenizerRegistry) {
     this.registry = registry;
   }
 
   /**
    * Generate a complete OracleAttestation from prompt+completion+provider data.
+   *
+   * Pure: no I/O and the input is not mutated. The threshold defaults to 20 (percent) when omitted.
    *
    * @param input - Provider event + raw texts
    * @returns Attestation + supporting data (clientCount, discrepancy)
@@ -137,6 +154,13 @@ export class OracleAttestationEngine {
    * Level A only — generate attestation without client token counting.
    * Use when prompt/completion text is available but not for token comparison.
    * Only promptHash + completionHash are populated; token fields default to 0.
+   * Here 0 means "not counted", not "zero tokens"; read `level: 'A'` before using the counts.
+   *
+   * @param provider - Provider identifier, used only to pick the tokenizer.
+   * @param model - Model identifier, used only to pick the tokenizer.
+   * @param promptText - Raw prompt text to hash.
+   * @param completionText - Raw completion text to hash.
+   * @returns A level-A attestation with tokenizer id `'none'` and all counts and deltas set to 0.
    */
   attestLevelA(
     provider: string,
@@ -165,5 +189,5 @@ export class OracleAttestationEngine {
   }
 }
 
-/** Default singleton engine */
+/** Default singleton engine, bound to the shared tokenizer registry. */
 export const defaultOracleEngine = new OracleAttestationEngine();

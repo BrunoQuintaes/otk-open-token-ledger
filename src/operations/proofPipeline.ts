@@ -14,7 +14,11 @@
  *     → send the encoded call as given; tx hash kept with the effect.
  * Proving runs where the opening store is reachable; the opening never travels in a job payload.
  *
- * @module operations/proofPipeline
+ * The handlers are registered in the outbox worker by `src/operations/runtime.ts`; the ports come from
+ * `d1d8ProofPorts.ts`. Side effects: CPU-heavy proving, outbox and operation writes, and (submit_onchain) a
+ * blockchain transaction that spends gas from the submitter key.
+ *
+ * @module src/operations/proofPipeline
  */
 import type {
   BuildPublicAuthorizationFn, OutboxEffect, PrivateReceiptV3, ProofAdapter, ProofBundle, PublicAuthorization, PublicBucket,
@@ -26,16 +30,32 @@ import { big, encodeJson } from './codec.js';
 import type { OperationsContext } from './context.js';
 import { RevisionConflictError } from './PgOperationStore.js';
 
+/** Destination of a proof: chain id, registry address, circuit id and schema version (frozen at job creation). */
 export type Target = NonNullable<OutboxEffect['target']>;
 
+/** On-chain side of the pipeline (network calls). */
 export interface ChainSubmitter {
-  /** A: classifyRegistration(registeredDigest(operationRef), auth) on the target registry. */
+  /**
+   * A: classifyRegistration(registeredDigest(operationRef), auth) on the target registry.
+   *
+   * @param target - Registry to query.
+   * @param auth - Public authorization whose operation reference is looked up.
+   * @returns Whether the same authorization, nothing, or a different one is registered.
+   */
   registration(target: Target, auth: PublicAuthorization): Promise<'registered_same' | 'not_registered' | 'registered_other'>;
-  /** Sends A's encoded call unchanged; resolves with the transaction hash once mined. */
+  /**
+   * Sends A's encoded call unchanged; resolves with the transaction hash once mined.
+   *
+   * @param target - Registry to call.
+   * @param call - ABI fragment, function name and arguments produced by the proof adapter.
+   * @returns The transaction hash.
+   */
   submit(target: Target, call: { abi: string[]; functionName: string; args: unknown[] }): Promise<{ txHash: string }>;
 }
 
+/** Crypto/proof dependencies of the pipeline; `null` in the context means proof jobs wait. */
 export interface ProofPorts {
+  /** Builds and signs the public authorization (EIP-712) for a receipt, its opening, domain and bucket. */
   buildPublicAuthorization: BuildPublicAuthorizationFn;
   /** A: bucketForReceipt(receipt, policy) — the public interval, never derived from exact usage by C. */
   bucketFor(receipt: PrivateReceiptV3): PublicBucket;
@@ -43,13 +63,20 @@ export interface ProofPorts {
   adapterFor(circuitId: string): ProofAdapter | null;
   /** Destination this instance submits to now (deploy output). */
   currentTarget(): Target | null;
+  /** On-chain registration check and submission. */
   chain: ChainSubmitter;
 }
 
 const later = (ms: number) => new Date(Date.now() + ms).toISOString();
 const sameTarget = (a: Target, b: Target) => a.chainId === b.chainId && a.registry.toLowerCase() === b.registry.toLowerCase() && a.circuitId === b.circuitId && a.schemaVersion === b.schemaVersion;
 
-/** Decode the public proof data stored with the effect (bigint as strings); no opening inside. */
+/**
+ * Decode the public proof data stored with the effect (bigint as strings); no opening inside.
+ *
+ * @param v - The effect payload.
+ * @returns The public authorization and proof bundle.
+ * @throws {@link CodecError} When a numeric field is not a decimal integer.
+ */
 function revivePublic(v: unknown): { auth: PublicAuthorization; bundle: ProofBundle } {
   const o = (v ?? {}) as Record<string, unknown>;
   const a = (o['auth'] ?? {}) as Record<string, unknown>;
@@ -71,6 +98,16 @@ function revivePublic(v: unknown): { auth: PublicAuthorization; bundle: ProofBun
   return { auth, bundle: o['bundle'] as ProofBundle };
 }
 
+/**
+ * Builds the outbox handlers of `enqueue_proof` (v3 flavor) and `submit_onchain` effects.
+ *
+ * Retryable waits (ports or circuit not here, receipt/opening not yet stored, target mismatch) return a
+ * later `retryAt`; inconsistencies (no frozen target, configuration/target disagreement, failed local
+ * verification, replay key registered by another authorization) make the effect dead.
+ *
+ * @param ctx - Operations context.
+ * @returns The two handlers, keyed by effect kind.
+ */
 export function proofHandlers(ctx: OperationsContext): {
   enqueue_proof: (e: ClaimedEffect) => Promise<EffectOutcome>;
   submit_onchain: (e: ClaimedEffect) => Promise<EffectOutcome>;

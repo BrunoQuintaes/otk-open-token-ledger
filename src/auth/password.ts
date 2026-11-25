@@ -4,7 +4,10 @@
  * Zero external dependencies — uses built-in crypto module.
  * Format: "scrypt:<salt_hex>:<derived_hex>"
  *
- * @module auth/password
+ * Used by the signup and login routes in `src/api/routes.ts`. Parameters: N = 16384, r = 8, p = 1, 16-byte salt,
+ * 64-byte derived key. Reads no environment variable.
+ *
+ * @module src/auth/password
  * @since Wave 3E (PACK 3E-01)
  */
 
@@ -19,6 +22,10 @@ const SCRYPT_PARALLELISM = 1;
 /**
  * Hash a password using scrypt.
  * Returns "scrypt:<salt_hex>:<derived_hex>"
+ *
+ * @param password - Plain-text password (never stored or logged).
+ * @returns The encoded hash with a fresh random salt.
+ * @throws {Error} When scrypt fails (rejection).
  */
 export async function hashPassword(password: string): Promise<string> {
   const salt = crypto.randomBytes(SCRYPT_SALT_LEN);
@@ -35,6 +42,11 @@ export async function hashPassword(password: string): Promise<string> {
 /**
  * Verify a password against a stored hash.
  * Uses timing-safe comparison to prevent timing attacks.
+ *
+ * @param password - Plain-text password presented.
+ * @param storedHash - Hash produced by `hashPassword`.
+ * @returns `true` on a match; `false` on a mismatch or a hash that is not in the scrypt format.
+ * @throws {Error} When scrypt fails (rejection).
  */
 export async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
   const parts = storedHash.split(':');
@@ -63,7 +75,12 @@ export async function verifyPassword(password: string, storedHash: string): Prom
  */
 const DUMMY_HASH = `scrypt:${crypto.randomBytes(SCRYPT_SALT_LEN).toString('hex')}:${crypto.randomBytes(SCRYPT_KEYLEN).toString('hex')}`;
 
-/** Run the same scrypt work as verifyPassword for a user that does not exist. Always false. */
+/**
+ * Run the same scrypt work as verifyPassword for a user that does not exist. Always false.
+ *
+ * @param password - Plain-text password presented.
+ * @returns Always `false`.
+ */
 export async function verifyPasswordForUnknownUser(password: string): Promise<false> {
   await verifyPassword(password, DUMMY_HASH);
   return false;

@@ -33,10 +33,16 @@ import type {
 } from '../types/d1d8/index.js';
 import { HEURISTIC_THRESHOLD_V0, decimalToMicro } from './conferenceReport.js';
 
+/**
+ * Schema identifier every profile file must carry.
+ */
 export const CALIBRATION_PROFILE_SCHEMA = 'otk.calibration_profile.v1' as const;
 
 /** Categories a profile may adjust (text input and visible text output, as the local counter covers them). */
 export type CalibrationCategory = 'input' | 'output';
+/**
+ * All {@link CalibrationCategory} values, frozen.
+ */
 export const CALIBRATION_CATEGORIES: readonly CalibrationCategory[] = Object.freeze(['input', 'output']);
 
 /** expected = round_half_up(slope × local + intercept), clamped at 0. Decimals with at most 6 fraction digits. */
@@ -61,8 +67,14 @@ export interface ErrorSummary {
   alertRate: number | null;
 }
 
+/**
+ * Error summaries per category for one split.
+ */
 export type CategoryMetrics = Partial<Record<CalibrationCategory, ErrorSummary>>;
 
+/**
+ * One acceptance criterion of a profile: what was required, what was observed, and the verdict.
+ */
 export interface AcceptanceCheck {
   id: string;
   required: string;
@@ -70,6 +82,9 @@ export interface AcceptanceCheck {
   passed: boolean;
 }
 
+/**
+ * A calibration profile file (schema `otk.calibration_profile.v1`).
+ */
 export interface CalibrationProfileV1 {
   schema: typeof CALIBRATION_PROFILE_SCHEMA;
   profileId: string;
@@ -111,11 +126,19 @@ export interface CalibrationProfileV1 {
   evidenceHash: Hex32;
 }
 
+/**
+ * A profile without its `evidenceHash` (input of {@link sealProfile}).
+ */
 export type CalibrationProfileBody = Omit<CalibrationProfileV1, 'evidenceHash'>;
 
 // ───────────────────────────── canonical hash ─────────────────────────────
 
-/** Canonical JSON: keys sorted at every level; undefined dropped. Numbers as JSON numbers (metrics only). */
+/**
+ * Canonical JSON: keys sorted at every level; undefined dropped. Numbers as JSON numbers (metrics only).
+ *
+ *
+ * @param value - JSON-compatible value.
+ */
 function canonical(value: unknown): string {
   const sort = (v: unknown): unknown => {
     if (v === null || typeof v !== 'object') return v;
@@ -127,12 +150,24 @@ function canonical(value: unknown): string {
   return JSON.stringify(sort(value));
 }
 
+/**
+ * SHA-256 of the canonical JSON of a profile, ignoring any `evidenceHash` member.
+ *
+ * @param body - Profile or body (not modified).
+ * @returns `0x`-prefixed lowercase hex digest.
+ */
 export function computeEvidenceHash(body: CalibrationProfileBody | Record<string, unknown>): Hex32 {
   const { evidenceHash: _drop, ...rest } = body as Record<string, unknown>;
   return `0x${createHash('sha256').update(canonical(rest), 'utf8').digest('hex')}`;
 }
 
-/** Adds the evidenceHash of the body. */
+/**
+ * Adds the evidenceHash of the body.
+ *
+ *
+ * @param body - Profile body.
+ * @returns A new profile object with `evidenceHash` set.
+ */
 export function sealProfile(body: CalibrationProfileBody): CalibrationProfileV1 {
   return { ...body, evidenceHash: computeEvidenceHash(body) };
 }
@@ -142,12 +177,26 @@ export function sealProfile(body: CalibrationProfileBody): CalibrationProfileV1 
 const SIGNED_DECIMAL = /^-?\d+(?:\.\d{1,6})?$/;
 const MICRO = 1_000_000n;
 
+/**
+ * Parses a signed decimal with at most 6 fraction digits into millionths.
+ *
+ * @param s - Decimal text, optionally starting with `-`.
+ * @returns The value × 10^6.
+ * @throws {Error} When `s` is not in that format.
+ */
 export function signedDecimalToMicro(s: string): bigint {
   if (!SIGNED_DECIMAL.test(s)) throw new Error(`invalid signed decimal ${s}`);
   return s.startsWith('-') ? -decimalToMicro(s.slice(1)) : decimalToMicro(s);
 }
 
-/** Decimal string with exactly 6 fraction digits (round half away from zero), from a JS number. */
+/**
+ * Decimal string with exactly 6 fraction digits (round half away from zero), from a JS number.
+ *
+ *
+ * @param x - Finite number.
+ * @returns Decimal text with exactly 6 fraction digits.
+ * @throws {Error} When `x` is not finite.
+ */
 export function numberToDecimal6(x: number): string {
   if (!Number.isFinite(x)) throw new Error('non-finite parameter');
   const micro = BigInt(Math.round(Math.abs(x) * 1e6)) * (x < 0 ? -1n : 1n);
@@ -156,7 +205,15 @@ export function numberToDecimal6(x: number): string {
   return `${neg && m !== 0n ? '-' : ''}${m / MICRO}.${(m % MICRO).toString().padStart(6, '0')}`;
 }
 
-/** expected = round_half_up(slope × local + intercept), clamped at 0 (integer tokens). */
+/**
+ * expected = round_half_up(slope × local + intercept), clamped at 0 (integer tokens).
+ *
+ *
+ * @param adj - Slope and intercept of the profile.
+ * @param local - Raw local count in tokens.
+ * @returns Expected provider count in tokens (never negative).
+ * @throws {Error} When the slope or intercept is not a valid decimal.
+ */
 export function expectedTokens(adj: AffineAdjustment, local: bigint): bigint {
   const v = signedDecimalToMicro(adj.slope) * local + signedDecimalToMicro(adj.intercept);
   if (v <= 0n) return 0n;
@@ -165,6 +222,9 @@ export function expectedTokens(adj: AffineAdjustment, local: bigint): bigint {
 
 // ───────────────────────────── parsing / integrity ─────────────────────────────
 
+/**
+ * Result of {@link parseCalibrationProfile}; on failure `claimed` holds what the file says it covers, when readable.
+ */
 export type ParseResult =
   | { ok: true; profile: CalibrationProfileV1 }
   | { ok: false; reason: string; claimed: { provider: string; apiVariant: string; model: string; modelAliases: string[]; profileId: string | null; evidenceHash: Hex32 | null } | null };
@@ -230,7 +290,13 @@ function claimedOf(p: Record<string, unknown>): Extract<ParseResult, { ok: false
   };
 }
 
-/** Parse + schema + internal consistency + evidenceHash. Never throws. */
+/**
+ * Parse + schema + internal consistency + evidenceHash. Never throws.
+ *
+ *
+ * @param text - File content.
+ * @returns The profile, or the reason it was rejected.
+ */
 export function parseCalibrationProfile(text: string): ParseResult {
   let raw: unknown;
   try { raw = JSON.parse(text); } catch { return { ok: false, reason: 'json_parse_failed', claimed: null }; }
@@ -244,12 +310,22 @@ export function parseCalibrationProfile(text: string): ParseResult {
 
 // ───────────────────────────── compatibility ─────────────────────────────
 
+/**
+ * Options for compatibility checks.
+ */
 export interface CompatibilityOptions {
   /** Synthetic profiles are refused unless this is true (tests only; bootstrap never sets it). */
   allowSynthetic?: boolean;
 }
 
-/** True when the operation's model is the profile's model or one of its explicit aliases (no prefixes). */
+/**
+ * True when the operation's model is the profile's model or one of its explicit aliases (no prefixes).
+ *
+ *
+ * @param p - Profile model and aliases (lowercase).
+ * @param support - Operation's model support (requested model and catalog key are compared).
+ * @returns `true` on an exact match.
+ */
 export function modelMatches(p: { model: string; modelAliases: string[] }, support: ModelSupport): boolean {
   const ids = new Set([p.model, ...p.modelAliases]);
   const req = support.modelRequested.trim().toLowerCase();
@@ -257,7 +333,16 @@ export function modelMatches(p: { model: string; modelAliases: string[] }, suppo
   return ids.has(req) || (key !== null && ids.has(key));
 }
 
-/** Compatibility of one intact profile with the operation's support and counter version. */
+/**
+ * Compatibility of one intact profile with the operation's support and counter version.
+ *
+ *
+ * @param profile - Intact profile.
+ * @param support - Operation's model support and tokenizer identity.
+ * @param counterVersion - Version of the local counter in use.
+ * @param opts - Whether synthetic profiles are accepted.
+ * @returns The state and, unless COMPATIBLE, the first failed check as reason.
+ */
 export function checkCompatibility(profile: CalibrationProfileV1, support: ModelSupport, counterVersion: string, opts: CompatibilityOptions = {}): { state: CalibrationState; reason: string | null } {
   const tok = support.tokenizer;
   if (support.support === 'unsupported' || !tok) return { state: 'ABSENT', reason: 'no_local_tokenizer' };
@@ -275,7 +360,13 @@ export function checkCompatibility(profile: CalibrationProfileV1, support: Model
   return { state: 'COMPATIBLE', reason: null };
 }
 
-/** Threshold of a COMPATIBLE calibrated profile. */
+/**
+ * Threshold of a COMPATIBLE calibrated profile.
+ *
+ *
+ * @param profile - Profile in state COMPATIBLE.
+ * @returns Its threshold, marked calibrated with the profile ID as version.
+ */
 export function thresholdFromProfile(profile: CalibrationProfileV1): ConferenceThreshold {
   return {
     absoluteTokens: BigInt(profile.thresholdPolicy.absoluteTokens),
@@ -287,6 +378,9 @@ export function thresholdFromProfile(profile: CalibrationProfileV1): ConferenceT
 
 // ───────────────────────────── registry ─────────────────────────────
 
+/**
+ * Outcome of selecting a profile for one operation.
+ */
 export interface CalibrationSelection {
   state: CalibrationState;
   profileId: string | null;
@@ -298,6 +392,9 @@ export interface CalibrationSelection {
   conference: ConferenceCalibration;
 }
 
+/**
+ * One profile source after loading: parsed (`LOADED`) or rejected (`CORRUPT`, with the reason).
+ */
 export interface LoadedProfileEntry {
   source: string;
   state: 'LOADED' | 'CORRUPT';
@@ -306,11 +403,17 @@ export interface LoadedProfileEntry {
   claimed: { provider: string; apiVariant: string; model: string; modelAliases: string[]; profileId: string | null; evidenceHash: Hex32 | null } | null;
 }
 
+/**
+ * Set of loaded profiles that picks the profile (and threshold) for an operation.
+ */
 export interface CalibrationRegistry {
   /** Where the profiles came from (directory, 'none', or a test label). */
   readonly source: string;
   readonly entries: readonly LoadedProfileEntry[];
   readonly allowSynthetic: boolean;
+  /**
+   * Selects the profile for an operation's provider, API and model.
+   */
   select(support: ModelSupport, counterVersion: string): CalibrationSelection;
   /** Startup summary (ids and states only). */
   summary(): { source: string; loaded: string[]; corrupt: Array<{ source: string; reason: string | null }> };
@@ -341,7 +444,14 @@ function claimsKey(c: { provider: string; apiVariant: string; model: string; mod
   return c.provider === support.provider.trim().toLowerCase() && c.apiVariant === support.api && modelMatches(c, support);
 }
 
-/** Registry over already-read profile texts (tests and the directory loader). */
+/**
+ * Registry over already-read profile texts (tests and the directory loader).
+ *
+ *
+ * @param sources - Profile texts with a source label each.
+ * @param opts - Synthetic acceptance and a label for `source`.
+ * @returns The registry; a key claimed by more than one profile is INCOMPATIBLE.
+ */
 export function createCalibrationRegistry(sources: Array<{ source: string; text: string }>, opts: CompatibilityOptions & { label?: string } = {}): CalibrationRegistry {
   const entries: LoadedProfileEntry[] = sources.map(({ source, text }) => {
     const r = parseCalibrationProfile(text);
@@ -378,7 +488,12 @@ export function createCalibrationRegistry(sources: Array<{ source: string; text:
   };
 }
 
-/** Empty registry: every selection is ABSENT (explicit not-calibrated outcome). */
+/**
+ * Empty registry: every selection is ABSENT (explicit not-calibrated outcome).
+ *
+ *
+ * @returns A registry with no profile.
+ */
 export function emptyCalibrationRegistry(): CalibrationRegistry {
   return createCalibrationRegistry([], { label: 'none' });
 }
@@ -387,6 +502,11 @@ export function emptyCalibrationRegistry(): CalibrationRegistry {
  * Loads every *.json file of `dir` (non-recursive, sorted by name) at startup. A file that cannot be read is
  * recorded as CORRUPT; nothing here throws for a bad profile (the conference reports the state instead).
  * A missing directory is a configuration error and throws.
+ *
+ * @param dir - Folder with the profile files.
+ * @param opts - Whether synthetic profiles are accepted.
+ * @returns The registry built from the files.
+ * @throws {Error} When the folder cannot be listed (e.g. it does not exist).
  */
 export function loadCalibrationProfilesFromDir(dir: string, opts: CompatibilityOptions = {}): CalibrationRegistry {
   const files = readdirSync(dir).filter((f) => f.toLowerCase().endsWith('.json')).sort();

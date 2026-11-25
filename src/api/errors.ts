@@ -5,27 +5,36 @@
  * All error responses use sendError() for consistent envelope.
  * Backward compatible: preserves { ok: false, error: 'legacy_string' }.
  *
- * @module api/errors
+ * Used by almost every HTTP handler (`sendJson`, `sendError`); `sendRbacDenial` also counts the denial in the
+ * Prometheus metric `authDenialsTotal`. Reads no environment variable.
+ *
+ * @module src/api/errors
  * @since Wave 2H (H1.5)
  */
 
 import { authDenialsTotal } from '../observability/prometheusMetrics.js';
 import type { ServerResponse } from 'node:http';
 
+/** One field-level problem reported in an error response. */
 export interface ErrorDetail {
+  /** Name of the offending field, when the problem is tied to one. */
   field?: string;
+  /** Short description of the problem. */
   issue: string;
 }
 
+/** JSON body of every error response. */
 export interface ErrorEnvelope {
   ok: false;
   error: string;        // legacy error string (backward compat)
   code: string;         // OTK-4xxx / OTK-5xxx
   message: string;      // human-readable description
   details?: ErrorDetail[];
+  /** Request id echoed from the `x-request-id` response header, when set. */
   requestId?: string;
 }
 
+// Registry entry: HTTP status, fixed human message and the legacy `error` string.
 interface ErrorDef {
   status: number;
   message: string;
@@ -56,13 +65,27 @@ const ERROR_REGISTRY: Record<string, ErrorDef> = {
   'OTK-5031': { status: 503, message: 'Queue backpressure — retry later', legacyError: 'backpressure' },
 };
 
+/** Options of `sendError`. */
 export interface SendErrorOpts {
+  /** Field-level problems; included only when non-empty. */
   details?: ErrorDetail[];
+  /** Request id; defaults to the `x-request-id` response header. */
   requestId?: string;
   legacyError?: string;   // override the default legacy error string
+  /** Delay before retrying, ms; copied into the body as `retryAfterMs` (no header is set). */
   retryAfterMs?: number;
 }
 
+/**
+ * Sends a JSON response and ends it.
+ *
+ * When the body is a plain object without `requestId` and the response already has an `x-request-id` header,
+ * the id is added to a copy of the body (the input is not mutated).
+ *
+ * @param res - Response to write; it is ended.
+ * @param code - HTTP status code.
+ * @param body - Value serialized with `JSON.stringify`.
+ */
 export function sendJson(res: ServerResponse, code: number, body: unknown): void {
   // H1.3: Auto-inject requestId into response body if header is set and body is an object
   let finalBody = body;
@@ -81,6 +104,15 @@ export function sendJson(res: ServerResponse, code: number, body: unknown): void
   res.end(data);
 }
 
+/**
+ * Sends the standard error envelope for an OTK error code.
+ *
+ * An unknown code is answered as 500 `OTK-5000` instead of throwing.
+ *
+ * @param res - Response to write; it is ended.
+ * @param otkCode - A key of `ERROR_REGISTRY` such as `OTK-4004`; sets status, message and legacy string.
+ * @param opts - Optional details, request id, legacy string override and retry delay.
+ */
 export function sendError(res: ServerResponse, otkCode: string, opts?: SendErrorOpts): void {
   // H1.3: Auto-read requestId from response header if not explicitly passed
   const requestId = opts?.requestId || (typeof res.getHeader === 'function'
@@ -112,7 +144,16 @@ export function sendError(res: ServerResponse, otkCode: string, opts?: SendError
   sendJson(res, def.status, envelope);
 }
 
-/** Map RBAC denial to OTK error code and send. */
+/**
+ * Map RBAC denial to OTK error code and send.
+ *
+ * 429 becomes `OTK-4291`, 403 becomes `OTK-4030` and any other code `OTK-4010`; the denial's own `error`
+ * string is kept as the legacy string. Increments the auth-denial metric (status and error labels only).
+ *
+ * @param res - Response to write; it is ended.
+ * @param denial - Denial from the RBAC check: HTTP status, error string and optional retry delay in ms.
+ * @param requestId - Request id to include, when known.
+ */
 export function sendRbacDenial(
   res: ServerResponse,
   denial: { code: number; error: string; retryAfterMs?: number },
@@ -128,6 +169,12 @@ export function sendRbacDenial(
   }
 }
 
+/**
+ * Looks up the HTTP status of an OTK error code.
+ *
+ * @param otkCode - OTK error code.
+ * @returns The registered status, or 500 for an unknown code.
+ */
 export function getErrorStatus(otkCode: string): number {
   return ERROR_REGISTRY[otkCode]?.status ?? 500;
 }

@@ -22,14 +22,23 @@ import type { AliasTable } from '../aliases.js';
 import type { StatementMapping } from './mapping.js';
 import { referencedFields } from './mapping.js';
 
+/**
+ * Stable codes carried by {@link StatementImportError}.
+ */
 export type ImportErrorCode =
   | 'MISSING_COLUMNS' | 'AMBIGUOUS_TIMESTAMP' | 'INVALID_TIMESTAMP' | 'NONEXISTENT_LOCAL_TIME' | 'AMBIGUOUS_LOCAL_TIME' | 'INVALID_TIMEZONE'
   | 'PARSE_ERROR' | 'SHAPE_ERROR' | 'EMPTY_STATEMENT' | 'ORIGIN_CONFLICT' | 'PROVIDER_MISMATCH';
 
+/**
+ * Raised when a statement cannot be imported; `code` says why and the message says what to fix.
+ */
 export class StatementImportError extends Error {
   constructor(public readonly code: ImportErrorCode, message: string) { super(`${code}: ${message}`); this.name = 'StatementImportError'; }
 }
 
+/**
+ * Caller-side options for {@link importStatement}.
+ */
 export interface ImportOptions {
   /** Origin the caller declares for the provider data. A synthetic marker in the file forces FIXTURE (and conflicts with REAL). */
   declaredOrigin: DataOrigin;
@@ -153,11 +162,28 @@ const merge = (xs: Array<{ start: string; end: string }>): Array<{ start: string
   return out;
 };
 
+/**
+ * SHA-256 of a string (as UTF-8) or of raw bytes.
+ *
+ * @param bytes - Data to hash.
+ * @returns Lowercase hex digest (64 characters, no `0x`).
+ */
 export function sha256Hex(bytes: string | Uint8Array): string {
   return createHash('sha256').update(bytes).digest('hex');
 }
 
-/** Import a statement. `bytes` is the exact file content (digest is computed over it). */
+/**
+ * Import a statement. `bytes` is the exact file content (digest is computed over it).
+ *
+ * Pure function of its inputs (no I/O, no clock): the same bytes and mapping give the same statement.
+ *
+ * @param bytes - Exact file content (bytes are decoded as UTF-8).
+ * @param m - A validated mapping (see `validateMapping`).
+ * @param opts - Declared origin, optional timezone override and aliases.
+ * @returns The provider statement with every source record as at least one line.
+ * @throws {@link StatementImportError} With code `PARSE_ERROR` (unreadable CSV/JSON), `MISSING_COLUMNS`,
+ *   `SHAPE_ERROR`, `ORIGIN_CONFLICT` (synthetic marker declared REAL), a timestamp code, or `EMPTY_STATEMENT`.
+ */
 export function importStatement(bytes: string | Uint8Array, m: StatementMapping, opts: ImportOptions): ProviderStatement {
   const text = typeof bytes === 'string' ? bytes : Buffer.from(bytes).toString('utf8');
   const sourceDigest = sha256Hex(typeof bytes === 'string' ? Buffer.from(bytes, 'utf8') : bytes);

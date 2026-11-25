@@ -8,7 +8,10 @@
  * Source: reads CHANGELOG.md from the repo root (process.cwd()).
  * Format: Conventional changelog (## [version] - date / ### section / - item).
  *
- * @module dashboard/changelog
+ * Both handlers are called by routes in `src/api/routes.ts`. The file is read on every request (no cache); a
+ * missing or unreadable file gives an empty list, never an error.
+ *
+ * @module src/dashboard/changelog
  * @since Wave 6 (NEW-6.02)
  */
 
@@ -17,16 +20,27 @@ import { join } from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { sendJson } from '../api/errors.js';
 
+/** One version block of the changelog. */
 export interface ChangelogEntry {
+  /** Version text from the `## [x.y.z]` heading. */
   version: string;
+  /** Text after the ` - ` in the heading; null when absent. */
   date: string | null;
   sections: Record<string, string[]>; // section name → list of items
+  /** The whole block, trimmed. */
   rawText: string;
 }
 
 const CHANGELOG_PATH = join(process.cwd(), 'CHANGELOG.md');
 
-/** Parse CHANGELOG.md into structured entries. */
+/**
+ * Parse CHANGELOG.md into structured entries.
+ *
+ * Blocks whose `## ` heading does not match the version pattern are skipped; empty `### ` sections are dropped.
+ *
+ * @param raw - Changelog text (Markdown).
+ * @returns Entries in file order.
+ */
 export function parseChangelog(raw: string): ChangelogEntry[] {
   const entries: ChangelogEntry[] = [];
   // Split on ## headings that look like versions: ## [x.y.z] or ## x.y.z
@@ -62,7 +76,12 @@ export function parseChangelog(raw: string): ChangelogEntry[] {
   return entries;
 }
 
-/** Load and parse changelog, with graceful fallback if file missing. */
+/**
+ * Load and parse changelog, with graceful fallback if file missing.
+ *
+ * @param filePath - File to read; defaults to `CHANGELOG.md` in the working directory.
+ * @returns Parsed entries, or an empty list when the file is missing or unreadable.
+ */
 function loadChangelog(filePath?: string): ChangelogEntry[] {
   const target = filePath ?? CHANGELOG_PATH;
   if (!existsSync(target)) return [];
@@ -74,7 +93,12 @@ function loadChangelog(filePath?: string): ChangelogEntry[] {
   }
 }
 
-/** Render entries as an HTML page. */
+/**
+ * Render entries as an HTML page.
+ *
+ * @param entries - Parsed entries.
+ * @returns The HTML text, with every changelog value escaped.
+ */
 function renderHtml(entries: ChangelogEntry[]): string {
   const renderSection = (name: string, items: string[]): string => `
     <div class="section">
@@ -133,7 +157,12 @@ function escHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-/** Handle GET /changelog — HTML */
+/**
+ * Handle GET /changelog — HTML
+ *
+ * @param _req - Incoming request (unused).
+ * @param res - Response; receives 200 with the HTML page and `Cache-Control: no-store`.
+ */
 export function handleChangelogHtml(_req: IncomingMessage, res: ServerResponse): void {
   const entries = loadChangelog();
   const html = renderHtml(entries);
@@ -141,7 +170,12 @@ export function handleChangelogHtml(_req: IncomingMessage, res: ServerResponse):
   res.end(html);
 }
 
-/** Handle GET /v1/changelog — JSON */
+/**
+ * Handle GET /v1/changelog — JSON
+ *
+ * @param _req - Incoming request (unused).
+ * @param res - Response; receives 200 with `{ entries, count }`.
+ */
 export function handleChangelogJson(_req: IncomingMessage, res: ServerResponse): void {
   const entries = loadChangelog();
   sendJson(res, 200, { entries, count: entries.length });

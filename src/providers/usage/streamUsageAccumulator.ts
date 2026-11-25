@@ -22,11 +22,20 @@
  *   gemini.generate_content: usageMetadata in a chunk at or after a candidate finishReason
  *     (cumulative-vs-final semantics UNVERIFIED in the docs; replacing covers both).
  *   cohere.chat: message-end with delta.usage.
+ *
+ * Where it sits: exported through `src/providers/d1d8Measurement.ts` and used by the proxy for streamed
+ * responses; it calls `normalizeUsageDetailed` (in this folder) once, in `finish()`. No I/O; it keeps only
+ * bounded buffers in memory.
+ *
+ * @module src/providers/usage/streamUsageAccumulator
  */
 import type { NormalizedUsage, UsageApi, UsageCompleteness } from '../../types/d1d8/index.js';
 import type { StreamUsageAccumulator, UsageContext } from '../../types/d1d8/index.js';
 import { normalizeUsageDetailed, type UsageIssue } from './normalizeUsage.js';
 
+/**
+ * Optional callbacks that let the local token counter follow the streamed output.
+ */
 export interface StreamCallbacks {
   /** Visible output text delta, in order (feed LocalCounter.observeOutputText). */
   onTextDelta?: (text: string) => void;
@@ -34,9 +43,13 @@ export interface StreamCallbacks {
   onNonTextOutput?: (reason: string) => void;
 }
 
+/**
+ * Stream accumulator with diagnostics beyond the contract interface.
+ */
 export interface StreamUsageAccumulatorImpl extends StreamUsageAccumulator {
   /** Issues of the last finish(), plus stream-level ones (overflow, parse errors). */
   readonly issues: readonly UsageIssue[];
+  /** Number of SSE events dispatched so far (including `[DONE]` and unparseable ones). */
   readonly eventsSeen: number;
 }
 
@@ -54,7 +67,16 @@ interface Synth {
 const TAIL_BYTES_MIN = 4096;
 const HEAD_CHARS = 512;
 
-/** Last unescaped `"usage":{...}` object in a (possibly truncated) JSON text. */
+/**
+ * Last unescaped `"usage":{...}` object in a (possibly truncated) JSON text.
+ *
+ * Used when an SSE event was larger than the buffer and only its tail was kept. Escaped occurrences
+ * (inside a JSON string) and non-object values are skipped.
+ *
+ * @param text - JSON text, possibly cut at the start.
+ * @param key - Member name to look for (`usage`, or `usageMetadata` for Gemini).
+ * @returns The parsed object, or `null` when no complete, parseable object is found.
+ */
 export function recoverUsageFromTail(text: string, key = 'usage'): unknown | null {
   const needle = `"${key}":`;
   let idx = text.lastIndexOf(needle);
@@ -93,7 +115,14 @@ function obj(v: unknown): Record<string, unknown> | null {
   return v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
 }
 
-/** Applies one parsed SSE event to the synthetic body (unknown event shapes are ignored). */
+/**
+ * Applies one parsed SSE event to the synthetic body (unknown event shapes are ignored).
+ *
+ * @param api - Usage API of the stream; it selects how events are read.
+ * @param ev - One parsed SSE `data:` payload.
+ * @param s - Synthetic body and flags; mutated in place.
+ * @param cb - Callbacks for text deltas and non-text output.
+ */
 function applyEvent(api: UsageApi, ev: Record<string, unknown>, s: Synth, cb: StreamCallbacks): void {
   switch (api) {
     case 'openai.chat_completions':
@@ -212,7 +241,19 @@ function applyEvent(api: UsageApi, ev: Record<string, unknown>, s: Synth, cb: St
   }
 }
 
-/** CreateStreamUsageAccumulatorFn (extra optional callbacks for the local counter). */
+/**
+ * CreateStreamUsageAccumulatorFn (extra optional callbacks for the local counter).
+ *
+ * Feed raw SSE bytes with `push()`, then call `finish()` once to get the normalized usage (it may be
+ * called again and returns the same result). `push()` after `finish()` throws.
+ *
+ * @param api - Usage API of the stream.
+ * @param ctx - Provider, requested model and observation time; `origin` is replaced by `provider_stream`.
+ * @param limits - `maxBufferedBytes`: maximum bytes kept for one pending line or event (UTF-8 bytes); the
+ *   recovery tail keeps at least 4096 bytes.
+ * @param callbacks - Optional callbacks for the local counter, called synchronously during `push()`.
+ * @returns A new accumulator; it holds state for one stream only.
+ */
 export function createStreamUsageAccumulator(api: UsageApi, ctx: UsageContext, limits: { maxBufferedBytes: number },
   callbacks: StreamCallbacks = {}): StreamUsageAccumulatorImpl {
   const decoder = new TextDecoder('utf-8');

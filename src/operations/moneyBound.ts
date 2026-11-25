@@ -26,11 +26,18 @@
  * reviews it. The observed cost is recorded as is (never truncated). Detection after the fact does
  * not undo spend; the bound holds only while the provider charges per its published rules.
  *
- * @module operations/moneyBound
+ * Pure data and checks (no I/O). The policy of an instance is chosen at startup in `bootstrapD1D8.ts`
+ * (OTK_MONEY_BOUND_POLICY); {@link assessMoneyBound} is called by `proxyDurable.ts` before admission, and
+ * the settlement helpers by `PgOperationStore.ts`. Model limits and source URLs are data recorded on the
+ * dates stated in each `docRef`; they are not refreshed automatically.
+ *
+ * @module src/operations/moneyBound
  */
 import type { PricingTerms, UsageApi } from '../types/d1d8/index.js';
 
+/** One bounded-cost entry: a (provider, api, requested model) and the documented limits that bound its cost. */
 export interface MoneyBoundRule {
+  /** Provider id (lower case). */
   provider: string;
   api: UsageApi;
   /** Requested model id (lower case). */
@@ -54,8 +61,11 @@ export interface MoneyBoundRule {
   geminiThinking?: 'level_minimal';
 }
 
+/** A published, versioned set of bounded-cost rules; an instance applies exactly one. */
 export interface MoneyBoundPolicy {
+  /** Policy id with its publication date, e.g. `otk.money_bound_policy.v2@2026-10-02`. */
   id: string;
+  /** Rules; a request matching none is refused in strict mode. */
   rules: MoneyBoundRule[];
   /**
    * v4: top-level fields this policy accepts on top of the API's base allowlist, each with the only values
@@ -84,6 +94,10 @@ const GEMINI_GENERATION_CONFIG = new Set(['maxOutputTokens', 'temperature', 'top
  * other part (inlineData, fileData, function calls/responses, code execution, thought, thoughtSignature,
  * videoMetadata, ...) is outside the text scope. Thinking must be explicitly off (thinkingBudget 0): the
  * reservation prices maxOutputTokens of visible output only. Returns the reason for refusal, or null.
+ *
+ * @param body - Parsed request body.
+ * @param rule - The matched rule (its thinking requirement is applied).
+ * @returns Refusal reason, or `null` when the body is inside the bounded scope.
  */
 function assessGeminiBody(body: Record<string, unknown>, rule: MoneyBoundRule): string | null {
   const terms = rule.pricingTerms;
@@ -240,10 +254,15 @@ export const MONEY_BOUND_POLICIES: Readonly<Record<string, MoneyBoundPolicy>> = 
   [MONEY_BOUND_POLICY_V5.id]: MONEY_BOUND_POLICY_V5,
 });
 
+/**
+ * Outcome of {@link assessMoneyBound}: accepted with the matching rule and the input bound (tokens = the
+ * model's context window), or refused with a human-readable reason (no secrets, no prompt content).
+ */
 export type MoneyBoundDecision =
   | { ok: true; rule: MoneyBoundRule; policyId: string; inputBoundTokens: bigint; pricingTerms?: PricingTerms }
   | { ok: false; reason: string };
 
+// Walks the messages/system value; returns the first non-text marker found, or null. Depth-capped against hostile nesting.
 function hasNonText(v: unknown, depth = 0): string | null {
   if (depth > 32) return 'content nested too deeply';
   if (v === null || typeof v !== 'object') return null;
@@ -258,7 +277,16 @@ function hasNonText(v: unknown, depth = 0): string | null {
   return null;
 }
 
-/** Strict-mode admission check (pure). `headers` are the request headers that would be forwarded. */
+/**
+ * Strict-mode admission check (pure). `headers` are the request headers that would be forwarded.
+ *
+ * Provider and model are compared trimmed and lower-cased.
+ *
+ * @param policy - The instance's money-bound policy.
+ * @param a - Provider, API, requested model, parsed request body, effective output limit (tokens) and the
+ *   names of headers that would be forwarded.
+ * @returns `{ ok: true, ... }` when every condition in the file header holds, otherwise `{ ok: false, reason }`.
+ */
 export function assessMoneyBound(policy: MoneyBoundPolicy, a: {
   provider: string; api: UsageApi; model: string; body: Record<string, unknown>; maxOutputTokens: bigint; headers?: readonly string[];
 }): MoneyBoundDecision {
@@ -294,7 +322,13 @@ export function assessMoneyBound(policy: MoneyBoundPolicy, a: {
   return { ok: true, rule, policyId: policy.id, inputBoundTokens: rule.contextWindowTokens, ...(rule.pricingTerms ? { pricingTerms: rule.pricingTerms } : {}) };
 }
 
-/** Whether a reported service tier matches the admitted one (Gemini's documented default 'unspecified' is Standard). */
+/**
+ * Whether a reported service tier matches the admitted one (Gemini's documented default 'unspecified' is Standard).
+ *
+ * @param expected - Tier frozen at admission (lower case).
+ * @param reported - Tier reported in the usage; a `SERVICE_TIER_` prefix and case are ignored.
+ * @returns `false` when nothing was reported.
+ */
 export function serviceTierMatches(expected: string, reported: string | null | undefined): boolean {
   if (reported === null || reported === undefined) return false;
   const r = reported.trim().toLowerCase().replace(/^service_tier_/, '');
@@ -302,7 +336,13 @@ export function serviceTierMatches(expected: string, reported: string | null | u
   return r === e || (e === 'standard' && r === 'unspecified');
 }
 
-/** Whether the model the provider reported is one the reservation covered. */
+/**
+ * Whether the model the provider reported is one the reservation covered.
+ *
+ * @param allowed - Lower-case models covered by the reservation; `undefined` = no restriction (not strict mode).
+ * @param returned - Model reported by the provider, or `null` when not reported.
+ * @returns `true` when unrestricted or the trimmed, lower-cased model is in the list; `false` when not reported.
+ */
 export function returnedModelAllowed(allowed: readonly string[] | undefined, returned: string | null): boolean {
   if (!allowed) return true;
   if (returned === null) return false;

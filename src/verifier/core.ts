@@ -5,6 +5,11 @@
  * digestReceiptV3/digestConferenceV1, decodeReceiptV3/decodeConference e big (codec, para os bigint
  * do disco) e verifyLegacy. O campo `verification` das exportações do operador é ignorado.
  * Sem relógio, sem rede, sem Node.
+ *
+ * (English) Verifier core: input bytes plus a public key ring give a deterministic verification report.
+ * It reuses the receipt crypto and codec modules; no clock, no network, no Node APIs.
+ *
+ * @module src/verifier/core
  */
 import { ethers } from 'ethers';
 import { createReceiptCrypto, digestConferenceV1, digestReceiptV3, envelopeDigest } from '../receipt/v3/receiptCrypto.js';
@@ -19,8 +24,14 @@ import type {
   Tally, Verdict, VerdictCode, VerificationReport, VerifyOptions, Warning,
 } from './types.js';
 
+/**
+ * Version of the verifier, written into every report.
+ */
 export const VERIFIER_VERSION = '0.1.0';
 
+/**
+ * Raised for an invalid option (fingerprint or date format); a bad input file never raises it.
+ */
 export class VerifierUsageError extends Error {
   constructor(message: string) { super(message); this.name = 'VerifierUsageError'; }
 }
@@ -62,7 +73,11 @@ function isObj(v: unknown): v is Record<string, unknown> {
   return v !== null && typeof v === 'object' && !Array.isArray(v);
 }
 
-/** Classifica um objeto JSON (linha do store, exportação ou arquivo solto). */
+/**
+ * Classifica um objeto JSON (linha do store, exportação ou arquivo solto).
+ *
+ * @param v - Parsed JSON value.
+ */
 function classifyRecord(v: unknown): RawRecord[] {
   if (!isObj(v)) return [{ t: 'unrecognized', detail: 'não é um objeto JSON' }];
   if (v['schema'] === 'otk.conference_export.v1') {
@@ -207,6 +222,8 @@ function tally(items: ReportItem[]): Tally {
  * @param input arquivos (nome relativo com "/" + bytes); a ordem de chegada não importa.
  * @param keyRing arquivo do chaveiro público (otk.keyring.public.v1 ou o anel do bot otk.bridge.keyring_file.v1), ou null.
  * @throws VerifierUsageError para opção inválida (impressão digital ou data fora do formato).
+ * @param opts - Expected key ring fingerprint and optional date window (`since`/`until`, YYYY-MM-DD).
+ * @returns The verification report (same input and options give the same bytes).
  */
 export function verifyBundle(input: readonly InputFile[], keyRing: InputFile | null, opts: VerifyOptions = {}): VerificationReport {
   return verifyBundleDetailed(input, keyRing, opts).report;
@@ -215,6 +232,12 @@ export function verifyBundle(input: readonly InputFile[], keyRing: InputFile | n
 /**
  * Igual a verifyBundle, e devolve também o recibo decodificado de cada item de recibo (índice em
  * report.items). Uso: a conciliação aproveita só os recibos verdes e amarelos (item.counted).
+ *
+ * @param input - Input files (relative name with "/" plus bytes); arrival order does not matter.
+ * @param keyRing - Public key ring file, or `null`.
+ * @param opts - Expected fingerprint and optional date window.
+ * @returns The report, and the decoded receipt of each receipt item keyed by its index in `report.items`.
+ * @throws {@link VerifierUsageError} When the fingerprint is not 64 hex characters or a date is not YYYY-MM-DD.
  */
 export function verifyBundleDetailed(input: readonly InputFile[], keyRing: InputFile | null, opts: VerifyOptions = {}): { report: VerificationReport; receipts: Map<number, PrivateReceiptV3> } {
   const fpExpected = normalizeFingerprint(opts.fingerprint ?? null);
@@ -254,6 +277,8 @@ export function verifyBundleDetailed(input: readonly InputFile[], keyRing: Input
    * unauthorized_signer da verificação existente decide pelo keyId declarado. Aqui a decisão é pelo
    * ENDEREÇO recuperado da própria assinatura (B2 do X1): chave revogada ou aposentada-depois não
    * escapa trocando o keyId, e uma assinatura alheia usando o keyId de uma chave do chaveiro é forjada.
+   * @param env - Envelope whose signer address is recovered from the signature.
+   * @param ff - Finding from the key-ID based check, refined here.
    */
   const refineUnauthorized = (env: SignedEnvelope, ff: Finding): Finding => {
     let recovered: string | null = null;

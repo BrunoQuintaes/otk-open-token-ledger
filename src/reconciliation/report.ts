@@ -7,10 +7,22 @@
 import { createHash } from 'node:crypto';
 import type { Comparison, ReconciliationReport } from './types.js';
 
+/**
+ * Serializes a report as indented JSON (bigints as decimal strings) with a final newline.
+ *
+ * @param report - Report to serialize; key order follows the object as built by the matcher.
+ * @returns The JSON text.
+ */
 export function reportJson(report: ReconciliationReport): string {
   return `${JSON.stringify(report, (_k, v) => (typeof v === 'bigint' ? v.toString(10) : v), 2)}\n`;
 }
 
+/**
+ * SHA-256 of a serialized report.
+ *
+ * @param json - Text from {@link reportJson}.
+ * @returns Lowercase hex digest (64 characters, no `0x`).
+ */
 export function reportDigest(json: string): string {
   return createHash('sha256').update(json, 'utf8').digest('hex');
 }
@@ -18,6 +30,13 @@ export function reportDigest(json: string): string {
 const cell = (s: string | null | undefined): string => (s === null || s === undefined || s === '' ? '-' : s.replace(/\|/g, '\\|').replace(/\r?\n/g, ' '));
 const unit = (c: Comparison): string => (c.metric === 'tokens' ? 'tokens' : (c.currency ?? '?'));
 
+/**
+ * Renders a report as a Markdown document for people (its headings and labels are in Portuguese).
+ *
+ * @param report - Report to render.
+ * @param jsonDigest - Digest of the JSON form, printed in the document so both can be tied together.
+ * @returns The Markdown text.
+ */
 export function reportMarkdown(report: ReconciliationReport, jsonDigest: string): string {
   const out: string[] = [];
   const origin = report.providerDataOrigin === 'REAL'

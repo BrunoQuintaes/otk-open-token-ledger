@@ -23,7 +23,12 @@
  * Future migration: replace with BullMQ adapter (ENT-03) without changing
  * ProverDaemon call sites.
  *
- * @module prover/DurableProofQueue
+ * This class reads no environment variable itself: the caller (the prover daemon) passes the log path and
+ * options derived from the variables named above. Appends are not fsync'd and a failed append is ignored
+ * (the job stays in memory), so a crash can lose the last snapshots; the log only grows (no compaction).
+ * Single process only.
+ *
+ * @module src/prover/DurableProofQueue
  * @since PA-01 (2026-03-12)
  */
 
@@ -35,15 +40,22 @@ import type { ProofInput, ProofResult } from './ProofQueue.js';
 // Types
 // ---------------------------------------------------------------------------
 
+/** Lifecycle state of a proof job (see the state machine in the file header). */
 export type DurableJobStatus = 'pending' | 'processing' | 'done' | 'dead_letter';
 
+/** A proof job and its history fields; also the shape of one JSONL line. */
 export interface DurableProofJob {
+  /** Random 16-hex-character id. */
   id: string;
   status: DurableJobStatus;
   input: ProofInput;
+  /** Set when done. */
   result?: ProofResult;
+  /** Last failure message. */
   error?: string;
+  /** Epoch ms. */
   createdAt: number;
+  /** Epoch ms of the last change. */
   updatedAt: number;
   /** Total proof attempts made. Starts at 0; incremented on each fail(). */
   attempts: number;
@@ -53,6 +65,7 @@ export interface DurableProofJob {
   txHash?: string;
 }
 
+/** Counts of jobs by state. */
 export interface DurableQueueStats {
   total: number;
   pending: number;
@@ -66,6 +79,7 @@ export interface DurableQueueStats {
 // DurableProofQueue
 // ---------------------------------------------------------------------------
 
+/** In-memory proof job queue with an optional append-only JSONL checkpoint, retries and dead-lettering. */
 export class DurableProofQueue {
   private readonly _jobs = new Map<string, DurableProofJob>();
   /** IDs of jobs eligible for dequeue (pending, in insertion order). */
@@ -75,9 +89,11 @@ export class DurableProofQueue {
   private readonly _baseBackoffMs: number;
 
   /**
-   * @param logPath  Absolute path for JSONL checkpoint file.
+   * Creates the queue and, with a log path, restores it from the log (synchronous read at construction).
+   *
+   * @param logPath - Absolute path for JSONL checkpoint file.
    *                 Pass null/empty to run in-memory (no file I/O).
-   * @param opts     maxAttempts (default 3), baseBackoffMs (default 1000)
+   * @param opts - maxAttempts (default 3), baseBackoffMs (default 1000)
    */
   constructor(
     logPath: string | null | undefined,
@@ -95,6 +111,12 @@ export class DurableProofQueue {
   // Public API
   // -------------------------------------------------------------------------
 
+  /**
+   * Adds a pending job and checkpoints it.
+   *
+   * @param input - Proof inputs.
+   * @returns The new job id.
+   */
   enqueue(input: ProofInput): string {
     const id = randomBytes(8).toString('hex');
     const now = Date.now();
@@ -115,6 +137,8 @@ export class DurableProofQueue {
   /**
    * Return the next pending job that is past its backoff window, or null.
    * Sets the returned job to 'processing'.
+   *
+   * @returns The job (mutated in place and checkpointed), or `null` when none is ready.
    */
   dequeue(): DurableProofJob | null {
     const now = Date.now();
@@ -154,8 +178,9 @@ export class DurableProofQueue {
    *
    * Job stays in 'processing' state; a subsequent complete() is still required.
    *
-   * @param id     Job id (must exist; typically in processing state)
-   * @param txHash Transaction hash returned by submitProofOnChain()
+   * @param id - Job id (must exist; typically in processing state)
+   * @param txHash - Transaction hash returned by submitProofOnChain()
+   * @throws {Error} When the job id is unknown.
    */
   markSubmitted(id: string, txHash: string): void {
     const job = this._jobs.get(id);
@@ -167,9 +192,13 @@ export class DurableProofQueue {
 
   /**
    * Mark a job as done with its proof result.
-   * @param txHash PA-03: optional on-chain tx hash from ReceiptRegistry.submitReceipt().
+   *
+   * @param id - Job id.
+   * @param result - The proof result.
+   * @param txHash - PA-03: optional on-chain tx hash from ReceiptRegistry.submitReceipt().
    *   When provided, the job is considered fully proved on-chain.
    *   When absent (dev mode / chain not configured), proof is generated but not on-chain.
+   * @throws {Error} When the job id is unknown.
    */
   complete(id: string, result: ProofResult, txHash?: string): void {
     const job = this._jobs.get(id);
@@ -185,6 +214,12 @@ export class DurableProofQueue {
    * Mark a job as failed.
    * If attempts < maxAttempts: re-enqueue as pending with exponential backoff.
    * If attempts >= maxAttempts: move to dead_letter (terminal).
+   *
+   * The backoff is `2^attempts × baseBackoffMs` (2 s, then 4 s with the defaults). Writes one line to stderr.
+   *
+   * @param id - Job id.
+   * @param error - Failure message (stored and logged; must not contain secrets).
+   * @throws {Error} When the job id is unknown.
    */
   fail(id: string, error: string): void {
     const job = this._jobs.get(id);
@@ -212,11 +247,21 @@ export class DurableProofQueue {
     this._append(job);
   }
 
+  /**
+   * Reads a job.
+   *
+   * @param id - Job id.
+   * @returns The live job object, or `undefined`.
+   */
   get(id: string): DurableProofJob | undefined {
     return this._jobs.get(id);
   }
 
-  /** Number of jobs in pending state (including those in backoff). */
+  /**
+   * Number of jobs in pending state (including those in backoff).
+   *
+   * @returns Pending count.
+   */
   size(): number {
     return this._pendingIds.filter(id => {
       const job = this._jobs.get(id);
@@ -224,6 +269,11 @@ export class DurableProofQueue {
     }).length;
   }
 
+  /**
+   * Counts all known jobs by state (restored terminal jobs included).
+   *
+   * @returns The counts.
+   */
   stats(): DurableQueueStats {
     let pending = 0, processing = 0, done = 0, dead_letter = 0;
     for (const job of this._jobs.values()) {
@@ -246,7 +296,11 @@ export class DurableProofQueue {
   // Persistence (private)
   // -------------------------------------------------------------------------
 
-  /** Append full job snapshot to JSONL. No-op when no logPath. */
+  /**
+   * Append full job snapshot to JSONL. No-op when no logPath.
+   *
+   * @param job - The job to snapshot.
+   */
   private _append(job: DurableProofJob): void {
     if (!this._logPath) return;
     try {

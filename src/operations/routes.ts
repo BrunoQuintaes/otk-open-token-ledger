@@ -11,7 +11,11 @@
  * The tenant comes from the caller's credential; another tenant's id is "not found". The status
  * never shows a missing/incomplete conference as "no divergence": it reports its state.
  *
- * @module operations/routes
+ * Dispatched from the proxy gateway (`src/proxy/ProxyGateway.ts`), which passes its credential check as a
+ * callback. This file is also scanned as text by the route inventory script under `scripts/ops/`, so keep
+ * its comments free of code-like routing text.
+ *
+ * @module src/operations/routes
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { OperationKey } from '../types/d1d8/index.js';
@@ -21,6 +25,7 @@ import { toJsonValue } from './codec.js';
 import { RevisionConflictError } from './PgOperationStore.js';
 import { IllegalTransitionError } from './transitions.js';
 
+/** Result of the gateway's credential check: the caller's tenant, or the HTTP status and error code to answer. */
 export type Caller = { ok: true; tenantId: string } | { ok: false; status: number; error: string };
 
 function json(res: ServerResponse, status: number, body: unknown): void {
@@ -33,10 +38,17 @@ function json(res: ServerResponse, status: number, body: unknown): void {
 
 const ROUTE = /^\/v1\/operations\/([A-Za-z0-9._:-]{1,128})(\/cancel|\/conference)?$/;
 
+/**
+ * Whether a path is an operation status, cancel or conference route (method not checked).
+ *
+ * @param pathname - URL path without query string.
+ * @returns `true` when the path names an operation id of 1 to 128 allowed characters.
+ */
 export function isOperationRoute(pathname: string): boolean {
   return ROUTE.test(pathname);
 }
 
+// Status view of one operation plus its outbox effects, receipt summary and conference state; null when absent.
 async function view(ctx: OperationsContext, key: OperationKey) {
   const d = await ctx.store.getDetail(key);
   if (!d) return null;
@@ -59,6 +71,21 @@ async function view(ctx: OperationsContext, key: OperationKey) {
   });
 }
 
+/**
+ * Serves one operation request and always writes the response.
+ *
+ * Status and conference export need `receipts:read`; cancel needs `receipts:write`. Cancelling an operation
+ * not yet sent upstream cancels and releases it at once; a running one gets `cancel_requested` and its
+ * streaming instance aborts the upstream. Storage failures answer 503 `persistence_unavailable`.
+ *
+ * @param ctx - Operations context.
+ * @param req - The request.
+ * @param res - The response to write.
+ * @param pathname - URL path.
+ * @param method - HTTP method.
+ * @param authorize - Credential check for the required permission; returns the caller or a refusal.
+ * @returns Resolves once the response has been sent.
+ */
 export async function handleOperationRoute(ctx: OperationsContext, req: IncomingMessage, res: ServerResponse, pathname: string, method: string, authorize: (req: IncomingMessage, permission: 'receipts:read' | 'receipts:write') => Caller): Promise<void> {
   const m = ROUTE.exec(pathname);
   if (!m) return json(res, 404, { ok: false, error: 'not_found' });
