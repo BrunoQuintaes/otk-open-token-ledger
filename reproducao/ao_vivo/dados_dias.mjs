@@ -108,8 +108,10 @@ function toCountOrNull(value) {
  * @param providerDir - Provider folder name (`openai`, `anthropic` or `gemini35`).
  * @param stage - Campaign sub-folder (e.g. `campaign`, `cacheprobe`, `besu`), shown as the run stage.
  * @returns A content-free call summary. `signatureVerified` is `true`/`false` from the
- *   `checks.receipt_signature_verifies` check, or `null` when the record has no such check
- *   (the provider refused the call, so no receipt was produced).
+ *   `checks.receipt_signature_verifies` check, or `null` when the record has no such check (the call was refused
+ *   before it finished, so no receipt was produced). `refusedBy` says who refused it: `'otk'` when the error is the
+ *   OTK's own CU quota (`quota_exceeded`, HTTP 429; the call never reached the provider), `'provedor'` for any
+ *   other refusal, `null` for a call that finished. Only this classification is kept, never the error text.
  */
 function summarizeOct07Call(record, providerDir, stage) {
   const comparisons = record.conference?.comparisons ?? [];
@@ -133,7 +135,21 @@ function summarizeOct07Call(record, providerDir, stage) {
     verdict: record.conference === undefined || record.conference === null ? 'refused' : (record.conference.verdict ?? 'not_produced'),
     costUsd: typeof cost === 'number' ? cost : null,
     signatureVerified,
+    refusedBy: whoRefused(record),
   };
+}
+
+/**
+ * Tells who refused a call that has no conference (no usage, no receipt), from the stored error, not from the
+ * HTTP status alone.
+ *
+ * @param record - One line of a `*_calls.jsonl` file.
+ * @returns `'otk'` for the OTK's own quota (`quota_exceeded`), `'provedor'` for any other refusal, or `null`
+ *   when the call has a conference (it was not refused).
+ */
+export function whoRefused(record) {
+  if (record.conference !== undefined && record.conference !== null) return null;
+  return /"error"\s*:\s*"quota_exceeded"/.test(String(record.error ?? '')) ? 'otk' : 'provedor';
 }
 
 /**
@@ -192,7 +208,9 @@ export function groupOct07Call(call) {
  * and calls keep their line order inside each file, which is the order they were made.
  *
  * @param repoRoot - Absolute repository root.
- * @returns `{ sources, calls, counters, refusedHttpStatuses }`, where `sources` are the relative paths read.
+ * @returns `{ sources, calls, counters, refusedHttpStatuses, refusedBy }`, where `sources` are the relative paths read
+ *   and `refusedBy` counts the calls without the check by who refused them, e.g. `{ otk: 3, provedor: 1 }`, each with
+ *   its HTTP statuses: `{ otk: { total: 3, http: { 429: 3 } }, provedor: { total: 1, http: { 400: 1 }, providers: ['OpenAI'] } }`.
  * @throws {Error} When the campaign folder is missing or a line is not JSON.
  */
 export function summarizeOct07(repoRoot) {
@@ -209,14 +227,21 @@ export function summarizeOct07(repoRoot) {
     for (const record of readJsonLines(file, repoRoot)) calls.push(summarizeOct07Call(record, providerDir, stage));
   }
   const refusedHttpStatuses = {};
+  const refusedBy = { otk: { total: 0, http: {} }, provedor: { total: 0, http: {}, providers: [] } };
   for (const call of calls) {
-    if (call.signatureVerified === null) refusedHttpStatuses[call.httpStatus] = (refusedHttpStatuses[call.httpStatus] ?? 0) + 1;
+    if (call.signatureVerified !== null) continue;
+    refusedHttpStatuses[call.httpStatus] = (refusedHttpStatuses[call.httpStatus] ?? 0) + 1;
+    const who = refusedBy[call.refusedBy ?? 'provedor'];
+    who.total++;
+    who.http[call.httpStatus] = (who.http[call.httpStatus] ?? 0) + 1;
+    if (who.providers && !who.providers.includes(call.provider)) who.providers.push(call.provider);
   }
   return {
     sources: files.map((f) => toRepoRelative(f, repoRoot)),
     calls,
     counters: tallyCounters(calls, groupOct07Call, countOct07Call),
     refusedHttpStatuses,
+    refusedBy,
   };
 }
 

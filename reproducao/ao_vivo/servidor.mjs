@@ -125,12 +125,18 @@ export function startLiveServer({ pageHtml, daysJson, verifierPageBytes = null, 
     // The body is ignored on purpose: the page cannot choose what runs.
     req.resume();
     const outcome = onRunTests();
-    return res.writeHead(outcome.started ? 202 : 409, { 'Content-Type': 'application/json; charset=utf-8' }).end(JSON.stringify(outcome));
+    return res.writeHead(outcome.started ? 202 : 409, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }).end(JSON.stringify(outcome));
   };
 
   const server = http.createServer((req, res) => {
     if (!isAllowedHost(req.headers.host)) return plain(res, 403, 'Endereço não permitido.\n');
-    const pathname = new URL(req.url ?? '/', `http://${LOOPBACK_HOST}`).pathname;
+    let pathname;
+    try {
+      pathname = new URL(req.url ?? '/', `http://${LOOPBACK_HOST}`).pathname;
+    } catch {
+      // A malformed request target must not end the whole command.
+      return plain(res, 400, 'Pedido inválido.\n');
+    }
     if (pathname === '/api/testes') {
       return req.method === 'POST' ? handleRunTests(req, res) : plain(res, 405, 'Só POST.\n', { Allow: 'POST' });
     }

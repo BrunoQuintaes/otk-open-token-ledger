@@ -18,7 +18,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { StringDecoder } from 'node:string_decoder';
 import { pathToFileURL } from 'node:url';
 
@@ -72,6 +72,21 @@ export function forwardLines(source, target, onLine) {
   });
 }
 
+/** Child processes still running, so the command can stop them when it is interrupted or exits first. */
+const activeChildren = new Set();
+
+/**
+ * Stops every child still running: on Windows with its own children (`taskkill /T /F`), elsewhere with SIGTERM.
+ * Synchronous, so it can run in a `process.on('exit')` handler.
+ */
+export function stopActiveChildren() {
+  for (const child of activeChildren) {
+    if (process.platform === 'win32') spawnSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
+    else child.kill('SIGTERM');
+  }
+  activeChildren.clear();
+}
+
 /**
  * Runs a Node.js script as a child with the network lock and waits for it.
  *
@@ -84,6 +99,8 @@ export function forwardLines(source, target, onLine) {
 export function runLockedNode(repoRoot, args, { stdoutTarget = null, stderrTarget = null, onLine = () => {} } = {}) {
   const lock = pathToFileURL(path.join(repoRoot, 'reproducao', 'ferramentas', 'sem_rede.mjs')).href;
   const child = spawn(process.execPath, ['--import', lock, ...args], { cwd: repoRoot, stdio: ['ignore', 'pipe', 'pipe'] });
+  activeChildren.add(child);
+  child.once('close', () => activeChildren.delete(child));
   const outDone = forwardLines(child.stdout, stdoutTarget, (line) => onLine('stdout', line));
   const errDone = forwardLines(child.stderr, stderrTarget, (line) => onLine('stderr', line));
   return new Promise((resolve) => {
@@ -164,26 +181,34 @@ export function parseTestResultLine(line) {
 /**
  * Runs the automated test suite (or a stand-in script given by the tests) and reports every line.
  *
- * The verdict needs both the `Resultado:` line (nothing failed or cancelled) and exit code 0; a missing line or a
- * non-zero exit code counts as a failure, whichever version of `testes_banca.mjs` is in the repository.
+ * The verdict comes from the last verdict line of `testes_banca.mjs` (`TESTES OK`, `TESTES OK, com aviso: ...` when
+ * only a speed test went over its time limit, or `HOUVE FALHA`) together with exit code 0. A script that prints no
+ * verdict line is judged by the `Resultado:` line (nothing failed or cancelled). A non-zero exit code always fails.
  *
  * @param repoRoot - Absolute repository root.
  * @param script - Absolute path of the suite script.
  * @param onLine - Called with each output line (both streams), in order.
  * @param stderrTarget - Where the raw output is copied (the terminal), or `null`.
- * @returns A promise of `{ exitCode, result, ok, resultLine }`.
+ * @returns A promise of `{ exitCode, result, ok, resultLine, verdictLine, warning }`; `warning` is the speed-test
+ *   notice (text after `TESTES OK, com aviso: `), or `null`.
  */
 export async function runTestSuite(repoRoot, script, onLine, stderrTarget = null) {
   let result = null;
   let resultLine = null;
+  let verdictLine = null;
+  const warnings = [];
   const { exitCode } = await runLockedNode(repoRoot, [script], {
     stdoutTarget: stderrTarget,
     stderrTarget,
     onLine: (stream, line) => {
       const parsed = parseTestResultLine(line);
       if (parsed) { result = parsed; resultLine = line; }
+      if (/^(TESTES OK|HOUVE FALHA)/.test(line)) verdictLine = line;
+      const warning = /^TESTES OK, com aviso: (.*)$/.exec(line);
+      if (warning) warnings.push(warning[1]);
       onLine(stream, line);
     },
   });
-  return { exitCode, result, resultLine, ok: exitCode === 0 && result?.ok === true };
+  const verdictOk = verdictLine ? verdictLine.startsWith('TESTES OK') : result?.ok === true;
+  return { exitCode, result, resultLine, verdictLine, warning: warnings.length ? warnings.join(' ') : null, ok: exitCode === 0 && verdictOk };
 }

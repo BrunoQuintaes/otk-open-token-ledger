@@ -100,15 +100,15 @@ ol.passos { margin: 4px 0; padding-left: 22px; }
 /* Step states, shared by the items, the part badges and the index pills: pending, running, checked, failed. */
 .cabeca { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: space-between; }
 .cabeca h2 { margin: 0 0 6px; font-size: 21px; }
-[data-estado] { --estado-fundo: #f6e9e9; --estado-texto: #7a2e2e; --estado-borda: #d9a9a9; }
+[data-estado] { --estado-fundo: #eef0f2; --estado-texto: #444b55; --estado-borda: #c4c9d0; }
 [data-estado="rodando"] { --estado-fundo: var(--amarelo-fundo); --estado-texto: var(--amarelo-texto); --estado-borda: var(--amarelo-borda); }
 [data-estado="ok"] { --estado-fundo: var(--verde-fundo); --estado-texto: var(--verde-texto); --estado-borda: var(--verde-borda); }
-[data-estado="falhou"], [data-estado="nao-rodou"] { --estado-fundo: var(--vermelho-fundo); --estado-texto: var(--vermelho-texto); --estado-borda: var(--vermelho-borda); }
+[data-estado="falhou"], [data-estado="nao-rodou"], [data-estado="interrompido"] { --estado-fundo: var(--vermelho-fundo); --estado-texto: var(--vermelho-texto); --estado-borda: var(--vermelho-borda); }
 .estado-parte, .selo-estado { display: inline-flex; align-items: center; gap: 5px; font-weight: 700; border-radius: 4px; padding: 1px 8px; border: 1px solid var(--estado-borda); background: var(--estado-fundo); color: var(--estado-texto); font-size: 13px; white-space: nowrap; }
 .estado-parte { font-size: 14px; padding: 3px 10px; border-radius: 999px; }
 .selo-estado { min-width: 74px; justify-content: center; }
 nav.indice a[data-estado] { background: var(--estado-fundo); border-color: var(--estado-borda); color: var(--estado-texto); }
-[data-estado="rodando"] > .gira, .gira.ativo { display: inline-block; width: 10px; height: 10px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: girar .8s linear infinite; }
+[data-estado="rodando"] > .gira, li[data-estado="rodando"] .selo-estado > .gira, .gira.ativo { display: inline-block; width: 10px; height: 10px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: girar .8s linear infinite; }
 .gira { display: none; }
 @keyframes girar { to { transform: rotate(360deg); } }
 ol.itens li[data-estado="pendente"] .rotulo, ol.itens li[data-estado="rodando"] .rotulo { color: var(--suave); }
@@ -138,7 +138,8 @@ button.ao-vivo[hidden] { display: none; }
   <!-- Part 1 -->
   <section class="parte" id="refazendo" aria-labelledby="t-refazendo">
     <div class="cabeca"><h2 id="t-refazendo">1. Refazendo agora</h2><span class="estado-parte" id="estado-1" data-estado="pendente" data-testid="estado-1"><span class="gira"></span><span class="txt">para rodar</span></span></div>
-    <p class="suave">O mesmo comando de <span class="mono">npm run reproduzir-tudo</span>, rodando agora no seu computador, sem internet. Os 13 itens começam como "para rodar"; cada um fica "rodando" e depois "conferido" ou "falhou" na hora em que o passo termina.</p>
+    <p class="suave">O mesmo comando de <span class="mono">npm run reproduzir-tudo</span>, rodando agora no seu computador, sem internet. Os 13 itens começam como "para rodar" (cinza); o próximo da lista fica "rodando" (amarelo), e cada um passa a "conferido" (verde) ou "falhou" (vermelho) na hora em que o passo termina (itens do mesmo programa terminam juntos).</p>
+    <details><summary>Palavras desta página</summary><p><b>Replay</b>: mostrar de novo, em ordem, o que foi gravado. <b>Token</b>: o pedaço de texto pelo qual o provedor cobra. <b>sha256</b>: um resumo de 64 caracteres que muda se qualquer letra do arquivo mudar. <b>H1</b>: a hipótese principal, testada em 7 de outubro. <b>CAL-ANTH</b>: o recálculo do primeiro experimento de correção da Anthropic. <b>Régua</b>: a regra que o provedor usa para contar tokens; só a OpenAI publica a dela. <b>Chaveiro</b> e <b>impressão digital</b>: a lista pública das chaves que assinam os recibos e o sha256 dessa lista. <b>Diário encadeado</b>: o registro em que cada linha leva o hash (sha256) da anterior, de modo que mudar uma linha antiga quebra a corrente.</p></details>
     <div class="estado">
       <span class="veredito" id="rep-veredito" data-testid="rep-veredito" data-estado="pendente" role="status" aria-live="polite">PARA RODAR</span>
       <span class="suave">Tempo decorrido: <b id="rep-tempo">–</b></span>
@@ -156,7 +157,7 @@ button.ao-vivo[hidden] { display: none; }
   <!-- Part 2 -->
   <section class="parte" id="dia07" aria-labelledby="t-dia07">
     <div class="cabeca"><h2 id="t-dia07">2. O caminho do OTK em 7 de outubro de 2026</h2><span class="estado-parte" id="estado-2" data-estado="pendente" data-testid="estado-2"><span class="gira"></span><span class="txt">para rodar</span></span></div>
-    <p class="suave">Cada chamada real da coleta, refeita a partir do registro gravado. O replay começa sozinho quando a parte 1 termina, e os contadores sobem a partir de 0. Sem texto de conversa e sem identificador do provedor.</p>
+    <p class="suave">Cada chamada real da coleta, mostrada de novo a partir do registro gravado. O replay começa sozinho quando a parte 1 termina, e os contadores sobem a partir de 0. Sem texto de conversa e sem identificador do provedor.</p>
     <div class="diagrama" id="d07-diagrama" aria-label="Caminho de uma chamada">
       <div class="etapa" data-etapa="texto"><b>Texto</b>o pedido do cliente</div><span class="seta">→</span>
       <div class="etapa" data-etapa="conta"><b>OTK conta os tokens</b>antes do envio</div><span class="seta">→</span>
@@ -172,24 +173,25 @@ button.ao-vivo[hidden] { display: none; }
       <label>Velocidade <select data-acao="velocidade" data-testid="d07-velocidade"><option value="5">1×</option><option value="20" selected>4×</option><option value="80">16×</option></select></label>
       <button type="button" data-acao="fim" data-testid="d07-fim">Pular para o fim</button>
             <div class="progresso" aria-hidden="true"><div id="d07-barra"></div></div>
-      <span id="d07-posicao" class="suave" data-testid="d07-posicao">0 chamadas refeitas</span>
-    </div>
-    <div class="dupla">
-      <div class="cartao-chamada"><h3>Chamada atual</h3><dl id="d07-atual"></dl></div>
-      <div><h3>Últimas chamadas</h3>
-        <table><thead><tr><th>Provedor · modelo</th><th class="num">OTK</th><th class="num">Declarado</th><th class="num">Dif.</th><th>Veredito</th><th>Assinatura</th></tr></thead><tbody id="d07-ultimas"></tbody></table>
-      </div>
+      <span id="d07-posicao" class="suave" data-testid="d07-posicao">0 chamadas mostradas</span>
     </div>
     <h3>Contadores (até a chamada atual)</h3>
     <table data-testid="d07-contadores"><thead><tr><th>Provedor · modelo</th><th class="num">Chamadas</th><th class="num">Assinatura conferida: sim</th><th class="num">não</th><th class="num">Sem a checagem</th></tr></thead><tbody id="d07-contadores"></tbody></table>
+    <div class="dupla">
+      <div class="cartao-chamada"><h3>Chamada atual</h3><dl id="d07-atual"></dl></div>
+      <div><h3>Últimas chamadas</h3>
+        <table><thead><tr><th>Provedor · modelo</th><th class="num" data-testid="d07-col-otk">Contagem do OTK, sem a correção por modelo</th><th class="num">Declarado</th><th class="num" title="declarado menos OTK">Dif. (declarado − OTK)</th><th>Veredito</th><th>Assinatura</th></tr></thead><tbody id="d07-ultimas"></tbody></table>
+      </div>
+    </div>
+    <p class="suave nota-otk">Contagem do OTK, sem a correção por modelo: na OpenAI ela segue a régua pública e o veredito compara com o limite fixado antes; na Anthropic e no Google é só uma estimativa, e por isso aparece "sem veredito".</p>
     <p class="suave" id="d07-nota"></p>
   </section>
 
   <!-- Part 3 -->
   <section class="parte" id="dia23" aria-labelledby="t-dia23">
-    <div class="cabeca"><h2 id="t-dia23">3. O caminho do OTK em 23 de novembro de 2026</h2><span class="estado-parte" id="estado-3" data-estado="pendente" data-testid="estado-3"><span class="gira"></span><span class="txt">para rodar</span></span></div>
+    <div class="cabeca"><h2 id="t-dia23">3. O caminho de cada envio em 23 de novembro de 2026 (programa de coleta, sem o proxy)</h2><span class="estado-parte" id="estado-3" data-estado="pendente" data-testid="estado-3"><span class="gira"></span><span class="txt">para rodar</span></span></div>
     <p class="fatos forte" data-testid="d23-aviso">Nesta coleta, o programa de coleta não passou pelo proxy e não gerou recibo.</p>
-    <p class="suave">Cada envio refeito a partir do diário encadeado (cada registro leva o hash do anterior) do programa de coleta à parte (<span class="mono">scripts/h2eval/</span>). O replay começa sozinho quando a parte 1 termina, e os contadores sobem a partir de 0. Sem texto de conversa e sem identificador do provedor.</p>
+    <p class="suave">Cada envio, mostrado de novo a partir do diário encadeado (cada registro leva o hash do anterior) do programa de coleta à parte (<span class="mono">scripts/h2eval/</span>). O replay começa sozinho quando a parte 1 termina, e os contadores sobem a partir de 0. Sem texto de conversa e sem identificador do provedor.</p>
     <div class="diagrama" id="d23-diagrama" aria-label="Etapas do registro de um envio">
       <div class="etapa" data-etapa="planejado"><b>Planejado</b>&nbsp;</div><span class="seta">→</span>
       <div class="etapa" data-etapa="registro"><b>Registro gravado antes do envio</b><span id="d23-registro-sub">com ou sem contagem</span></div><span class="seta">→</span>
@@ -204,16 +206,17 @@ button.ao-vivo[hidden] { display: none; }
       <label>Velocidade <select data-acao="velocidade" data-testid="d23-velocidade"><option value="10">1×</option><option value="40" selected>4×</option><option value="160">16×</option></select></label>
       <button type="button" data-acao="fim" data-testid="d23-fim">Pular para o fim</button>
             <div class="progresso" aria-hidden="true"><div id="d23-barra"></div></div>
-      <span id="d23-posicao" class="suave" data-testid="d23-posicao">0 envios refeitos</span>
-    </div>
-    <div class="dupla">
-      <div class="cartao-chamada"><h3>Envio atual</h3><dl id="d23-atual"></dl></div>
-      <div><h3>Últimos envios</h3>
-        <table><thead><tr><th>Modelo</th><th>Registro antes</th><th class="num">OTK</th><th class="num">Declarado</th><th class="num">Dif.</th><th>Fechamento</th></tr></thead><tbody id="d23-ultimas"></tbody></table>
-      </div>
+      <span id="d23-posicao" class="suave" data-testid="d23-posicao">0 envios mostrados</span>
     </div>
     <h3>Contadores por modelo (até o envio atual)</h3>
     <table data-testid="d23-contadores"><thead><tr><th>Modelo</th><th class="num">Envios</th><th class="num">Registro gravado antes</th><th class="num">Com a contagem do OTK</th><th class="num">Sem contagem</th><th class="num">Com uso declarado</th></tr></thead><tbody id="d23-contadores"></tbody></table>
+    <div class="dupla">
+      <div class="cartao-chamada"><h3>Envio atual</h3><dl id="d23-atual"></dl></div>
+      <div><h3>Últimos envios</h3>
+        <table><thead><tr><th>Modelo</th><th>Registro antes</th><th class="num" data-testid="d23-col-otk">Contagem do OTK, sem a correção por modelo</th><th class="num">Declarado</th><th class="num" title="declarado menos OTK">Dif. (declarado − OTK)</th><th>Fechamento</th></tr></thead><tbody id="d23-ultimas"></tbody></table>
+      </div>
+    </div>
+    <p class="suave nota-otk">Contagem do OTK, sem a correção por modelo: é o número gravado antes do envio; na OpenAI ele segue a régua pública e difere do declarado por um valor fixo, e na Anthropic e no Google é só uma estimativa. A comparação com a correção aplicada é a do item C da parte 1 (Capítulo 4).</p>
     <p class="suave" id="d23-nota"></p>
     <p class="suave" data-testid="d23-fonte-declarado">De onde vem o declarado: do uso bruto que o provedor devolveu, gravado em <span class="mono">TENTATIVAS_CMP8.jsonl</span>, pela mesma regra da parte C (OpenAI <span class="mono">prompt_tokens</span>; Anthropic <span class="mono">input_tokens</span> mais o cache; Google <span class="mono">promptTokenCount</span>). No diário do Google, o uso lido ficou como desconhecido (UNKNOWN); por isso o declarado do Google vem só desse uso bruto.</p>
   </section>
@@ -221,7 +224,7 @@ button.ao-vivo[hidden] { display: none; }
   <!-- Part 4 -->
   <section class="parte" id="recibos" aria-labelledby="t-recibos">
     <div class="cabeca"><h2 id="t-recibos">4. Conferindo os recibos</h2><span class="estado-parte" id="estado-4" data-estado="pendente" data-testid="estado-4"><span class="gira"></span><span class="txt">para rodar</span></span></div>
-    <p class="suave">Depois da reprodução, o comando roda o verificador pelo terminal, sem internet, sobre os recibos de exemplo, com o chaveiro de teste e a impressão digital dele:</p>
+    <p class="suave">Logo depois da parte 1, enquanto os replays das partes 2 e 3 começam, o comando roda o verificador pelo terminal, sem internet, sobre os recibos de exemplo, com o chaveiro de teste e a impressão digital dele (por isso esta parte pode ficar verde antes delas):</p>
     <p class="mono" id="rec-comando">npm run otk -- verify test/verifier/vetores/recibos --keyring test/verifier/vetores/chaveiro.json --fingerprint (a impressão digital de test/verifier/vetores/esperado.json) --json</p>
     <div class="estado"><span class="veredito" id="rec-estado" data-testid="rec-estado" data-estado="pendente" role="status" aria-live="polite">PARA RODAR</span></div>
     <div class="cartoes" data-testid="rec-cartoes">
@@ -237,7 +240,7 @@ button.ao-vivo[hidden] { display: none; }
     <h3>Conferir você mesmo, na página original do verificador</h3>
     <p>A página abaixo é o arquivo <span class="mono" id="rec-pagina-caminho">web/verificador/verificador-otk.html</span>, servido sem mudar nenhum byte (sha256 <span class="mono" id="rec-pagina-sha" data-testid="rec-pagina-sha">–</span>; o item D da parte 1 confere esse valor com o registrado). Nela:</p>
     <ol class="passos">
-      <li>em <b>Recibos</b>, clique em <b>Escolher pasta</b> e escolha a pasta <span class="mono">test\verifier\vetores\recibos</span>, dentro da pasta do repositório (se o navegador perguntar se quer carregar os arquivos, pode aceitar: a página roda só no seu computador);</li>
+      <li>em <b>Recibos</b>, clique em <b>Escolher pasta</b> e escolha a pasta <span class="mono">test\verifier\vetores\recibos</span>, dentro da pasta do repositório (se o navegador perguntar se quer carregar os arquivos, pode aceitar: a página roda só no seu computador). Os nomes "recibos_novembro" e "recibos_2026-11-…" que a página do verificador mostra são só exemplos de nome; aqui, use a pasta acima;</li>
       <li>em <b>Chaveiro</b>, clique em <b>Escolher chaveiro</b> e escolha o arquivo <span class="mono">test\verifier\vetores\chaveiro.json</span>;</li>
       <li>no campo <b>Impressão digital do chaveiro</b>, cole <span class="mono" id="rec-impressao">–</span>;</li>
       <li>clique em <b>Conferir recibos</b>: os cartões devem dar os mesmos números de cima.</li>
@@ -248,13 +251,14 @@ button.ao-vivo[hidden] { display: none; }
 
   <!-- Part 5 -->
   <section class="parte" id="testes" aria-labelledby="t-testes">
-    <div class="cabeca"><h2 id="t-testes">5. Testes automáticos (opcional)</h2><span class="estado-parte" id="estado-5" data-estado="pendente" data-testid="estado-5"><span class="gira"></span><span class="txt">para rodar</span></span></div>
-    <p>Os testes conferem o programa, peça por peça. São opcionais para quem só quer os números: a parte 1 já refaz os números da dissertação.</p>
+    <div class="cabeca"><h2 id="t-testes">5. Testes automáticos (opcional)</h2><span class="estado-parte" id="estado-5" data-estado="pendente" data-testid="estado-5"><span class="gira"></span><span class="txt">para rodar (opcional)</span></span></div>
+    <p>Os testes conferem o programa, peça por peça. São opcionais para quem só quer os números: o comando já refaz os números listados na parte 1. Enquanto ninguém clicar, esta parte fica em "para rodar" (cinza), e isso não é falha.</p>
     <div class="controles">
-      <button type="button" class="principal" id="tes-botao" data-testid="tes-botao">Rodar os testes (2 a 5 minutos)</button>
+      <button type="button" class="principal" id="tes-botao" data-testid="tes-botao" disabled title="Fica disponível quando a reprodução e os recibos terminarem">Rodar os testes (2 a 6 minutos)</button>
       <span class="veredito" id="tes-estado" data-testid="tes-estado" data-estado="pendente" role="status" aria-live="polite">PARA RODAR</span>
       <span class="suave" id="tes-tempo"></span>
     </div>
+    <p class="suave" id="tes-motivo" data-testid="tes-motivo">O botão fica disponível quando a reprodução e os recibos terminarem.</p>
     <p class="mono" id="tes-resultado" data-testid="tes-resultado"></p>
     <pre class="registro" id="tes-log" data-testid="tes-log" hidden></pre>
   </section>
@@ -312,7 +316,12 @@ function followTo(node, part) {
   if (follow.target && follow.target !== node) follow.target.classList.remove('foco-ao-vivo');
   follow.target = node;
   node.classList.add('foco-ao-vivo');
-  if (follow.active && !isInView(node)) scrollToNode(node);
+  if (follow.active && !isInView(node)) {
+    // In part 1, show the block title too (A to D) when the whole block fits under the index bar.
+    const block = part === 1 ? node.closest('.bloco') : null;
+    const fits = block && block.getBoundingClientRect().height <= window.innerHeight - navHeight() - 24;
+    scrollToNode(fits ? block : node);
+  }
 }
 function pauseFollow() {
   if (!follow.active) return;
@@ -347,7 +356,7 @@ function followAfterDays() {
 }
 
 /* ---------- States: pendente ("para rodar"), rodando, ok ("conferido"), falhou, nao-rodou ---------- */
-const STATE_TEXT = { pendente: 'para rodar', rodando: 'rodando', ok: 'conferido', falhou: 'falhou', 'nao-rodou': 'não rodou' };
+const STATE_TEXT = { pendente: 'para rodar', rodando: 'rodando', ok: 'conferido', falhou: 'falhou', 'nao-rodou': 'não rodou', interrompido: 'interrompido' };
 /** Sets the state of a part: its badge and its pill in the index use the same colors. */
 function setPartState(part, state, text) {
   const badge = $('estado-' + part);
@@ -395,7 +404,7 @@ function makeItemNode(part, label, extra) {
   return { part, node, badge, text, time, state: 'pendente' };
 }
 function buildItems() { reproduction.slots = ITEMS.map(([part, label]) => makeItemNode(part, label, false)); }
-const isDone = (slot) => slot.state === 'ok' || slot.state === 'falhou' || slot.state === 'nao-rodou';
+const isDone = (slot) => slot.state === 'ok' || slot.state === 'falhou' || slot.state === 'nao-rodou' || slot.state === 'interrompido';
 /** Exactly one unfinished item is "rodando": the first one in the fixed order. */
 function moveRunningMarker() {
   if (reproduction.finished) return;
@@ -425,11 +434,17 @@ function showFinal({ ok, passed, total }) {
   box.textContent = (ok ? 'TUDO OK' : 'FALHOU') + ': ' + passed + ' de ' + total;
 }
 function reproductionFinished(d) {
+  if (reproduction.finished) return;
   reproduction.finished = true;
-  for (const s of reproduction.slots) if (!isDone(s)) setSlotState(s, 'nao-rodou', s.text.textContent + ' (sem resultado: a reprodução terminou antes)');
-  $('rep-tempo').textContent = fmtSeconds(d.elapsedMs);
+  for (const s of reproduction.slots) {
+    if (isDone(s)) continue;
+    if (d.interrupted && s.state === 'rodando') setSlotState(s, 'interrompido', s.text.textContent + ' (interrompido: o comando parou)');
+    else setSlotState(s, 'nao-rodou', s.text.textContent + (d.interrupted ? ' (não rodou: o comando parou)' : ' (sem resultado: a reprodução terminou antes)'));
+  }
+  if (reproduction.startedAt) $('rep-tempo').textContent = fmtSeconds(d.elapsedMs ?? Date.now() - reproduction.startedAt);
   $('rep-codigo').textContent = 'Código de saída: ' + d.exitCode;
   const box = $('rep-veredito');
+  if (d.interrupted) { box.setAttribute('data-estado', 'interrompido'); box.textContent = 'INTERROMPIDO'; setPartState(1, 'interrompido'); return; }
   if (box.getAttribute('data-estado') === 'rodando') { box.setAttribute('data-estado', 'falhou'); box.textContent = 'FALHOU (código de saída ' + d.exitCode + ')'; }
   else if (d.exitCode !== 0 && box.getAttribute('data-estado') === 'ok') { box.setAttribute('data-estado', 'falhou'); box.textContent += ' — mas o código de saída foi ' + d.exitCode; }
   const allOk = d.exitCode === 0 && reproduction.slots.every((s) => s.state === 'ok');
@@ -437,15 +452,49 @@ function reproductionFinished(d) {
   days.then((loaded) => { replays.d07.start(); followTo($('dia07'), 2); return loaded; });
 }
 
+/* ---------- When the command stops: Ctrl+C, an error, or the normal end after the waiting time ---------- */
+const command = { ended: false };
+/** Nothing may stay "rodando" once the command stopped: running steps become "interrompido", the rest "não rodou". */
+function markInterrupted(reason) {
+  if (!reproduction.finished) {
+    reproductionFinished({ exitCode: reason, interrupted: true });
+    for (const part of [2, 3]) setPartState(part, 'nao-rodou', 'não rodou (o comando parou)');
+  }
+  const rec = $('rec-estado');
+  const recState = rec.getAttribute('data-estado');
+  if (recState === 'rodando') { rec.setAttribute('data-estado', 'interrompido'); rec.textContent = 'INTERROMPIDO: o comando parou antes'; setPartState(4, 'interrompido'); }
+  else if (recState === 'pendente') { rec.setAttribute('data-estado', 'nao-rodou'); rec.textContent = 'NÃO RODOU: o comando parou antes'; setPartState(4, 'nao-rodou'); }
+  if ($('tes-estado').getAttribute('data-estado') === 'rodando') {
+    clearInterval(tests.timer);
+    testsStatus('INTERROMPIDO: o comando parou antes do fim dos testes', 'interrompido');
+    setPartState(5, 'interrompido');
+  }
+  commandEnded();
+}
+/** After the command exits, the tests button cannot work any more: say so instead of failing on click. */
+function commandEnded() {
+  command.ended = true;
+  $('tes-botao').disabled = true;
+  if (!tests.startedAt) {
+    $('tes-botao').title = 'O comando terminou';
+    $('tes-motivo').textContent = 'O comando terminou; rode de novo para usar os testes.';
+  }
+}
+
 /* ---------- Parts 2 and 3: replays, started only after the reproduction ends ---------- */
 const VERDICTS_07 = {
   within_threshold: ['dentro do limite', 'ok'],
   over_threshold: ['acima do limite', 'falhou'],
-  not_applicable: ['sem veredito (régua aproximada)', 'cinza'],
+  not_applicable: ['sem veredito (contagem aproximada)', 'cinza'],
   not_produced: ['comparação não produzida', 'cinza'],
-  refused: ['recusada pelo provedor', 'amarelo'],
+  refused: ['recusada antes de concluir', 'amarelo'],
 };
-const verdict07 = (v) => VERDICTS_07[v] || [String(v), 'cinza'];
+/** Verdict of a 7 Oct call; a refused call says who refused it (the OTK's own quota or the provider). */
+const verdict07 = (c) => {
+  if (c.verdict === 'refused' && c.refusedBy === 'otk') return ['barrada pela cota do próprio OTK (não chegou ao provedor)', 'amarelo'];
+  if (c.verdict === 'refused' && c.refusedBy === 'provedor') return ['recusada pelo provedor', 'amarelo'];
+  return VERDICTS_07[c.verdict] || [String(c.verdict), 'cinza'];
+};
 const signatureText = (s) => (s === true ? 'conferida: sim' : s === false ? 'conferida: não' : 'sem checagem');
 const replays = {};
 
@@ -533,32 +582,36 @@ function lightStages(diagramId, lit) {
 }
 
 function setupDay07(day) {
-  const statuses = Object.entries(day.refusedHttpStatuses).map(([s, n]) => n + ' com HTTP ' + s).join(', ');
+  const http = (statuses) => Object.keys(statuses).map((s) => 'HTTP ' + s).join(', ');
+  const refusals = [];
+  if (day.refusedBy.otk.total) refusals.push(day.refusedBy.otk.total + (day.refusedBy.otk.total === 1 ? ' barrada' : ' barradas') + ' pela cota do próprio OTK (' + http(day.refusedBy.otk.http) + ')');
+  if (day.refusedBy.provedor.total) refusals.push(day.refusedBy.provedor.total + (day.refusedBy.provedor.total === 1 ? ' recusada' : ' recusadas') + ' pela ' + day.refusedBy.provedor.providers.join(' e pela ') + ' (' + http(day.refusedBy.provedor.http) + ')');
   replays.d07 = makeReplay('d07', 2, day.calls, {
-    unit: 'chamadas refeitas',
+    unit: 'chamadas mostradas',
     expectedTotal: day.counters.total,
     counterNames: ['calls', 'signatureYes', 'signatureNo', 'withoutCheck'],
-    onFinish: () => { replays.d23.start(); followTo($('dia23'), 3); $('d07-nota').textContent = 'Total nos registros: ' + fmtInt(day.counters.total.calls) + ' chamadas reais (' + day.sources.length + ' arquivos; as pastas de ensaio sintético ficam de fora). As chamadas sem a checagem foram recusadas pelo provedor (' + statuses + '), e por isso não têm recibo.'; },
+    onFinish: () => { replays.d23.start(); followTo($('dia23'), 3); $('d07-nota').textContent = 'Total nos registros: ' + fmtInt(day.counters.total.calls) + ' chamadas reais (' + day.sources.length + ' arquivos; as pastas de ensaio sintético ficam de fora). ' + fmtInt(day.counters.total.withoutCheck) + ' sem a checagem: ' + refusals.join(' e ') + '; por isso não têm recibo.'; },
     groupOf: (c) => c.provider + ' · ' + (c.model || 'sem modelo devolvido'),
     countersOf: (c) => ({ calls: 1, signatureYes: c.signatureVerified === true ? 1 : 0, signatureNo: c.signatureVerified === false ? 1 : 0, withoutCheck: c.signatureVerified === null ? 1 : 0 }),
     cardOf: (c, n) => [
       ['Chamada', fmtInt(n)],
       ['Provedor e modelo', c.provider + ' · ' + (c.model || 'sem modelo devolvido')],
       ['Resposta HTTP', String(c.httpStatus ?? 'não informado')],
-      ['Contagem do OTK', c.otkInput === null ? 'não informado' : fmtInt(c.otkInput) + ' de entrada, ' + fmtInt(c.otkOutput) + ' de saída'],
+      ['Contagem do OTK (sem a correção por modelo)', c.otkInput === null ? 'não informado' : fmtInt(c.otkInput) + ' de entrada, ' + fmtInt(c.otkOutput) + ' de saída'],
       ['Declarado', c.declaredInput === null ? 'não informado' : fmtInt(c.declaredInput) + ' de entrada, ' + fmtInt(c.declaredOutput) + ' de saída'],
       ['Diferença (entrada)', fmtDiff(c.inputDifference)],
-      ['Veredito', verdict07(c.verdict)[0]],
+      ['Veredito', verdict07(c)[0]],
       ['Custo', fmtUsd(c.costUsd)],
       ['Assinatura', signatureText(c.signatureVerified)],
     ],
     rowOf: (c) => el('tr', {}, el('td', {}, c.provider + ' · ' + (c.model || 'sem modelo')), el('td', { class: 'num' }, fmtInt(c.otkInput)), el('td', { class: 'num' }, fmtInt(c.declaredInput)), el('td', { class: 'num' }, fmtDiff(c.inputDifference)),
-      el('td', {}, el('span', { class: 'selo ' + verdict07(c.verdict)[1] }, verdict07(c.verdict)[0])), el('td', {}, el('span', { class: 'selo ' + (c.signatureVerified === true ? 'ok' : c.signatureVerified === false ? 'falhou' : 'amarelo') }, signatureText(c.signatureVerified)))),
+      el('td', {}, el('span', { class: 'selo ' + verdict07(c)[1] }, verdict07(c)[0])), el('td', {}, el('span', { class: 'selo ' + (c.signatureVerified === true ? 'ok' : c.signatureVerified === false ? 'falhou' : 'amarelo') }, signatureText(c.signatureVerified)))),
     lightDiagram: (c) => {
       if (!c) return lightStages('d07-diagrama', {});
       const refused = c.signatureVerified === null;
+      const byOtk = c.refusedBy === 'otk';
       lightStages('d07-diagrama', {
-        texto: 'acesa', conta: 'acesa', provedor: refused ? 'alerta' : 'acesa', declarado: refused ? '' : 'acesa',
+        texto: 'acesa', conta: byOtk ? 'alerta' : 'acesa', provedor: byOtk ? '' : refused ? 'alerta' : 'acesa', declarado: refused ? '' : 'acesa',
         comparacao: refused ? '' : c.verdict === 'within_threshold' ? 'acesa' : 'alerta', custo: refused ? '' : 'acesa',
         recibo: c.signatureVerified === true ? 'acesa' : c.signatureVerified === false ? 'erro' : '',
       });
@@ -570,7 +623,7 @@ function setupDay23(day) {
   const linked = Object.values(day.chainLinked).every(Boolean);
   const closingClass = (op) => (op.closing === 'fechado' ? 'ok' : 'amarelo');
   replays.d23 = makeReplay('d23', 3, day.operations, {
-    unit: 'envios refeitos',
+    unit: 'envios mostrados',
     expectedTotal: day.counters.total,
     counterNames: ['sent', 'recordedBefore', 'withOtkCount', 'withoutOtkCount', 'withDeclared'],
     onFinish: () => { followAfterDays(); $('d23-nota').textContent = 'Total nos registros: ' + fmtInt(day.counters.total.sent) + ' envios de ' + day.counters.groups.length + ' modelos, em ' + Object.keys(day.chainLinked).length + ' diários (corrente prevHash → hash ' + (linked ? 'ligada do começo ao fim' : 'COM QUEBRA') + '; o hash de cada linha é recalculado no item C da parte 1). Sem contagem quer dizer que o contador da versão avaliada não sabe contar aquele modelo (UNSUPPORTED_FOR_ESTIMATION).'; },
@@ -580,7 +633,7 @@ function setupDay23(day) {
       ['Envio', fmtInt(n)],
       ['Provedor e modelo', (op.provider || '?') + ' · ' + (op.model || '?')],
       ['Registro antes do envio', op.recordedBeforeSend ? 'sim, ' + (op.estimateStatus === 'ESTIMATED' ? 'com a contagem do OTK' : 'sem contagem (' + op.estimateStatus + ')') : 'não'],
-      ['Contagem do OTK', fmtInt(op.otkCount)],
+      ['Contagem do OTK (sem a correção por modelo)', op.otkCount === null ? 'sem contagem' : fmtInt(op.otkCount)],
       ['Resposta', op.responseKind === 'RESPONSE_RECEIVED' ? 'HTTP ' + op.httpStatus : op.responseKind === 'ERROR_WITH_USAGE' ? 'recusa do modelo, com uso (HTTP ' + op.httpStatus + ')' : op.responseKind === 'ERROR_NO_USAGE' ? 'erro sem uso (HTTP ' + op.httpStatus + ')' : 'não registrada'],
       ['Uso declarado (entrada)', fmtInt(op.declaredInput)],
       ['Diferença (entrada)', fmtDiff(op.inputDifference)],
@@ -588,7 +641,7 @@ function setupDay23(day) {
       ['Fechamento', op.closing],
     ],
     rowOf: (op) => el('tr', {}, el('td', {}, op.model || '?'), el('td', {}, el('span', { class: 'selo ' + (op.recordedBeforeSend ? (op.estimateStatus === 'ESTIMATED' ? 'ok' : 'amarelo') : 'falhou') }, op.recordedBeforeSend ? (op.estimateStatus === 'ESTIMATED' ? 'com contagem' : 'sem contagem') : 'não')),
-      el('td', { class: 'num' }, fmtInt(op.otkCount)), el('td', { class: 'num' }, fmtInt(op.declaredInput)), el('td', { class: 'num' }, fmtDiff(op.inputDifference)), el('td', {}, el('span', { class: 'selo ' + closingClass(op) }, op.closing))),
+      el('td', { class: 'num' }, op.otkCount === null ? 'sem contagem' : fmtInt(op.otkCount)), el('td', { class: 'num' }, fmtInt(op.declaredInput)), el('td', { class: 'num' }, fmtDiff(op.inputDifference)), el('td', {}, el('span', { class: 'selo ' + closingClass(op) }, op.closing))),
     lightDiagram: (op) => {
       $('d23-registro-sub').textContent = op ? (op.estimateStatus === 'ESTIMATED' ? 'com contagem' : 'sem contagem') : 'com ou sem contagem';
       if (!op) return lightStages('d23-diagrama', {});
@@ -610,6 +663,12 @@ function receiptsStarted() {
   status.textContent = 'RODANDO O VERIFICADOR…';
 }
 function showReceipts(r) {
+  // The tests button becomes available only now; the server refuses it before (409).
+  if (!tests.startedAt && !command.ended) {
+    $('tes-botao').disabled = false;
+    $('tes-botao').removeAttribute('title');
+    $('tes-motivo').textContent = 'Pode clicar: a reprodução e os recibos terminaram.';
+  }
   $('rec-comando').textContent = r.command;
   $('rec-impressao').textContent = r.fingerprint;
   $('rec-pagina-sha').textContent = r.verifierPageSha256;
@@ -620,7 +679,7 @@ function showReceipts(r) {
   $('rec-vermelho').textContent = t.vermelho ?? '?';
   $('rec-sha').textContent = r.reportSha256;
   const same = r.reportSha256 === r.expectedReportSha256 && r.exitCode === r.expectedExitCode && !r.error;
-  $('rec-sha-igual').textContent = same ? '(igual ao esperado, código de saída ' + r.exitCode + ')' : '(DIFERENTE do esperado ' + r.expectedReportSha256 + ')';
+  $('rec-sha-igual').textContent = same ? '(igual ao esperado; o código de saída ' + r.exitCode + ' quer dizer que há vermelho, o certo nestes exemplos)' : '(DIFERENTE do esperado ' + r.expectedReportSha256 + ')';
   const status = $('rec-estado');
   status.setAttribute('data-estado', same ? 'ok' : 'falhou');
   status.textContent = r.error ? 'FALHOU: ' + r.error : same ? 'CONFERIDO: o relatório é o esperado' : 'FALHOU: o relatório não é o esperado';
@@ -655,9 +714,10 @@ function testsLine(text) {
 function testsFinished(r) {
   clearInterval(tests.timer);
   $('tes-tempo').textContent = fmtSeconds(r.elapsedMs);
-  $('tes-resultado').textContent = r.resultLine || 'A linha "Resultado:" não apareceu na saída.';
-  testsStatus(r.ok ? 'TESTES OK' : 'HOUVE FALHA', r.ok ? 'ok' : 'falhou');
-  setPartState(5, r.ok ? 'ok' : 'falhou');
+  $('tes-resultado').textContent = (r.resultLine || 'A linha "Resultado:" não apareceu na saída.') + (r.ok && r.warning ? '\nAviso: ' + r.warning : '');
+  testsStatus(r.ok ? (r.warning ? 'TESTES OK, com aviso' : 'TESTES OK') : 'HOUVE FALHA', r.ok ? 'ok' : 'falhou');
+  setPartState(5, r.ok ? 'ok' : 'falhou', r.ok && r.warning ? 'conferido, com aviso de tempo' : undefined);
+  $('tes-motivo').textContent = '';
 }
 $('tes-botao').addEventListener('click', async () => {
   $('tes-botao').disabled = true;
@@ -669,10 +729,9 @@ $('tes-botao').addEventListener('click', async () => {
       return;
     }
     const body = await res.json();
-    if (!body.started) testsStatus(body.message, 'pendente');
+    if (!body.started) $('tes-motivo').textContent = body.message;
   } catch (err) {
-    $('tes-botao').disabled = false;
-    testsStatus('O comando já terminou; rode de novo com --com-testes ou clique enquanto ele estiver no ar.', 'falhou');
+    commandEnded();
   }
 });
 
@@ -692,15 +751,24 @@ function connectEvents() {
   on('testes-inicio', testsStarted);
   on('testes-linha', (d) => testsLine(d.text));
   on('testes-fim', testsFinished);
+  on('interrompido', (d) => markInterrupted(d.error ? 'erro: ' + d.error : 'interrompido'));
+  on('encerrando', () => { command.closing = true; });
   source.addEventListener('error', () => {
-    // When the command ends, the server closes and the browser would retry forever; stop and keep the page as is.
-    if (reproduction.finished) source.close();
+    // The server closed: the command ended (normally, by Ctrl+C or by an error). Stop retrying; whatever was still
+    // running is marked, so nothing stays "rodando" forever.
+    source.close();
+    if (command.closing) commandEnded();
+    else markInterrupted('sem resposta (o comando parou)');
   });
 }
 
 buildItems();
 const days = fetch('/api/dias', { cache: 'no-store' }).then((r) => r.json()).then((loaded) => { setupDay07(loaded.oct07); setupDay23(loaded.nov23); return loaded; });
-days.then(connectEvents);
+days.then(connectEvents, () => {
+  const box = $('rep-veredito');
+  box.setAttribute('data-estado', 'falhou');
+  box.textContent = 'NÃO CONSEGUI LER OS DADOS: recarregue a página pelo endereço que o terminal mostrou';
+});
 </script>
 </body>
 </html>

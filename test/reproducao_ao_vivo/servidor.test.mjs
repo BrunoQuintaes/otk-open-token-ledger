@@ -4,7 +4,8 @@
  * Strategy: starts the server in-process with small fake content and checks its safety properties: bound to
  * 127.0.0.1 only (a connection to another interface of this machine is refused), `Host` header check, the
  * test-suite action accepted only from this machine with the right `Origin` and never with parameters, the CSP
- * header, the verifier page served byte for byte (sha256 2bef5dd8...), and SSE history replay in order.
+ * header, the verifier page served byte for byte (sha256 2bef5dd8...), SSE history replay in order, `no-store` on the
+ * answers of the tests action (202 and 409), and a malformed request target answered with 400 without stopping it.
  * Needs: no internet. The "other interface" check opens a TCP connection from a separate Node process to this
  * machine's own non-loopback address (it never leaves the machine); it is skipped when the machine has none.
  *
@@ -15,6 +16,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import http from 'node:http';
+import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -43,6 +45,13 @@ function request(port, { method = 'GET', path: urlPath = '/', headers = {} } = {
   });
 }
 
+/**
+ * Starts the server with small fake content, runs `fn` and always closes the server.
+ *
+ * @param fn - Receives the server and a function that returns how many times the tests action ran.
+ * @param extra - Options that replace the defaults of `startLiveServer`.
+ * @returns A promise resolved when `fn` ends.
+ */
 async function withServer(fn, extra = {}) {
   let runs = 0;
   const server = await startLiveServer({
@@ -111,12 +120,37 @@ test('the tests action needs POST, this machine and the page origin (127.0.0.1 o
     assert.equal(runs(), 0);
     const ok = await request(server.port, { method: 'POST', path: '/api/testes?comando=outro', headers: { Origin: `http://127.0.0.1:${server.port}` } });
     assert.equal(ok.status, 202);
+    assert.equal(ok.headers['cache-control'], 'no-store');
     assert.equal(runs(), 1);
     const viaLocalhost = await request(server.port, { method: 'POST', path: '/api/testes', headers: { Host: `localhost:${server.port}`, Origin: `http://localhost:${server.port}` } });
     assert.equal(viaLocalhost.status, 202);
     assert.equal(runs(), 2);
     assert.equal((await request(server.port, { method: 'POST', path: '/api/testes', headers: { Origin: `http://localhost:${server.port + 1}` } })).status, 403);
     assert.equal(runs(), 2);
+  });
+});
+
+test('the tests action answers 409 with the reason when the command refuses it (before the receipts end), also with no-store', async () => {
+  await withServer(async (server) => {
+    const refused = await request(server.port, { method: 'POST', path: '/api/testes', headers: { Origin: `http://127.0.0.1:${server.port}` } });
+    assert.equal(refused.status, 409);
+    assert.equal(refused.headers['cache-control'], 'no-store');
+    assert.equal(JSON.parse(refused.body.toString('utf8')).message, 'Espere a reprodução e os recibos terminarem.');
+  }, { onRunTests: () => ({ started: false, message: 'Espere a reprodução e os recibos terminarem.' }) });
+});
+
+test('a malformed request target gets 400 and the server keeps answering', async () => {
+  await withServer(async (server) => {
+    const answer = await new Promise((resolve, reject) => {
+      const socket = net.connect(server.port, '127.0.0.1', () => socket.write(`GET http://[ HTTP/1.1\r\nHost: 127.0.0.1:${server.port}\r\nConnection: close\r\n\r\n`));
+      let text = '';
+      socket.setEncoding('utf8');
+      socket.on('data', (d) => { text += d; });
+      socket.on('end', () => resolve(text));
+      socket.on('error', reject);
+    });
+    assert.match(answer, /^HTTP\/1\.1 400 /);
+    assert.equal((await request(server.port)).status, 200);
   });
 });
 

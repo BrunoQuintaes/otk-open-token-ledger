@@ -17,23 +17,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import { chromium } from 'playwright';
-import { FIXTURES, startLiveCommand } from './ajuda.mjs';
+import { FIXTURES, launchSystemBrowser, startLiveCommand } from './ajuda.mjs';
 
 /** Generous limit for the full reproduction on a slow machine, in milliseconds. */
 const FULL_RUN_TIMEOUT_MS = 8 * 60_000;
-
-/**
- * Starts a headless system browser, trying Edge first and then Chrome.
- *
- * @returns A promise of the browser, or `null` when none could be started.
- */
-async function launchSystemBrowser() {
-  for (const channel of ['msedge', 'chrome']) {
-    try { return await chromium.launch({ channel, headless: true }); } catch { /* try the next channel */ }
-  }
-  return null;
-}
 
 /**
  * Opens the page and records every request and console error.
@@ -84,6 +71,10 @@ test('page: 13 OK items, the right day counters, the receipt check and the tests
     assert.equal(await page.getByTestId('estado-3').getAttribute('data-estado'), 'ok');
     assert.equal(await page.locator('[data-testid="item"][data-estado="ok"]').count(), 13);
     assert.match(await page.getByTestId('d23-aviso').textContent(), /não passou pelo proxy e não gerou recibo/);
+    assert.equal(await page.locator('#t-dia23').textContent(), '3. O caminho de cada envio em 23 de novembro de 2026 (programa de coleta, sem o proxy)');
+    assert.match(await page.locator('#d07-nota').textContent(), /4 sem a checagem: 3 barradas pela cota do próprio OTK \(HTTP 429\) e 1 recusada pela OpenAI \(HTTP 400\)/);
+    for (const key of ['d07', 'd23']) assert.equal(await page.getByTestId(`${key}-col-otk`).textContent(), 'Contagem do OTK, sem a correção por modelo');
+    assert.match(await page.locator('#testes').textContent(), /refaz os números listados na parte 1/);
 
     await page.getByTestId('rec-estado').filter({ hasText: 'CONFERIDO' }).waitFor({ timeout: 120_000 });
     assert.equal(await page.getByTestId('rec-verde').textContent(), '9');
@@ -94,6 +85,7 @@ test('page: 13 OK items, the right day counters, the receipt check and the tests
     await page.locator('#rec-iframe').scrollIntoViewIfNeeded();
     await page.frameLocator('#rec-iframe').locator('body').waitFor();
 
+    assert.equal(await page.getByTestId('tes-botao').isDisabled(), false, 'the tests button stays off after the receipts');
     await page.getByTestId('tes-botao').click();
     await page.getByTestId('tes-estado').filter({ hasText: 'TESTES OK' }).waitFor({ timeout: 60_000 });
     assert.match(await page.getByTestId('tes-resultado').textContent(), /^Resultado: 3 testes — 3 passaram, 0 falharam/);

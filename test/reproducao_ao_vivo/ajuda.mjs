@@ -10,6 +10,7 @@ import http from 'node:http';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { chromium } from 'playwright';
 
 /** Absolute repository root. */
 export const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -99,4 +100,17 @@ export function stableLines(stdout) {
   return stdout.split(/\r?\n/)
     .filter((l) => /^(OK|FALHOU) /.test(l) || /^(TUDO OK|ALGO FALHOU):/.test(l))
     .map((l) => l.replace(/ Detalhes em .*$/, ''));
+}
+
+/**
+ * Starts a headless system browser (Playwright from node_modules, with the Edge or Chrome already installed; nothing
+ * is downloaded), trying Edge first and then Chrome.
+ *
+ * @returns A promise of the browser, or `null` when none could be started (the browser tests are then skipped).
+ */
+export async function launchSystemBrowser() {
+  for (const channel of ['msedge', 'chrome']) {
+    try { return await chromium.launch({ channel, headless: true }); } catch { /* try the next channel */ }
+  }
+  return null;
 }

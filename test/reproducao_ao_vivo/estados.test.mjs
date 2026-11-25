@@ -19,26 +19,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { chromium } from 'playwright';
 import { summarizeBothDays } from '../../reproducao/ao_vivo/dados_dias.mjs';
 import { startLiveServer } from '../../reproducao/ao_vivo/servidor.mjs';
-import { FIXTURES, REPO_ROOT, startLiveCommand } from './ajuda.mjs';
+import { FIXTURES, REPO_ROOT, launchSystemBrowser, startLiveCommand } from './ajuda.mjs';
 
 const PAGE_FILE = path.join(REPO_ROOT, 'reproducao', 'ao_vivo', 'pagina.html');
 /** Background of a failed item badge (--vermelho-fundo, #fde7e7). */
 const RED_BACKGROUND = 'rgb(253, 231, 231)';
-
-/**
- * Starts a headless system browser, trying Edge first and then Chrome.
- *
- * @returns A promise of the browser, or `null` when none could be started.
- */
-async function launchSystemBrowser() {
-  for (const channel of ['msedge', 'chrome']) {
-    try { return await chromium.launch({ channel, headless: true }); } catch { /* try the next channel */ }
-  }
-  return null;
-}
+/** Background of a pending ("para rodar") badge: a neutral grey (#eef0f2), far from the red of "falhou". */
+const GREY_BACKGROUND = 'rgb(238, 240, 242)';
 
 /**
  * Tells whether an element is inside the visible window (below the fixed index bar).
@@ -87,6 +76,13 @@ test('before the first event: 13 items "para rodar", 0 "conferido", parts pendin
     for (const total of ['662', '1.720', '1.505', '1.719']) assert.ok(!mainText.includes(total), `the total ${total} shows before the replay`);
     assert.equal(await page.getByTestId('rec-estado').textContent(), 'PARA RODAR');
     assert.equal(await page.getByTestId('tes-estado').textContent(), 'PARA RODAR');
+    // Pending is grey, not red: neither the items nor part 5 (still waiting) may look like an error.
+    assert.equal(await page.locator('[data-testid="item"] .selo-estado').first().evaluate((n) => getComputedStyle(n).backgroundColor), GREY_BACKGROUND);
+    assert.equal(await page.getByTestId('estado-5').evaluate((n) => getComputedStyle(n).backgroundColor), GREY_BACKGROUND);
+    assert.equal(await page.getByTestId('nav-5').evaluate((n) => getComputedStyle(n).backgroundColor), GREY_BACKGROUND);
+    // The tests button waits for the reproduction and the receipts, and says why.
+    assert.equal(await page.getByTestId('tes-botao').isDisabled(), true);
+    assert.match(await page.getByTestId('tes-motivo').textContent(), /quando a reprodução e os recibos terminarem/);
     assert.deepEqual(await page.evaluate(() => [localStorage.length, sessionStorage.length, document.cookie]), [0, 0, '']);
     const local = cacheHeaders.filter(([u]) => u.startsWith(server.url));
     assert.ok(local.length >= 2);
@@ -214,6 +210,27 @@ test('real-size lines: the "rodando" item is inside the window in 100% of the sa
       if (motion === 'reduce') assert.equal(r.whileScrolling, 0, 'with reduced motion the scroll must be instant');
     }
   } finally {
+    await browser.close();
+  }
+});
+
+test('when the command stops in the middle of part 1, nothing stays "rodando": the page marks it "interrompido" within 5 s', { timeout: 120_000 }, async (t) => {
+  const browser = await launchSystemBrowser();
+  if (!browser) { t.skip('nem o Edge nem o Chrome puderam ser abertos pelo Playwright'); return; }
+  const live = startLiveCommand(['--sem-navegador', '--esperar-pagina', '30', '--manter-segundos', '30', '--reproducao', path.join(FIXTURES, 'reproducao_lenta.mjs'), '--atraso-ms', '900']);
+  try {
+    const page = await (await browser.newContext({ viewport: { width: 1366, height: 768 } })).newPage();
+    await page.goto(await live.url);
+    await page.locator('[data-testid="item"][data-estado="ok"]').nth(2).waitFor({ timeout: 30_000 });
+    live.child.kill();
+    await page.getByTestId('estado-1').and(page.locator('[data-estado="interrompido"]')).waitFor({ timeout: 5_000 });
+    assert.equal(await page.locator('[data-estado="rodando"]').count(), 0, 'something is still "rodando"');
+    assert.equal(await page.locator('[data-testid="item"][data-estado="interrompido"]').count(), 1);
+    assert.equal(await page.getByTestId('rep-veredito').textContent(), 'INTERROMPIDO');
+    assert.equal(await page.getByTestId('tes-botao').isDisabled(), true);
+    assert.match(await page.getByTestId('tes-motivo').textContent(), /o comando terminou; rode de novo para usar os testes/i);
+  } finally {
+    live.child.kill();
     await browser.close();
   }
 });

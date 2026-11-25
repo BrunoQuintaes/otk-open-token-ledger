@@ -12,7 +12,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { declaredFromRawUsage, summarizeBothDays } from '../../reproducao/ao_vivo/dados_dias.mjs';
+import { declaredFromRawUsage, summarizeBothDays, whoRefused } from '../../reproducao/ao_vivo/dados_dias.mjs';
 import { REPO_ROOT } from './ajuda.mjs';
 
 const days = summarizeBothDays(REPO_ROOT);
@@ -21,8 +21,19 @@ test('7 Oct: 662 real calls, 658 with the receipt signature verified, 0 not veri
   assert.deepEqual(days.oct07.counters.total, { calls: 662, signatureYes: 658, signatureNo: 0, withoutCheck: 4 });
 });
 
-test('7 Oct: the 4 calls without the check were refused by the provider (3 with HTTP 429 and 1 with HTTP 400)', () => {
+test('7 Oct: the 4 calls without the check: 3 stopped by the OTK\'s own quota (HTTP 429, quota_exceeded) and 1 refused by OpenAI (HTTP 400)', () => {
   assert.deepEqual(days.oct07.refusedHttpStatuses, { 429: 3, 400: 1 });
+  assert.deepEqual(days.oct07.refusedBy, { otk: { total: 3, http: { 429: 3 } }, provedor: { total: 1, http: { 400: 1 }, providers: ['OpenAI'] } });
+  const refused = days.oct07.calls.filter((c) => c.signatureVerified === null);
+  assert.deepEqual(refused.map((c) => `${c.refusedBy}:${c.httpStatus}`).sort(), ['otk:429', 'otk:429', 'otk:429', 'provedor:400']);
+  assert.ok(days.oct07.calls.filter((c) => c.signatureVerified !== null).every((c) => c.refusedBy === null));
+});
+
+test('who refused is read from the stored error, not from the HTTP status alone', () => {
+  assert.equal(whoRefused({ httpStatus: 429, error: 'http 429: {"ok":false,"error":"quota_exceeded","quotaCU":"10000"}' }), 'otk');
+  assert.equal(whoRefused({ httpStatus: 429, error: 'http 429: {"error":{"type":"rate_limit_error"}}' }), 'provedor');
+  assert.equal(whoRefused({ httpStatus: 400, error: 'http 400: {"error":{"message":"invalid_json"}}' }), 'provedor');
+  assert.equal(whoRefused({ httpStatus: 200, conference: { verdict: 'within_threshold' } }), null);
 });
 
 test('7 Oct: synthetic dry-run folders are left out', () => {
@@ -81,5 +92,6 @@ test('the summaries carry no conversation text, provider identifier or machine p
     assert.ok(!text.includes(forbidden), `found "${forbidden}" in the summaries`);
   }
   const callKeys = new Set(days.oct07.calls.flatMap(Object.keys));
-  assert.deepEqual([...callKeys].sort(), ['costUsd', 'declaredInput', 'declaredOutput', 'httpStatus', 'inputDifference', 'model', 'otkInput', 'otkOutput', 'provider', 'signatureVerified', 'stage', 'verdict']);
+  assert.deepEqual([...callKeys].sort(), ['costUsd', 'declaredInput', 'declaredOutput', 'httpStatus', 'inputDifference', 'model', 'otkInput', 'otkOutput', 'provider', 'refusedBy', 'signatureVerified', 'stage', 'verdict']);
+  assert.ok(!text.includes('quota_exceeded') && !text.includes('Invalid body'), 'an error text reached the summaries');
 });
