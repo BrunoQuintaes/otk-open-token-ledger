@@ -18,6 +18,12 @@
  *
  * Gate R0: called by scripts/ops/gate_r0_revalidate.sh (CHECK 2b)
  * ADR: docs/architecture/adr/ADR-EVM-0002-berlin-compat-no-push0.md
+ *
+ * Reads tools/hardhat/artifacts (resolved from this file's location, not the working directory) and
+ * only reads. With no artifacts it prints a warning and exits 0, so it never blocks before the first
+ * compile. Unparseable artifact files are skipped.
+ *
+ * @module scripts/ops/detect_push0
  */
 
 import fs from "node:fs";
@@ -29,7 +35,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
 const ARTIFACTS_DIR = path.join(ROOT, "tools", "hardhat", "artifacts");
 
-/** Recursively collect all contract artifact .json files (excluding .dbg.json) */
+/**
+ * Recursively collect all contract artifact .json files (excluding .dbg.json)
+ *
+ * @param dir - Folder to walk; a missing folder yields no files.
+ * @param out - Accumulator, appended to in place and returned.
+ * @returns `out`, with the absolute paths found.
+ */
 function walk(dir, out = []) {
   if (!fs.existsSync(dir)) return out;
   for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {

@@ -12,6 +12,13 @@
  * This measures this drill only, not production recovery.
  *
  *   OTK_BESU_FUNDER_KEY_FILE=<file> npx tsx scripts/rehearsal/full_stack_drill.ts --out=<dir>
+ *
+ * Environment: `OTK_BESU_FUNDER_KEY_FILE` (required; the key is never printed), `OTK_TEST_BESU_RPC`,
+ * `OTK_TEST_PG_URL` and `OTK_TEST_REDIS_URL` (defaults point at the local test containers with test-only
+ * passwords). Starts and kills child processes on purpose. Exit: 0 every invariant held within the bound; 1 not;
+ * 2 usage or setup error.
+ *
+ * @module scripts/rehearsal/full_stack_drill
  */
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import fs from 'node:fs';

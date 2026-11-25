@@ -19,7 +19,12 @@
  *   --mock       Use MockVerifier instead of real ZK (faster, tests throughput)
  *   --rpc URL    RPC endpoint (default: http://127.0.0.1:8545)
  *
- * @module loadtest_ibft
+ * Contract addresses come from <NAME>_ADDRESS environment variables (e.g. RECEIPTREGISTRY_ADDRESS), then from
+ * docs/_ops/u10/U10_3_LOADTEST_DEPLOY.json, then from fixed addresses of an earlier devnet deployment.
+ * It sends real transactions to the given chain (devnet only) and writes its report under docs/_ops/;
+ * when the devnet is not reachable it writes a "skipped" evidence file instead.
+ *
+ * @module scripts/ops/loadtest_ibft
  * @since U10.3
  */
 

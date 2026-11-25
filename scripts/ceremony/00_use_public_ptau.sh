@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # =============================================================================
 # OTK MPC Ceremony — Step 0: Fetch Public Phase 1 (Powers of Tau)
+# Usage: bash scripts/ceremony/00_use_public_ptau.sh   (no arguments; reads no environment variables)
+# Effects: downloads the public pot12 file over the network (skipped when already present) and runs
+#   "snarkjs powersoftau verify" on it. The Blake2b hash constant below is informational: it is not compared.
 #
 # Uses the Hermez/PSE Perpetual Powers of Tau ceremony for Phase 1.
 # This ceremony had 176+ independent contributors (as of 2023).

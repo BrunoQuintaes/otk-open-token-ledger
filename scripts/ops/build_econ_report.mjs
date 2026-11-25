@@ -12,7 +12,16 @@
  * Example:
  *   node scripts/reports/build_econ_report.mjs 40 5.80
  *
+ * The script lives in scripts/ops/ (the paths in Usage and Example above name an older location).
+ * Run it from the repository root: the ledger and report paths are relative to the working directory.
+ * The cost computation itself is `buildEconomicReport` in src/pricing/economics/EconomicReport.ts;
+ * this file only parses the arguments (markupPercent must be a number >= 0; fxRate is optional).
+ * That module is TypeScript imported through a `.js` specifier, so plain `node` cannot resolve it: run
+ * the script through a TypeScript loader such as `npx tsx`.
+ * Exit codes: 0 = report written; 1 = invalid markup, or an uncaught error from the report builder.
+ *
  * @since U3.6
+ * @module scripts/ops/build_econ_report
  */
 import { buildEconomicReport } from "../../src/pricing/economics/EconomicReport.js";
 

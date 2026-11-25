@@ -7,6 +7,13 @@
  *     infrastructure-test profiles from the 24 historical real pilot calls (input pairs only); the acceptance
  *     policy decides calibrated (expected: false, insufficient sample).
  * --created-at <iso> fixes createdAt (default 2026-10-06T00:00:00.000Z) so the files are reproducible byte for byte.
+ *
+ * A calibration profile maps OTK's local token count to the count a provider (or a synthetic rule) reports, and sets
+ * the divergence threshold used at runtime. This script fits profiles with `fitCalibrationProfile` from
+ * `./fitProfile.ts` over pairs from `./messageCorpus.ts` (synthetic) or `./pilotPairs.ts` (historical pilot calls).
+ * Exit code 4 on wrong arguments. The exported helpers are also used by tests to rebuild the committed fixture.
+ *
+ * @module scripts/calibration/buildProfiles
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -19,7 +26,9 @@ import { extractPilotPairs, pilotRowsToPairs, PILOT_PAIRS_VERSION, PILOT_SOURCES
 import { expectedTokens, type CalibrationCategory, type CalibrationProfileV1 } from '../../src/tokenization/calibrationProfile.js';
 import { HEURISTIC_THRESHOLD_V0 } from '../../src/tokenization/conferenceReport.js';
 
+/** Profile id of the synthetic test profile when it covers only the `input` category (other sets get a suffix). */
 export const SYNTHETIC_PROFILE_ID = 'otk.calib.SYNTHETIC-TEST-ONLY.anthropic.messages.claude-haiku-4-5-20251001.v1';
+/** Fixed `createdAt` (ISO 8601 UTC) so that rebuilt profiles are byte-identical to the committed ones. */
 export const DEFAULT_CREATED_AT = '2026-10-06T00:00:00.000Z';
 
 /**
@@ -31,8 +40,20 @@ export const SYNTHETIC_CORPORA = Object.freeze({
   development: { seed: CORPUS_SEED, groupsPerFamily: 15, committed: true },
   final: { seed: 20261006, groupsPerFamily: 50, committed: false },
 });
+/** Name of one of the synthetic corpora in {@link SYNTHETIC_CORPORA}: `'development'` or `'final'`. */
 export type SyntheticCorpusName = keyof typeof SYNTHETIC_CORPORA;
 
+/**
+ * Builds (local count, synthetic target) pairs for the claude-haiku-4-5 model over one synthetic corpus.
+ *
+ * Each corpus document becomes an Anthropic Messages request; the local counter counts input and output tokens and
+ * the target is {@link syntheticTarget} (a fixed rule, not provider usage). A category the counter could not count
+ * (`null`) produces no pair. Pure computation: no network, no files written (the development corpus is read from
+ * the committed corpus file).
+ *
+ * @param name - Which corpus to use; default `'final'`.
+ * @returns The pairs, the corpus sha256 (hex) and id, the counter version used, and the number of request documents.
+ */
 export function syntheticPairs(name: SyntheticCorpusName = 'final'): { pairs: CalibrationPair[]; corpusSha: string; corpusId: string; counterVersion: string; docs: number } {
   const spec = SYNTHETIC_CORPORA[name];
   const docs = spec.committed ? loadCorpus().docs : generateCorpus({ seed: spec.seed, groupsPerFamily: spec.groupsPerFamily });
@@ -54,6 +75,11 @@ export function syntheticPairs(name: SyntheticCorpusName = 'final'): { pairs: Ca
 /**
  * SYNTHETIC test profile (target = SYNTHETIC_RULE_V1). The committed fixture is fitted on the 'final' corpus and
  * covers the categories given (default 'input'); whatever the acceptance policy decides is kept as is.
+ *
+ * @param createdAt - ISO 8601 timestamp written in the profile; default {@link DEFAULT_CREATED_AT}.
+ * @param categories - Token categories the profile covers; default `['input']`.
+ * @param data - Pairs to fit, from {@link syntheticPairs}; default the `'final'` corpus (computed when omitted).
+ * @returns The fitted profile, marked `synthetic: true`; `calibrated` is whatever the acceptance policy decided.
  */
 export function buildSyntheticTestProfile(createdAt = DEFAULT_CREATED_AT, categories: CalibrationCategory[] = ['input'],
   data: ReturnType<typeof syntheticPairs> = syntheticPairs('final')): CalibrationProfileV1 {
@@ -69,7 +95,17 @@ export function buildSyntheticTestProfile(createdAt = DEFAULT_CREATED_AT, catego
   });
 }
 
-/** Detection of injected inflation on the holdout split (calibrated adjusted vs heuristic raw), for the report. */
+/**
+ * Detection of injected inflation on the holdout split (calibrated adjusted vs heuristic raw), for the report.
+ *
+ * For each covered category, inflates the target of every holdout pair (+5 %, +10 %, +25 %, +50 tokens, +200
+ * tokens, or none) and counts how many pairs raise an alert with the profile's threshold applied to the adjusted
+ * local count, versus the uncalibrated heuristic threshold applied to the raw local count.
+ *
+ * @param profile - The fitted profile (its threshold and per-category adjustment are used).
+ * @param pairs - All pairs; only those with `split === 'holdout'` are used.
+ * @returns One entry per covered category: the holdout size `n` and the alert counts per alteration.
+ */
 export function holdoutDetection(profile: CalibrationProfileV1, pairs: CalibrationPair[]) {
   const t: ThresholdNumbers = { abs: Number(profile.thresholdPolicy.absoluteTokens), rel: profile.thresholdPolicy.relative === null ? null : Number(profile.thresholdPolicy.relative) };
   const h: ThresholdNumbers = { abs: Number(HEURISTIC_THRESHOLD_V0.absoluteTokens), rel: Number(HEURISTIC_THRESHOLD_V0.relative) };

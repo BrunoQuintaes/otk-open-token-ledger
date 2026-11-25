@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Usage: bash scripts/ops/repro_contracts.sh v3|legacy|full   (the profiles are described below)
+# Runs the Hardhat contract tests under tools/hardhat (`npx hardhat compile`, then `node --test`).
 # Contract-test reproduction profiles (fechamento pós-S5, correção da fila — item 6). No test is removed:
 #   bash scripts/ops/repro_contracts.sh v3      every tools/hardhat test EXCEPT the legacy PA-03 (needs no file
 #                                               outside Git). Not "the whole historical suite".

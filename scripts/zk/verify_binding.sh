@@ -12,6 +12,10 @@
 #
 # Usage:
 #   bash scripts/zk/verify_binding.sh [test_input.json]
+#
+# Effects: when the input file is missing it CREATES a sample input at that path; writes the witness
+#   (zk/build/binding_test_witness.wtns) and the log zk/build/witness_gen_log.txt. Needs jq.
+# Exit codes: 0 all five checks passed; 1 any check failed. Reads no environment variables.
 
 set -euo pipefail
 

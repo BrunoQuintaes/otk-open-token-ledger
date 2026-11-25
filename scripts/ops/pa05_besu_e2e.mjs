@@ -21,7 +21,13 @@
  *   BESU_DEPLOYER_KEY    (optional: hex private key for funded account)
  *                        If not set, reads from infra/ibft/node1/data/key
  *
+ * Needs the same ZK build artifacts as pa03_http_e2e.mjs and free ports 3001 and 8787; it spawns the ProverDaemon
+ * and the API server and stops them at the end. The deployer key (env or node key file of the local dev
+ * network) is passed to the prover as its signer and is never logged. Evidence files go to `evdDir`.
+ * Exit codes: 0 = loop closed on Besu; 1 = not closed or fatal error.
+ *
  * @since PA-05 (2026-03-13)
+ * @module scripts/ops/pa05_besu_e2e
  */
 
 import { ethers } from '../../node_modules/ethers/lib.esm/index.js';

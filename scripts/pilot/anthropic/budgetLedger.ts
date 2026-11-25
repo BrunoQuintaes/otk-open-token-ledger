@@ -17,20 +17,34 @@
  * Prices are the official list prices consulted on 2026-09-29 (Anthropic) and 2026-10-03 (OpenAI gpt-4o-mini),
  * not an invoice. One canonical ledger FILE per provider, each with its own USD 3.00 ceiling (author decision
  * 2026-10-03: Anthropic, OpenAI and Google Gemini capped separately; Gemini prices consulted 2026-10-03).
+ *
+ * Used by the pilot code in this folder (`runPilot.ts`, `runPilotV3.ts`, `pilotV3Settlement.ts`); the live shell
+ * wrappers read the same file format through `ledgerCounts.mjs`. Amounts here are US dollars as floating-point numbers (not pico-USD); token
+ * counts are integers. Side effects: appends to the ledger file and creates/removes `<file>.lock`. No network, no
+ * environment variables.
+ *
+ * @module scripts/pilot/anthropic/budgetLedger
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 
+/** Authorised ceiling per ledger file, US dollars; a ledger can be configured lower, never higher. */
 export const HARD_CAP_USD = 3.0;
 
+/** List price of one model, in US dollars per million tokens, with where and when it was read. */
 export interface ModelPrice {
   inputPerMTok: number;
+  /** Cache write with 5-minute lifetime. */
   cacheWrite5mPerMTok: number;
+  /** Cache write with 1-hour lifetime. */
   cacheWrite1hPerMTok: number;
   cacheReadPerMTok: number;
+  /** Output (for Gemini this includes thinking tokens). */
   outputPerMTok: number;
+  /** URL and row of the provider's price page. */
   source: string;
+  /** Date the price page was read (YYYY-MM-DD). */
   consultedAt: string;
 }
 
@@ -90,12 +104,27 @@ export const PRICES: Readonly<Record<string, ModelPrice>> = {
 /** Request refused before processing: settled at zero. */
 const REFUSED_BEFORE_PROCESSING = new Set([400, 401, 403, 404, 413, 429]);
 
+/**
+ * Error raised by the ledger, with a stable `code`: `cap_exceeded` (a reservation would pass the cap),
+ * `unknown_price` (model without verified price or context window), `lock_timeout` (lock busy past the timeout),
+ * `bad_limits` (invalid cap or token limits), `unknown_reservation` (settling an unknown or already settled id).
+ */
 export class BudgetError extends Error {
+  /**
+   * Creates the error.
+   *
+   * @param code - Stable error code (see the class comment).
+   * @param message - Human-readable detail.
+   */
   constructor(public readonly code: 'cap_exceeded' | 'unknown_price' | 'lock_timeout' | 'bad_limits' | 'unknown_reservation', message: string) {
     super(message);
   }
 }
 
+/**
+ * Usage object as the provider reported it, in Anthropic's field names (callers map other providers onto these).
+ * A missing field means "not reported", never zero.
+ */
 export interface ProviderUsage {
   input_tokens?: number;
   output_tokens?: number;
@@ -123,13 +152,29 @@ export const CONTEXT_WINDOW_TOKENS: Readonly<Record<string, number>> = {
   'gemini-3.5-flash-lite': 1_048_576,
 };
 
-/** Upper bound for the billable input tokens of one request to `model`: its documented context window. */
+/**
+ * Upper bound for the billable input tokens of one request to `model`: its documented context window.
+ *
+ * @param model - Model id as sent to the provider.
+ * @returns Context window in tokens.
+ * @throws {@link BudgetError} `unknown_price` when the model has no documented window here.
+ */
 export function maxInputTokensFor(model: string): number {
   const w = CONTEXT_WINDOW_TOKENS[model];
   if (!w) throw new BudgetError('unknown_price', `no documented context window for model ${model}`);
   return w;
 }
 
+/**
+ * Worst-case cost of one request: every input token at the dearest input-category rate plus every output token.
+ *
+ * @param model - Model id with a price in {@link PRICES}.
+ * @param maxInputTokens - Input bound, tokens (positive integer).
+ * @param maxOutputTokens - Output bound (`max_tokens`), tokens (positive integer).
+ * @returns US dollars.
+ * @throws {@link BudgetError} `unknown_price` for a model without price; `bad_limits` when a bound is not a
+ *   positive integer.
+ */
 export function maxCostUsd(model: string, maxInputTokens: number, maxOutputTokens: number): number {
   const p = PRICES[model];
   if (!p) throw new BudgetError('unknown_price', `no verified price for model ${model}`);
@@ -143,6 +188,11 @@ export function maxCostUsd(model: string, maxInputTokens: number, maxOutputToken
 /**
  * Cost of one response from its usage. Returns null (unknown) when a field the price needs
  * is missing: absent is not zero.
+ *
+ * @param model - Model id with a price in {@link PRICES}.
+ * @param usage - Provider usage; needs input, output, cache-creation and cache-read counts (Anthropic names).
+ * @returns Total cost in US dollars and its breakdown per category; `null` for an unknown model, missing or
+ *   malformed counts, or an inconsistent cache-write split.
  */
 export function costFromUsage(model: string, usage: ProviderUsage | undefined | null): { usd: number; breakdown: Record<string, number> } | null {
   const p = PRICES[model];
@@ -178,24 +228,54 @@ type Entry =
       httpStatus?: number; costUsd?: number; usage?: ProviderUsage; note?: string;
       providerRequestId?: string; providerMessageId?: string };
 
+/** State of one ledger file, recomputed from its entries. Amounts in US dollars. */
 export interface BudgetSummary {
+  /** Effective cap of this ledger instance. */
   capUsd: number;
+  /** Number of reservations ever made. */
   reservations: number;
+  /** Settled with a cost computed from usage. */
   settledOk: number;
+  /** Settled at zero (refused before processing). */
   refused: number;
+  /** Settled without a known cost; the reservation keeps counting. */
   uncertain: number;
+  /** Reserved and never settled (call in flight or process crashed). */
   open: number;
   confirmedUsd: number;       // cost computed from provider-reported usage
   uncertainUsd: number;       // reservations kept for timeouts/lost/unknown cost
   openUsd: number;            // reservations not yet settled (call in flight or crashed)
   exposureUsd: number;        // confirmed + uncertain + open
+  /** cap − exposure; may be negative only if entries were written outside this class. */
   remainingUsd: number;
 }
 
+/**
+ * Append-only, file-backed budget ledger shared by every process that spends on one provider.
+ *
+ * Every mutating call takes an exclusive lock file (`<file>.lock`, created with exclusive-create) and re-reads the
+ * whole file, so concurrent processes cannot both pass the cap. A lock that is still busy after the timeout makes
+ * the call fail; it is never broken automatically.
+ *
+ * @example
+ * const ledger = new BudgetLedger('ledger/anthropic_budget_ledger.jsonl');
+ * const { id } = ledger.reserve('probe', 'claude-haiku-4-5', maxInputTokensFor('claude-haiku-4-5'), 64);
+ * // ... make the call ...
+ * ledger.settle(id, { httpStatus: 200, usage });
+ */
 export class BudgetLedger {
+  /** Effective cap in US dollars: min(requested cap, {@link HARD_CAP_USD}). */
   readonly capUsd: number;
   private readonly lockPath: string;
 
+  /**
+   * Opens (does not read yet) a ledger file; creates its parent folder.
+   *
+   * @param file - JSONL ledger path.
+   * @param capUsd - Requested cap in US dollars; values above {@link HARD_CAP_USD} are lowered to it.
+   * @param lockTimeoutMs - How long to wait for the lock, in ms; default 10,000.
+   * @throws {@link BudgetError} `bad_limits` when `capUsd` is negative or not finite.
+   */
   constructor(readonly file: string, capUsd = HARD_CAP_USD, private readonly lockTimeoutMs = 10_000) {
     // The configured cap can only lower the authorised ceiling
     if (!Number.isFinite(capUsd) || capUsd < 0) throw new BudgetError('bad_limits', `invalid cap ${capUsd}`);
@@ -236,6 +316,13 @@ export class BudgetLedger {
     }
   }
 
+  /**
+   * Recomputes the budget state from the entries (no lock; read-only).
+   *
+   * @param entries - Ledger entries; default the current file content.
+   * @returns The summary.
+   * @throws {SyntaxError} When a ledger line is not valid JSON.
+   */
   summary(entries = this.read()): BudgetSummary {
     const res = new Map<string, Extract<Entry, { type: 'reserve' }>>();
     const settle = new Map<string, Extract<Entry, { type: 'settle' }>>();
@@ -259,7 +346,18 @@ export class BudgetLedger {
     return s;
   }
 
-  /** Reserve the maximum cost of one attempt; throws if it would pass the ceiling. */
+  /**
+   * Reserve the maximum cost of one attempt; throws if it would pass the ceiling.
+   *
+   * Appends a `reserve` entry under the lock. Must be called before the provider call is made.
+   *
+   * @param purpose - Free text recorded with the reservation (no user content).
+   * @param model - Model id with a price.
+   * @param maxInputTokens - Input bound, tokens.
+   * @param maxOutputTokens - Output bound, tokens.
+   * @returns The new reservation id (random UUID) and the reserved amount in US dollars.
+   * @throws {@link BudgetError} `cap_exceeded`, `unknown_price`, `bad_limits` or `lock_timeout`.
+   */
   reserve(purpose: string, model: string, maxInputTokens: number, maxOutputTokens: number): { id: string; reservedUsd: number } {
     const reservedUsd = maxCostUsd(model, maxInputTokens, maxOutputTokens);
     return this.withLock(() => {
@@ -276,6 +374,15 @@ export class BudgetLedger {
   /**
    * Settle one reservation. `usage` from the provider gives the cost; a refusal before
    * processing gives zero; any other case keeps the reservation (uncertain).
+   *
+   * "Refused before processing" requires both a status in 400/401/403/404/413/429 and `errorBody: true`.
+   *
+   * @param id - Reservation id from {@link BudgetLedger.reserve}.
+   * @param info - HTTP status, provider usage (or null), whether an error body was received, an optional note and
+   *   provider ids (recorded as given).
+   * @returns The appended `settle` entry.
+   * @throws {@link BudgetError} `unknown_reservation` when the id was never reserved or is already settled;
+   *   `lock_timeout` when the lock stays busy.
    */
   settle(id: string, info: { httpStatus?: number; usage?: ProviderUsage | null; errorBody?: boolean; note?: string;
     providerRequestId?: string; providerMessageId?: string }): Extract<Entry, { type: 'settle' }> {

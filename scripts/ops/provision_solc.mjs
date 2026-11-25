@@ -11,6 +11,16 @@
 //
 //   node scripts/ops/provision_solc.mjs [--check]     (--check: verify what is installed, download nothing)
 // exit 0 = installed/verified, 1 = verification failed (nothing installed), 2 = network/usage.
+/**
+ * Installs (or, with --check, verifies) the pinned solc 0.8.24 compiler builds in the Hardhat compiler cache.
+ *
+ * Cache folder: $XDG_CACHE_HOME/hardhat-nodejs/compilers-v3 (default ~/.cache/...), one subfolder per platform
+ * (linux-amd64 and wasm). Prints a JSON report to stdout. Network use: downloads from raw.githubusercontent.com
+ * only when a file is missing and --check is not given.
+ * As written, download errors are caught per platform and reported as FAILED, so they exit 1, not 2.
+ *
+ * @module scripts/ops/provision_solc
+ */
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

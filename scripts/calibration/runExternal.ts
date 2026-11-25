@@ -14,6 +14,13 @@
  *   npx tsx scripts/calibration/runExternal.ts --simulate [--out <file.json>]
  * runs the whole pipeline against the local simulator (127.0.0.1, port 0). Nothing else is
  * runnable from this CLI on purpose.
+ *
+ * In short: for each corpus document (round-robin by family) it reserves budget, asks an injected count client for
+ * the provider's input-token count, settles the reservation, and records one row; then `analyzeExternal` fits and
+ * evaluates the calibration models of `./models.ts` with the same method as `runOffline.ts`. Exit code 2 when run
+ * without `--simulate`. Amounts are in micro-USD (1 USD = 1,000,000), as bigint.
+ *
+ * @module scripts/calibration/runExternal
  */
 import { writeFileSync } from 'node:fs';
 import { splitOf, type CorpusDoc } from './corpus.js';
@@ -22,35 +29,52 @@ import type { Row } from './models.js';
 import { countWith, loadEncoding, type LocalEncoding } from '../../src/tokenization/tokenizerIdentity.js';
 import { startSimulatedAnthropic } from './simulatedProvider.js';
 
+/** Version tag of the runner; prefixes every ledger call id. */
 export const EXTERNAL_RUNNER_VERSION = 'otk.calibration_external.b4@1';
 
+/** What the target count is: a provider's token-count endpoint (an estimate) or the final usage of a generation. */
 export type TargetKind = 'provider_count_endpoint' | 'final_usage';
 
+/** A source of provider token counts for one document at a time (real or simulated). */
 export interface ExternalCountClient {
+  /** Provider, API, model and endpoint called; `simulated` is `true` for the local simulator. */
   readonly description: { provider: string; api: string; model: string; endpoint: string; targetKind: TargetKind; simulated: boolean };
+  /**
+   * Asks for the input-token count of one document. May make a network request (and spend money).
+   * Rejects with an error whose `code` names the failure (for example `http_429`).
+   */
   count(doc: { id: string; text: string }): Promise<{ inputTokens: number; providerRequestId: string | null }>;
 }
 
 /** Budget port implemented by S4 over its ledger (scripts/pilot). Amounts in micro-USD. */
 export interface BudgetLedgerPort {
+  /** Reserves up to `maxUsdMicros` for one call before it is made; `'denied'` stops the run. */
   reserve(req: { callId: string; maxUsdMicros: bigint; purpose: string }): Promise<'approved' | 'denied'>;
+  /** Settles a reserved call; `actualUsdMicros = null` means the cost is unknown (left for reconciliation). */
   settle(callId: string, result: { actualUsdMicros: bigint | null; outcome: 'ok' | 'error' | 'uncertain' }): Promise<void>;
 }
 
+/** One document of an external run. Holds ids, counts and statuses only, never document text. */
 export interface ExternalRow {
   docId: string;
   group: string;
   split: 'train' | 'validation' | 'test';
   family: string;
   sizeBucket: string;
+  /** OTK's local text count (tokens) with the chosen local encoding. */
   local: number;
+  /** Provider count (tokens); `null` unless `status` is `'ok'`. */
   target: number | null;
   status: 'ok' | 'skipped_empty' | 'denied_budget' | 'error';
+  /** Failure code when `status` is `'error'` (for example `http_529`, `schema`, `invalid_count`); otherwise `null`. */
   errorCode: string | null;
+  /** Provider's request id header, when it sent one. */
   providerRequestId: string | null;
+  /** ISO 8601 time the row was recorded. */
   at: string;
 }
 
+/** Rows of a run and why it stopped. */
 export interface ExternalRunResult {
   runner: string;
   client: ExternalCountClient['description'];
@@ -62,7 +86,12 @@ export interface ExternalRunResult {
 /** Minimum rows per split before an external evaluation is reported (below that: null). */
 export const MIN_ROWS = { train: 20, validation: 10, test: 10 } as const;
 
-/** Round-robin by family, so a stop (budget/max calls) leaves every family partially measured. */
+/**
+ * Round-robin by family, so a stop (budget/max calls) leaves every family partially measured.
+ *
+ * @param docs - Documents (not mutated).
+ * @returns The same documents, reordered: first of each family, then second of each family, and so on.
+ */
 export function interleaveByFamily(docs: CorpusDoc[]): CorpusDoc[] {
   const byFamily = new Map<string, CorpusDoc[]>();
   for (const d of docs) byFamily.set(d.family, [...(byFamily.get(d.family) ?? []), d]);
@@ -72,6 +101,16 @@ export function interleaveByFamily(docs: CorpusDoc[]): CorpusDoc[] {
   return out;
 }
 
+/**
+ * Runs the external calibration: one budget reservation, one count request and one settlement per document.
+ *
+ * Empty documents are skipped without a call. Stops at the first budget denial, at `maxCalls`, at a ledger error,
+ * or after `maxConsecutiveErrors` (default 3) failed calls in a row. A failed call is settled as `'uncertain'`
+ * with unknown cost, never as free. Side effects: whatever the injected client and ledger do (network, spending).
+ *
+ * @param opts - Documents, client, ledger and limits (see the field comments).
+ * @returns All rows recorded so far and the stop reason; never rejects for a failed call.
+ */
 export async function runExternalCalibration(opts: {
   docs: CorpusDoc[];
   client: ExternalCountClient;
@@ -87,8 +126,11 @@ export async function runExternalCalibration(opts: {
    * the provider's statement; S4 may pass 0n only with a dated source saying the call is free.
    */
   settledCostUsdMicros?: bigint | null;
+  /** Tokenizer used for the local count. */
   localEncoding: LocalEncoding;
+  /** Clock for the row timestamps (ISO 8601); default the system clock. */
   now?: () => string;
+  /** Failed calls in a row that stop the run; default 3. */
   maxConsecutiveErrors?: number;
 }): Promise<ExternalRunResult> {
   const now = opts.now ?? (() => new Date().toISOString());
@@ -146,7 +188,13 @@ export async function runExternalCalibration(opts: {
   return { runner: EXTERNAL_RUNNER_VERSION, client: opts.client.description, localTokenizer: enc.identity, rows, stoppedReason };
 }
 
-/** Out-of-sample analysis of collected rows (same method as the offline experiment). */
+/**
+ * Out-of-sample analysis of collected rows (same method as the offline experiment).
+ *
+ * @param result - A run result.
+ * @returns Row counts per split, per-family coverage, the stop reason, the evaluation (`null` when a split has fewer
+ *   rows than {@link MIN_ROWS}, with the reason) and a one-line statement of what the result does and does not mean.
+ */
 export function analyzeExternal(result: ExternalRunResult) {
   const rows: Record<'train' | 'validation' | 'test', Row[]> = { train: [], validation: [], test: [] };
   for (const r of result.rows) if (r.status === 'ok' && r.target !== null) rows[r.split].push({ id: r.docId, x: r.local, y: r.target });
@@ -173,6 +221,13 @@ export function analyzeExternal(result: ExternalRunResult) {
 /**
  * Anthropic count_tokens client. The key getter is supplied by S4; it is called per request and
  * its value is only placed in the request header. Errors carry the HTTP status, never bodies.
+ *
+ * Each `count` makes one HTTPS request (15 s timeout) to the provider (or to `baseUrl`).
+ *
+ * @param opts - Model, key getter, optional base URL (default the public provider host), API version header value
+ *   (default `2023-06-01`), fetch implementation (for tests) and the `simulated` flag for the description.
+ * @returns A count client; its `count` rejects with `code` `http_<status>` on a non-2xx answer or `schema` when the
+ *   answer has no numeric `input_tokens`.
  */
 export function createAnthropicCountTokensClient(opts: {
   model: string;
@@ -201,7 +256,12 @@ export function createAnthropicCountTokensClient(opts: {
   };
 }
 
-/** In-memory ledger for simulation/tests only (never a substitute for S4's ledger). */
+/**
+ * In-memory ledger for simulation/tests only (never a substitute for S4's ledger).
+ *
+ * @param maxCalls - Reservations approved before every further one is denied.
+ * @returns A ledger port that also exposes the number of reservations and the settled `<callId>:<outcome>` list.
+ */
 export function createSimulationLedger(maxCalls: number): BudgetLedgerPort & { reserved: number; settled: string[] } {
   const state = { reserved: 0, settled: [] as string[] };
   return {

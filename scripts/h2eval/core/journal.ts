@@ -4,17 +4,25 @@
  * prevHash = previous line's hash (GENESIS for the first). Reading verifies seq, chain and hashes and refuses any gap,
  * reorder or edit. Bodies carry ids, hashes, counts and pico-USD only — the writer refuses strings that look like text content
  * or credentials (basic guard; the real guarantee is that callers never put content here).
+ *
+ * Used for every batch journal (`<batchDir>/journal.jsonl`, written by the runner) and for the campaign journal
+ * (`../cli/preflight.ts`). The only side effect is appending to the file given to {@link openJournal}.
+ *
+ * @module scripts/h2eval/core/journal
  */
 import { appendFileSync, closeSync, existsSync, fsyncSync, openSync, readFileSync } from 'node:fs';
 import { H2EVAL_SCHEMA, type JournalKind, type JournalLine, type OperationId } from '../types.js';
 import { canon, sha256Hex } from './canon.js';
 
+/** `prevHash` of the first line of every journal (64 zeros). */
 export const GENESIS_PREV = '0'.repeat(64);
 const MAX_STRING = 256; // ids, hashes, codes, ISO timestamps, pico-USD strings; never prompt/response text
 
+/** Error raised when a journal fails verification; `code` is one of `format_line`, `schema`, `seq`, `chain`, `hash`. */
 export class JournalIntegrityError extends Error {
   constructor(public readonly code: string, detail = '') { super(`journal integrity: ${code}${detail ? ` (${detail})` : ''}`); this.name = 'JournalIntegrityError'; }
 }
+/** Error raised when an append or fsync fails; `cause2` holds the original error. The caller must stop. */
 export class JournalPersistenceError extends Error {
   constructor(public readonly cause2: unknown) { super('journal persistence failed'); this.name = 'JournalPersistenceError'; }
 }
@@ -30,6 +38,7 @@ function guardBody(v: unknown, path = 'body'): void {
   throw new TypeError(`journal body ${path}: unsupported type`);
 }
 
+/** An open journal: its file path, the last sequence number (0 when empty) and the last line hash. */
 export interface Journal {
   readonly path: string;
   readonly seq: number;
@@ -42,7 +51,13 @@ export interface Journal {
   of(operationId: OperationId): JournalLine[];
 }
 
-/** Verifies a whole file; throws JournalIntegrityError on any gap, reorder, edit or bad hash. */
+/**
+ * Verifies a whole file; throws JournalIntegrityError on any gap, reorder, edit or bad hash.
+ *
+ * @param text - The journal file content (empty lines are ignored).
+ * @returns The verified lines, in order.
+ * @throws {@link JournalIntegrityError} On an unparsable line, wrong schema, sequence gap, broken chain or bad hash.
+ */
 export function verifyJournalText(text: string): JournalLine[] {
   const out: JournalLine[] = [];
   let prev = GENESIS_PREV;
@@ -61,6 +76,17 @@ export function verifyJournalText(text: string): JournalLine[] {
   return out;
 }
 
+/**
+ * Opens a journal for appending, verifying any existing content first.
+ *
+ * `append` throws a `TypeError` when the body holds a string over 256 characters or with a line break, a BigInt, a
+ * non-finite number or an unsupported type, and {@link JournalPersistenceError} when the write or fsync fails.
+ *
+ * @param path - Journal file (created on the first append).
+ * @param clock - Clock returning ISO-8601 UTC for `tsUtc`.
+ * @returns The journal.
+ * @throws {@link JournalIntegrityError} When the existing file fails verification.
+ */
 export function openJournal(path: string, clock: () => string = () => new Date().toISOString()): Journal {
   const existing = existsSync(path) ? verifyJournalText(readFileSync(path, 'utf8')) : [];
   let seq = existing.length;

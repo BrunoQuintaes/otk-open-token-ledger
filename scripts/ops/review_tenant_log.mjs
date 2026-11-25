@@ -14,6 +14,10 @@
  *
  * Exit: 0 nothing to review · 1 at least one active record created/updated before --before (or any active record when
  * --before is omitted) · 64 usage error or unreadable file.
+ *
+ * Tested by test/unit/review_tenant_log.test.ts.
+ *
+ * @module scripts/ops/review_tenant_log
  */
 import fs from 'node:fs';
 import crypto from 'node:crypto';

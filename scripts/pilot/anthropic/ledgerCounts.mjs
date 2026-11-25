@@ -2,6 +2,15 @@
 //   node scripts/pilot/anthropic/ledgerCounts.mjs <ledger.jsonl>   →   "<reservations> <open> <uncertain>"
 // A missing ledger is "0 0 0". Any line that is not a JSON reserve/settle entry, or a settle without its
 // reservation, exits 2: the caller must treat an unreadable ledger as possibly paid (fail closed).
+/**
+ * Prints `<reservations> <open> <uncertain>` for a budget ledger written by `budgetLedger.ts`.
+ *
+ * "open" = reserved and not settled; "uncertain" = settled with an outcome other than `ok` or `refused`. A
+ * duplicated reservation id or settlement also exits 2. Called by `run_live_pv3.sh` and
+ * `scripts/pilot/campaign/run_campaign_ovn2.sh` before and after each phase. Read-only; no environment variables.
+ *
+ * @module scripts/pilot/anthropic/ledgerCounts
+ */
 import fs from 'node:fs';
 
 const file = process.argv[2];

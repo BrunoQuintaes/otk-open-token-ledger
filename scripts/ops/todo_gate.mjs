@@ -7,6 +7,15 @@
 //
 //   npm test 2>&1 | tee npm_test.tap; node scripts/ops/todo_gate.mjs --log npm_test.tap [--expected <file>]
 // exit 0 = ok, 1 = gate failed, 2 = usage.
+/**
+ * Fails the test run when its set of `todo` tests differs from the declared list of open findings, or when any
+ * test failed or was cancelled.
+ *
+ * Reads the TAP log and the expected-outcomes JSON only; the TAP parser is `parseTap` from
+ * tools/academic_demo/check_outcomes.mjs. Prints one JSON line `{ gate, ok, todo, declared, reasons }`.
+ *
+ * @module scripts/ops/todo_gate
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';

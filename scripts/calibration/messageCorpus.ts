@@ -11,6 +11,11 @@
  *
  * Counting goes through the runtime counter itself (createLocalCounter with the catalog's ModelSupport), so the
  * local numbers are exactly what the conference would see for the same request body.
+ *
+ * Used by `buildProfiles.ts` (synthetic test profile) and `pilotPairs.ts` (local counts of the pilot prompts).
+ * Pure computation: no files, no network, no environment variables.
+ *
+ * @module scripts/calibration/messageCorpus
  */
 import { createHash } from 'node:crypto';
 import type { ModelSupport, UsageApi } from '../../src/types/d1d8/index.js';
@@ -18,27 +23,53 @@ import { createLocalCounter } from '../../src/tokenization/localCounter.js';
 import { countWith, loadEncoding } from '../../src/tokenization/tokenizerIdentity.js';
 import { CORPUS_VERSION, splitOf, type CorpusDoc } from './corpus.js';
 
+/** Version tag of the request-shaped corpus; also salts the hash that picks conversation length and system text. */
 export const MESSAGE_CORPUS_VERSION = 'otk.calibration_corpus.messages.v1';
+/** Calibration split; `'holdout'` is the corpus' `'test'` split under another name. */
 export type Split = 'train' | 'validation' | 'holdout';
 
+/** One request of the message corpus. */
 export interface MessageDoc {
+  /** `<document id>-single` or `<group>-conv`. */
   id: string;
   group: string;
   family: string;
   split: Split;
   kind: 'single' | 'conversation';
+  /** System text, or `null` when the request has none. */
   system: string | null;
+  /** Messages in order; conversations alternate user/assistant starting with user. */
   messages: Array<{ role: 'user' | 'assistant'; text: string }>;
   /** Text used as the visible output of the simulated response (another text of the same group). */
   outputText: string;
 }
 
+/**
+ * Maps a corpus group to its calibration split (the corpus `'test'` split becomes `'holdout'`).
+ *
+ * @param group - Group id of corpus v1.
+ * @returns The split.
+ */
 export const toSplit = (group: string): Split => { const s = splitOf(group); return s === 'test' ? 'holdout' : s; };
 
+/**
+ * Deterministic 32-bit number from a string (first 8 hex digits of a versioned sha256).
+ *
+ * @param s - Input string.
+ * @returns An integer in [0, 2^32).
+ */
 function h(s: string): number {
   return parseInt(createHash('sha256').update(`${MESSAGE_CORPUS_VERSION}:${s}`, 'utf8').digest('hex').slice(0, 8), 16);
 }
 
+/**
+ * Builds the request-shaped corpus from the text corpus (see the module comment).
+ *
+ * Deterministic: groups are processed in sorted order and every choice comes from a hash of the group id.
+ *
+ * @param docs - Text corpus documents (not mutated).
+ * @returns One single-message request per document plus one conversation per group.
+ */
 export function buildMessageCorpus(docs: CorpusDoc[]): MessageDoc[] {
   const byGroup = new Map<string, CorpusDoc[]>();
   for (const d of docs) byGroup.set(d.group, [...(byGroup.get(d.group) ?? []), d]);
@@ -59,7 +90,15 @@ export function buildMessageCorpus(docs: CorpusDoc[]): MessageDoc[] {
   return out;
 }
 
-/** Request body in the wire format of each API (text parts only). */
+/**
+ * Request body in the wire format of each API (text parts only).
+ *
+ * @param api - Target API; Anthropic Messages, Gemini generateContent or OpenAI Chat Completions.
+ * @param model - Model name written in the body (not used for Gemini, whose model is in the URL).
+ * @param d - The request to render.
+ * @returns A plain JSON-ready body; `max_tokens` is 64 where the API has it.
+ * @throws {Error} For any other API.
+ */
 export function toRequestBody(api: UsageApi, model: string, d: MessageDoc): Record<string, unknown> {
   switch (api) {
     case 'anthropic.messages':
@@ -76,7 +115,15 @@ export function toRequestBody(api: UsageApi, model: string, d: MessageDoc): Reco
   }
 }
 
-/** Raw local counts of the runtime counter for a request body and an output text (null = category uncovered). */
+/**
+ * Raw local counts of the runtime counter for a request body and an output text (null = category uncovered).
+ *
+ * @param support - Catalog support of the model (decides tokenizer and message assembly).
+ * @param body - Request body in the API's wire format.
+ * @param outputText - Visible output text to count, or `null` to skip the output category.
+ * @returns Input and output token counts (`null` when the counter did not cover the category) and the counter
+ *   version.
+ */
 export function localCountsOf(support: ModelSupport, body: unknown, outputText: string | null): { input: number | null; output: number | null; counterVersion: string } {
   const counter = createLocalCounter(support, { maxTextBytes: 1 << 22 });
   counter.observeInput({ api: support.api, body });
@@ -92,10 +139,17 @@ export function localCountsOf(support: ModelSupport, body: unknown, outputText: 
  * plus an envelope" so the fitting and the runtime path can be exercised without provider calls.
  */
 export const SYNTHETIC_RULE_V1 = 'otk.synthetic_target.o200k_plus_3_per_message_plus_3@1';
+/**
+ * Applies {@link SYNTHETIC_RULE_V1} to one request.
+ *
+ * @param d - The request.
+ * @returns Synthetic input and output token counts.
+ */
 export function syntheticTarget(d: MessageDoc): { input: number; output: number } {
   const enc = loadEncoding('o200k_base').encoder;
   const parts = [...(d.system !== null ? [d.system] : []), ...d.messages.map((m) => m.text)];
   return { input: parts.reduce((s, t) => s + countWith(enc, t), 0) + 3 * parts.length + 3, output: countWith(enc, d.outputText) };
 }
 
+/** Human-readable split rule written into profiles fitted on this corpus. */
 export const MESSAGE_CORPUS_SPLIT_RULE = `group split of ${CORPUS_VERSION}: sha256(version:group) mod 100 → <60 train, <80 validation, else holdout`;

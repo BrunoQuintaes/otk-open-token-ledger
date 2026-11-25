@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# Historical one-shot docs reconciliation script, kept as a record. It writes or appends CLAUDE.md,
+# rewrites docs/ROADMAP_UNIFIED.md and docs/architecture/architecture.md, runs `npm test` and
+# gate_r0_revalidate.sh, writes evidence under docs/_ops/u8/, and commits when the gate prints GO.
+# The `cd <HOME>/...` line is a redacted placeholder, so the script does not run as published; it is not
+# part of any test or build.
+# Usage: bash scripts/ops/u8_4_2_post_reconcile.sh   (only after replacing the placeholder path)
 # ============================================================
 # U8.4.2 POST-CONSOLIDATION RECONCILIATION (NO U8.5)
 # - Restore ROADMAP_UNIFIED canonical (U0–U12) + add subphases (U*.x)

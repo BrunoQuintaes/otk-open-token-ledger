@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# Historical second round of the repository cleanup, kept as a record. It finds duplicate files, archives
+# legacy docs with `git mv`, rewrites docs/INDEX.md, deletes listed untracked files, runs `npm test` and
+# gate_r0_revalidate.sh, and runs `git add -A` and `git commit` when the gate prints GO.
+# The `cd <HOME>/...` line is a redacted placeholder, so the script does not run as published; it is not
+# part of any test or build.
+# Usage: bash scripts/ops/global_cleanup_r2.sh   (only after replacing the placeholder path)
 # =========================
 # OTK zk-Metering — Global cleanup round 2
 # docs + whole repo, evidence-first, STOP before U8.5

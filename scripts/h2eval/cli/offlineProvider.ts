@@ -7,14 +7,24 @@
  * Token counts are a deterministic local approximation (ceil(chars/4)) — never a provider count. Time is the planned offset, not a
  * clock. Fault injection (by operation index) lets the rehearsal show error-without-usage, refusal-with-usage and send failure.
  * No network, no credential, no logging of content.
+ *
+ * Created by `./run.ts` for offline runs and plugged into the egress (`../core/egress.ts`) as an `EgressDouble`, so the runner exercises the same request,
+ * parsing, journal and ledger path as a real run while nothing leaves the machine. The cache store lives in memory
+ * and lasts for one provider instance.
+ *
+ * @module scripts/h2eval/cli/offlineProvider
  */
 import { createHash } from 'node:crypto';
 import type { BuiltRequest } from '../types.js';
 import type { EgressDouble, EgressResponse } from '../core/egress.js';
 
+/** Behaviour of the simulated provider; every field is optional and has a default. */
 export interface OfflineProviderConfig {
+  /** Minimum cacheable prefix per provider, in simulated tokens (default 1024 each). */
   minPrefixTokens?: Partial<Record<'openai' | 'anthropic' | 'google', number>>;
+  /** Cache TTL in seconds (default 300); an Anthropic block marked `ttl: '1h'` uses 3600. */
   ttlSeconds?: number;
+  /** Output tokens reported by every successful call (default 24). */
   outputTokens?: number;
   /** reasoning tokens reported for models that think (haiku-5-5 thinking_tokens, gemini thoughtsTokenCount) */
   thinkingTokens?: number;
@@ -27,6 +37,7 @@ export interface OfflineProviderConfig {
    * (1.45-1.58 observed on Haiku 5.5), and adaptive thinking on a single-turn prompt without system (S1) consumes the whole max_tokens
    * (output_tokens = thinking_tokens = max_tokens, visible 0, stop_reason max_tokens) unless the request disabled thinking. */
   realism?: { inputTokenFactor?: number; thinkingConsumesCapOnSingleTurnNoSystem?: boolean };
+  /** Token counter for the simulated usage; default ceil(characters / 4). */
   tokensOf?: (text: string) => number;
   /** send timeout handed to the egress (R15-M5); a fault 'hang' never resolves so the timeout fires */
   timeoutMs?: number;
@@ -36,6 +47,19 @@ const approx = (t: string): number => Math.ceil(t.length / 4);
 const h = (s: string): string => createHash('sha256').update(s, 'utf8').digest('hex');
 interface Entry { expiresAt: number; ttl: number }
 
+/**
+ * Creates a simulated provider that answers built requests offline with complete, documented response bodies.
+ *
+ * The provider is chosen from the request host (`api.openai.com`, `api.anthropic.com`, anything else is Gemini). The
+ * simulated time of call `i` is `i * intervalSeconds`, so cache expiry is deterministic.
+ *
+ * @param cfg - Simulation settings and fault injection.
+ * @returns `double`, the egress double to hand to the runner; `calls`, the number of calls received so far; and
+ *   `log`, one entry per answered call with the cache key and the simulated read/write tokens.
+ * @example
+ * const sim = createOfflineProvider({ faults: { 2: 'rate_limit' } });
+ * // pass sim.double to the runner as its egress double; after the run, sim.log has one entry per call
+ */
 export function createOfflineProvider(cfg: OfflineProviderConfig = {}): { double: EgressDouble; calls: number; readonly log: Array<{ index: number; api: string; cacheKey: string | null; read: number; write: number }> } {
   const store = new Map<string, Entry>();
   const baseTok = cfg.tokensOf ?? approx; const factor = cfg.realism?.inputTokenFactor ?? 1;

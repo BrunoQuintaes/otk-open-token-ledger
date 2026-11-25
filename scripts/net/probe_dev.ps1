@@ -1,6 +1,13 @@
 ﻿param(
   [string]$Rpc = "http://127.0.0.1:8545"
 )
+# Prints a one-shot diagnostic of the local development chain over JSON-RPC (no retries).
+#
+# Usage: .\scripts\net\probe_dev.ps1 [-Rpc <url>]   (default: local port 8545)
+# Prints chain id, network version, block number, client version, gas price, coinbase and its balance
+# (in wei, hex), and the node's unlocked accounts (many clients return none). Each call times out after 8 s;
+# an unreachable node makes the first call throw. Read-only: sends only query methods.
+# See health_dev.ps1 for the variant that waits until the node is up.
 
 function Rpc([string]$method, $params=@()){
   $body = @{

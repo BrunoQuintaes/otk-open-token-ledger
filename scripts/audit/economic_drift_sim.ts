@@ -11,6 +11,15 @@
  *
  * Output:
  *   JSON + CSV report to stdout + docs/_ops/audit/DRIFT_SIM_<TS>/
+ *
+ * CU = cost units, OTK's integer price measure (provider and model weights from `src/pricing/CostUnits.ts`). The
+ * simulation draws N random transactions (provider mix, model and token counts from a seeded SFC32 generator, so a
+ * seed always gives the same run), computes each cost both ways and reports the drift of the float result. Optional
+ * `--threshold=<percent>` (default 0.1) sets the acceptable cumulative drift. Progress goes to stderr, the JSON report
+ * to stdout (the CSV only to the folder); a failure to write the folder is only a warning. Exit code 0 when the
+ * cumulative drift is within the threshold, 1 otherwise. Reads no environment variables; no network.
+ *
+ * @module scripts/audit/economic_drift_sim
  */
 
 import { writeFileSync, mkdirSync } from 'fs';

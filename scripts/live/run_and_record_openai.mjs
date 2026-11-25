@@ -19,6 +19,11 @@
  * Model must be present in src/pricing/CostUnits.ts MODEL_WEIGHTS_INT table.
  * Safe defaults: gpt-4o, gpt-4-turbo, gpt-3.5-turbo
  *
+ * COSTS MONEY: one real, paid request per run. Run it with a TypeScript loader (for example `node --import tsx`),
+ * since it imports `.ts` sources. Appends one event to `docs/_ops/_usage_ledger/usage_events.jsonl` (relative to
+ * the current folder). Exit code 1 when the call fails; a key that cannot be resolved rejects with an error.
+ *
+ * @module scripts/live/run_and_record_openai
  * @since U7.8
  */
 

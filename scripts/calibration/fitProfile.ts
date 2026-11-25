@@ -12,6 +12,12 @@
  *   4. acceptance policy otk.calibration_acceptance.v1 (minimum n per split, holdout groups, holdout false-alert
  *      rate and holdout detection power at +25%);
  *      calibrated = every check passed. Failing is a documented limitation, never a reason to relax a check.
+ *
+ * Pure computation (no I/O). Called by `buildProfiles.ts`; the profile it returns carries an `evidenceHash` added by
+ * `sealProfile` (`src/tokenization/calibrationProfile.ts`). At runtime, profiles are loaded from the folder named by
+ * the `OTK_CALIBRATION_PROFILES_DIR` variable (see `src/operations/bootstrapD1D8.ts`).
+ *
+ * @module scripts/calibration/fitProfile
  */
 import type { ModelSupport, UsageApi } from '../../src/types/d1d8/index.js';
 import {
@@ -22,15 +28,24 @@ import { HEURISTIC_THRESHOLD_V0 } from '../../src/tokenization/conferenceReport.
 import { fit } from './models.js';
 import type { Split } from './messageCorpus.js';
 
+/** One (local count, target count) observation for one token category of one request. */
 export interface CalibrationPair {
+  /** Request/document id (counted once per split for the document totals). */
   id: string;
+  /** Group of near-duplicates or of repeated prompts; holdout group count is an acceptance check. */
   group: string;
   split: Split;
   category: CalibrationCategory;
+  /** OTK's local count, tokens. */
   local: number;
+  /** Target count (provider-reported usage, or a synthetic rule), tokens. */
   target: number;
 }
 
+/**
+ * Acceptance policy v1: minimum sample sizes per split, minimum holdout groups, maximum holdout false-alert rate and
+ * minimum holdout detection power at +25 % inflation. Rates are fractions in [0, 1].
+ */
 export const ACCEPTANCE_POLICY_V1 = Object.freeze({
   id: 'otk.calibration_acceptance.v1',
   minTrain: 60,
@@ -55,7 +70,17 @@ function gridOf(values: number[], points: number): number[] {
   return [...new Set(Array.from({ length: points }, (_, i) => u[Math.round((i * (u.length - 1)) / (points - 1))]!))];
 }
 
-/** Grid search of (abs, rel) on validation rows; returns null only when there are no rows. */
+/**
+ * Grid search of (abs, rel) on validation rows; returns null only when there are no rows.
+ *
+ * Candidates come from the residuals (at most {@link THRESHOLD_SELECTION}.gridPoints values per dimension). Keeps the
+ * pairs whose false-alert rate on unaltered targets is at most 1 %, and picks the one with the highest mean
+ * detection over the alterations; ties go to the larger abs, then the larger rel.
+ *
+ * @param val - Validation rows: rounded-model prediction and target, both in tokens.
+ * @returns The chosen `abs` (tokens), `rel` (fraction), and its validation false-alert rate and mean detection
+ *   (both rounded to 6 decimals); `null` when `val` is empty.
+ */
 export function selectThreshold(val: Array<{ pred: number; target: number }>): { abs: number; rel: number; falseAlertRate: number; power: number } | null {
   if (val.length === 0) return null;
   const absC = gridOf([1, ...val.map((r) => Math.max(1, Math.ceil(Math.abs(r.target - r.pred))))], THRESHOLD_SELECTION.gridPoints);
@@ -78,7 +103,13 @@ export function selectThreshold(val: Array<{ pred: number; target: number }>): {
 
 const r6 = (x: number) => Math.round(x * 1e6) / 1e6;
 
-/** Nearest-rank quantile; null when n < 1/(1 − q) (see ErrorSummary). */
+/**
+ * Nearest-rank quantile; null when n < 1/(1 − q) (see ErrorSummary).
+ *
+ * @param sorted - Values in ascending order.
+ * @param q - Quantile in (0, 1).
+ * @returns The quantile rounded to 6 decimals, or `null` when there are too few values (the median needs one).
+ */
 function quantileOrNull(sorted: number[], q: number): number | null {
   if (sorted.length === 0) return null;
   const need = q === 0.5 ? 1 : Math.ceil(1 / (1 - q) - 1e-9);
@@ -86,9 +117,17 @@ function quantileOrNull(sorted: number[], q: number): number | null {
   return r6(sorted[Math.max(0, Math.ceil(q * sorted.length) - 1)]!);
 }
 
+/** Alert threshold as numbers: `abs` in tokens, `rel` as a fraction; `rel = null` means "absolute test only". */
 export interface ThresholdNumbers { abs: number; rel: number | null }
 
-/** Same rule as otk.conference.rule.v1: |Δ| > abs AND (target = 0 OR rel = null OR |Δ|/target > rel). */
+/**
+ * Same rule as otk.conference.rule.v1: |Δ| > abs AND (target = 0 OR rel = null OR |Δ|/target > rel).
+ *
+ * @param pred - Predicted (or raw local) count, tokens.
+ * @param target - Target count, tokens.
+ * @param t - Threshold.
+ * @returns `true` when the difference would raise an alert.
+ */
 export function alerts(pred: number, target: number, t: ThresholdNumbers): boolean {
   const d = Math.abs(target - pred);
   if (d <= t.abs) return false;
@@ -96,6 +135,15 @@ export function alerts(pred: number, target: number, t: ThresholdNumbers): boole
   return d / target > t.rel;
 }
 
+/**
+ * Summarizes prediction errors (prediction − target) over a set of pairs.
+ *
+ * @param rows - Pairs of one category and one split.
+ * @param predict - Maps a local count to the predicted target (integer arithmetic of the runtime).
+ * @param t - Threshold for the alert rate; `null` leaves `alertRate` as `null` (used for the train split).
+ * @returns Bias, MAE and max (tokens), relative-error quantiles (a quantile is `null` when n is too small for it),
+ *   and the alert rate; every metric is `null` when `rows` is empty.
+ */
 export function summarize(rows: CalibrationPair[], predict: (x: number) => number, t: ThresholdNumbers | null): ErrorSummary {
   const errs = rows.map((r) => predict(r.local) - r.target);
   const abs = errs.map(Math.abs).sort((a, b) => a - b);
@@ -116,29 +164,54 @@ export function summarize(rows: CalibrationPair[], predict: (x: number) => numbe
   };
 }
 
+/** Everything {@link fitCalibrationProfile} needs; most fields are copied into the profile as metadata. */
 export interface FitInput {
   profileId: string;
+  /** `true` when the targets come from a synthetic rule, not a provider (the runtime refuses such profiles by default). */
   synthetic: boolean;
   targetKind: CalibrationProfileV1['targetKind'];
+  /** Model support from the catalog; must have a local tokenizer with vocabulary digest and message assembly. */
   support: ModelSupport;
   model: string;
   modelAliases?: string[];
+  /** Version of the local counter that produced the `local` counts. */
   counterVersion: string;
   categories: CalibrationCategory[];
   pairs: CalibrationPair[];
   corpusId: string;
+  /** sha256 (hex) of the corpus; `null` when the pairs do not come from a hashed corpus file. */
   corpusSha256: string | null;
+  /** Human-readable description of how pairs were assigned to splits. */
   splitRule: string;
+  /** ISO 8601 timestamp written in the profile (fixed by callers for reproducible files). */
   createdAt: string;
   scope: { description: string; excludes: string[] };
   limitations: string[];
 }
 
+/**
+ * Formats x with 6 decimals, rounded UP (a threshold is never made stricter by rounding).
+ *
+ * @param x - Non-negative number.
+ * @returns Decimal string such as `0.103125`.
+ */
 function ceilMicroString(x: number): string {
   const micro = Math.ceil(x * 1e6 - 1e-6);
   return `${Math.floor(micro / 1e6)}.${String(micro % 1e6).padStart(6, '0')}`;
 }
 
+/**
+ * Fits, evaluates and seals a calibration profile (steps 1 to 4 of the module comment).
+ *
+ * A category whose train split has fewer than 2 distinct local values gets no parameters (noted in the
+ * limitations) and fails its `parameters` check. When no threshold can be derived, the heuristic threshold is copied
+ * and the profile cannot pass. `calibrated` is `true` only when every acceptance check passed.
+ *
+ * @param inp - Pairs and metadata.
+ * @returns The sealed profile (input pairs are not mutated).
+ * @throws {Error} When `inp.support` has no local tokenizer with a vocabulary digest and message assembly.
+ * @throws {Error} From the affine fit, when the train rows of a category make a singular system.
+ */
 export function fitCalibrationProfile(inp: FitInput): CalibrationProfileV1 {
   const tok = inp.support.tokenizer;
   if (!tok || !tok.vocabularyDigest || !tok.messageAssembly) throw new Error('profile needs a local tokenizer with a vocabulary digest and message assembly');

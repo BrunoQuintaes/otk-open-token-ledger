@@ -17,6 +17,10 @@
 #
 # Security: PARTICIPANT_ENTROPY must be unique per participant and destroyed
 #           after the contribution. Never commit it to the repo.
+#
+# Environment: PARTICIPANT_NAME (default anonymous_<unix time>) and PARTICIPANT_ENTROPY (when unset,
+#   snarkjs prompts for random text). Requires git and snarkjs. Exit code 1 when the input ptau or snarkjs
+#   is missing. Appends the contribution's sha256 to <PHASE1_DIR>/ceremony_log.txt (never the entropy).
 # =============================================================================
 
 set -euo pipefail

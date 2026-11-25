@@ -13,6 +13,12 @@
  *     a date and a maximum count per file; a stale entry (no longer read) or an entry without finding/date is NO-GO.
  * Prints file:line and names only, never values. Exit 0 = PASS, 1 = FAIL, 2 = usage error.
  * Usage: node scripts/ops/secret_env_boundary.mjs <repo-root> [allowlist.json]
+ *
+ * In short: a static check, run by the security gate and by test/security/secret_env_boundary.test.ts, that secret
+ * environment variables are read only by the modules allowed to hold secrets. It scans only src/ and never reads
+ * the environment or any dotenv file itself; a literal dotenv path in source is reported as a violation.
+ *
+ * @module scripts/ops/secret_env_boundary
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -34,6 +40,17 @@ const CONNECTION_URL = /(_DB_URL|_DATABASE_URL|_PG_URL|_POSTGRES_URL|_REDIS_URL|
 const NOT_SECRET = /(_PATH|_FILE|_CERT|_ID|_URL)$/;
 // ADV-M24-09: compound suffixes (_HEX_V2, _BASE64URL) are stripped repeatedly
 const ENCODING_SUFFIX = /_(HEX|B64|B64URL|BASE64|BASE64URL|PEM|DER|JSON|RAW|V\d+)$/;
+/**
+ * Decides whether an environment variable name denotes a secret, after removing encoding suffixes
+ * such as _HEX or _B64 (repeatedly).
+ *
+ * @param raw - Variable name in any case; it is upper-cased before matching.
+ * @returns `true` for secret names (keys, tokens, passwords, connection URLs, the exact names in SECRET_EXACT);
+ *   `false` for configuration names, including paths, file names, certificates, ids and other URLs.
+ * @example
+ * isSecretName('OTK_SIGNER_KEY_HEX'); // true
+ * isSecretName('OTK_SAML_CERT_PEM');  // false
+ */
 export function isSecretName(raw) {
   let name = String(raw).toUpperCase();
   for (let prev = ''; prev !== name;) { prev = name; name = name.replace(ENCODING_SUFFIX, ''); }
@@ -73,7 +90,12 @@ const SAFE_PROCESS_MEMBERS = new Set(['on', 'once', 'off', 'addListener', 'remov
   'release', 'features', 'uptime', 'hrtime', 'memoryUsage', 'cpuUsage', 'resourceUsage', 'nextTick', 'stdout', 'stderr', 'stdin', 'umask', 'config', 'report',
   'allowedNodeEnvironmentFlags', 'getuid', 'geteuid', 'getgid', 'getegid', 'setUncaughtExceptionCaptureCallback', 'hasUncaughtExceptionCaptureCallback', 'constrainedMemory', 'availableMemory']);
 const literalKey = (n) => (n && (ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n)) ? n.text : null);
-/** every module specifier a dynamic import/require can receive, or null when one of them is not a literal (M24-O02) */
+/**
+ * every module specifier a dynamic import/require can receive, or null when one of them is not a literal (M24-O02)
+ *
+ * @param n - The first argument node of the import()/require() call.
+ * @returns The possible specifiers, or `null` when at least one cannot be determined statically.
+ */
 const specifierCandidates = (n) => {
   n = stripParens(n);
   if (!n) return null;
@@ -90,7 +112,13 @@ const specifierCandidates = (n) => {
   }
   return null;
 };
-/** node is the environment object: process.env, process?.env, process['env'] or an identifier imported as env from node:process */
+/**
+ * node is the environment object: process.env, process?.env, process['env'] or an identifier imported as env from node:process
+ *
+ * @param n - AST node to test (parentheses, type assertions and non-null marks are stripped first).
+ * @param envIdents - Local names bound to `env` imported from the process module in this file.
+ * @returns `true` when the node is the environment object.
+ */
 function isEnvObject(n, envIdents) {
   n = stripParens(n);
   if (!n) return false;

@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+# Starts the local 4-node Besu IBFT network in two steps: node1 first, then, once node1 reports its
+# enode (polled with besu_get_enode.sh, up to 90 tries 2 seconds apart), node2..node4 with
+# NODE1_ENODE exported so compose can give them node1 as bootnode.
+# Reads no configuration besides the compose file tools/besu/docker/docker-compose.ibft.yml; it sets
+# NODE1_ENODE itself (the node1 public key, without the enode:// prefix or the @host:port part).
+# Usage: bash scripts/ops/besu_up_full.sh
+# Exit codes: 0 = all nodes started; 2 = network folder not prepared or node1 enode not available in time.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"

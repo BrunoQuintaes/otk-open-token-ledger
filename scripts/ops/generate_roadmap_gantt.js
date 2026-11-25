@@ -9,6 +9,12 @@
  *
  * Usage: node scripts/ops/generate_roadmap_gantt.js
  * Add to package.json: "gantt": "node scripts/ops/generate_roadmap_gantt.js"
+ *
+ * Legacy generator for the historical phase table: it overwrites both output files on every run and
+ * exports nothing. The current roadmap documents come from generate_master_roadmap.mjs instead.
+ * Paths are resolved from this file's location, not from the working directory.
+ *
+ * @module scripts/ops/generate_roadmap_gantt
  */
 
 import fs from 'fs';

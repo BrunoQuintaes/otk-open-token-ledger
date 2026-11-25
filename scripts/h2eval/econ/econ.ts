@@ -17,6 +17,19 @@
  *   item 11 guarda de ordem e prefixo: antes de cada envio, todo seq menor está executado e terminal; seq estritamente crescente no journal;
  *   item 12 recusa e filtro (refusal, content_filter, SAFETY, RECITATION, BLOCKLIST, PROHIBITED_CONTENT, SPII) = outcome REFUSED_WITH_USAGE (parsers, mantidos).
  * Sem rede aqui: o modo REAL só existe pelo egress congelado (GO, credencial, TLS), que este módulo não altera.
+ *
+ * In English: executor of the economic study. It reads a fixed schedule (`CRONOGRAMA.jsonl`, checked by SHA-256) and a
+ * corpus kit, turns each schedule line into an operation plan with a parity body (nothing sent for sampling,
+ * reasoning, tools or cache), and runs the lines in strict order through the shared executor from
+ * `scripts/h2eval/index.ts` (the runner there is the only place that reserves, sends and settles). It adds: the composite
+ * price table (a model without an attested price stops the run before it starts), the per-attempt cost-cap policy
+ * (worst-case characters per token, an optional measured reservation for one long system prompt, the Google thoughts
+ * allowance), an order guard (every earlier line executed and terminal before the next is sent), the signed GO checks
+ * from `goEcon.ts` before each attempt, and one line per attempt in `TENTATIVAS.jsonl` (written and fsynced).
+ * No network in this module: REAL mode exists only through the frozen egress (`core/egress.ts`), which it does not
+ * change. Used by the study's launcher and by the tests under `test/h2eval/econ/`.
+ *
+ * @module scripts/h2eval/econ/econ
  */
 import { closeSync, existsSync, fsyncSync, openSync, readFileSync, writeSync } from 'node:fs';
 import path from 'node:path';
@@ -31,7 +44,9 @@ import type { PriceTable, PriceCategory } from '../record/prices.js';
 import { validateGoEconV1, goEconCoversAttempt, type GoEconContext, type GoEconV1 } from './goEcon.js';
 import type { ContentStore, JournalLine, OperationPlan, PostcallRecord, Provider, ResolvedContent, RunnerResult, StopReason } from '../types.js';
 
+/** Version string written in every run summary. */
 export const ECON_EXECUTOR_VERSION = 'otk.h2eval.econ.v1';
+/** Output ceiling (tokens) every schedule line must declare. */
 export const ECON_MAX_OUTPUT_TOKENS = 8192;
 /** item 8: proposta pré-registrada (v3.1) e usada no G-6: 600 000 ms, igual nos 5 modelos. */
 export const ECON_TIMEOUT_MS = 600_000;
@@ -48,25 +63,51 @@ export const ECON_MODELS = Object.freeze({
   'gpt-6-luna': { provider: 'openai', api: 'openai.chat_completions', arm: 'C1', availability: 'OBSERVADO_REAL', price: 'price_table_h2eval_e3g_attested_v1 (DR-208)' },
   'gemini-3.1-flash-lite': { provider: 'google', api: 'gemini.generate_content', arm: 'C3', availability: 'OBSERVADO_REAL', price: 'price_table_h2eval_e3g_attested_v1 (DR-168/187/194)' },
 } as const);
+/** Model id of the study catalogue. */
 export type EconModel = keyof typeof ECON_MODELS;
+/**
+ * Tells whether a model id belongs to the study catalogue.
+ *
+ * @param m - Model id.
+ * @returns `true` when `m` is a key of {@link ECON_MODELS}.
+ */
 export const isEconModel = (m: string): m is EconModel => Object.prototype.hasOwnProperty.call(ECON_MODELS, m);
 const TIER: Record<Provider, string> = { anthropic: 'standard_only', openai: 'default', google: 'NONE' };
 
+/** Error of the economic executor; `code` is a stable `ECON_*` code and the message adds a detail without secrets. */
 export class EconError extends Error { constructor(readonly code: string, detail = '') { super(`${code}${detail ? `: ${detail}` : ''}`); this.name = 'EconError'; } }
 
 // ------------------------------------------------------------------------------------------------------------------------------
 // item 4: CRONOGRAMA (lido como está; nada é reordenado nem gerado aqui)
 // ------------------------------------------------------------------------------------------------------------------------------
+/** One schedule line: position `seq` (0..n-1), block, ids, model and provider, prompt hash and the fixed design fields. */
 export interface CronLine { seq: number; block: number; posNoBloco: number; opId: string; itemId: string; family: string; templateId: string; arm: string; rep: number; model: string; provider: Provider; promptSha256: string; systemSha256: string; maxOutputTokens: number; samplingParams: string; reasoningParams: string; cacheDirectives: string; tools: string; maxRetries: number; timeoutMs?: number }
 const HEX64 = /^[0-9a-f]{64}$/;
 
-/** Lê e valida o CRONOGRAMA.jsonl: sha esperado, seq = 0..n-1 estritamente crescente, opId único, as regras do desenho em toda linha e o timeout único (item 8). */
+/**
+ * Lê e valida o CRONOGRAMA.jsonl: sha esperado, seq = 0..n-1 estritamente crescente, opId único, as regras do desenho em toda linha e o timeout único (item 8).
+ *
+ * @param file - Path of the schedule JSONL.
+ * @param o - `expectedSha256`: SHA-256 of the file bytes; `timeoutMs`: per-attempt timeout (must be {@link ECON_TIMEOUT_MS}).
+ * @returns The schedule lines in file order.
+ * @throws {EconError} `ECON_CRONOGRAMA_SHA` when the file hash differs, or any error of {@link validateCronograma}.
+ */
 export function readCronograma(file: string, o: { expectedSha256: string; timeoutMs: number }): CronLine[] {
   const buf = readFileSync(file); const sha = sha256Hex(buf);
   if (!HEX64.test(o.expectedSha256) || sha !== o.expectedSha256) throw new EconError('ECON_CRONOGRAMA_SHA', `${sha.slice(0, 12)} != ${String(o.expectedSha256).slice(0, 12)}`);
   const lines = buf.toString('utf8').split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l) as CronLine);
   return validateCronograma(lines, o.timeoutMs);
 }
+/**
+ * Checks every schedule line against the study design.
+ *
+ * @param lines - Parsed schedule lines (not mutated).
+ * @param timeoutMs - Per-attempt timeout in ms.
+ * @returns The same lines.
+ * @throws {EconError} `ECON_TIMEOUT_NOT_PREREGISTERED` when `timeoutMs` is not {@link ECON_TIMEOUT_MS}; an
+ *   `ECON_CRONOGRAMA_*` or `ECON_TIMEOUT_DESIGUAL` code for the first bad line (seq order, opId, prompt hash, model,
+ *   design fields, field types, block order).
+ */
 export function validateCronograma(lines: CronLine[], timeoutMs: number): CronLine[] {
   if (timeoutMs !== ECON_TIMEOUT_MS) throw new EconError('ECON_TIMEOUT_NOT_PREREGISTERED', `${timeoutMs} != ${ECON_TIMEOUT_MS}`);
   const ids = new Set<string>();
@@ -84,7 +125,13 @@ export function validateCronograma(lines: CronLine[], timeoutMs: number): CronLi
   return lines;
 }
 
-/** item 4: OperationPlan de uma linha; opId do plano = operationId; corpo H_PARITY (itens 1, 10); 8192; nada enviado de amostragem/raciocínio/cache. */
+/**
+ * item 4: OperationPlan de uma linha; opId do plano = operationId; corpo H_PARITY (itens 1, 10); 8192; nada enviado de amostragem/raciocínio/cache.
+ *
+ * @param l - Schedule line (its model must be in {@link ECON_MODELS}).
+ * @param ctx - Study id, protocol hash and manifest hash recorded in the plan.
+ * @returns The operation plan for the runner, with `opId` and `econSeq` from the line.
+ */
 export function planOf(l: CronLine, ctx: { studyId: string; protocolHash: string; manifestSha256: string }): OperationPlan {
   const m = ECON_MODELS[l.model as EconModel];
   return {
@@ -100,6 +147,15 @@ export function planOf(l: CronLine, ctx: { studyId: string; protocolHash: string
 // ------------------------------------------------------------------------------------------------------------------------------
 // Conteúdo: corpus do kit (itens.jsonl + sistema/<sha>.txt), com o promptSha256 recomputado (sha256 canônico das mensagens)
 // ------------------------------------------------------------------------------------------------------------------------------
+/**
+ * Loads the corpus kit into an in-memory content store, checking every system file hash and every prompt hash.
+ *
+ * @param corpusDir - Folder with `itens.jsonl` and `sistema/<sha256>.txt`.
+ * @returns A store whose `get` resolves a prompt hash; `charsOf` gives the prompt's text length in characters and
+ *   `systemShaOf` its system-prompt hash. `get`, `charsOf` and `systemShaOf` throw `ECON_CONTENT_NOT_FOUND` for an
+ *   unknown hash; `getBytes` always throws `ECON_NO_BINARY`.
+ * @throws {EconError} `ECON_CORPUS_SISTEMA_SHA` or `ECON_CORPUS_PROMPT_SHA` when a hash does not match the content.
+ */
 export function corpusContentStore(corpusDir: string): ContentStore & { charsOf(sha: string): number; systemShaOf(sha: string): string } {
   const byHash = new Map<string, ResolvedContent>(); const sysOf = new Map<string, string>();
   for (const l of readFileSync(path.join(corpusDir, 'itens.jsonl'), 'utf8').split('\n').filter((x) => x.trim())) {
@@ -121,8 +177,17 @@ export function corpusContentStore(corpusDir: string): ContentStore & { charsOf(
 // ------------------------------------------------------------------------------------------------------------------------------
 // item 2: preços. Opus/Haiku 5.5 = v3 (AL14); luna/flash-lite = tabela atestada E3G; Sonnet 5 = SÓ uma tabela atestada injetada (G-2)
 // ------------------------------------------------------------------------------------------------------------------------------
+/** Human attestation of a price table: who (`human:` prefix), the decision records, the source literals by hash and the tier. */
 export interface EconAttestation { attestedBy: string; decisionRecords: string[]; literals: Array<{ file: string; sha256: string }>; tier: string }
-/** Valida a tabela do Sonnet 5 (schema otk.h2eval.price_table.v1, só o modelo claude-sonnet-5, atestação humana com DR e literal por sha, entrada/saída/raciocínio positivos). */
+/**
+ * Valida a tabela do Sonnet 5 (schema otk.h2eval.price_table.v1, só o modelo claude-sonnet-5, atestação humana com DR e literal por sha, entrada/saída/raciocínio positivos).
+ *
+ * @param buf - Raw bytes of the price table file.
+ * @returns The table and the SHA-256 of the bytes.
+ * @throws {EconError} `ECON_SONNET5_TABLE_*`, `ECON_SONNET5_NOT_ATTESTED` or `ECON_SONNET5_PRICE_MISSING` when the
+ *   schema, model list, provider, attestation, tier count or a positive integer price is wrong.
+ * @throws {SyntaxError} When the bytes are not JSON.
+ */
 export function validateSonnet5Table(buf: Buffer): { table: PriceTableH2; sha256: string } {
   const t = JSON.parse(buf.toString('utf8')) as PriceTableH2 & { models: Record<string, { attestation?: EconAttestation }> };
   if (t.schema !== 'otk.h2eval.price_table.v1' || t.currency !== 'USD') throw new EconError('ECON_SONNET5_TABLE_SCHEMA');
@@ -134,8 +199,18 @@ export function validateSonnet5Table(buf: Buffer): { table: PriceTableH2; sha256
   for (const k of ['input', 'output', 'reasoning'] as const) { const v = pm.tiers[0]!.prices[k]; if (typeof v !== 'string' || !/^[1-9][0-9]*$/.test(v)) throw new EconError('ECON_SONNET5_PRICE_MISSING', k); }
   return { table: t, sha256: sha256Hex(buf) };
 }
+/** Composite price table of the study, with the attested arm models and the SHA-256 of each source table (`parts`). */
 export type EconPriceTable = PriceTable & { armAttestedModels: readonly string[]; parts: Record<string, string> };
-/** Tabela composta por modelo (nenhum preço é copiado nem digitado aqui). */
+/**
+ * Tabela composta por modelo (nenhum preço é copiado nem digitado aqui).
+ *
+ * Builds the composite table: Opus/Haiku 5.5 from the v3 table, the arm models from the attested arm table, and the
+ * Sonnet 5 entry only from an attested table file when one is given (otherwise that model has no price).
+ *
+ * @param o - `sonnet5TablePath`: optional path of the attested Sonnet 5 table.
+ * @returns The frozen composite table; `micro` returns `null` for a model without a source table.
+ * @throws {EconError} When the Sonnet 5 table is invalid (see {@link validateSonnet5Table}); errors of the table loaders.
+ */
 export function loadEconPriceTable(o: { sonnet5TablePath?: string } = {}): EconPriceTable {
   const v3 = priceTableFromModal(loadModalPriceTable()); const arm = loadE3GPriceTable();
   const s5 = o.sonnet5TablePath ? priceTableFromModal(validateSonnet5Table(readFileSync(o.sonnet5TablePath))) : null;
@@ -148,12 +223,24 @@ export function loadEconPriceTable(o: { sonnet5TablePath?: string } = {}): EconP
     armAttestedModels: arm.armAttestedModels, parts,
   });
 }
-/** Modelos do estudo sem preço de entrada/saída: o consumidor não começa (falhar no seq 8 deixaria o estudo pela metade). */
+/**
+ * Modelos do estudo sem preço de entrada/saída: o consumidor não começa (falhar no seq 8 deixaria o estudo pela metade).
+ *
+ * @param prices - Price table.
+ * @param atUtc - ISO-8601 instant the prices must be valid at.
+ * @returns Study models with no input or no output price (empty when all are priced).
+ */
 export function econPriceGaps(prices: PriceTable, atUtc: string): string[] {
   return (Object.keys(ECON_MODELS) as EconModel[]).filter((m) => prices.micro(ECON_MODELS[m].provider, m, 'input', atUtc) === null || prices.micro(ECON_MODELS[m].provider, m, 'output', atUtc) === null);
 }
 
-/** delta 7: identidade do corpus como o kit a calcula (gera_corpus_econ.mjs): sha256(promptSha256 ordenados unidos por '\n' + '\n' + sha256(GABARITO.jsonl)); e o sha do painel.txt. */
+/**
+ * delta 7: identidade do corpus como o kit a calcula (gera_corpus_econ.mjs): sha256(promptSha256 ordenados unidos por '\n' + '\n' + sha256(GABARITO.jsonl)); e o sha do painel.txt.
+ *
+ * @param corpusDir - Corpus kit folder with `itens.jsonl`, `GABARITO.jsonl` and `painel.txt`.
+ * @returns The corpus hash and the SHA-256 of `painel.txt`.
+ * @throws {Error} When one of the files cannot be read or a line is not JSON.
+ */
 export function corpusIdentity(corpusDir: string): { corpusSha256: string; painelSha256: string } {
   const itens = readFileSync(path.join(corpusDir, 'itens.jsonl'), 'utf8').split('\n').filter((x) => x.trim()).map((l) => (JSON.parse(l) as { promptSha256: string }).promptSha256);
   const gab = sha256Hex(readFileSync(path.join(corpusDir, 'GABARITO.jsonl')));
@@ -170,13 +257,21 @@ export function corpusIdentity(corpusDir: string): { corpusSha256: string; paine
  * painel, num corpus cujo corpusSha e painel conferem. Qualquer outro texto: a razão do pior caso (1,647). A entrada real acima do limite
  * para o executor (STOP_INPUT_ABOVE_RESERVATION, com latch; custo acima do teto: STOP_CAP_VIOLATION, com latch) — nunca gasto a mais.
  */
+/** Frozen measurement behind the measured input reservation: characters and tokens measured once, plus a margin in percent. */
 export interface ReservaPainel { provider: 'anthropic'; corpusSha256: string; painelSha256: string; sistemaSha256: string; charsMedidos: number; tokensMedidos: number; margemPct: number; fonte: string }
+/** The only accepted measured reservation (86 880 tokens for 178 793 characters, margin 2 %). */
 export const ECON_RESERVA_PAINEL_MEDIDA: Readonly<ReservaPainel> = Object.freeze({
   provider: 'anthropic', corpusSha256: 'f7832807db2fd7c35a2fc27630c0e77b241da810f3fc982e2d5b592f6c20dd15', painelSha256: '5047ffef198772940b0ea534e05d627dca26b7c6d1bcb8f0d6d0c81ec684f3e4',
   sistemaSha256: 'b8b4a6bd9942d1e08ec055343c3e50ed5059ad8ac2d6b3adab31ebbec558100f', charsMedidos: 178793, tokensMedidos: 86880, margemPct: 2,
   fonte: 'ECON_SMOKE_RUN seq 5 (G-11, claude-haiku-5-5, input_tokens 86880) e X1 SMOKE_FINAL opcao (c)',
 });
-/** limite de entrada pela medida: ceil(caracteres × T × (100 + margem) / (caracteres medidos × 100)), aritmética inteira */
+/**
+ * limite de entrada pela medida: ceil(caracteres × T × (100 + margem) / (caracteres medidos × 100)), aritmética inteira
+ *
+ * @param chars - Characters of the request.
+ * @param r - The measurement (characters, tokens, margin in percent).
+ * @returns Upper bound of input tokens for the request.
+ */
 export const boundByMeasure = (chars: number, r: Pick<ReservaPainel, 'charsMedidos' | 'tokensMedidos' | 'margemPct'>): number => Math.ceil((chars * r.tokensMedidos * (100 + r.margemPct)) / (r.charsMedidos * 100));
 
 // ------------------------------------------------------------------------------------------------------------------------------
@@ -184,7 +279,17 @@ export const boundByMeasure = (chars: number, r: Pick<ReservaPainel, 'charsMedid
 // ------------------------------------------------------------------------------------------------------------------------------
 /** item 9: estado do G-7b. ABERTO => reserva Google com 8192 de thoughts além dos 8192 de saída (2 × 8192): HIPÓTESE dependente do G-7b, não limite (D1 do X1). */
 export type G7b = { estado: 'ABERTO' } | { estado: 'LIMITA'; fonte: string } | { estado: 'NAO_LIMITA'; tMaxThoughts: number; fonte: string };
+/** Thoughts allowance (tokens) reserved for Google while the open question is unresolved. */
 export const G7B_ABERTO_THOUGHTS_TOKENS = ECON_MAX_OUTPUT_TOKENS;
+/**
+ * Reasoning ("thoughts") allowance reserved for Google calls, from the state of the open question on whether the
+ * output ceiling also bounds thoughts.
+ *
+ * @param g - State: `ABERTO` (open), `LIMITA` (bounded by the output ceiling) or `NAO_LIMITA` (not bounded; `tMaxThoughts`).
+ * @returns Tokens to reserve, whether thoughts are bounded by the output ceiling, and a text basis.
+ * @throws {EconError} `ECON_G7B_SEM_FONTE` when `LIMITA` has no source; `ECON_G7B_TMAX_INVALIDO` when `NAO_LIMITA` has
+ *   no source or a non-positive `tMaxThoughts`.
+ */
 export function googleThoughtsAllowance(g: G7b): { tokens: number; boundedByMaxOutput: boolean; basis: string } {
   if (g.estado === 'LIMITA') { if (!g.fonte) throw new EconError('ECON_G7B_SEM_FONTE'); return { tokens: 0, boundedByMaxOutput: true, basis: `G-7b: maxOutputTokens limita os thoughts (${g.fonte})` }; }
   if (g.estado === 'NAO_LIMITA') { if (!g.fonte || !Number.isInteger(g.tMaxThoughts) || g.tMaxThoughts <= 0) throw new EconError('ECON_G7B_TMAX_INVALIDO'); return { tokens: g.tMaxThoughts, boundedByMaxOutput: false, basis: `G-7b: thoughts fora do maxOutputTokens, T_max ${g.tMaxThoughts} (${g.fonte})` }; }
@@ -192,14 +297,33 @@ export function googleThoughtsAllowance(g: G7b): { tokens: number; boundedByMaxO
 }
 /** Razões caracteres/token do pior caso (CUSTO_PREVISTO_ECON.json razoesCharsPorToken.*.pior; p01 medido). Parâmetro, não constante escondida. */
 export const ECON_RAZOES_PIOR: Readonly<Record<Provider, number>> = Object.freeze({ anthropic: 1.647, openai: 2.388, google: 1.593 });
+/**
+ * Builds the per-attempt cost-cap policy the runner uses to size each reservation.
+ *
+ * @param o - `charsOf`: characters of a prompt by hash; `razoes`: worst-case characters per token by provider (default
+ *   {@link ECON_RAZOES_PIOR}); `g7b`: Google thoughts state; `painel`: optional measured reservation and system-hash lookup.
+ * @returns Functions giving the input upper bound and the reasoning allowance (tokens) of a plan, whether Google
+ *   thoughts are bounded by the output ceiling, and the Google basis text.
+ * @throws {EconError} `ECON_RAZAO_INVALIDA` when a ratio is not positive; errors of {@link googleThoughtsAllowance}.
+ */
 export function econCapPolicy(o: { charsOf: (promptSha256: string) => number; razoes?: Record<Provider, number>; g7b: G7b; painel?: { reserva: ReservaPainel; systemShaOf: (promptSha256: string) => string } }) {
   const r = o.razoes ?? ECON_RAZOES_PIOR; const g = googleThoughtsAllowance(o.g7b);
   for (const p of ['anthropic', 'openai', 'google'] as const) if (!(r[p]! > 0)) throw new EconError('ECON_RAZAO_INVALIDA', p);
   const pn = o.painel;
   return {
-    /** entrada = ceil(caracteres do pedido / razão do pior caso), a mesma regra do CUSTO_PREVISTO_ECON; delta 7: o painel Anthropic medido, pela medida + margem */
+    /**
+     * entrada = ceil(caracteres do pedido / razão do pior caso), a mesma regra do CUSTO_PREVISTO_ECON; delta 7: o painel Anthropic medido, pela medida + margem
+     *
+     * @param plan - Operation plan.
+     * @returns Input upper bound in tokens.
+     */
     inputUpperBoundTokens: (plan: OperationPlan) => (pn && plan.provider === pn.reserva.provider && pn.systemShaOf(plan.promptSha256) === pn.reserva.sistemaSha256 ? boundByMeasure(o.charsOf(plan.promptSha256), pn.reserva) : Math.ceil(o.charsOf(plan.promptSha256) / r[plan.provider]!)),
-    /** Anthropic e OpenAI: 0 (max_tokens / max_completion_tokens limitam a saída inteira, raciocínio incluído; um custo acima do teto continua STOP_CAP_VIOLATION). Google: do G-7b. */
+    /**
+     * Anthropic e OpenAI: 0 (max_tokens / max_completion_tokens limitam a saída inteira, raciocínio incluído; um custo acima do teto continua STOP_CAP_VIOLATION). Google: do G-7b.
+     *
+     * @param plan - Operation plan.
+     * @returns Reasoning allowance in tokens.
+     */
     reasoningAllowanceTokens: (plan: OperationPlan) => (plan.provider === 'google' ? g.tokens : 0),
     thoughtsBoundedByMaxOutput: (plan: OperationPlan) => plan.provider === 'google' && g.boundedByMaxOutput,
     googleBasis: g.basis,
@@ -210,8 +334,24 @@ export function econCapPolicy(o: { charsOf: (promptSha256: string) => number; ra
 // item 11: guarda de ordem e prefixo (fatos do journal)
 // ------------------------------------------------------------------------------------------------------------------------------
 const AFTER_SEND_TERMINAL = new Set(['SETTLED', 'UNCERTAIN_ISOLATED', 'STOP_GLOBAL']);
+/**
+ * Facts read from the journal for the order guard: operations sent, operations sent and terminal, planned `econSeq`
+ * values in journal order, whether they only increase, and how many journal lines were already read.
+ */
 export interface OrderIndex { sent: Set<string>; executedTerminal: Set<string>; plannedSeqs: number[]; increasing: boolean; processed: number }
+/**
+ * Creates an empty order index.
+ *
+ * @returns An index with nothing read yet.
+ */
 export const newOrderIndex = (): OrderIndex => ({ sent: new Set(), executedTerminal: new Set(), plannedSeqs: [], increasing: true, processed: 0 });
+/**
+ * Reads the journal lines not yet indexed into the order index.
+ *
+ * @param idx - Index to update (mutated in place).
+ * @param lines - All journal lines so far; only lines from `idx.processed` on are read.
+ * @returns The same index.
+ */
 export function indexJournal(idx: OrderIndex, lines: readonly JournalLine[]): OrderIndex {
   for (let i = idx.processed; i < lines.length; i++) {
     const l = lines[i]!;
@@ -221,7 +361,14 @@ export function indexJournal(idx: OrderIndex, lines: readonly JournalLine[]): Or
   }
   idx.processed = lines.length; return idx;
 }
-/** null = pode enviar; senão o motivo. Exige: seq do journal estritamente crescente, nenhum PLANNED com seq >= s, e todo seq < s executado (SENT) e terminal. */
+/**
+ * null = pode enviar; senão o motivo. Exige: seq do journal estritamente crescente, nenhum PLANNED com seq >= s, e todo seq < s executado (SENT) e terminal.
+ *
+ * @param idx - Current order index.
+ * @param seq - Schedule position about to be sent.
+ * @param opIdBySeq - Operation id of each schedule position.
+ * @returns `null` when the attempt may be sent; otherwise a reason code.
+ */
 export function orderVerdict(idx: OrderIndex, seq: number, opIdBySeq: readonly string[]): string | null {
   if (!idx.increasing) return 'JOURNAL_SEQ_NAO_CRESCENTE';
   const last = idx.plannedSeqs[idx.plannedSeqs.length - 1];
@@ -233,7 +380,13 @@ export function orderVerdict(idx: OrderIndex, seq: number, opIdBySeq: readonly s
 // ------------------------------------------------------------------------------------------------------------------------------
 // item 6: linha por tentativa (TENTATIVAS.jsonl) e texto da resposta
 // ------------------------------------------------------------------------------------------------------------------------------
-/** Texto visível da resposta (nunca thinking/thought). Ausente => null. */
+/**
+ * Texto visível da resposta (nunca thinking/thought). Ausente => null.
+ *
+ * @param provider - Provider whose response format applies.
+ * @param body - Parsed response body.
+ * @returns The concatenated visible text, or `null` when there is none.
+ */
 export function outputTextOf(provider: Provider, body: unknown): string | null {
   const b = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
   if (provider === 'anthropic') { const c = Array.isArray(b['content']) ? (b['content'] as Array<Record<string, unknown>>).filter((x) => x['type'] === 'text' && typeof x['text'] === 'string') : []; return c.length ? c.map((x) => x['text'] as string).join('') : null; }
@@ -247,6 +400,10 @@ const LIMIT_REASONS = new Set(['max_tokens', 'length', 'MAX_TOKENS']);
  * delta 2 (master, X1 v3.2 R-A): `truncated` BOOLEANO sempre que a resposta permitir, a partir do `completion` do registro (que é o que os
  * records REAIS trazem): COMPLETE => false; TRUNCATED_* => true; REFUSED/OTHER com stopReason conhecido => pelo stopReason (limite => true,
  * senão false); sem informação (completion UNKNOWN e stopReason UNKNOWN) => 'UNKNOWN' (a porta v3.2 trata como FIM_DESCONHECIDO). Nunca inventado.
+ *
+ * @param completion - The record's completion state, if any.
+ * @param stopReason - The provider stop reason, or `'UNKNOWN'`.
+ * @returns `true` when the answer was cut by a length limit, `false` when not, `'UNKNOWN'` when it cannot be told.
  */
 export function truncatedOf(completion: string | undefined, stopReason: string): boolean | 'UNKNOWN' {
   if (completion === 'COMPLETE') return false;
@@ -256,6 +413,11 @@ export function truncatedOf(completion: string | undefined, stopReason: string):
 }
 const picoToUsdNum = (p: bigint): number => Number(p) / 1e12;
 const tokens = (v: unknown): number | null => (typeof v === 'number' ? v : v === 'NOT_APPLICABLE' ? 0 : null);
+/**
+ * One line of `TENTATIVAS.jsonl` (one attempt). Costs are USD numbers (`lowUsd`..`highUsd`, `capUsd` the reservation);
+ * an unknown cost is the interval [0, cap], never 0. Token fields are `null` when unknown; fields reported as not
+ * applicable become 0 and are listed in `naComoZero`.
+ */
 export interface Tentativa {
   schema: 'otk.econ.tentativa.v1'; opId: string; seq: number; block: number; arm: string; model: string; provider: Provider;
   outcome: string; httpStatus: number | null; stopReason: string; truncated: boolean | 'UNKNOWN'; modelServed: string; outputText: string | null; responseSha256: string;
@@ -263,6 +425,16 @@ export interface Tentativa {
   usage: { inputUncached: number | null; cacheRead: number | null; cacheWrite: number | null; outputTotal: number | null; U: number | null; completeness: string; naComoZero: string[] } | null;
   cost: { state: string; lowUsd: number; highUsd: number; capUsd: number }; latencyMs: number | null; tsSentUtc: string; timeoutMs: number; samplingParams: 'NOT_SENT'; reasoningParams: 'NOT_SENT';
 }
+/**
+ * Builds the attempt line from the settled record and the stored response.
+ *
+ * @param l - Schedule line.
+ * @param rec - Post-call record written by the runner.
+ * @param responseBody - Parsed stored response, or `null` when none is available.
+ * @param capPico - Reserved cost cap in pico-USD.
+ * @param timeoutMs - Per-attempt timeout in ms.
+ * @returns The attempt line (not written here).
+ */
 export function tentativaOf(l: CronLine, rec: PostcallRecord, responseBody: unknown, capPico: bigint, timeoutMs: number): Tentativa {
   const cap = picoToUsdNum(capPico);
   let cost: Tentativa['cost'];
@@ -289,7 +461,9 @@ function appendFsync(file: string, line: string): void { const fd = openSync(fil
 // ------------------------------------------------------------------------------------------------------------------------------
 // Consumidor (item 4) com a guarda (item 11), o timeout único (item 8) e o egress dos 3 hosts (item 7)
 // ------------------------------------------------------------------------------------------------------------------------------
+/** Hosts the study may reach: the official hosts of the three providers. */
 export const ECON_ALLOWED_HOSTS: readonly string[] = Object.freeze([...OFFICIAL_HOSTS.anthropic, ...OFFICIAL_HOSTS.openai, ...OFFICIAL_HOSTS.google]);
+/** Configuration of one economic run: paths and hashes, identities, timeout, cap policy inputs, prices, egress and GO. */
 export interface EconConfig {
   batchDir: string; cronogramaPath: string; cronogramaSha256: string; corpusDir: string;
   studyId: string; protocolHash: string; manifestSha256: string; executorCodeSha: string;
@@ -307,12 +481,18 @@ export interface EconConfig {
   reservaPainel?: ReservaPainel;
   go?: { file: string; preregistrationSha256: string; treeClean: boolean | null; nowMs?: () => number; /** delta 4 (R-D1): margem mínima até o notAfter do GO antes de reservar (padrão ECON_GO_MARGEM_MS; >= timeout + ECON_GO_FOLGA_MS) */ marginMs?: number };
 }
+/** Result of {@link runEcon}: planned lines, executed prefix length, the stop (or `null`), ledger state and price sources. */
 export interface EconRunSummary { schema: 'otk.econ.run_summary.v1'; /** delta 7: sha canônico da reserva do painel em uso, ou null */ reservaPainelSha256?: string | null; executorVersion: string; tentativasPlanejadas: number; executadasPrefixo: number; parada: { seq: number; opId: string; state: string; stop: StopReason | string | null } | null; ledger: unknown; googleBasis: string; precos: Record<string, string> }
 
 /**
  * delta 3: o validador que o egress chama no ramo h2eval.go.econ.v1 (core/egress.ts readGo). Puro sobre (texto, contexto da tentativa):
  * arquivo com o sha fixado no início, validação completa com o relógio DO EGRESS, executor e campanha, provedor e modelo no escopo; devolve o
  * pauseAck do provedor. A faixa de seq e o maxAttempts (que o contexto do egress não conhece) ficam na guarda `admit` do consumidor.
+ *
+ * @param o - `sha0`: SHA-256 of the GO text read at start; `go0`: that GO parsed; `ctxOf`: builds the validation
+ *   context; `executorCodeSha` and `campaign`: identities the egress context must match.
+ * @returns The `goEcon` hook for the egress config; its `validate` returns a code (or `null`) and the provider's pause
+ *   acknowledgement.
  */
 export function goEconEgressValidator(o: { sha0: string; go0: GoEconV1; ctxOf: () => GoEconContext; executorCodeSha: string; campaign: string }): NonNullable<EgressConfig['goEcon']> {
   return { validate: (text: string, c: GoContext_) => {
@@ -325,8 +505,19 @@ export function goEconEgressValidator(o: { sha0: string; go0: GoEconV1; ctxOf: (
   } };
 }
 
+/** The assembled executor plus the schedule, the order index and a plan builder. */
 export interface EconExecutor { ex: H2EvalExecutor; cron: CronLine[]; idx: OrderIndex; googleBasis: string; reservaPainelSha256: string | null; plan(l: CronLine): OperationPlan }
-/** Monta o executor do estudo com todas as guardas (exposto para os testes da guarda de ordem chamarem run() fora de ordem). */
+/**
+ * Monta o executor do estudo com todas as guardas (exposto para os testes da guarda de ordem chamarem run() fora de ordem).
+ *
+ * Checks the schedule, identities, hosts, corpus content, prices, the optional measured reservation and the GO before
+ * anything is created; then creates the shared executor (which opens the ledger and journal in `cfg.batchDir`).
+ *
+ * @param cfg - Run configuration.
+ * @returns The executor and its helpers.
+ * @throws {EconError} `ECON_IDENTIDADE`, `ECON_EGRESS_HOST`, `ECON_PRICE_MISSING`, `ECON_RESERVA_PAINEL_*`,
+ *   `ECON_GO_MISSING` (REAL mode without a GO), `ECON_GO_MARGEM_INVALIDA` or `ECON_GO_INVALID`; schedule and corpus errors.
+ */
 export async function createEconExecutor(cfg: EconConfig): Promise<EconExecutor> {
   const cron = readCronograma(cfg.cronogramaPath, { expectedSha256: cfg.cronogramaSha256, timeoutMs: cfg.timeoutMs });
   if (!HEX64.test(cfg.protocolHash) || !HEX64.test(cfg.manifestSha256)) throw new EconError('ECON_IDENTIDADE');
@@ -398,6 +589,15 @@ export async function createEconExecutor(cfg: EconConfig): Promise<EconExecutor>
   return { ex, cron, idx, googleBasis: cap.googleBasis, reservaPainelSha256, plan: (l) => planOf(l, cfg) };
 }
 
+/**
+ * Runs the schedule in order until it ends, an attempt stops, or `cfg.maxOps` calls were made; appends one line per
+ * sent attempt to `TENTATIVAS.jsonl` (skipping operations already written, so a resumed run does not duplicate).
+ * In REAL mode this spends money through the egress, within the GO and ledger caps.
+ *
+ * @param cfg - Run configuration.
+ * @returns The run summary.
+ * @throws {EconError} Any error of {@link createEconExecutor}.
+ */
 export async function runEcon(cfg: EconConfig): Promise<EconRunSummary> {
   const { ex, cron, idx, googleBasis, reservaPainelSha256 } = await createEconExecutor(cfg);
   const tentFile = path.join(cfg.batchDir, 'TENTATIVAS.jsonl');
@@ -423,7 +623,21 @@ export async function runEcon(cfg: EconConfig): Promise<EconRunSummary> {
   return { schema: 'otk.econ.run_summary.v1', reservaPainelSha256, executorVersion: ECON_EXECUTOR_VERSION, tentativasPlanejadas: cron.length, executadasPrefixo: prefix, parada, ledger: ex.ledger.state(), googleBasis, precos: cfg.prices.parts };
 }
 
-/** K-CUSTO informativo: Σ costCap por provedor com esta política (não bloqueia; LIMITING decide em execução). Valores em USD. */
+/**
+ * K-CUSTO informativo: Σ costCap por provedor com esta política (não bloqueia; LIMITING decide em execução). Valores em USD.
+ *
+ * @param cron - Schedule lines.
+ * @param charsOf - Characters of a prompt by hash.
+ * @param prices - Price table.
+ * @param g7b - Google thoughts state.
+ * @param atUtc - ISO-8601 instant for prices.
+ * @param computeCostCap - The cost-cap function from `record/cost.ts` (passed in to avoid an import cycle).
+ * @param razoes - Optional worst-case characters per token by provider.
+ * @param painel - Optional measured reservation and system-hash lookup.
+ * @returns USD sums per provider and `total` (rounded to cents), `semPreco` (models without a price, or `NENHUM`) and
+ *   `teto` (the planning caps as text).
+ * @throws {EconError} Errors of {@link econCapPolicy}.
+ */
 export function somaCostCap(cron: readonly CronLine[], charsOf: (sha: string) => number, prices: PriceTable, g7b: G7b, atUtc: string, computeCostCap: typeof import('../record/cost.js').computeCostCap, razoes?: Record<Provider, number>, painel?: { reserva: ReservaPainel; systemShaOf: (sha: string) => string }): Record<string, number | string> {
   const cp = econCapPolicy({ charsOf, razoes, g7b, ...(painel ? { painel } : {}) }); const acc: Record<string, bigint> = {}; const miss = new Set<string>();
   for (const l of cron) {

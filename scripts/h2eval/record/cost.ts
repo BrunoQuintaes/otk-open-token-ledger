@@ -4,6 +4,11 @@
  * + (maxOutput + reasoningAllowance) × output, rounded UP to micro-USD. The allowance (Haiku 5.5: 1 024, Gemini: 2 048, others 0)
  * is policy, injected by the caller; APIs that bill reasoning separately refuse an allowance of 0 (fail closed, because
  * "max_tokens includes reasoning" is NOT_VERIFIED). Any needed price missing => error (caller: STOP_PRICE_UNKNOWN before reserving).
+ *
+ * Used by the runner (`core/runner.ts`) to reserve before a call and to price the call afterwards, and by
+ * `econ/econ.ts` for planning sums. Pure: no I/O.
+ *
+ * @module scripts/h2eval/record/cost
  */
 import { H2EVAL_SCHEMA, type CostCap, type Count, type CostTable, type NormalizedUsageH2, type PicoUsd } from '../types.js';
 import type { UsageApi } from '../../../src/types/d1d8/index.js';
@@ -19,16 +24,35 @@ export const REASONING_SEMANTICS: Record<UsageApi, 'subset_of_output' | 'separat
   'gemini.generate_content': 'separate_billed_as_output', 'deepseek.chat_completions': 'subset_of_output', 'mistral.chat_completions': 'none', 'cohere.chat': 'none',
 };
 
+/**
+ * Inputs of the pre-call cap: token bounds (positive integers; the reasoning allowance may be 0) and the instant
+ * `atUtc` (ISO-8601) the prices must be valid at.
+ */
 export interface CapInput { provider: string; model: string; api: UsageApi; inputUpperBoundTokens: number; maxOutputTokens: number; reasoningAllowanceTokens: number; atUtc: string;
   /** EXEC-ECON C160 (delta v3.1 item 5): Anthropic request WITHOUT cache_control (cacheDirectives NONE, H_PARITY) => "without cache_control there is neither write nor read"
    *  (anthropic_messages.ts header, R08 §4): the input is priced at the input price, without the cache-write surcharge. Only honoured for provider anthropic. */
   noCacheWrite?: boolean;
   /** EXEC-ECON C160 (delta v3.1 item 9): G-7b RESOLVED as "maxOutputTokens bounds the thoughts" => an allowance of 0 is accepted on an API that bills reasoning separately. Absent => the fail-closed rule stays. */
   thoughtsBoundedByMaxOutput?: boolean }
+/** A successful cap: amount in pico-USD (decimal string) plus its basis. */
 export type CapResult = CostCap;
 const MICRO = 1_000_000n; // pico-USD per micro-USD
+/**
+ * Rounds a pico-USD amount up to a whole micro-USD.
+ *
+ * @param pico - Amount in pico-USD (>= 0).
+ * @returns The smallest multiple of 1 000 000 pico-USD that is >= `pico`.
+ */
 export const ceilToMicro = (pico: bigint): bigint => ((pico + MICRO - 1n) / MICRO) * MICRO;
 
+/**
+ * Computes the worst-case cost of a call before it is sent (the amount to reserve).
+ *
+ * @param prices - Price table.
+ * @param c - Model, API, token bounds and pricing instant.
+ * @returns The cap in pico-USD (rounded up to micro-USD) with its basis, or `{ error: 'PRICE_UNKNOWN', missing }` when
+ *   the input or output price is missing, a bound is invalid, or the API needs a reasoning allowance > 0 and none was given.
+ */
 export function computeCostCap(prices: PriceTable, c: CapInput): CapResult | { error: 'PRICE_UNKNOWN'; missing: string[] } {
   const hint = c.inputUpperBoundTokens;
   const pIn = prices.micro(c.provider, c.model, 'input', c.atUtc, hint);
@@ -54,9 +78,20 @@ export function computeCostCap(prices: PriceTable, c: CapInput): CapResult | { e
 
 const num = (c: Count): bigint | null => (typeof c === 'number' ? BigInt(c) : null);
 
+/**
+ * Inputs of the post-call cost: the validated usage (`null` = none), the reserved cap `capUsd` (pico-USD), the cached
+ * prefix length in tokens (or `'UNKNOWN'`) and whether the call may have been charged.
+ */
 export interface CostInput { provider: string; model: string; api: UsageApi; usage: NormalizedUsageH2 | null; atUtc: string; capUsd: PicoUsd; prefixTokens: number | 'UNKNOWN'; possiblyCharged: boolean }
 
-/** Ex-post cost by the table. CALCULATED only when every billed category has a numeric count and a price; else UNKNOWN. */
+/**
+ * Ex-post cost by the table. CALCULATED only when every billed category has a numeric count and a price; else UNKNOWN.
+ *
+ * @param prices - Price table.
+ * @param c - Usage, cap and context of the call.
+ * @returns The cost record: total and per-category amounts in pico-USD, whether the cap covered it, and the cache
+ *   interval [all-prefix-read, all-input-at-worst-write] when it can be computed; `usd: 'UNKNOWN'` otherwise.
+ */
 export function computeCost(prices: PriceTable, c: CostInput): CostTable {
   const unknown = (): CostTable => ({ schema: H2EVAL_SCHEMA.cost, usd: 'UNKNOWN', state: 'UNKNOWN', byCategory: {}, priceSnapshotSha256: prices.sha256, capCovered: 'UNKNOWN', cacheInterval: { lowerUsd: 'UNKNOWN', upperUsd: 'UNKNOWN', inInterval: 'UNKNOWN' }, billing: { state: 'NOT_AVAILABLE', observedUsd: null, source: null, tolerance: null }, possiblyCharged: c.possiblyCharged });
   const u = c.usage; if (!u || u.usageCompleteness === 'MISSING') return unknown();

@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 # PILOTO_V3 — live phases (Anthropic, OpenAI or Gemini), strictly serial, through runPilotV3.ts.
+# Usage: as on the next line (the provider may also be gemini35). It makes PAID provider API calls, capped per
+#   provider by the canonical budget ledger. Depends on files outside this repository (the heavy-lock helper,
+#   the operator's ledger and the evaluation run folders), so it is kept as a record of how the live pilot ran.
 #   bash scripts/pilot/anthropic/run_live_pv3.sh [--provider=anthropic|openai|gemini] [minimal stream disconnect sample besu]
 # Per provider (default anthropic), fixed: output root (PILOTO_V3/live, PILOTO_V3/live_openai, PILOTO_V3/live_gemini), canonical ledger
 # (<HOME>/otk-pilot/<provider>_budget_ledger.jsonl, US$ 3 each) and runner runPilotV3.ts.

@@ -10,23 +10,41 @@
  * Cache: without `cache_control` there is neither write nor read (R08 §4); the S3 arm adds one breakpoint on the prefix.
  * Sources (R08 official_docs): anthropic/messages-create.html, anthropic/messages-usage-object.html, anthropic/pricing.html,
  * anthropic/extended-thinking.html, anthropic/haiku-5-5.html, anthropic/service-tiers.html, anthropic/vision.html.
+ *
+ * The builder also serves the Sonnet/Opus 5.5 pilots and the parity-profile model; the per-API adapter in
+ * `modal/index.ts` decides which reasoning fields stay in the body. Pure: no I/O.
+ *
+ * @module scripts/h2eval/modal/adapters/anthropic_messages
  */
 import type { ParsedResponse, RequestEnvelope, Modality } from '../types.js';
 import { NA, UNKNOWN, completeness, emptyUsage, intAt, sanitizeNumbers, sub, terms } from '../canonical.js';
 
+/** Request path of the Messages API. */
 export const ANTHROPIC_MESSAGES_PATH = '/v1/messages';
+/** API version header value used in every request. */
 export const ANTHROPIC_VERSION_HEADER = '2023-06-01';
+/** Standard service tier value sent. */
 export const ANTHROPIC_STANDARD_TIER = 'standard_only';
-/** VNEXT-1: a stop/finish reason is kept only as a short identifier (never free text). */
+/**
+ * VNEXT-1: a stop/finish reason is kept only as a short identifier (never free text).
+ *
+ * @param v - Raw stop or finish reason from any provider.
+ * @returns The value when it is 1 to 40 letters, digits or underscores; otherwise `'UNKNOWN'`.
+ */
 export const stopReasonOf = (v: unknown): string | 'UNKNOWN' => (typeof v === 'string' && /^[A-Za-z0-9_]{1,40}$/.test(v) ? v : 'UNKNOWN');
 
+/** Image part: media type and base64 bytes. */
 export interface AnthropicImagePart { kind: 'image'; mediaType: 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp'; base64: string }
+/** One message part: text (optionally carrying the cache breakpoint) or image. */
 export type AnthropicUserPart = { kind: 'text'; text: string; cacheBreakpoint?: { ttl?: '5m' | '1h' } } | AnthropicImagePart;
 
 /**
  * `system` is sent as an array of text blocks ("system: optional string or array of TextBlockParam { type: "text", text, cache_control,
  * citations }", anthropic/messages-create.html) so that a cache breakpoint can sit on it: "Prompt caching references the entire prompt:
  * tools, system, and messages (in that order), up to and including the block designated with cache_control" (anthropic/prompt-caching.html).
+ *
+ * @param args - Model, optional system text and its cache breakpoint, messages and the remaining request options.
+ * @returns The request envelope (path only, no host or credential) with the price-relevant parameters.
  */
 export function buildAnthropicMessagesRequest(args: { model: 'claude-haiku-4-5-20251001' | 'claude-haiku-5-5' | 'claude-sonnet-5-5' | 'claude-opus-5-5' | 'claude-sonnet-5'; system?: string; systemCacheBreakpoint?: { ttl?: '5m' | '1h' }; messages: Array<{ role: 'user' | 'assistant'; parts: AnthropicUserPart[] }>; maxOutputTokens: number }): RequestEnvelope {
   const modalities = new Set<Modality>(['text']);
@@ -58,6 +76,14 @@ export function buildAnthropicMessagesRequest(args: { model: 'claude-haiku-4-5-2
   };
 }
 
+/**
+ * Parses a Messages response into disjoint usage categories, outcome and stop reason.
+ *
+ * @param httpStatus - HTTP status of the response.
+ * @param body - Parsed response body.
+ * @param ctx - Modalities the request carried, and whether thinking was requested (`undefined` = not known).
+ * @returns The parsed response; missing counts stay `'UNKNOWN'`, never 0.
+ */
 export function parseAnthropicMessagesResponse(httpStatus: number, body: unknown, ctx: { requestModalities: Modality[]; thinkingRequested?: boolean }): ParsedResponse {
   const flags: string[] = [];
   const b = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;

@@ -11,19 +11,38 @@
  * Documented table values used as tests: 200x200 -> 64; 1000x1000 -> 1,296; 1092x1092 -> 1,521 (both tiers, "Not resized");
  * 1920x1080 -> 2,691 on High-resolution ("Not resized"), 1,560 on Standard (resized: only the bound 1,568 is asserted here).
  * Haiku 4.5 = Standard tier; Haiku 5.5 = "Claude 4.7 and later" = High-resolution tier (R08 §5).
+ *
+ * Called by `estimators/index.ts`; the tier table is also used by `modal/contract_r2.ts`.
+ *
+ * @module scripts/h2eval/modal/estimators/image_anthropic_patches
  */
 import type { ExAnteEstimate } from '../types.js';
 
+/** Image limits per tier: maximum long edge in pixels and maximum visual tokens. */
 export const ANTHROPIC_TIERS = Object.freeze({
   standard: { maxLongEdge: 1568, maxTokens: 1568n },
   high_resolution: { maxLongEdge: 2576, maxTokens: 4784n },
 });
+/** Citation stored with every estimate from this module. */
 export const ANTHROPIC_IMAGE_CITATION = 'anthropic/vision.html sha256 58d5ce27...: "An image, therefore, costs ⌈width / 28⌉ × ⌈height / 28⌉ visual tokens."; tiers Standard 1,568 px / 1,568 tokens, High-resolution 2,576 px / 4,784 tokens; oversized images are downscaled by a rule on a page not archived => only the cap is asserted';
 
+/**
+ * Image tier of a supported Claude model.
+ *
+ * @param model - Haiku 4.5 or Haiku 5.5.
+ * @returns `high_resolution` for Haiku 5.5, `standard` for Haiku 4.5.
+ */
 export function anthropicTierOf(model: 'claude-haiku-4-5-20251001' | 'claude-haiku-5-5'): keyof typeof ANTHROPIC_TIERS {
   return model === 'claude-haiku-5-5' ? 'high_resolution' : 'standard';
 }
 
+/**
+ * Estimates the visual tokens of one image as ⌈width/28⌉ × ⌈height/28⌉.
+ *
+ * @param args - Width and height in pixels (positive integers) and the model.
+ * @returns `ESTIMATED` when the image is within the tier's limits; `ESTIMATED_UPPER_BOUND` with the tier's maximum when
+ *   it is not (the resize rule is not archived); `UNSUPPORTED_FOR_ESTIMATION` for invalid dimensions.
+ */
 export function estimateAnthropicImageTokens(args: { width: number; height: number; model: 'claude-haiku-4-5-20251001' | 'claude-haiku-5-5' }): ExAnteEstimate {
   const id = 'h2eval.image.anthropic_patches28.v0 (EXPERIMENTAL)';
   if (!Number.isInteger(args.width) || !Number.isInteger(args.height) || args.width <= 0 || args.height <= 0) return { status: 'UNSUPPORTED_FOR_ESTIMATION', modality: 'image', tokens: null, estimatorId: id, label: 'NONE', citation: ANTHROPIC_IMAGE_CITATION, reasons: ['invalid_dimensions'] };

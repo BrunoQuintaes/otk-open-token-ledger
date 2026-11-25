@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Usage: bash scripts/ops/backup_restore_drill.sh   (full usage, steps and variables in the block below)
+# Reads OTK_PG_URL (Postgres; the drill is skipped without it), OTK_REDIS_HOST and OTK_REDIS_PORT.
 # ─────────────────────────────────────────────────────────────────────────────
 # backup_restore_drill.sh — OTK Backup + Restore Validation Drill (E5.1)
 #

@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+# Historical one-shot maintenance script, kept as a record of how a cleanup round was done: it archives
+# duplicate docs with `git mv` into docs/_archive/<timestamp>/, rewrites docs/INDEX.md, patches the ZK
+# witness scripts for ESM, runs `npm test` and gate_r0_revalidate.sh, writes evidence under
+# docs/_ops/u8/, and runs `git add -A` and `git commit` when everything passes.
+# It changes and commits the repository. The `cd <HOME>/...` line is a redacted placeholder, so the
+# script does not run as published; it is not part of any test or build.
+# Usage: bash scripts/ops/final_today_audit.sh   (only after replacing the placeholder path)
 # =========================
 # FINAL (TODAY) — Structural Scan + Architecture(C4) sanity + Fix witness ESM + Revalidate
 # Evidence-first, atomic commit only if ALL GREEN, STOP before U8.5

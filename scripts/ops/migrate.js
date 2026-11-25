@@ -12,7 +12,17 @@
  * Migration file naming: NNN_description.sql (e.g., 001_create_receipts.sql)
  * Files are applied in lexicographic order. Already-applied versions are skipped.
  *
+ * Details: the recorded version is the whole file name without `.sql` (renaming an applied file makes it
+ * pending again). Each file runs in its own transaction together with its row in `otk_migrations`; the
+ * first failure is rolled back and stops the run. Progress is logged to stderr as JSON lines (file names
+ * and counts only, never the connection string). A relative OTK_MIGRATION_DIR is resolved from the
+ * working directory; the default folder is resolved from this file's location.
+ * Exit codes: 0 = done, or skipped because OTK_DB_URL is unset, the `pg` package is missing or there are
+ * no .sql files; 1 = a migration or database error.
+ * Used by the test/services migration suites.
+ *
  * @since Wave 2 Pack 15 (E3.3)
+ * @module scripts/ops/migrate
  */
 
 import { readdirSync, readFileSync } from 'node:fs';

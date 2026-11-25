@@ -2,6 +2,14 @@
  * MET-02 integration point (INTERFACES.md §9): `ADAPTERS: Record<UsageApi, ProviderAdapter>` for the three APIs of the matrix,
  * built on the pure builders/parsers of ./adapters/*. Also re-exports the price table, cost engine and ex ante estimators.
  * Nothing here does I/O, reads env or logs.
+ *
+ * In plain terms: each adapter turns an operation plan plus its resolved content into the exact HTTP body for one
+ * provider API (refusing any parameter that is not documented for the model), and turns a response body into
+ * normalised usage. The executor (`scripts/h2eval/index.ts`) wraps `ADAPTERS`; `bodyOf` is also used by
+ * `cache/dialogs.ts` and `cli/plan.ts` to hash the reference body. Adapter errors are {@link AdapterError}s with a
+ * stable `H2EVAL_*` code.
+ *
+ * @module scripts/h2eval/modal/index
  */
 import { createHash } from 'node:crypto';
 import type { UsageApi, ModelSupport } from '../../../src/types/d1d8/index.js';
@@ -24,10 +32,17 @@ export { estimateExAnte, estimateTextTokens, estimateOpenAiImageTokens, estimate
 /** Official API hosts (documentation: anthropic/messages-create.html shows `https://api.anthropic.com/v1/messages`; OpenAI and Google as published in their API references). The core enforces its own allowlist on top. */
 export const OFFICIAL_HOSTS = Object.freeze({ openai: ['api.openai.com'], anthropic: ['api.anthropic.com'], google: ['generativelanguage.googleapis.com'] });
 
+/** Raised when a plan cannot be turned into a documented request; `code` is a stable `H2EVAL_*` code. */
 export class AdapterError extends Error { constructor(public readonly code: string, msg: string) { super(`${code}: ${msg}`); } }
 const MATRIX = new Set<string>(['gpt-4o-mini-2024-07-18', 'claude-haiku-4-5-20251001', 'claude-haiku-5-5', 'claude-sonnet-5-5', 'claude-opus-5-5', 'gemini-3.5-flash-lite']);
 const deprecationOf = (m: string) => (MATRIX.has(m) ? modelDeprecationOf(m as MatrixModel).modelDeprecation : 'UNKNOWN' as const);
-/** rev. 2 `params.thinking` wins over the v0 `reasoning` record when both are present (they must agree; the plan is the pre-registered source). */
+/**
+ * rev. 2 `params.thinking` wins over the v0 `reasoning` record when both are present (they must agree; the plan is the pre-registered source).
+ *
+ * @param plan - Operation plan.
+ * @returns The reasoning record the adapter applies, or `'NONE'`.
+ * @throws {AdapterError} `H2EVAL_PARAM_CONFLICT` when `thinking` and `reasoning` disagree, or from {@link hParityOf}.
+ */
 function reasoningFromPlan(plan: OperationPlan): Record<string, string | number | boolean> | 'NONE' {
   const t = plan.params.thinking;
   if (!t) return plan.params.reasoning;
@@ -47,6 +62,14 @@ function reasoningFromPlan(plan: OperationPlan): Record<string, string | number 
  * Absent profile: every legacy body is byte for byte unchanged.
  */
 export const H_PARITY_MODELS: Readonly<Record<string, 'anthropic' | 'openai' | 'google'>> = Object.freeze({ 'claude-sonnet-5': 'anthropic', 'claude-opus-5-5': 'anthropic', 'claude-haiku-5-5': 'anthropic', 'gpt-6-luna': 'openai', 'gemini-3.1-flash-lite': 'google' });
+/**
+ * Tells whether a plan uses the parity body profile, checking that its parameters are consistent with it.
+ *
+ * @param plan - Operation plan.
+ * @returns `true` for a valid parity plan, `false` when neither the profile nor `thinking.mode 'omit'` is set.
+ * @throws {AdapterError} `H2EVAL_PARAM_CONFLICT` when only one of profile/omit is set, or reasoning, temperature or
+ *   cache directives are set; `H2EVAL_MODEL_NOT_IN_MATRIX` when the model is not in {@link H_PARITY_MODELS}.
+ */
 export function hParityOf(plan: OperationPlan): boolean {
   const prof = plan.params.bodyProfile; const omit = plan.params.thinking?.mode === 'omit';
   if (prof === undefined && !omit) return false;
@@ -61,6 +84,12 @@ export function hParityOf(plan: OperationPlan): boolean {
 const toNum = (c: CountBig): Count => (typeof c === 'bigint' ? Number(c) : c);
 const numbersOnly = (r: Record<string, number | null>): Record<string, number> => Object.fromEntries(Object.entries(r).filter((kv): kv is [string, number] => typeof kv[1] === 'number'));
 
+/**
+ * Converts a parsed response to the core usage shape (`bigint` counts become numbers; `U` = input + cache read + cache writes).
+ *
+ * @param p - Parsed response.
+ * @returns Normalised usage.
+ */
 function toH2(p: ParsedResponse): NormalizedUsageH2 {
   const u: CanonicalUsage = p.usage;
   const add = (...xs: CountBig[]): CountBig => { let s = 0n; for (const x of xs) { if (x === 'NOT_APPLICABLE') continue; if (typeof x !== 'bigint') return 'UNKNOWN'; s += x; } return s; };
@@ -76,7 +105,12 @@ function toH2(p: ParsedResponse): NormalizedUsageH2 {
     stopReason: p.stopReason, completion: completionOf(p), outputTotal: toNum(u.providerTotals.outputTotal),
   };
 }
-/** VNEXT-1: completion from the provider reason: truncated => NOT completed; refusal outcome => REFUSED; end_turn|stop|STOP => COMPLETE; other identifiers => OTHER; absent => UNKNOWN. */
+/**
+ * VNEXT-1: completion from the provider reason: truncated => NOT completed; refusal outcome => REFUSED; end_turn|stop|STOP => COMPLETE; other identifiers => OTHER; absent => UNKNOWN.
+ *
+ * @param p - Stop reason, truncation flag and outcome of a parsed response.
+ * @returns The completion (`stop_sequence` also counts as `COMPLETE`).
+ */
 export function completionOf(p: Pick<ParsedResponse, 'stopReason' | 'truncated' | 'outcome'>): NormalizedUsageH2['completion'] {
   if (p.truncated === true) return 'TRUNCATED_MAX_TOKENS';
   if (p.outcome === 'REFUSED_WITH_USAGE') return 'REFUSED';
@@ -84,6 +118,12 @@ export function completionOf(p: Pick<ParsedResponse, 'stopReason' | 'truncated' 
   return ['end_turn', 'stop', 'STOP', 'stop_sequence'].includes(p.stopReason) ? 'COMPLETE' : 'OTHER';
 }
 
+/**
+ * Maps a parsed response to a closed refusal/error code.
+ *
+ * @param p - Parsed response.
+ * @returns The refusal record (`code` `NONE` when there was neither a refusal nor an error).
+ */
 function refusalOf(p: ParsedResponse): ParsedRefusal {
   const usagePresent = p.usage.usageSource === 'provider_response';
   if (p.outcome === 'REFUSED_WITH_USAGE') {
@@ -98,11 +138,27 @@ function refusalOf(p: ParsedResponse): ParsedRefusal {
   return { refused: false, code: 'NONE', httpStatus: p.httpStatus, usagePresent };
 }
 
+/**
+ * Returns the inline base64 bytes of a binary part (resolved earlier by the executor's store wrapper).
+ *
+ * @param part - Image or audio part.
+ * @returns The base64 bytes.
+ * @throws {AdapterError} `H2EVAL_BINARY_NOT_RESOLVED` when the bytes were not resolved.
+ */
 function binary(part: Extract<ResolvedPart, { type: 'image' | 'audio' }>): string {
   if (!part.bytesBase64) throw new AdapterError('H2EVAL_BINARY_NOT_RESOLVED', `${part.type} part ${part.bytesSha256.slice(0, 12)} has no bytes: the pure adapter cannot fetch them (ContentStore.getBytes is async); the core/E2E-01 must resolve bytesBase64 before buildRequest`);
   return part.bytesBase64;
 }
 
+/**
+ * Sets or removes the service tier field of a body.
+ *
+ * @param plan - Operation plan (`params.serviceTier`).
+ * @param expected - The documented standard tier value for this API.
+ * @param body - Request body (mutated).
+ * @param key - Body field name.
+ * @throws {AdapterError} `H2EVAL_PARAM_NOT_DOCUMENTED` when the plan asks for another tier.
+ */
 function applyServiceTier(plan: OperationPlan, expected: string, body: Record<string, unknown>, key: string): void {
   if (plan.params.serviceTier === 'NONE') { delete body[key]; return; }
   if (plan.params.serviceTier !== expected) throw new AdapterError('H2EVAL_PARAM_NOT_DOCUMENTED', `service tier ${plan.params.serviceTier} is not the documented standard value ${expected} (R08 §2)`);
@@ -228,7 +284,12 @@ export const ADAPTERS: Readonly<Partial<Record<UsageApi, ProviderAdapter>>> & { 
   'gemini.generate_content': googleAdapter,
 });
 
-/** Canonical JSON (keys sorted recursively, no whitespace): the serialization the body hash is taken over. */
+/**
+ * Canonical JSON (keys sorted recursively, no whitespace): the serialization the body hash is taken over.
+ *
+ * @param v - JSON-compatible value; `undefined` properties are dropped.
+ * @returns Canonical JSON text.
+ */
 export function canonicalJson(v: unknown): string {
   if (v === null || typeof v !== 'object') return JSON.stringify(v);
   if (Array.isArray(v)) return `[${v.map(canonicalJson).join(',')}]`;
@@ -239,6 +300,11 @@ export function canonicalJson(v: unknown): string {
 /**
  * F-INT-1 (coordinator's decision): the adapter is the SINGLE SOURCE of the request body; the pre-registrable reference is derived from it.
  * Pure: same (plan, content) => same body and sha256. `bodySha256 = sha256(canonicalJson(body))`.
+ *
+ * @param plan - Operation plan.
+ * @param content - Resolved content (binary parts must already carry their bytes).
+ * @returns The body, its canonical JSON, its SHA-256, the API and the URL.
+ * @throws {AdapterError} `H2EVAL_API_NOT_IN_MATRIX` for an unknown API, or any error of the adapter's `buildRequest`.
  */
 export function bodyOf(plan: OperationPlan, content: ResolvedContent): { body: unknown; canonical: string; bodySha256: string; api: UsageApi; url: string } {
   const a = ADAPTERS[plan.api as 'openai.chat_completions' | 'anthropic.messages' | 'gemini.generate_content'];
@@ -248,6 +314,16 @@ export function bodyOf(plan: OperationPlan, content: ResolvedContent): { body: u
   return { body: r.body, canonical, bodySha256: createHash('sha256').update(canonical).digest('hex'), api: a.api, url: r.url };
 }
 
+/**
+ * Returns the adapter for a model id.
+ *
+ * Note: only `gpt-4o-mini-2024-07-18` maps to OpenAI and only `gemini-3.5-flash-lite` to Google; every other id,
+ * including the arm models `gpt-6-luna` and `gemini-3.1-flash-lite`, falls through to the Anthropic adapter.
+ * Use {@link ADAPTERS} by API instead.
+ *
+ * @param model - Matrix model.
+ * @returns The adapter.
+ */
 export function adapterForModel(model: MatrixModel): ProviderAdapter {
   return model === 'gpt-4o-mini-2024-07-18' ? openaiAdapter : model === 'gemini-3.5-flash-lite' ? googleAdapter : anthropicAdapter;
 }

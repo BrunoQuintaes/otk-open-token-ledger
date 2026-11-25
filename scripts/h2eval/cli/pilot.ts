@@ -10,6 +10,10 @@
  *               listas.<model>.listaComMaxTokensSha256 = sha256(JSON.stringify([[id, promptSha256, maxTokens<Model>], ...]))  (one per model)
  * v3 carries a max_tokens PER MODEL (maxTokensSonnet / maxTokensOpus), chosen by the coordination (C157 §9.2 design decision): the plan takes the value of the model being planned.
  * Pure apart from `materializePilotCorpus` (writes only inside the dir it is given). Nothing here does network and nothing reads a secret.
+ *
+ * Called by the CLI entry point (`./main.ts`, command `plan --pilot-prompts`) and by the planner (`./plan.ts`).
+ *
+ * @module scripts/h2eval/cli/pilot
  */
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -18,14 +22,24 @@ import { createContentStore, contentHash, type ResolvedContentLike } from '../ca
 import { canonicalJson } from '../corpus/util.js';
 import { CliError, EXIT } from './common.js';
 
+/** Accepted `schema` values of a pilot prompt list. */
 export const PILOT_LIST_SCHEMAS = ['otk.n5.pilot_prompts.v1', 'otk.n5.pilot_prompts.v2', 'otk.n5.pilot_prompts.v3'] as const;
+/** Maximum number of prompts in a pilot list. */
 export const PILOT_MAX_PROMPTS = 10;
+/** `kind` written in the manifest of a materialized pilot corpus. */
 export const PILOT_MANIFEST_KIND = 'PILOT_CLOSED_LIST';
+/** Models that a v3 list carries a per-model output ceiling for. */
 export type PilotModel = 'claude-sonnet-5-5' | 'claude-opus-5-5';
 const V3_FIELD: Record<PilotModel, { field: 'maxTokensSonnet' | 'maxTokensOpus'; key: 'sonnet' | 'opus' }> = { 'claude-sonnet-5-5': { field: 'maxTokensSonnet', key: 'sonnet' }, 'claude-opus-5-5': { field: 'maxTokensOpus', key: 'opus' } };
 
-/** `maxTokens` is the single ceiling of a v1/v2 list; `maxTokensByModel` is set for a v3 list (one ceiling per pilot model). */
+/**
+ * `maxTokens` is the single ceiling of a v1/v2 list; `maxTokensByModel` is set for a v3 list (one ceiling per pilot model).
+ *
+ * One validated pilot prompt: id `P<nn>`, type label, system and user text, output ceiling(s) in tokens (1 to 128,000)
+ * and the recomputed SHA-256 of `{system, user}`.
+ */
 export interface PilotPrompt { id: string; tipo: string; system: string; user: string; maxTokens?: number; maxTokensByModel?: Record<PilotModel, number>; promptSha256: string }
+/** A validated pilot list: source file and its SHA-256, schema, list hashes (all recomputed) and the prompts in file order. */
 export interface PilotList {
   file: string; fileSha256: string; schema: string;
   /** v1/v2: the list hash (with max_tokens). v3: the prompts-only hash (listaPromptsSha256). */
@@ -41,14 +55,30 @@ const bad = (m: string): CliError => new CliError(EXIT.PLAN_INVALID, 'PILOT_LIST
 const mismatch = (m: string): CliError => new CliError(EXIT.PLAN_INVALID, 'PILOT_LIST_HASH_MISMATCH', m);
 const okTokens = (n: unknown): n is number => Number.isInteger(n) && (n as number) >= 1 && (n as number) <= 128_000;
 
-/** The max_tokens of a prompt for the model being planned (v3: that model's value; v1/v2: the single value). */
+/**
+ * The max_tokens of a prompt for the model being planned (v3: that model's value; v1/v2: the single value).
+ *
+ * @param p - A validated pilot prompt.
+ * @param model - Model id being planned.
+ * @returns The output ceiling in tokens.
+ * @throws {@link CliError} PLAN_INVALID `PILOT_LIST_INVALID` when the prompt has no ceiling for that model.
+ */
 export function maxTokensOf(p: PilotPrompt, model: string): number {
   if (p.maxTokensByModel) { const v = p.maxTokensByModel[model as PilotModel]; if (v === undefined) throw bad(`${p.id}: no max_tokens for ${model} in this list`); return v; }
   if (p.maxTokens === undefined) throw bad(`${p.id}: no max_tokens`);
   return p.maxTokens;
 }
 
-/** Loads and validates the closed list. `expectedListSha256` (optional): a hash the caller was told to expect (GO / protocol); it must equal the list hash OR (v3) a per-model list hash. */
+/**
+ * Loads and validates the closed list. `expectedListSha256` (optional): a hash the caller was told to expect (GO / protocol); it must equal the list hash OR (v3) a per-model list hash.
+ *
+ * @param file - Path of the list JSON.
+ * @param expectedListSha256 - Optional expected list hash (64 lowercase hex).
+ * @returns The validated list, with every hash recomputed.
+ * @throws {@link CliError} USAGE `PILOT_LIST_MISSING` (no file) or `BAD_PILOT_LIST_SHA` (malformed expected hash);
+ *   PLAN_INVALID `PILOT_LIST_INVALID` (shape, ids, sizes) or `PILOT_LIST_HASH_MISMATCH` (a declared hash differs from
+ *   the recomputed one); REFUSED_BY_POLICY `PILOT_LIST_NOT_THE_EXPECTED_ONE` (the expected hash is not carried).
+ */
 export function loadPilotList(file: string, expectedListSha256?: string): PilotList {
   if (!existsSync(file)) throw new CliError(EXIT.USAGE, 'PILOT_LIST_MISSING', file);
   const buf = readFileSync(file);
@@ -104,7 +134,14 @@ export function loadPilotList(file: string, expectedListSha256?: string): PilotL
   return { file, fileSha256: sha(buf), schema, listaSha256, perModelListSha256, prompts };
 }
 
-/** system + user as neutral content. The content hash is the executor's own (contentHash); the list's promptSha256 is kept in the manifest. */
+/**
+ * system + user as neutral content. The content hash is the executor's own (contentHash); the list's promptSha256 is kept in the manifest.
+ *
+ * An empty system text is left out, so such a prompt has a single user message.
+ *
+ * @param p - A validated pilot prompt.
+ * @returns The neutral content and its executor hash.
+ */
 export function contentOfPilot(p: PilotPrompt): ResolvedContentLike {
   const messages: ResolvedContentLike['messages'] = [
     ...(p.system.length > 0 ? [{ role: 'system' as const, parts: [{ type: 'text' as const, text: p.system }] }] : []),
@@ -113,9 +150,21 @@ export function contentOfPilot(p: PilotPrompt): ResolvedContentLike {
   return { promptSha256: contentHash({ messages, prefixMessages: 'NOT_APPLICABLE' }), messages, prefixMessages: 'NOT_APPLICABLE' };
 }
 
+/**
+ * `manifest.json` of a materialized pilot corpus. `corpusSha256` is the list hash; `seed` is 0 and `modelDesigns` is
+ * empty because a pilot list has no generator; each prompt row links the list's prompt hash to the stored content hash.
+ */
 export interface PilotManifest { kind: typeof PILOT_MANIFEST_KIND; corpusSha256: string; seed: 0; modelDesigns: Record<string, never>; pilotList: { fileName: string; fileSha256: string; schema: string; listaSha256: string; perModelListSha256?: Record<PilotModel, string>; prompts: Array<{ id: string; tipo: string; maxTokens?: number; maxTokensByModel?: Record<PilotModel, number>; listPromptSha256: string; contentSha256: string }> } }
 
-/** Writes <dir>/manifest.json and <dir>/content/<sha256>. Idempotent; a different manifest already present is refused (never overwritten). */
+/**
+ * Writes <dir>/manifest.json and <dir>/content/<sha256>. Idempotent; a different manifest already present is refused (never overwritten).
+ *
+ * @param list - A validated pilot list.
+ * @param dir - Corpus folder to write into.
+ * @returns The manifest path and the SHA-256 of its bytes.
+ * @throws {@link CliError} REFUSED_BY_POLICY `PILOT_CORPUS_CONFLICT` when a different manifest is already there.
+ * @throws {@link ContentStoreError} With `CONFLICT` when a stored content file has different bytes.
+ */
 export function materializePilotCorpus(list: PilotList, dir: string): { manifestPath: string; manifestSha256: string } {
   const store = createContentStore(dir);
   const rows = list.prompts.map((p) => { const c = contentOfPilot(p); const contentSha256 = store.put({ messages: c.messages, prefixMessages: c.prefixMessages }); return { id: p.id, tipo: p.tipo, ...(p.maxTokens !== undefined ? { maxTokens: p.maxTokens } : {}), ...(p.maxTokensByModel ? { maxTokensByModel: p.maxTokensByModel } : {}), listPromptSha256: p.promptSha256, contentSha256 }; });

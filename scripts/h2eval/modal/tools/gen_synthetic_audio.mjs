@@ -2,6 +2,16 @@
 // Deterministic synthetic WAV files (PCM 16-bit mono, 16 kHz, pure tones + silence; NO voice, no third-party content).
 // Durations follow R07 §3.4 (10 s, 60 s, 180 s). The files are reproducible byte for byte; only the SPEC (with sha256)
 // is committed, the WAVs are regenerated on demand. Uso: node gen_synthetic_audio.mjs --out <dir> [--spec-only]
+/**
+ * Command-line generator of the synthetic audio test inputs.
+ *
+ * Usage: `node scripts/h2eval/modal/tools/gen_synthetic_audio.mjs --out <dir> [--spec-only]`. It creates `<dir>`,
+ * writes one WAV per duration (unless `--spec-only`) and always writes `AUDIO_SPEC.json` with each file's size and
+ * SHA-256; prints a short summary as JSON. Exit code 2 when `--out` is missing. Run by
+ * `test/h2eval/modal/synthetic_media.test.ts`. No network, no environment variables.
+ *
+ * @module scripts/h2eval/modal/tools/gen_synthetic_audio
+ */
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -11,9 +21,18 @@ const OUT = arg('out'); const specOnly = process.argv.includes('--spec-only');
 if (!OUT) { console.error('uso: --out <dir> [--spec-only]'); process.exit(2); }
 mkdirSync(OUT, { recursive: true });
 
+/** Sample rate in Hz. */
 export const RATE = 16000;
+/** Durations of the generated files, in seconds. */
 export const DURATIONS_S = [10, 60, 180];
 
+/**
+ * Builds a 16-bit mono PCM WAV of a repeating 4-second cycle (440 Hz, 660 Hz, silence, 220 Hz).
+ *
+ * @param seconds - Duration in seconds (integer).
+ * @param rate - Sample rate in Hz.
+ * @returns The WAV file bytes (44-byte header plus samples).
+ */
 export function wav(seconds, rate = RATE) {
   const n = seconds * rate; const data = Buffer.alloc(n * 2);
   for (let i = 0; i < n; i++) {

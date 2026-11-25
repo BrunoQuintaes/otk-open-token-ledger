@@ -19,6 +19,12 @@
  * Writes <out-dir>/reconciliation_<provider>_<REAL|FIXTURE>.{json,md,json.sha256}. Same inputs → same bytes.
  * No network call is made to any provider; the PostgreSQL URL is read from the named variable and never printed.
  * Exit: 0 report written (whatever the classifications); 2 usage error; 3 import/validation error.
+ *
+ * Thin command-line wrapper: parsing, matching and report rendering live in `src/reconciliation/`; receipts are
+ * loaded with `scripts/verify/otk.ts` (`collectInputs`) and `scripts/verify/receiptsToOtk.ts`. The only environment
+ * variable read is the one whose NAME is passed in `--otk-pg-env`.
+ *
+ * @module scripts/reconciliation/reconcile
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';

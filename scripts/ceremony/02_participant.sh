@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # =============================================================================
 # OTK MPC Ceremony — Step 2: Participant Contribution
+# Usage: PARTICIPANT_ENTROPY=<secret> bash scripts/ceremony/02_participant.sh <name> <contribution_number>
+# Reads the environment variable PARTICIPANT_ENTROPY (required; never logged). Exit code 1 on missing
+# arguments, missing entropy or missing previous contribution. Full instructions in the block below.
 #
 # Each participant runs this script to add their entropy to the ceremony.
 # "1 of N honest" model: if ANY participant destroys their entropy,

@@ -4,18 +4,38 @@
  * geração de código (6 células: 144 + 18 repetições) e resumo vira COMPARATIVO pareado (2 grupos por célula de resumo, 3 variantes = 12
  * prompts, `split = COMPARATIVE`, fora de treino/validação/holdout) => 174. Opção A = completo (216). A opção C (só comparativo) não é
  * implementada aqui (NOT_IMPLEMENTED: a decisão é do Bruno e a recomendada é B). O mesmo prompt (hash) vai a todos os modelos: pareável.
+ *
+ * In English: turns the S1 corpus into the per-model list of S1 operations (one line of `s1_operations.<model>.jsonl`
+ * per call). `FULL` sends every confirmatory prompt plus the repeats. `B_REDUZIDO` (reduced design) keeps the profile
+ * only for the non-summary cells and turns 2 hash-chosen groups per summary cell into a paired comparative set outside
+ * train/validation/holdout. The same prompt (same hash) goes to every model, so results are paired.
+ * Called by `corpus/build.ts` and `corpus/manifest.ts`.
+ *
+ * @module scripts/h2eval/corpus/s1Plan
  */
 import { buildS1 } from './s1Corpus.js';
 import type { Split } from './split.js';
 import { canonicalJson, sha256Hex } from './util.js';
 
+/** Models that have an S1 design in this corpus generator. */
 export type ModelId = 'gpt-4o-mini' | 'claude-haiku-4-5' | 'claude-haiku-5-5' | 'gemini-3.5-flash-lite';
+/** S1 design: `FULL` (all cells) or `B_REDUZIDO` (reduced: summary cells become a paired comparative set). */
 export type Design = 'FULL' | 'B_REDUZIDO';
+/** Default design per model; part of `corpusSha256`. */
 export const DEFAULT_DESIGNS: Readonly<Record<ModelId, Design>> = Object.freeze({ 'gpt-4o-mini': 'FULL', 'claude-haiku-4-5': 'B_REDUZIDO', 'claude-haiku-5-5': 'FULL', 'gemini-3.5-flash-lite': 'FULL' });
 
+/** One planned S1 call; `rep` 1 is the repeat call of the same prompt, `inProfile` false means comparative only. */
 export interface S1Operation { promptId: string; rep: 0 | 1; cellId: string; groupId: string; variant: number; split: Split | 'COMPARATIVE'; phase: 'CONFIRMATORY' | 'COMPARATIVE_PAIRED'; inProfile: boolean }
 type S1 = ReturnType<typeof buildS1>;
 
+/**
+ * Lists the S1 operations one model makes under a design.
+ *
+ * @param s1 - The S1 corpus from `buildS1` (not mutated).
+ * @param design - `FULL` or `B_REDUZIDO`.
+ * @param opts - `comparativeGroupsPerCell`: groups per summary cell kept as comparative under `B_REDUZIDO` (default 2).
+ * @returns Confirmatory (and comparative) base calls in corpus order, then the repeat calls.
+ */
 export function s1PlanFor(s1: S1, design: Design, opts: { comparativeGroupsPerCell?: number } = {}): S1Operation[] {
   const conf = s1.prompts.filter((p) => p.phase === 'CONFIRMATORY');
   const cmpPerCell = opts.comparativeGroupsPerCell ?? 2;
@@ -38,8 +58,16 @@ export function s1PlanFor(s1: S1, design: Design, opts: { comparativeGroupsPerCe
   return ops;
 }
 
+/** Per-model design summary in the manifest; `profileObservations`/`profileGroups` count base calls per split. */
 export interface DesignSummary { design: Design; calls: number; profileObservations: Record<string, number>; profileGroups: Record<string, number>; comparativePrompts: number; repeats: number; opsSha256: string }
 
+/**
+ * Summarises a model's S1 operation list for the corpus manifest.
+ *
+ * @param ops - Operations from {@link s1PlanFor} (not mutated).
+ * @param design - The design those operations came from.
+ * @returns Call, profile, comparative and repeat counts plus `opsSha256` (SHA-256 of the canonical JSON of `ops`).
+ */
 export function summarizeDesign(ops: readonly S1Operation[], design: Design): DesignSummary {
   const obs: Record<string, number> = {}; const grp: Record<string, Set<string>> = {};
   for (const o of ops.filter((x) => x.inProfile && x.rep === 0)) { obs[o.split] = (obs[o.split] ?? 0) + 1; (grp[o.split] ??= new Set()).add(o.groupId); }

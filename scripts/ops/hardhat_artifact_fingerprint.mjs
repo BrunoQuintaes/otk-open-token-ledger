@@ -4,6 +4,12 @@
  * a Hardhat upgrade against the baseline. For each contract: sha256 of the creation bytecode, of the deployed bytecode
  * with and without the CBOR metadata trailer, and of the canonical ABI JSON. Prints JSON (sorted) to stdout.
  * Usage: node scripts/ops/hardhat_artifact_fingerprint.mjs [artifactsDir]
+ *
+ * The default artifacts folder is relative to the working directory, so run it from the repository root. It only
+ * reads; it does not compile. Files whose name starts with "artifacts", debug files (.dbg.json) and JSON without
+ * contractName/bytecode are skipped. Hashes are of the hex text as stored in the artifact, not of the decoded bytes.
+ *
+ * @module scripts/ops/hardhat_artifact_fingerprint
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -11,7 +17,15 @@ import crypto from 'node:crypto';
 
 const dir = path.resolve(process.argv[2] ?? 'tools/hardhat/artifacts/contracts');
 const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
-/** strip the solc CBOR metadata trailer (last 2 bytes = its length) */
+/**
+ * strip the solc CBOR metadata trailer (last 2 bytes = its length)
+ *
+ * Unlike evm_bytecode.mjs it does not check that the trailer starts with a CBOR map header; if the declared
+ * length does not fit, the code is returned unchanged.
+ *
+ * @param hex - Bytecode hex, with or without `0x`.
+ * @returns The hex without `0x` and without the trailer.
+ */
 function stripMeta(hex) {
   const h = hex.startsWith('0x') ? hex.slice(2) : hex;
   if (h.length < 4) return h;

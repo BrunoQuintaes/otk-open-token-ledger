@@ -4,6 +4,15 @@
  * pre-registration hash, window ≤ 24 h, human signature, self digest) AND none of the forbidden environment variables (R16); the credential is read from process.env.<credentialEnvVar> at send time only, injected into the request
  * header, and never returned, stored or logged. Host must be in the adapter's official hosts AND the core allowlist.
  * redirect: 'error'; no retries. In tests REAL is unreachable: no GO file is ever written and no fetch is ever reached.
+ *
+ * In short: the only place where an H2 evaluation request can leave the process. The runner (`./runner.ts`) calls
+ * `preflight` before it snapshots or reserves anything, then `send` with the single-use token. This module also holds
+ * the environment variable names of the executor ({@link H2EVAL_ENV_NAMES}), the GO file validators (single-batch and
+ * multi-batch) and the classification of send failures. Environment read: in REAL mode only, the presence of the
+ * forbidden names and, at send time, the provider's credential variable (or the credential file through
+ * `./envFile.ts`). Network: one HTTPS POST per `send` in REAL mode; OFFLINE mode never opens a socket.
+ *
+ * @module scripts/h2eval/core/egress
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
@@ -13,16 +22,28 @@ import { capsAreAllowedFor, capsAreAllowedProfile, usdToPico } from './ledger.js
 import { checkEnvFileLocation, readEnvFileVar, EnvFileRefused, type EnvFileChecks } from './envFile.js';
 import { providerRequestIdFromResponse, wireBody, type InstrumentedValue } from './requestInstrumentation.js';
 
+/** Default send timeout: 120 s, in milliseconds. */
 export const DEFAULT_SEND_TIMEOUT_MS = 120_000;
+/** Rejection raised when a send exceeds its timeout; `ms` is the limit that was applied. */
 export class EgressTimeout extends Error { constructor(public readonly ms: number) { super(`egress timeout after ${ms} ms`); this.name = 'EgressTimeout'; } }
-/** R15-M5: bound every send (double or fetch) by a timeout; the runner classifies the rejection as TIMEOUT_UNCERTAIN (reservation kept). */
+/**
+ * R15-M5: bound every send (double or fetch) by a timeout; the runner classifies the rejection as TIMEOUT_UNCERTAIN (reservation kept).
+ *
+ * The underlying promise is not cancelled; only the wait ends.
+ *
+ * @param p - The send promise.
+ * @param ms - Timeout in milliseconds.
+ * @returns A promise that settles like `p`, or rejects with {@link EgressTimeout} after `ms`.
+ */
 export function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   let t: NodeJS.Timeout | undefined;
   const timer = new Promise<never>((_, rej) => { t = setTimeout(() => rej(new EgressTimeout(ms)), ms); });
   return Promise.race([p, timer]).finally(() => { if (t) clearTimeout(t); }) as Promise<T>;
 }
 
+/** OFFLINE uses the injected double; REAL may reach a provider. */
 export type ExecutorMode = 'OFFLINE' | 'REAL';
+/** Provider answer as seen by the runner: HTTP status, parsed JSON body (`null` when not JSON) and, in REAL mode, the request id. */
 export interface EgressResponse { httpStatus: number; body: unknown; /** E1‴ R-INST (REAL only): provider request id read from the allow-listed response header, or NOT_AVAILABLE + reason. Never affects the result. */ providerRequestId?: InstrumentedValue }
 /** The double in OFFLINE mode (or a real fetch wrapper in REAL mode). Receives the request WITHOUT the credential. */
 export type EgressDouble = (req: BuiltRequest) => Promise<EgressResponse>;
@@ -49,10 +70,17 @@ export const H2EVAL_ENV_NAMES = Object.freeze({
  * and the ledger treatment is unchanged. A provable NOT_SENT_PRECONNECT state would need an instrumented transport (see CYCLE2_PROPOSAL.md).
  */
 export type SendFailurePhaseHint = 'tls' | 'dns' | 'connect' | 'timeout' | 'unknown';
+/** Classified send failure: the upper-case cause code (`TIMEOUT`, `UNKNOWN` or a Node/undici code) and the derived phase hint. */
 export interface SendFailureClass { causeCode: string; phaseHint: SendFailurePhaseHint }
 const TLS_CODES: ReadonlySet<string> = new Set(['UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'UNABLE_TO_GET_ISSUER_CERT', 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY', 'CERT_HAS_EXPIRED', 'CERT_NOT_YET_VALID', 'SELF_SIGNED_CERT_IN_CHAIN', 'DEPTH_ZERO_SELF_SIGNED_CERT', 'CERT_UNTRUSTED', 'CERT_REVOKED', 'CERT_SIGNATURE_FAILURE', 'ERR_TLS_CERT_ALTNAME_INVALID', 'ERR_TLS_HANDSHAKE_TIMEOUT', 'HOSTNAME_MISMATCH', 'ERR_SSL_WRONG_VERSION_NUMBER', 'EPROTO']);
 const DNS_CODES: ReadonlySet<string> = new Set(['ENOTFOUND', 'EAI_AGAIN', 'EAI_NONAME', 'EAI_FAIL', 'EAI_NODATA']);
 const CONNECT_CODES: ReadonlySet<string> = new Set(['ECONNREFUSED', 'EHOSTUNREACH', 'ENETUNREACH', 'EADDRNOTAVAIL', 'ENETDOWN']);
+/**
+ * Classifies a send failure from its non-secret error code (rules in the comment above {@link SendFailurePhaseHint}).
+ *
+ * @param e - The thrown value.
+ * @returns The cause code and phase hint; never includes message text.
+ */
 export function classifySendFailure(e: unknown): SendFailureClass {
   if (e instanceof EgressTimeout) return { causeCode: 'TIMEOUT', phaseHint: 'timeout' };
   const pick = (v: unknown): string | null => (typeof v === 'string' && /^[A-Z][A-Z0-9_]{2,63}$/.test(v) ? v : null);
@@ -96,11 +124,24 @@ export interface GoFileMultiV1 {
   /** VNEXT-F (R17-V-2): digest of <campaignDir>/LEDGER_OPENING.json this GO authorises, or the literal 'none' (then an opening file is refused). */
   ledgerOpeningDigestSha256: string;
 }
+/** Upper limit of `maxAttempts` in a multi-batch GO. */
 export const GO_MULTI_MAX_ATTEMPTS = 1446;
+/** Longest validity window of a multi-batch GO: 72 h, in milliseconds. */
 export const GO_MULTI_MAX_WINDOW_MS = 72 * 3600 * 1000;
+/**
+ * What a multi-batch GO must match, taken from the plan, the executor and the ledger (never from the GO): campaign,
+ * ratified pre-registration hash, executor commit and tree state, plan hash and batch ids, planned operations in a
+ * scope, ledger caps in USD, the current time in milliseconds, and the campaign folder identity and path.
+ */
 export interface GoMultiContext { campaign: string; preregistrationSha256: string | undefined; executorCodeSha: string; treeClean: boolean | null; planProtocolHash: string; planBatchIds: readonly string[]; plannedOpsInScope: (batchIds: readonly string[]) => number; ledgerCaps: { campaignUsd: string; providersUsd: Record<Provider, string> }; nowMs: number; /** VNEXT-3 R15-G-1: identity of the campaign directory the executor is about to use (null = not initialised) */ campaignIdentitySha256: string | null; /** VNEXT-F (R17-V-1): canonical path of that directory (null = pure validation without a directory) */ campaignDirCanonical: string | null }
 
-/** Pure validator of a multi-batch GO. Returns null when valid, else the first failing code (no value echoed). */
+/**
+ * Pure validator of a multi-batch GO. Returns null when valid, else the first failing code (no value echoed).
+ *
+ * @param text - The GO file text.
+ * @param ctx - What the GO must match.
+ * @returns `null` when valid, otherwise a `GO_*` code.
+ */
 export function validateGoMultiV1(text: string, ctx: GoMultiContext): string | null {
   if (/<[^<>\n]{1,120}>/.test(text)) return 'GO_PLACEHOLDER_LEFT';
   let go: GoFileMultiV1; try { go = JSON.parse(text) as GoFileMultiV1; } catch { return 'GO_FILE_INVALID'; }
@@ -147,7 +188,9 @@ export function validateGoMultiV1(text: string, ctx: GoMultiContext): string | n
   return null;
 }
 
+/** Stop rules every GO must list in `stops`. */
 export const GO_REQUIRED_STOPS = Object.freeze(['STOP_FILE', 'STOP_BUDGET', 'STOP_CAP_VIOLATION', 'STOP_PRICE_UNKNOWN', 'STOP_PERSISTENCE', 'STOP_UNCERTAIN', 'no retry', 'no fallback', 'concurrency 1']);
+/** Longest remaining validity of a single-batch GO: 24 h, in milliseconds. */
 export const GO_MAX_WINDOW_MS = 24 * 3600 * 1000;
 
 /** What the GO must match for THIS operation (from the plan and the executor), never from the GO itself. */
@@ -160,7 +203,13 @@ export interface GoContext {
 }
 const picoOf = (v: unknown): bigint | null => { try { return typeof v === 'number' || typeof v === 'string' ? usdToPico(String(v)) : null; } catch { return null; } };
 
-/** Pure validator of a GO file text. Returns null when valid, else the first failing code (no value from the GO is echoed). */
+/**
+ * Pure validator of a GO file text. Returns null when valid, else the first failing code (no value from the GO is echoed).
+ *
+ * @param text - The GO file text.
+ * @param ctx - What the GO must match for this operation.
+ * @returns `null` when valid, otherwise a `GO_*` code.
+ */
 export function validateGoV1(text: string, ctx: GoContext): string | null {
   if (/<[^<>\n]{1,120}>/.test(text)) return 'GO_PLACEHOLDER_LEFT';
   let go: GoFileV1; try { go = JSON.parse(text) as GoFileV1; } catch { return 'GO_FILE_INVALID'; }
@@ -195,6 +244,7 @@ export function validateGoV1(text: string, ctx: GoContext): string | null {
   return null;
 }
 
+/** Refusal of the egress gate, raised before anything is reserved or sent; `code` says why. */
 export class EgressRefused extends Error {
   constructor(public readonly code: string) { super(`egress refused: ${code}`); this.name = 'EgressRefused'; }
 }
@@ -202,6 +252,7 @@ export class EgressRefused extends Error {
  *  NON-terminal pause (nothing reserved or sent). Every other refusal (single/multi GO included) stays a plain EgressRefused, unchanged. */
 export class EgressGoEconRefused extends EgressRefused { constructor(code: string) { super(code); this.name = 'EgressGoEconRefused'; } }
 
+/** Configuration of {@link createEgress}; `campaign` is the study id a GO must name and `allowedHosts` the core host allowlist. */
 export interface EgressConfig {
   mode: ExecutorMode;
   /** REAL only: explicit opt-in flag; without it REAL is refused even with a GO file. */
@@ -257,11 +308,17 @@ function readGo(path: string | undefined, ctx: GoContext, multi: EgressConfig['g
   return { code: null, maxCalls: go.batch.maxCalls, pauseAck: go.pauseAck80pct ? { acknowledgedBy: go.pauseAck80pct.acknowledgedBy, goDigestSha256: go.goDigestSha256 } : null };
 }
 
+/** Identity of the operation being admitted (from the plan and the executor), plus the effective ledger caps in USD. */
 export interface PreflightContext { provider: Provider; phase: string; modelRequested: string; batchId: string; executorVersion: string; executorCodeSha: string; ledgerCaps: { campaignUsd: string; providerUsd: string }; batchCapUsd?: string }
 /** `token` (R15-B3) is single-use and bound to this request body: `send` refuses without it. */
 export interface PreflightResult { goMaxCalls: number | null; token: string; goPauseAck: { acknowledgedBy: string; goDigestSha256: string } | null }
 
-/** Decide whether this request may leave the process; returns a sender or throws EgressRefused (before any reservation). */
+/**
+ * Decide whether this request may leave the process; returns a sender or throws EgressRefused (before any reservation).
+ *
+ * @param cfg - Egress configuration.
+ * @returns An object with the mode, `preflight` (admits one request and issues its token) and `send`.
+ */
 export function createEgress(cfg: EgressConfig) {
   const now = cfg.now ?? (() => Date.now());
   const credentialVar = (p: Provider): string | undefined => cfg.credentialEnvVars?.[p] ?? H2EVAL_ENV_NAMES.credentials[p];
@@ -271,7 +328,16 @@ export function createEgress(cfg: EgressConfig) {
   const timeoutMs = cfg.timeoutMs ?? DEFAULT_SEND_TIMEOUT_MS;
   return {
     mode: cfg.mode,
-    /** Pre-flight (called BEFORE snapshot/reserve): everything that can refuse without side effects. */
+    /**
+     * Pre-flight (called BEFORE snapshot/reserve): everything that can refuse without side effects.
+     *
+     * @param pc - Identity of the operation.
+     * @param req - The built request (its body is bound to the token).
+     * @param officialHosts - The adapter's official hosts.
+     * @returns The GO's batch call limit (`null` when the GO has none), the single-use token and the GO's 80% pause
+     *   acknowledgement (`null` when absent).
+     * @throws {@link EgressRefused} When the host, headers, mode, flag, environment, GO or credential source refuses.
+     */
     preflight(pc: PreflightContext, req: BuiltRequest, officialHosts: readonly string[]): PreflightResult {
       if (!hostOk(req.url, officialHosts)) throw new EgressRefused('HOST_NOT_ALLOWED');
       if (req.headers && Object.keys(req.headers).some((k) => k.toLowerCase() === req.credentialHeader.toLowerCase())) throw new EgressRefused('CREDENTIAL_IN_ADAPTER_HEADERS');
@@ -287,7 +353,17 @@ export function createEgress(cfg: EgressConfig) {
       }
       return { goMaxCalls: g.maxCalls, token: issue(pc.provider, req), goPauseAck: g.pauseAck };
     },
-    /** Send. Requires the single-use preflight token of THIS body (R15-B3). OFFLINE: double. REAL: fetch with the credential injected at this instant only. Bounded by timeoutMs (R15-M5). */
+    /**
+     * Send. Requires the single-use preflight token of THIS body (R15-B3). OFFLINE: double. REAL: fetch with the credential injected at this instant only. Bounded by timeoutMs (R15-M5).
+     *
+     * @param provider - Provider of the request.
+     * @param req - The same built request that was pre-flighted.
+     * @param token - Token from `preflight` (consumed by this call).
+     * @returns The provider's answer.
+     * @throws {@link EgressRefused} When the token is invalid or the credential source refuses.
+     * @throws {@link EgressTimeout} When the send exceeds the timeout (the operation is then uncertain).
+     * @throws {Error} When the transport fails (classified by {@link classifySendFailure}).
+     */
     async send(provider: Provider, req: BuiltRequest, token: string): Promise<EgressResponse> {
       const t = tokens.get(token); tokens.delete(token);
       if (!t || t.provider !== provider || t.bodySha256 !== sha256Canon(req.body)) throw new EgressRefused('PREFLIGHT_TOKEN_INVALID');

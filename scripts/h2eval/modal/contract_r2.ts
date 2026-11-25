@@ -3,6 +3,11 @@
  * modal module: 3 serviceTierRequested/Served, 4 params.thinking, 5 cacheTtlRequested, 6 reasoningAllowanceTokens (pricing.ts),
  * 7 exploratoryFormulaEstimate (image only; NEVER replaces L0), 8 promptTokensDetailsByModality / cacheRoundingNote (parsers),
  * 10 modelDeprecation. Everything here is a pure function of model/plan/response; nothing reads env or does I/O.
+ *
+ * Used by `scripts/h2eval/index.ts` (deprecation and exploratory image estimate) and cited by the design support
+ * matrix in `scripts/h2eval/design/designParams.ts`.
+ *
+ * @module scripts/h2eval/modal/contract_r2
  */
 import type { MatrixModel, Modality } from './types.js';
 import { OPENAI_TILE_TABLE, openAiResizedDims } from './estimators/image_openai_tiles.js';
@@ -15,6 +20,12 @@ export type ThinkingParams =
   | { mode: 'adaptive'; effort: 'low' | 'medium' | 'high' }
   | { mode: 'manual'; budgetTokens: number }
   | { mode: 'minimal'; thinkingLevel: 'minimal' };
+/**
+ * Default thinking configuration of a model and whether turning reasoning off is documented.
+ *
+ * @param model - Matrix model.
+ * @returns The configuration, its documented basis, and `offDocumented` (`true`, `false` or `'NOT_VERIFIED'`).
+ */
 export function defaultThinkingFor(model: MatrixModel): ThinkingParams & { basis: string; offDocumented: boolean | 'NOT_VERIFIED' } {
   switch (model) {
     case 'gpt-4o-mini-2024-07-18': return { mode: 'none', basis: 'not a reasoning model; no documented reasoning parameter (R08 §8)', offDocumented: true };
@@ -28,7 +39,12 @@ export function defaultThinkingFor(model: MatrixModel): ThinkingParams & { basis
     case 'gpt-6-luna': return { mode: 'none', basis: 'E3G: no reasoning parameter is sent (default effort); reasoning_tokens is parsed as a subset of completion_tokens and billed as output (DR-208)', offDocumented: 'NOT_VERIFIED' };
   }
 }
-/** Maps rev. 2 `thinking` to the v0 `params.reasoning` record the adapters apply (never a parameter outside R08). */
+/**
+ * Maps rev. 2 `thinking` to the v0 `params.reasoning` record the adapters apply (never a parameter outside R08).
+ *
+ * @param t - Thinking configuration.
+ * @returns `'NONE'`, `{effort}`, `{budget_tokens}` or `{thinking_level}`.
+ */
 export function reasoningRecordOf(t: ThinkingParams): Record<string, string | number | boolean> | 'NONE' {
   if (t.mode === 'none') return 'NONE';
   if (t.mode === 'adaptive') return { effort: t.effort };
@@ -36,20 +52,36 @@ export function reasoningRecordOf(t: ThinkingParams): Record<string, string | nu
   return { thinking_level: t.thinkingLevel };
 }
 
-/** Item 3: the tier parameter actually requested per API (R08 §2) and the field where the served tier appears. */
+/**
+ * Item 3: the tier parameter actually requested per API (R08 §2) and the field where the served tier appears.
+ *
+ * @param model - Matrix model.
+ * @returns The requested tier (`default`, `standard_only` or `NONE`) and the response field that reports the served tier.
+ */
 export function serviceTierRequestedFor(model: MatrixModel): { serviceTierRequested: string | 'NONE'; servedField: string } {
   if (model === 'gpt-4o-mini-2024-07-18' || model === 'gpt-6-luna') return { serviceTierRequested: 'default', servedField: 'service_tier (response body)' };
   if (model === 'gemini-3.5-flash-lite' || model === 'gemini-3.1-flash-lite') return { serviceTierRequested: 'NONE', servedField: 'usageMetadata.serviceTier' };
   return { serviceTierRequested: 'standard_only', servedField: 'usage.service_tier' };
 }
 
-/** Item 5: cache TTL requested, from the cache directives of the plan (only Anthropic has a TTL; worst case uses the dearest). */
+/**
+ * Item 5: cache TTL requested, from the cache directives of the plan (only Anthropic has a TTL; worst case uses the dearest).
+ *
+ * @param cacheDirectives - Plan cache directives, or `'NONE'`.
+ * @param model - Matrix model.
+ * @returns `1h` when `ttl` is `1h`, otherwise `5m`, for Claude models with directives; `NOT_APPLICABLE` otherwise.
+ */
 export function cacheTtlRequestedOf(cacheDirectives: Record<string, string | number | boolean> | 'NONE', model: MatrixModel): '5m' | '1h' | 'NOT_APPLICABLE' {
   if (cacheDirectives === 'NONE' || !(model === 'claude-haiku-4-5-20251001' || model === 'claude-haiku-5-5' || model === 'claude-sonnet-5-5' || model === 'claude-opus-5-5')) return 'NOT_APPLICABLE';
   return cacheDirectives['ttl'] === '1h' ? '1h' : '5m';
 }
 
-/** Item 10: documented lifecycle state (R08 §1, captured 2026-11-10). */
+/**
+ * Item 10: documented lifecycle state (R08 §1, captured 2026-11-10).
+ *
+ * @param model - Matrix model.
+ * @returns The lifecycle state and the quoted source (`UNKNOWN` when no page was captured).
+ */
 export function modelDeprecationOf(model: MatrixModel): { modelDeprecation: 'DEPRECATED_SHUTDOWN_2027-01-14' | 'LEGACY' | 'ACTIVE' | 'UNKNOWN'; source: string } {
   switch (model) {
     case 'gemini-3.1-flash-lite': case 'gpt-6-luna': return { modelDeprecation: 'UNKNOWN', source: 'E3G: no lifecycle page captured for the arm models (never invented)' };
@@ -71,6 +103,14 @@ export function modelDeprecationOf(model: MatrixModel): { modelDeprecation: 'DEP
  * It is declared rough and depends on media_resolution: exploratory only.
  */
 export interface ExploratoryFormulaEstimate { tokens: number | 'UNKNOWN'; formula: 'openai_tile' | 'anthropic_28px' | 'gemini_rough'; rawInputs: Record<string, number | string>; note: string }
+/**
+ * Exploratory image token estimate by the provider's published formula (see the comment above).
+ *
+ * @param model - Matrix model.
+ * @param modality - Only `image` gives a result.
+ * @param image - Width and height in pixels (positive integers) and, for OpenAI, the detail level (default `auto`).
+ * @returns The estimate (tokens may be `'UNKNOWN'`), or `null` for non-image modalities or invalid dimensions.
+ */
 export function exploratoryFormulaEstimate(model: MatrixModel, modality: Modality, image: { width: number; height: number; detail?: 'low' | 'high' | 'auto' | 'original' }): ExploratoryFormulaEstimate | null {
   if (modality !== 'image') return null; // "apenas para imagem"
   const { width, height } = image;

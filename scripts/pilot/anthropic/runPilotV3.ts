@@ -27,6 +27,14 @@
  * settled only from a provider-reported usage (pilotV3Settlement.ts); otherwise the reservation stays uncertain.
  * Exit: 0 every check passed; 1 divergence or uncertain outcome; 2 budget refusal; 3 no credential (nothing
  * called); 4 usage error; 5 environment/preflight failure (nothing paid called).
+ *
+ * Other variables read: `OPENAI_API_KEY` / `GEMINI_API_KEY` for the other profiles (the profile's `keyEnv`),
+ * `OTK_PV3_TEST_HOOKS` (=1 lets a test use a non-canonical ledger path), and in synthetic mode
+ * `PV3_SYNTH_GEMINI_THOUGHTS`, `PV3_SYNTH_GEMINI_TIER`, `PV3_SYNTH_OPENAI_TIER` (behaviour of the local stand-in
+ * provider). Started by the shell wrappers `run_live_pv3.sh` and `scripts/pilot/campaign/run_campaign_ovn2.sh`.
+ * Live mode MAKES PAID CALLS.
+ *
+ * @module scripts/pilot/anthropic/runPilotV3
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -216,7 +224,12 @@ function plan(phase: Phase, mode: Mode, besu: boolean): Case[] {
 // ───────────────────────────── independent oracles (data + arithmetic only) ─────────────────────────────
 interface RawUsage { input: bigint; output: bigint; cacheWrite: bigint; cacheRead: bigint }
 const table = JSON.parse(fs.readFileSync(path.join(ROOT, PRICE_TABLE_FILE), 'utf8')) as { version: string; entries: Array<{ provider: string; model: string; category: string; pricePerMTokMicroUsd: string }> };
-/** tariff of a category for this profile's model; null when the table has none (that category then must count 0) */
+/**
+ * tariff of a category for this profile's model; null when the table has none (that category then must count 0)
+ *
+ * @param cat - Price category (`input`, `output`, `input_cache_write`, `input_cache_read`).
+ * @returns Micro-USD per million tokens, or `null`.
+ */
 const priceOf = (cat: string): bigint | null => {
   const e = table.entries.find((x) => x.provider === PROFILE.provider && x.model === PROFILE.priceModelKey && x.category === cat);
   return e ? BigInt(e.pricePerMTokMicroUsd) : null;
@@ -225,7 +238,12 @@ const price = (cat: string) => { const v = priceOf(cat); if (v === null) throw n
 /** RawUsage is DISJOINT per category (OpenAI cached tokens are carved out of the prompt before it gets here) */
 const oracle = {
   cuMicro: (u: RawUsage) => (u.input + u.cacheWrite + u.cacheRead + u.output) * W_MODEL_MILLI * W_PROVIDER_MILLI,
-  /** pico-USD = tokens × (µUSD per MTok) */
+  /**
+   * pico-USD = tokens × (µUSD per MTok)
+   *
+   * @param u - Disjoint raw usage.
+   * @returns Cost in pico-USD.
+   */
   costPico: (u: RawUsage) => u.input * price('input') + u.output * price('output') + (u.cacheWrite === 0n ? 0n : u.cacheWrite * price('input_cache_write')) + (u.cacheRead === 0n ? 0n : u.cacheRead * price('input_cache_read')),
   reservePico: (maxTokens: number) => CONTEXT_WINDOW * [priceOf('input'), priceOf('input_cache_write'), priceOf('input_cache_read')].filter((v): v is bigint => v !== null).reduce((a, b) => (a > b ? a : b)) + BigInt(maxTokens) * price('output'),
 };
@@ -235,6 +253,9 @@ const oracle = {
  * cachedContentTokenCount/thoughtsTokenCount is 0 and an omitted candidatesTokenCount is total − prompt − thoughts
  * (the documented total = prompt + thoughts + candidates); an omitted prompt or total, a negative/fractional count,
  * cache above the prompt or an inconsistent total leave the usage unknown.
+ *
+ * @param u - Gemini `usageMetadata` object.
+ * @returns Disjoint raw usage, or `null` when unknown.
  */
 function geminiRaw(u: Record<string, unknown>): RawUsage | null {
   const n = (v: unknown): bigint | null | undefined => (v === undefined ? undefined : typeof v === 'number' && Number.isSafeInteger(v) && v >= 0 ? BigInt(v) : null);
@@ -407,7 +428,12 @@ async function callProxy(proxy: string, token: string, opId: string, c: Case, sy
 
 // ───────────────────────────── per-operation verification ─────────────────────────────
 type Checks = Record<string, { ok: boolean; expected: unknown; observed: unknown }>;
-/** canonical form: object keys sorted, so key order never decides a comparison */
+/**
+ * canonical form: object keys sorted, so key order never decides a comparison
+ *
+ * @param v - Any JSON-like value.
+ * @returns Its canonical JSON text.
+ */
 const canon = (v: unknown): string => (v && typeof v === 'object' && !Array.isArray(v)
   ? `{${Object.keys(v as object).sort().map((k) => `${JSON.stringify(k)}:${canon((v as Record<string, unknown>)[k])}`).join(',')}}`
   : Array.isArray(v) ? `[${v.map(canon).join(',')}]` : JSON.stringify(v));

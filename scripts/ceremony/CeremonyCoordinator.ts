@@ -24,7 +24,15 @@
  *   export             — export final keys + Solidity verifier
  *   report             — generate full audit PDF-ready report
  *
- * @module CeremonyCoordinator
+ * Note: the command switch at the end of this file implements `status`, `init`, `add-contribution`,
+ * `apply-beacon` and `report`; `verify` and `export` listed above fall through to the help text (use
+ * `scripts/ceremony/04_verify.sh` and `03_beacon.sh` for those steps).
+ *
+ * State lives in `zk/ceremony/state.json`: `init` creates it, `add-contribution` and `apply-beacon` rewrite it,
+ * `status` and `report` only read it; `report` writes `zk/ceremony/audit_report.json`. Proof-system work is delegated to `npx snarkjs` in a child process.
+ * Exit code 1 when a command's precondition fails. Reads no environment variables; no network.
+ *
+ * @module scripts/ceremony/CeremonyCoordinator
  * @since U13 (2026-02-22)
  */
 

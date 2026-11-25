@@ -15,6 +15,9 @@
 #   OTK_REDIS_CONTAINER — Docker container name for Redis (default: otk-redis)
 #   CHAOS_DURATION_S    — Duration of chaos in seconds (default: 10)
 #
+# Exit code: 1 for an unknown mode, otherwise 0; a failed docker restart is logged as a warning, not fatal.
+# The "network" mode does not change anything: it only prints the iptables commands to run by hand.
+#
 # @since Wave 4 (4B-PACK-4B03 / E5.4)
 # ─────────────────────────────────────────────────────────────────────────────
 

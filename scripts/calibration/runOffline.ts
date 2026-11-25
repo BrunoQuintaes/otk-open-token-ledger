@@ -9,6 +9,14 @@
  *      (a different tokenizer plus a fixed envelope, standing in for an unknown provider);
  *   S2 exact_tokenizer_envelope: local = o200k_base; target = o200k_base + 7.
  * Real targets (provider count endpoint or final usage) come only from runExternal.ts, run by S4.
+ *
+ * With `--write-corpus` it regenerates the committed corpus and its `.sha256` manifest under
+ * `test/fixtures/d1d8/b/`; otherwise it only reads them. Throws when the corpus is missing or its digest differs
+ * from the manifest. Fits the models of `./models.ts` (fit on train, choose on validation, report on test) and
+ * prints or writes (`--out`) a JSON report. The exported helpers are reused by `runExternal.ts`, `buildProfiles.ts`
+ * and the calibration unit tests. Reads no environment variables.
+ *
+ * @module scripts/calibration/runOffline
  */
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -16,23 +24,39 @@ import { CORPUS_SEED, CORPUS_VERSION, corpusToJsonl, generateCorpus, sha256, spl
 import { alerts, calibrateThreshold, detection, fit, metrics, type ModelName, type Row } from './models.js';
 import { countWith, loadEncoding } from '../../src/tokenization/tokenizerIdentity.js';
 
+/** Committed corpus file, relative to the repository root (run from the root). */
 export const CORPUS_PATH = 'test/fixtures/d1d8/b/calibration_corpus_v1.jsonl';
+/** Manifest with the expected sha256 of {@link CORPUS_PATH} (`<hex>  <file name>`). */
 export const CORPUS_SHA_PATH = 'test/fixtures/d1d8/b/calibration_corpus_v1.sha256';
+/** Version tag written in the experiment report. */
 export const EXPERIMENT_VERSION = 'otk.calibration_offline.b4@1';
+/** Fixed envelope, in tokens, added to the synthetic target (stands in for a provider's per-message overhead). */
 export const SYNTHETIC_ENVELOPE = 7;
+/** Uncalibrated alert threshold: alert when the error exceeds 16 tokens AND 10 % (relative, as a fraction). */
 export const HEURISTIC = { abs: 16, rel: 0.1 };
 
 /**
  * The corpus digest is defined over LF line endings: a Windows checkout may convert the file to
  * CRLF (.gitattributes text=auto), and every CR inside a document is JSON-escaped, so this
  * normalization never changes document content.
+ *
+ * @param path - JSONL corpus file; default {@link CORPUS_PATH}.
+ * @returns The parsed documents and the sha256 (hex) of the LF-normalized text.
+ * @throws {Error} When the file cannot be read or a line is not valid JSON.
  */
 export function loadCorpus(path = CORPUS_PATH): { docs: CorpusDoc[]; sha: string } {
   const text = readFileSync(path, 'utf8').replace(/\r\n/g, '\n');
   return { docs: text.trim().split('\n').map((l) => JSON.parse(l) as CorpusDoc), sha: sha256(text) };
 }
 
-/** Fit on train, select on validation, report on test (shared by offline and external data). */
+/**
+ * Fit on train, select on validation, report on test (shared by offline and external data).
+ *
+ * @param rows - (local count x, target y) rows per split.
+ * @returns Per model (baseline, affine, quadratic): coefficients, validation and test metrics, false-alert rates and
+ *   detection on test with the heuristic threshold and with the threshold calibrated on validation; plus the model
+ *   with the lowest validation MAE. A rate is `null` when the test split is empty.
+ */
 export function evaluateScenario(rows: Record<'train' | 'validation' | 'test', Row[]>) {
   const models = (['baseline', 'affine', 'quadratic'] as ModelName[]).map((m) => fit(m, rows.train));
   const perModel = models.map((m) => {
@@ -54,6 +78,12 @@ export function evaluateScenario(rows: Record<'train' | 'validation' | 'test', R
   return { selectedByValidationMae, models: perModel, note: 'quadratic is a comparison only; adopting it requires better out-of-sample results and a documented limit' };
 }
 
+/**
+ * Runs the two synthetic scenarios (approximate tokenizer and exact tokenizer, both with a 7-token envelope).
+ *
+ * @param docs - Corpus documents; split by group with `splitOf`.
+ * @returns The experiment report (without the corpus digest and timestamp, which `main` adds).
+ */
 export function runExperiment(docs: CorpusDoc[]) {
   const o200k = loadEncoding('o200k_base');
   const cl100k = loadEncoding('cl100k_base');

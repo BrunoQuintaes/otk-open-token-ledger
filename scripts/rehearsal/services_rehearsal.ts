@@ -8,6 +8,12 @@
  *
  *   npx tsx scripts/rehearsal/services_rehearsal.ts --out=<dir> [--only=S1,S3]
  * Exit 0 = every check matched its expectation; 1 = at least one did not; 2 = setup error.
+ *
+ * Environment: `OTK_TEST_PG_URL` and `OTK_TEST_REDIS_URL` (defaults point at the local test containers with
+ * test-only passwords; passwords are masked in the output). Some scenarios pause, unpause or stop the PostgreSQL
+ * test container with docker to simulate outages.
+ *
+ * @module scripts/rehearsal/services_rehearsal
  */
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import fs from 'node:fs';
@@ -64,7 +70,11 @@ async function startApi(env: Record<string, string>): Promise<Api> {
   throw new Error(`api did not start: ${stderr.join('').slice(-2000)}`);
 }
 
-/** Abrupt stop (no graceful shutdown): what a crash or OOM kill looks like. */
+/**
+ * Abrupt stop (no graceful shutdown): what a crash or OOM kill looks like.
+ *
+ * @param a - The API child process to kill (no-op when it already exited).
+ */
 async function killApi(a: Api): Promise<void> {
   if (!a.proc.pid || a.proc.exitCode !== null) return;
   const exited = new Promise<void>(r => a.proc.on('exit', () => r()));

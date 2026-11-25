@@ -5,6 +5,14 @@
  * the executor. The pre-registration hash must be the ratified one (`--ratified-sha`); `--unratified-rehearsal` is accepted ONLY for
  * OFFLINE rehearsals and marks the plan `ratified:false` (the executor refuses REAL for such a plan: no GO can carry an unratified hash).
  * Pure function `buildPlan` + a thin file writer. Nothing here does network.
+ *
+ * In short: turns a corpus folder (or a closed pilot list) and the design parameters into the batch plan that the
+ * runner (`./run.ts`) executes. Every operation gets its request body hash from the provider adapter, a local token
+ * estimate (js-tiktoken), a derived input upper bound and a worst-case cost cap from the price table; batches are
+ * split by block in the locked order train, comparative, validation, holdout. Called by the CLI entry point
+ * (`./main.ts`, command `plan`). It reads the corpus, pre-registration and design files; `buildPlan` writes nothing.
+ *
+ * @module scripts/h2eval/cli/plan
  */
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -27,14 +35,42 @@ import { operationIdOf } from '../core/ids.js';
 import { contentOfPilot, maxTokensOf, type PilotList } from './pilot.js';
 import { CliError, EXIT, MATRIX_TO_API, MATRIX_TO_ENCODING, MATRIX_TO_PROVIDER, MODEL_ID_TO_MATRIX, readJson, readJsonl, sha256File, sha256Text, writeJson } from './common.js';
 
+/** Schema id of a batch plan file. */
 export const PLAN_SCHEMA = 'h2eval.batch_plan.v0';
+/**
+ * Policy recorded in the plan: the input-bound factor and extra tokens, the output ceiling per model, the design file
+ * identity and its effective settings per (model, arm), the batch size limit (at most 60 calls), the batch-cap rule
+ * parameters (1.5 times the sum of cost caps, at most 25% of the provider sub-ledger), the caps in USD (decimal text)
+ * and the local estimator used.
+ */
 export interface PlanPolicy { inputBoundFactor: number; inputBoundExtraTokens: number; /** VNEXT-2: output ceiling PER MODEL, from the design parameters file (never a constant) */ maxOutputTokensByModel: Record<MatrixModel, number>; /** VNEXT-2: the ratified design parameters this plan was built from (sha256 folded into protocolHash) */ design: { file: string; sha256: string; designId: string; thinkingByModel: Record<MatrixModel, ThinkingPolicy>; /** VNEXT-8 */ integrity: { stopReasonRequired: boolean; thinkingDisabledRejectedStops: boolean }; /** VNEXT-8: effective (model, arm) → maxTokens/policy, as applied */ byModelArm: Record<string, { maxTokens: number; policy: string; reasoningAllowanceTokens: number }>; /** VNEXT-F (R17-V-7/8): conditions per model and the P1 probe operation, as planned */ conditions: Record<string, string[]>; probe: { model: string; conditionId: string; operationId: string } | null; /** C153 (P4 option C): arms the design switched off (`arms.<Tn>.enabled: false`); present ONLY when non-empty, so designs without the field produce byte-identical plans */ disabledArms?: Array<{ model: string; arm: Arm; reason: string }>; /** VNEXT-8: R4 opsPerSplit vs corpus-derived counts (report, never a silent reconciliation) */ opsCheck: Array<{ model: string; arm: Arm; split: string; expected: number; actual: number; match: boolean }> }; maxCallsPerBatch: number; batchCapFactor: number; batchCapMaxFractionOfProvider: number; capsUsd: { campaign: string; providers: Record<Provider, string> }; estimator: { package: string; encodings: Record<MatrixModel, string> } }
+/**
+ * One planned operation: its id (derived from the plan), the operation plan, the input upper bound, reasoning
+ * allowance and local estimate (tokens), the worst-case cost cap (pico-USD as integer text) and its basis, the body
+ * hash from the adapter, the condition and probe flag, and whether the call is eligible for a cache hit.
+ */
 export interface PlannedOperation { operationId: string; plan: OperationPlan; inputUpperBoundTokens: number; reasoningAllowanceTokens: number; localEstimateTokens: number; costCapUsdPico: string; costCapBasis: string; /** sha256(canonical body) from the adapter (single source): must equal the journal's requestBodySha256 */ bodySha256: string; /** VNEXT-F: SC1 condition and P1 probe flag (from the design file) */ condition: string | null; probe: 'P1' | null; /** VNEXT-6 (C151 item 6, D7 option A): the eligible positions for a cache HIT are marked IN THE PLAN (call 2 and 3 of an S3 dialogue, after the creation call); S1/S2 and call 1 are never eligible */ d7: { cacheArm: string; callIndex: number | null; eligibleForHit: boolean } }
+/** Block of a batch; campaign blocks run in the locked order train, comparative, validation, holdout. */
 export type Block = 'pilot' | 'train' | 'comparative' | 'validation' | 'holdout';
+/**
+ * One batch: a single model and block, its 1-based position in the plan, call count, sum of cost caps and batch cap
+ * (pico-USD as integer text) with the rule text, the provider's cumulative worst case up to this batch, whether its GO
+ * must carry the 80% pause acknowledgement, and its operations. `branchLocked` is true for Google batches outside the
+ * arm models.
+ */
 export interface PlannedBatch { batchId: string; provider: Provider; model: MatrixModel; branchLocked: boolean; /** R18–R20 code lock: train → comparative → validation → holdout */ block: Block; order: number; calls: number; sumCostCapUsdPico: string; batchCapUsdPico: string; batchCapRule: string; /** worst-case cumulative of the provider up to and including this batch, in plan order */ cumulativeWorstCaseUsdPico: string; /** the GO of this batch must carry pauseAck80pct (worst case crosses 80 % of the sub-ledger at or before it) */ requiresPauseAckInGo: boolean; operations: PlannedOperation[] }
 /** E2: per-model batch boundaries between the blocks (locked order) */
 export type SplitBoundaries = Record<string, Record<Block, string[]>>;
+/**
+ * Per-provider forecast of the 80% pause: sub-ledger in USD, cumulative worst case (pico-USD text), its fraction of
+ * the sub-ledger (4 decimals as text), whether it crosses 80%, and the first batch that needs the acknowledgement.
+ */
 export interface PauseForecast { provider: Provider; subLedgerUsd: string; worstCaseCumulativeUsdPico: string; fractionOfSubLedger: string; crossesPauseAt80pct: boolean; firstBatchRequiringPauseAck: string | null }
+/**
+ * The whole plan file: identity (study, phase, protocol hash), split order and boundaries, pause forecast, what is not
+ * planned, the pre-registration, corpus and price-table identities, the pilot-list identity when relevant, the policy,
+ * the batches in execution order, totals per provider and the generation time (ISO-8601 UTC).
+ */
 export interface BatchPlan { schema: typeof PLAN_SCHEMA; studyId: string; phase: 'PILOT' | 'CONFIRMATORY'; protocolHash: string; /** E2: true when the plan was produced with --order-by-split (required for CAMPAIGN) */ orderBySplit: boolean; splitBoundaries: SplitBoundaries; /** ECON-02 finding: where the worst case crosses 80 % of a sub-ledger and which batches need pauseAck80pct in their GO */ pauseForecast: PauseForecast[]; notPlanned: string[]; maxOutputTokensPolicy: string; preregistration: { file: string; sha256: string; ratified: boolean; ratifiedSha256: string | null }; corpus: { dir: string; manifestSha256: string; corpusSha256: string; seed: number }; priceTable: { id: string; sha256: string }; /** C157 9.2 pilots only: identity of the closed list (v3: prompts-only hash + one hash per model with its max_tokens) */ pilotList?: { schema: string; fileSha256: string; listaSha256: string; perModelListSha256?: Record<string, string> }; /** pilots only: absolute per-batch ceiling in USD, enforced by raise-batch-cap */ pilotAbsoluteBatchCapUsd?: string; /** C159C G-1: present ONLY when an R6-M model was planned on a corpus carrying the r6mHoldout mark (plans without it are byte-identical to E2') */ r6mPopulation?: Record<string, { rule: string; holdoutUnitsInCorpus: { s1: number; dialogs: number }; holdoutUnitsPlanned: { s1: number; dialogs: number }; holdoutCallsPlanned: number; executesNothing: true }>; policy: PlanPolicy; batches: PlannedBatch[]; totals: Record<Provider, { calls: number; sumCostCapUsdPico: string; batches: number }>; generatedUtc: string }
 
 /**
@@ -48,6 +84,12 @@ export interface BatchPlan { schema: typeof PLAN_SCHEMA; studyId: string; phase:
  */
 const CORPUS_OPS_ALIAS: Partial<Record<MatrixModel, ModelId>> = { 'claude-sonnet-5-5': 'claude-haiku-5-5', 'claude-opus-5-5': 'claude-haiku-5-5', 'gemini-3.1-flash-lite': 'gemini-3.5-flash-lite', 'gpt-6-luna': 'gpt-4o-mini' };
 /** C160 E3G3: corpus id of a model's S1 operation list, or null when it has neither its own id nor an alias (the caller STOPs). */
+/**
+ * Corpus id whose S1 operation list a model uses: its own id, or the alias of a model that shares the same prompts.
+ *
+ * @param model - Matrix model id.
+ * @returns The corpus model id whose `s1_operations.<id>.jsonl` the model uses, or `null`.
+ */
 export function s1CorpusIdOf(model: string): ModelId | null { return (Object.keys(MODEL_ID_TO_MATRIX) as ModelId[]).find((k) => MODEL_ID_TO_MATRIX[k] === model) ?? (Object.prototype.hasOwnProperty.call(CORPUS_OPS_ALIAS, model) ? CORPUS_OPS_ALIAS[model as MatrixModel]! : null); }
 /**
  * C159C G-1 (R6-M population): protocol ff49033b + PLANO_UNIDADES_R6M 7ca1b93b. For the R6-M models (Sonnet/Opus 5.5) a CONFIRMATORY plan takes train and
@@ -58,8 +100,23 @@ export function s1CorpusIdOf(model: string): ModelId | null { return (Object.key
  * the plan then carries no `r6mPopulation`, and the kit's plan_check refuses any R6-M package above 405 calls). Haiku, GPT and Gemini never change.
  */
 export const R6M_MODELS: readonly MatrixModel[] = ['claude-sonnet-5-5', 'claude-opus-5-5'];
+/**
+ * Holdout population of the two newer Anthropic models: the marked S1 prompt ids and dialog ids, the marked counts,
+ * and the number of holdout units in the corpus.
+ */
 export interface R6mPopulation { rule: string; s1HoldoutPromptIds: Set<string>; dialogHoldoutIds: Set<string>; marked: { s1: number; dialogs: number }; holdoutUnits: { s1: number; dialogs: number } }
 type Marked = { split?: string; r6mHoldout?: unknown };
+/**
+ * Reads and checks the holdout mark of the corpus for the newer Anthropic models (rules in the comment above
+ * {@link R6M_MODELS}).
+ *
+ * @param prompts - Units of `s1_prompts.jsonl`.
+ * @param dialogs - Units of `dialogs.jsonl`.
+ * @param manifest - The corpus `manifest.json` (its S1 prompts and dialogs).
+ * @returns The population, or `null` when no unit carries the mark.
+ * @throws {@link CliError} PLAN_INVALID with `R6M_HOLDOUT_MARK_MISSING`, `R6M_HOLDOUT_MARK_OUTSIDE_HOLDOUT`,
+ *   `R6M_HOLDOUT_MARK_MISMATCH` or `R6M_HOLDOUT_EMPTY` when the mark is inconsistent.
+ */
 export function r6mPopulationOf(prompts: Array<S1Prompt & Marked>, dialogs: Array<Dialog & Marked>, manifest: { s1?: { prompts?: Array<{ promptId: string } & Marked> }; dialogs?: Array<{ dialogId: string } & Marked> }): R6mPopulation | null {
   const has = (x: Marked) => Object.prototype.hasOwnProperty.call(x, 'r6mHoldout');
   const mPrompts = manifest.s1?.prompts ?? []; const mDialogs = manifest.dialogs ?? [];
@@ -79,6 +136,13 @@ export function r6mPopulationOf(prompts: Array<S1Prompt & Marked>, dialogs: Arra
   return { rule: 'R6-M (C159C G-1): train and validation whole; holdout = units with r6mHoldout=true in the corpus (s1 by promptId, dialogs by dialogId)', s1HoldoutPromptIds, dialogHoldoutIds, marked: { s1: s1HoldoutPromptIds.size, dialogs: dialogHoldoutIds.size }, holdoutUnits: { s1: prompts.filter((p) => p.split === 'holdout').length, dialogs: dialogs.filter((d) => d.split === 'holdout').length } };
 }
 /** C158 ciclo 3: --caps-profile default|ciclo3_c158 (absent = default 11/5/3/3). Unknown names are refused. */
+/**
+ * Resolves `--caps-profile` to campaign and per-provider caps; absent or `default` means the default caps.
+ *
+ * @param name - Profile name from `--caps-profile`, or `undefined`.
+ * @returns Campaign and per-provider caps in USD (decimal text), or `undefined` for the default caps.
+ * @throws {@link CliError} USAGE `CAPS_PROFILE_UNKNOWN` for an unknown name.
+ */
 export function capsOfProfile(name: string | undefined): { campaign: string; providers: Record<Provider, string> } | undefined {
   if (name === undefined || name === 'default') return undefined;
   // E3G (C160 BRACO-GO): the per-provider arm profiles (US$ 1,00, the other providers 0)
@@ -86,6 +150,11 @@ export function capsOfProfile(name: string | undefined): { campaign: string; pro
   if (name !== 'ciclo3_c158') throw new CliError(EXIT.USAGE, 'CAPS_PROFILE_UNKNOWN', '--caps-profile default|ciclo3_c158|braco_go_google|braco_go_openai');
   return { campaign: CAPS_PROFILE_CICLO3.campaign, providers: { ...CAPS_PROFILE_CICLO3.providers } };
 }
+/**
+ * Input of {@link buildPlan}: corpus folder, pre-registration file and its ratified hash (or the rehearsal flag),
+ * phase, optional model subset, study id, design parameters file, input-bound factor and extra tokens (defaults 1.25
+ * and 64), maximum calls per batch (at most 60), caps in USD and a clock returning ISO-8601 UTC.
+ */
 export interface PlanInput {
   corpusDir: string; preregFile: string; ratifiedSha256?: string; unratifiedRehearsal?: boolean; phase: 'PILOT' | 'CONFIRMATORY';
   models?: MatrixModel[]; studyId?: string; /** VNEXT-2: ratified design parameters file (h2eval.design_params.v1); default = the R3.2-equivalent file shipped with the executor */ designParamsFile?: string; inputBoundFactor?: number; inputBoundExtraTokens?: number; maxCallsPerBatch?: number;
@@ -111,7 +180,19 @@ const BLOCKS: readonly Block[] = ['train', 'comparative', 'validation', 'holdout
 const blockOfPlan = (p: OperationPlan): Block => (p.phase === 'PILOT' ? 'pilot' : p.phase === 'COMPARATIVE_PAIRED' || p.split === 'COMPARATIVE' ? 'comparative' : p.split === 'validation' ? 'validation' : p.split === 'holdout' ? 'holdout' : 'train');
 
 /** C157 §9.2: initial budget per pilot model and absolute ceiling after the single duplication. Enforced in code (plan default + ledger refusal). */
-export const PILOT_INITIAL_BATCH_CAP_USD = '0.30'; export const PILOT_ABSOLUTE_BATCH_CAP_USD = '0.60';
+export const PILOT_INITIAL_BATCH_CAP_USD = '0.30'; /** Absolute per-batch ceiling of a pilot after its single doubling, in USD. */ export const PILOT_ABSOLUTE_BATCH_CAP_USD = '0.60';
+/**
+ * Builds the batch plan. Reads the files named in the input; writes nothing and makes no network call.
+ *
+ * @param i - Plan input.
+ * @returns The plan.
+ * @throws {@link CliError} USAGE when a required file is missing or the ratified hash is malformed;
+ *   REFUSED_BY_POLICY when the pre-registration is not ratified (and this is not a rehearsal), the hash differs, a
+ *   pilot list is used outside the pilot phase, or a campaign plan lacks the split order; PLAN_INVALID when a model is
+ *   not declared in the design, has no corpus id, a price is unknown, a prompt is missing from the corpus, the
+ *   holdout mark is inconsistent, or a forced batch cap is below the sum of cost caps.
+ * @throws {Error} When `js-tiktoken` cannot be loaded.
+ */
 export function buildPlan(i: PlanInput): BatchPlan {
   if (!existsSync(i.preregFile)) throw new CliError(EXIT.USAGE, 'PREREG_MISSING', i.preregFile);
   const preregSha = sha256File(i.preregFile);
@@ -258,5 +339,18 @@ export function buildPlan(i: PlanInput): BatchPlan {
   return { schema: PLAN_SCHEMA, studyId: i.studyId ?? 'H2EVAL', phase: i.phase, protocolHash, orderBySplit: i.phase === 'CONFIRMATORY' ? true : Boolean(i.orderBySplit), splitBoundaries, pauseForecast, notPlanned: ['image (exploratory modality: no corpus, no plan; amendment required)', 'audio (idem)', 'google provider calls (planned and priced; NOT_RUN_BRANCH_LOCKED until its own GO)', ...disabledArms.map((x) => `${x.model} arm ${x.arm}: disabled in design ${design.params.designId} (${design.sha256.slice(0, 16)}) — ${x.reason}`)], maxOutputTokensPolicy: `per model from design ${design.params.designId} (${design.sha256.slice(0, 16)}): ${MATRIX_MODELS.filter((m) => thinkingByModel[m]).map((m) => `${m}=${maxOutputTokensByModel[m]}/${thinkingByModel[m].policy}`).join(', ')}`, preregistration: { file: path.basename(i.preregFile), sha256: preregSha, ratified, ratifiedSha256: ratified ? preregSha : null }, corpus: { dir: i.corpusDir, manifestSha256: sha256File(manifestPath), corpusSha256: manifest.corpusSha256, seed: manifest.seed }, priceTable: { id: prices.id, sha256: prices.sha256 }, ...(i.pilotList ? { pilotAbsoluteBatchCapUsd: PILOT_ABSOLUTE_BATCH_CAP_USD, pilotList: { schema: i.pilotList.schema, fileSha256: i.pilotList.fileSha256, listaSha256: i.pilotList.listaSha256, ...(i.pilotList.perModelListSha256 ? { perModelListSha256: i.pilotList.perModelListSha256 } : {}) } } : {}), ...(Object.keys(r6mPopulation).length ? { r6mPopulation } : {}), policy, batches, totals, generatedUtc: nowUtc };
 }
 
+/**
+ * Writes a plan as JSON (overwrites the file).
+ *
+ * @param plan - The plan.
+ * @param outFile - Output path.
+ */
 export function writePlan(plan: BatchPlan, outFile: string): void { writeJson(outFile, plan); }
+/**
+ * Reads a plan file and checks its schema id (no other validation).
+ *
+ * @param p - Plan path.
+ * @returns The plan.
+ * @throws {@link CliError} PLAN_INVALID `PLAN_SCHEMA` when the schema id is not {@link PLAN_SCHEMA}.
+ */
 export const readPlan = (p: string): BatchPlan => { const x = readJson<BatchPlan>(p); if (x.schema !== PLAN_SCHEMA) throw new CliError(EXIT.PLAN_INVALID, 'PLAN_SCHEMA', p); return x; };

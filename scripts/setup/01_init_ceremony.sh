@@ -18,6 +18,9 @@
 #
 # SECURITY: This script generates new ptau. In production, use ptau from a
 #           public ceremony (Hermez, Aztec, etc.) for stronger security guarantees.
+#
+# Requires: git (the repository root is found with git) and snarkjs on PATH. Exit code 1 when snarkjs is
+#   missing. Overwrites <OUTPUT_DIR>/ceremony_log.txt. Reads no environment variables.
 # =============================================================================
 
 set -euo pipefail

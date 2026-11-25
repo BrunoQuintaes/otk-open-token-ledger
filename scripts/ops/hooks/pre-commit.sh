@@ -7,6 +7,11 @@
 #
 # Patterns: API keys, private keys, mnemonics, seed phrases, xprv
 # Allowlist: variable names, env var references, docs, mocks, test helpers
+#
+# Usage: installed as .git/hooks/pre-commit by scripts/ops/install-hooks.sh; git runs it before each
+# commit. To run it by hand on the staged changes: bash scripts/ops/hooks/pre-commit.sh
+# Exit codes: 0 = nothing suspicious (or every hit allowlisted); 1 = commit blocked, suspicious lines printed.
+# Comments added to other files are scanned too, so they must not contain the pattern words.
 
 set -euo pipefail
 

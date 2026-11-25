@@ -12,7 +12,12 @@
  *
  * Usage: node scripts/ops/check_berlin_compliance.mjs
  *
+ * It reads tools/hardhat/artifacts (relative to the working directory, so run it from the repository
+ * root) and uses `findPush0Opcodes` from evm_bytecode.mjs, which skips PUSH data and the solc metadata
+ * trailer. It only reads artifacts; it does not compile.
+ *
  * @since U3.2
+ * @module scripts/ops/check_berlin_compliance
  */
 
 import fs from "node:fs";

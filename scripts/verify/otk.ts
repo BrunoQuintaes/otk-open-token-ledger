@@ -14,6 +14,18 @@
  * verify e keyring: sem rede, sem variável de ambiente, sem chave privada (o chaveiro só tem endereços).
  * receipts export (lado do operador): lê a URL do PostgreSQL da variável cujo NOME vem em --pg-env,
  * como o reconcile.ts; o valor nunca é impresso nem gravado.
+ *
+ * English summary: the `otk` command of the offline receipt verifier (`npm run otk -- <command>`).
+ * - `verify` checks signed v3 receipts against the operator's public keyring (addresses only) and prints a human
+ *   report (colored on a terminal) or `--json`; exit 0 all green, 10 some yellow, 20 some red, 2 usage error.
+ * - `keyring export | fingerprint | convert` builds, fingerprints or converts a public keyring file.
+ * - `receipts export` (operator side) dumps receipts from PostgreSQL through `receiptsExport.ts`.
+ * The checking itself lives in `src/verifier/`. `verify` and `keyring` use no network, no environment variable and
+ * no private key; the user-facing text is in Portuguese. Also imported by `scripts/reconciliation/reconcile.ts`
+ * (`collectInputs`), the offline reproduction (`reproducao/reproduzir_tudo.mjs`), the jury demo and the verifier
+ * tests (`runCli`).
+ *
+ * @module scripts/verify/otk
  */
 import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, relative, resolve, sep } from 'node:path';
@@ -33,7 +45,12 @@ const USO = `Uso:
   otk receipts export --since AAAA-MM-DD --until AAAA-MM-DD --out <pasta> --pg-env <NOME_DA_VARIAVEL> [--tenant <id>]
 Saida do verify: 0 tudo verde, 10 ha amarelo, 20 ha vermelho, 2 erro de uso.`;
 
-/** Abre o banco pelo NOME da variável (padrão do reconcile.ts). Injetável nos testes. */
+/**
+ * Abre o banco pelo NOME da variável (padrão do reconcile.ts). Injetável nos testes.
+ *
+ * English: injectable dependencies of the CLI. `openPool` receives the NAME of the environment variable that holds
+ * the PostgreSQL URL (never the URL) and returns a pool the caller closes with `end()`.
+ */
 export interface CliDeps { openPool(envName: string): Promise<PgQueryable & { end(): Promise<void> }> }
 
 const defaultDeps: CliDeps = {
@@ -47,6 +64,7 @@ const defaultDeps: CliDeps = {
 
 class UsageError extends Error {}
 
+/** Result of one CLI run: the process exit code and the text for stdout and stderr (nothing is printed by `runCli`). */
 export interface CliResult { code: number; stdout: string; stderr: string }
 
 function parseArgs(argv: string[], flags: Set<string>, valued: Set<string>): { pos: string[]; opt: Map<string, string[]>; flag: Set<string> } {
@@ -81,7 +99,17 @@ function walk(dir: string, out: string[]): void {
   }
 }
 
-/** Arquivos de entrada com o mesmo nome que o navegador daria (webkitRelativePath / file.name). */
+/**
+ * Arquivos de entrada com o mesmo nome que o navegador daria (webkitRelativePath / file.name).
+ *
+ * Reads every file under each folder (recursively, sorted by name) or the file itself. A folder's files are named
+ * relative to the folder's parent with `/` separators (so the folder name is kept), a single file by its base name,
+ * which makes the CLI and the web page report the same names.
+ *
+ * @param paths - Files or folders, relative to the current directory or absolute.
+ * @returns The files with their names and bytes, in input order.
+ * @throws {UsageError} (internal class, mapped to exit code 2 by {@link runCli}) when a path does not exist.
+ */
 export function collectInputs(paths: string[]): InputFile[] {
   const files: InputFile[] = [];
   for (const p of paths) {
@@ -239,6 +267,23 @@ async function cmdReceipts(argv: string[], deps: CliDeps): Promise<CliResult> {
   };
 }
 
+/**
+ * Runs one `otk` command and returns its exit code and output instead of printing them.
+ *
+ * Side effects depend on the command: `--out` files are written, and `receipts export` opens PostgreSQL through
+ * `deps`. Usage errors (unknown command or option, missing file, bad keyring spec) become code 2 with the usage text
+ * on stderr.
+ *
+ * @param argv - Arguments after the program name, for example `['verify', 'recibos/', '--keyring', 'k.json']`.
+ * @param isTTY - Color the human report (ANSI escape codes) when stdout is a terminal; default `false`.
+ * @param deps - Database opener; default reads the URL from the named environment variable.
+ * @returns The result; codes: verify 0/10/20, keyring 0 (fingerprint of an invalid keyring: 20), receipts export
+ *   0 or 1 (database failure, raw driver message hidden), 2 usage error.
+ * @throws {Error} Any unexpected error that is not a usage error (for example an unreadable output path).
+ * @example
+ * const r = await runCli(['keyring', 'fingerprint', 'chaveiro/chaveiro_operador_otk.json']);
+ * process.stdout.write(r.stdout);
+ */
 export async function runCli(argv: string[], isTTY = false, deps: CliDeps = defaultDeps): Promise<CliResult> {
   try {
     const [cmd, ...rest] = argv;

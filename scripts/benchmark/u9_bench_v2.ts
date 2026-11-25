@@ -13,7 +13,12 @@
  * Usage:
  *   npx tsx scripts/benchmark/u9_bench_v2.ts [--no-zk] [--N 50]
  *
- * @module u9_bench_v2
+ * Environment: `BENCH_N` (receipts per workload, default 100; `--N` wins) and `BENCH_WARMUP` (warm-up iterations,
+ * default 5). Files go to a new `docs/_ops/u9/U9_BENCH_V2_<timestamp>/` folder, which also gets a LaTeX table
+ * (`benchmark_v2_latex.tex`). The ZK stages run only when the circuit and proving key exist under `zk/build/` and
+ * `--no-zk` is absent. Signing uses a test signer, so no real key is involved; no network. Exit code 1 on any error.
+ *
+ * @module scripts/benchmark/u9_bench_v2
  * @since U9.7
  */
 
@@ -422,6 +427,7 @@ function generateLatexTable(
 // ---------------------------------------------------------------------------
 // Re-export Stats type for use by other modules
 // ---------------------------------------------------------------------------
+/** Summary statistics type of `src/bench/Stats.ts`, re-exported unchanged. */
 export type { Stats };
 
 main().catch(e => { console.error(e); process.exit(1); });

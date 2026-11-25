@@ -3,19 +3,39 @@
  * Binds 127.0.0.1 on port 0 (or a port in B's range 58700–58799). It is NOT the provider: its
  * count is o200k_base(text) + 7, a synthetic rule. The accepted key is a fixed public test
  * string, not a credential.
+ *
+ * Answers 404 for any other route, 401 without the accepted key or a version header, 529 (overloaded) on every
+ * `failEvery`-th request when set, and 400 for an unparsable body. Used by `runExternal.ts --simulate` and by the
+ * calibration unit tests.
+ *
+ * @module scripts/calibration/simulatedProvider
  */
 import { createServer, type IncomingMessage } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { countWith, loadEncoding } from '../../src/tokenization/tokenizerIdentity.js';
 
+/** Tokens the simulator adds to the o200k_base text count (a synthetic per-request envelope). */
 export const SIMULATED_ENVELOPE = 7;
 
+/**
+ * Reads the whole request body as UTF-8.
+ *
+ * @param req - Incoming request.
+ * @returns The body text.
+ */
 async function body(req: IncomingMessage): Promise<string> {
   const chunks: Buffer[] = [];
   for await (const c of req) chunks.push(c as Buffer);
   return Buffer.concat(chunks).toString('utf8');
 }
 
+/**
+ * Starts the simulator on the loopback interface.
+ *
+ * @param opts - `port` (default 0 = any free port) and `failEvery` (answer 529 on every n-th authorized request;
+ *   unset = never).
+ * @returns The base URL, the accepted test key, a counter of authorized requests, and `close()` to stop the server.
+ */
 export async function startSimulatedAnthropic(opts: { port?: number; failEvery?: number } = {}) {
   const enc = loadEncoding('o200k_base').encoder;
   const acceptedKey = 'otk-simulator-public-test-key';

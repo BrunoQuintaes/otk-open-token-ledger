@@ -8,9 +8,14 @@
  *  - money is pico-USD as a decimal string in BigInt (never float);
  *  - nothing here holds prompt or response text: content is addressed by sha256 only.
  * This file only ADDS to the H1 tree (7606bc9b); it imports H1 types and never edits them.
+ *
+ * Imported by every part of the harness (core, record, cache, modal, cli, econ). Types only, plus a few constants.
+ *
+ * @module scripts/h2eval/types
  */
 import type { UsageApi, ModelSupport, LocalCountResult } from '../../src/types/d1d8/index.js';
 
+/** Schema ids of the records the executor writes (operation, snapshot, usage, cost, journal, ledger, plan). */
 export const H2EVAL_SCHEMA = {
   operation: 'h2eval.operation.v0',
   snapshot: 'h2eval.precall_snapshot.v0',
@@ -21,15 +26,20 @@ export const H2EVAL_SCHEMA = {
   plan: 'h2eval.plan.v0',
 } as const;
 
+/** Lowercase hex SHA-256 digest (64 characters). */
 export type Hex64 = string;
 /** Integer count, or the two honest non-numbers. Never 0 for "absent". */
 export type Count = number | 'UNKNOWN' | 'NOT_APPLICABLE';
 /** pico-USD (1e-12 USD) as a decimal integer string, e.g. "1234500000000" = 1.2345 USD. */
 export type PicoUsd = string;
+/** pico-USD in one USD (10^12). */
 export const PICO_PER_USD = 1_000_000_000_000n;
 
+/** Provider of an operation. */
 export type Provider = 'openai' | 'anthropic' | 'google';
+/** Study phase of an operation: pilot, confirmatory sample, exploratory modality, or paired comparison. */
 export type Phase = 'PILOT' | 'CONFIRMATORY' | 'EXPLORATORY_MODALITY' | 'COMPARATIVE_PAIRED';
+/** Data split of an operation; `NONE` for pilots and `COMPARATIVE` for the paired comparison. */
 export type Split = 'train' | 'validation' | 'holdout' | 'NONE' | 'COMPARATIVE';
 /** R2 item 10: deprecation status of the served model id (R08 §1). */
 export type ModelDeprecation = 'DEPRECATED_SHUTDOWN_2027-01-14' | 'LEGACY' | 'ACTIVE' | 'UNKNOWN';
@@ -38,11 +48,17 @@ export type ModelDeprecation = 'DEPRECATED_SHUTDOWN_2027-01-14' | 'LEGACY' | 'AC
 export interface ThinkingParams { mode: 'none' | 'adaptive' | 'manual' | 'minimal' | 'omit'; effort?: string; budgetTokens?: number; thinkingLevel?: string }
 /** R2 item 5: cache write TTL requested (the cap always uses the most expensive TTL). */
 export type CacheTtlRequested = '5m' | '1h' | 'NOT_APPLICABLE';
+/** Task kind of the prompt. */
 export type Task = 'summary' | 'code_fix' | 'analysis' | 'code_gen';
+/** Prompt size class: `S` short, `L` long. */
 export type SizeBucket = 'S' | 'L';
+/** Call structure: S1 single message; S2 dialog without cache hits; S3 dialog that attempts cache hits. */
 export type Structure = 'S1' | 'S2' | 'S3';
+/** Input modality. */
 export type Modality = 'text' | 'image' | 'audio';
+/** Cache arm planned for the operation (`S2_NOHIT`: unique nonce per call; `S3_HITATTEMPT`: shared prefix). */
 export type CacheArm = 'S1' | 'S2_NOHIT' | 'S3_HITATTEMPT';
+/** Cache outcome derived from the usage counts (see `record/usage.ts`). */
 export type CacheObserved = 'HIT' | 'CREATION' | 'NO_HIT' | 'UNKNOWN';
 
 /** Operation states (contract §1). Journal kinds mirror these transitions. */
@@ -56,11 +72,13 @@ export type OperationState =
   /** C144 (D144-03/05): a gate artifact is missing or not PASS for this model/provider; the batch is skipped, the other arms continue. */
   | 'SKIPPED_GATE';
 
+/** Final outcome of a call as recorded in the post-call record. */
 export type Outcome = 'OK' | 'REFUSED_WITH_USAGE' | 'ERROR_NO_USAGE' | 'TIMEOUT_UNCERTAIN' | 'NOT_SENT';
 
 // ---------------------------------------------------------------------------------------------
 // 1. Operation plan (identity; R07/R10 provide the values; never computed from results)
 // ---------------------------------------------------------------------------------------------
+/** Request parameters of an operation as planned and sent; `maxTokens` is the output ceiling in tokens. */
 export interface OperationParams {
   maxTokens: number;
   temperature: number | 'DEFAULT';
@@ -80,6 +98,7 @@ export interface OperationParams {
   bodyProfile?: 'H_PARITY';
 }
 
+/** One planned call: identity (study, protocol, cell, prompt, repeat, model), routing, content hashes and parameters. */
 export interface OperationPlan {
   schema: typeof H2EVAL_SCHEMA.plan;
   studyId: string;
@@ -125,6 +144,7 @@ export type OperationId = Hex64;
 // ---------------------------------------------------------------------------------------------
 // 2. Provider adapter (owned by MET-02, scripts/h2eval/modal/**): pure functions, no I/O
 // ---------------------------------------------------------------------------------------------
+/** HTTP request built by an adapter, without the credential (the core adds it at send time). */
 export interface BuiltRequest {
   /** Absolute URL of the official host (checked by core against the allowlist before egress). */
   url: string;
@@ -182,6 +202,7 @@ export interface NormalizedUsageH2 {
   nonceTokensDeclared?: Count;
 }
 
+/** Refusal or filter detected by an adapter in a response. */
 export interface ParsedRefusal {
   refused: boolean;
   /** Closed code from the adapter (e.g. 'content_filter', 'policy', 'rate_limit', 'schema_error'); never provider text. */
@@ -223,6 +244,7 @@ export interface ResolvedContent {
   prefixMessages: number | 'NOT_APPLICABLE';
 }
 
+/** Hash-addressed store of prompt content; `get` resolves a prompt hash to its messages. */
 export interface ContentStore {
   get(sha256: Hex64): Promise<ResolvedContent>;
   /** Binary parts (image/audio) by hash; never logged. */
@@ -232,8 +254,10 @@ export interface ContentStore {
 // ---------------------------------------------------------------------------------------------
 // 3. Pre-call snapshot (R12; immutable; hashed and fsynced BEFORE egress)
 // ---------------------------------------------------------------------------------------------
+/** Whether the local counter could estimate the input (`UNSUPPORTED_FOR_ESTIMATION` for unsupported content). */
 export type EstimateStatus = 'ESTIMATED' | 'UNSUPPORTED_FOR_ESTIMATION';
 
+/** Facts recorded before the call is sent (ids, hashes, local counts, cap, forecast); sealed by `snapshotSha256`. */
 export interface PrecallSnapshot {
   schema: typeof H2EVAL_SCHEMA.snapshot;
   snapshotId: string;
@@ -276,6 +300,7 @@ export interface PrecallSnapshot {
 /** EXEC-ECON delta 6: 'UPPER_BOUND' = settled by a declared upper bound (gpt-6-luna without cache_write_tokens, ECON only); never presented as CALCULATED. */
 export type CostState = 'CALCULATED' | 'ESTIMATED' | 'UNKNOWN' | 'UPPER_BOUND';
 
+/** Post-call cost by the price table (pico-USD), per category, with cap coverage and the cache interval. */
 export interface CostTable {
   schema: typeof H2EVAL_SCHEMA.cost;
   usd: PicoUsd | 'UNKNOWN';
@@ -299,6 +324,7 @@ export interface CostCap {
   capBasis: { inputPriceMicro: string; cacheWritePriceUsedMicro: string; cacheWriteTtlUsed: '5m' | '1h' | 'NONE'; outputPriceMicro: string; roundedUpToMicroUsd: boolean };
 }
 
+/** Record written after a call (`records/<operationId>.json`): outcome, usage, cost, timing and stop reason. */
 export interface PostcallRecord {
   operationId: OperationId;
   outcome: Outcome;
@@ -324,6 +350,7 @@ export interface PostcallRecord {
 // ---------------------------------------------------------------------------------------------
 // 5. Journal (append-only, fsync before egress) and budget ledger
 // ---------------------------------------------------------------------------------------------
+/** Kind of a journal line (state transitions plus reservation, settlement, stops and probes). */
 export type JournalKind =
   | 'PLANNED' | 'PRECALL_SNAPSHOT_COMMITTED' | 'RESERVED' | 'SENT'
   | 'RESPONSE_RECEIVED' | 'ERROR_WITH_USAGE' | 'ERROR_NO_USAGE' | 'TIMEOUT_UNCERTAIN'
@@ -341,6 +368,7 @@ export type JournalKind =
   /** C158: the first operation of a probe region is a probe (STARTED before the reservation, RESULT with the measurement and the verdict after the settlement). */
   | 'MODEL_PROBE_STARTED' | 'MODEL_PROBE_RESULT';
 
+/** One append-only journal line; `seq` is its position in the journal. */
 export interface JournalLine {
   schema: typeof H2EVAL_SCHEMA.journal;
   seq: number;
@@ -353,6 +381,7 @@ export interface JournalLine {
   hash: Hex64;
 }
 
+/** Budget ledger state: campaign cap and, per provider, cap, spent, reserved, possibly charged and inherited (pico-USD). */
 export interface LedgerState {
   schema: typeof H2EVAL_SCHEMA.ledger;
   campaignCapUsd: PicoUsd;
@@ -361,6 +390,7 @@ export interface LedgerState {
   batches: Record<string, { capUsd: PicoUsd; spentUsd: PicoUsd; reservedUsd: PicoUsd }>;
 }
 
+/** Why the runner stopped or paused before or after an operation. */
 export type StopReason =
   | 'STOP_FILE' | 'STOP_BUDGET_PROVIDER' | 'STOP_BUDGET_BATCH' | 'STOP_BUDGET_CAMPAIGN' | 'STOP_BUDGET_OPERATION'
   | 'STOP_CAP_VIOLATION' | 'STOP_PRICE_UNKNOWN' | 'STOP_PERSISTENCE' | 'STOP_UNCERTAIN' | 'STOP_WATCHDOG' | 'STOP_CONSECUTIVE_FAILURES'
@@ -392,6 +422,7 @@ export type StopReason =
   /** C158: the automatic probe of a new model / unmeasured length region failed (or could not be judged / was left unresolved): blocking, no retry, the batch halts. */
   | 'STOP_MODEL_PROBE_FAILED';
 
+/** Result of running one operation: its state, the stop (or `null`) and whether it was replayed from the journal. */
 export interface RunnerResult {
   operationId: OperationId;
   state: OperationState;

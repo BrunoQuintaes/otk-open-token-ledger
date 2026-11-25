@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# Smoke test of a Besu JSON-RPC endpoint: prints eth_chainId and two eth_blockNumber readings taken
+# 3 seconds apart, so a person can see whether the chain is producing blocks. It prints the raw JSON
+# replies and does not compare them; the exit code does not say whether blocks advanced.
+# Needs curl.
+# Usage: bash scripts/ops/besu_rpc_smoke.sh [rpc-url]   (default http://127.0.0.1:8545)
 set -euo pipefail
 rpc="${1:-http://127.0.0.1:8545}"
 call() {

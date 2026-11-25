@@ -1,3 +1,8 @@
+# Exports the connection settings of the isolated Postgres and Redis test services used by the
+# test/services suites that name this file (test-only credentials, loopback addresses only).
+# Variables set: OTK_TEST_PG_URL, OTK_TEST_REDIS_URL, OTK_TEST_PG_CONTAINER. It starts nothing;
+# the compose command to start the services is in the comment below.
+# Usage: . scripts/ops/fps5_env.sh   (source it in the shell that runs the tests; do not execute it)
 # Fechamento pós-S5 (run 20260930-1625): isolated service endpoints for test/services (test-only
 # credentials, loopback). Own compose project otk-d1d8-1625-fps5, subnet 172.31.230.0/24, ports outside
 # the Windows excluded ranges (checked with `netsh interface ipv4 show excludedportrange protocol=tcp`).

@@ -15,8 +15,15 @@
  * Usage:
  *   node scripts/live/openai_live_chat.mjs [output_dir]
  *
+ * COSTS MONEY: one real, paid request per run. Run it with a TypeScript loader (for example `node --import tsx`),
+ * since it imports `.ts` sources. The key is obtained through `ProviderGateway` with `GlobalKeyStrategy` (which reads
+ * `OPENAI_API_KEY`); `OPENAI_MODEL` picks the model. Writes `openai_normalized_usage.json` (or `openai_error.json`
+ * on a non-2xx answer, exit code 1) into `output_dir`, default `docs/_ops/u7/U7_6_live`. Exit code 1 also when the
+ * key cannot be resolved.
+ *
+ * @module scripts/live/openai_live_chat
  * @since U7.6
- * @updated U7.9
+ * Updated: U7.9
  */
 
 import fs from 'node:fs';

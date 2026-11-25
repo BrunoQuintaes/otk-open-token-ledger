@@ -8,6 +8,9 @@
 #
 # Usage: bash scripts/zk/zk_prove.sh [input.json]
 #   Default input: zk/build/input.json
+#
+# Writes metering_witness.wtns, proof.json and public.json in zk/build (overwritten). Exit code 1 when an
+#   input file or snarkjs is missing; otherwise the first failing command's exit code (set -e).
 
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

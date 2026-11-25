@@ -14,7 +14,7 @@
  * Usage:
  *   npx tsx scripts/ops/u11_e2e_multi_provider.ts
  *
- * @module u11_e2e_multi_provider
+ * @module scripts/ops/u11_e2e_multi_provider
  * @since U11.2
  */
 

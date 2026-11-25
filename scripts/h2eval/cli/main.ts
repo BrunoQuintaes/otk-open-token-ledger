@@ -21,6 +21,14 @@
  *   status --batch-dir <dir> [--plan <plan.json>]     stop --batch-dir <dir>     export --batch-dir <dir> [--out <dataset.jsonl>]
  * Exit codes: 0 ok · 2 usage · 3 refused by policy (seed/ratification) · 4 plan invalid · 5 batch stopped by a STOP reason · 6 REAL preconditions failed · 7 internal.
  * Nothing here prints a credential value; OFFLINE never reads one.
+ *
+ * In short: this is the command dispatcher of the H2 evaluation executor. It parses the arguments, calls the module
+ * for each command (`./freeze.ts`, `./plan.ts`, `./pilot.ts`, `./run.ts`, `./campaign.ts`, `./preflight.ts`,
+ * `./status.ts`, `./capraise.ts`), prints one JSON line with the result and returns the exit code. Only `run` and
+ * the authorized multi-batch command, in real mode, can contact a provider (and spend); `preflight-connectivity` opens a TLS connection
+ * without any credential; the other commands are offline and write only to the folders they are given.
+ *
+ * @module scripts/h2eval/cli/main
  */
 import { mkdirSync, readFileSync } from 'node:fs';
 import { CliError, EXIT, REPO_ROOT, executorCodeSha, optFlag, optNum, optStr, parseArgs } from './common.js';
@@ -37,6 +45,16 @@ import type { MatrixModel } from '../modal/types.js';
 
 const HELP = `h2eval CLI (R15) — commands: freeze-corpus | plan | run --mode offline|real | status | stop | export (see header of scripts/h2eval/cli/main.ts)`;
 
+/**
+ * Runs one CLI command and returns its exit code; errors are printed as a JSON line, never thrown.
+ *
+ * @param argv - Command and options, without the node and script paths.
+ * @param out - Output sink for the single JSON result line; defaults to stdout.
+ * @returns A code from `EXIT` in `./common.ts` (0 ok, 2 usage, 3 refused, 4 invalid plan, 5 stopped, 6 real-run
+ *   preconditions, 7 internal).
+ * @example
+ * const code = await main(['status', '--batch-dir', 'runs/batch-01'], console.log);
+ */
 export async function main(argv: readonly string[], out: (s: string) => void = (s) => process.stdout.write(s + '\n')): Promise<number> {
   const a = parseArgs(argv);
   try {

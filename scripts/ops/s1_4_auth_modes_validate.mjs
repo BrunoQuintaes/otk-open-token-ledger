@@ -12,7 +12,12 @@
  *
  * Output: structured pass/fail report per mode.
  *
+ * Each mode starts its own API server (ports 18788, 18789, 18790) with fixed throwaway credentials defined
+ * below. When `evdDir` is given, per-mode results and 05_matrix.json are written there.
+ * Exit codes: 0 = every check passed; 1 = at least one failed.
+ *
  * @since S1.4 (2026-03-14)
+ * @module scripts/ops/s1_4_auth_modes_validate
  */
 
 import { spawn } from 'node:child_process';

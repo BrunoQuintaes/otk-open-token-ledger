@@ -17,7 +17,11 @@
  *   npx ts-node --esm scripts/benchmark/u9_benchmark_harness.ts
  *   # OR via npm script: npm run benchmark
  *
- * @module u9_benchmark_harness
+ * `npm run benchmark` runs it with tsx. Results go to a new `docs/_ops/u9/U9_BENCHMARK_<timestamp>/` folder (one JSON
+ * and one CSV). Signing uses a test signer (no real key); no network; no environment variables. Exit code 1 on any
+ * error.
+ *
+ * @module scripts/benchmark/u9_benchmark_harness
  * @since U9.1
  */
 

@@ -13,18 +13,35 @@
  *   identidade = executor (SHA de árvore limpa), pré-registro, cronograma, timeout pré-registrado, estado do G-7b, campanha;
  *   assinatura humana + digest canônico; paradas obrigatórias.
  * Puro (sem I/O, sem env, sem rede). Devolve null quando válido, senão o primeiro código (nenhum valor do GO é ecoado).
+ *
+ * In English: validator of the signed GO file (the human authorisation to spend) for the economic study,
+ * schema `h2eval.go.econ.v1`. A GO is finite: a scope (providers, models, a sequence range of the schedule, a maximum
+ * number of attempts), spending caps that must equal the effective ledger caps and stay inside the economic envelope,
+ * a finite UTC validity window already started, the executor and pre-registration identities, the mandatory stops,
+ * a human signature and a canonical digest. Pure: no I/O, no environment, no network. Each check returns the first
+ * failing code and never echoes GO values. Called by `scripts/h2eval/econ/econ.ts` at the start of collection and again
+ * before every attempt.
+ *
+ * @module scripts/h2eval/econ/goEcon
  */
 import { sha256Canon } from '../core/canon.js';
 import { capsWithinEconEnvelope, usdToPico } from '../core/ledger.js';
 import { GO_REQUIRED_STOPS } from '../core/egress.js';
 import type { Provider } from '../types.js';
 
+/** Schema id of the economic-study GO file. */
 export const GO_ECON_SCHEMA = 'h2eval.go.econ.v1';
 /** Janela máxima: a coleta é serial (4 800 tentativas, timeout de 600 s); 7 dias é o limite superior finito. Parâmetro do validador, não do GO. */
 export const GO_ECON_MAX_WINDOW_MS = 7 * 24 * 3600 * 1000;
+/** Stop codes a GO must list: the general required stops plus `STOP_ECON_ORDER`. */
 export const GO_ECON_REQUIRED_STOPS: readonly string[] = Object.freeze([...GO_REQUIRED_STOPS, 'STOP_ECON_ORDER']);
 const ECON_PROVIDERS: Readonly<Record<string, Provider>> = Object.freeze({ 'claude-sonnet-5': 'anthropic', 'claude-opus-5-5': 'anthropic', 'claude-haiku-5-5': 'anthropic', 'gpt-6-luna': 'openai', 'gemini-3.1-flash-lite': 'google' });
 
+/**
+ * Content of a GO file. Money values (`caps`) are decimal USD as string or number; `pauseAtFractionOfSubLedger` must be
+ * 0.8; `scope.seqFrom`/`seqTo` are inclusive positions in the schedule; `signedBy` and `acknowledgedBy` start with
+ * `human:`; `goDigestSha256` is the canonical SHA-256 of all other fields.
+ */
 export interface GoEconV1 {
   schema: typeof GO_ECON_SCHEMA; campaign: string; studyId: string;
   preregistrationSha256: string; executorCodeSha: string; cronogramaSha256: string; timeoutMs: number; g7bEstado: 'ABERTO' | 'LIMITA' | 'NAO_LIMITA';
@@ -37,6 +54,10 @@ export interface GoEconV1 {
   reservaPainelSha256?: string;
   stops: string[]; signedBy: string; signatureStatement: string; goDigestSha256: string;
 }
+/**
+ * What the executor knows and the GO must match: identities, schedule hash and length, timeout (ms), effective ledger
+ * caps (decimal USD strings), the current time `nowMs` (ms since epoch) and `treeClean` (`null` = unknown, refused).
+ */
 export interface GoEconContext {
   campaign: string; studyId: string; preregistrationSha256: string | undefined; executorCodeSha: string; treeClean: boolean | null;
   cronogramaSha256: string; cronogramaLength: number; timeoutMs: number; g7bEstado: string;
@@ -47,7 +68,14 @@ export interface GoEconContext {
 const picoOf = (v: unknown): bigint | null => { try { return typeof v === 'number' || typeof v === 'string' ? usdToPico(String(v)) : null; } catch { return null; } };
 const HEX64 = /^[0-9a-f]{64}$/;
 
-/** Validação do arquivo inteiro (no início da coleta e de novo em cada tentativa). */
+/**
+ * Validação do arquivo inteiro (no início da coleta e de novo em cada tentativa).
+ *
+ * @param text - Raw text of the GO file; leftover `<placeholder>` text is refused before parsing.
+ * @param ctx - Executor facts to match.
+ * @returns `null` when the GO is valid; otherwise the first failing code (for example `GO_SCHEMA`, `GO_CAPS_MISMATCH`,
+ *   `GO_EXPIRED`, `GO_UNSIGNED`, `GO_DIGEST_MISMATCH`). Never throws for bad input.
+ */
 export function validateGoEconV1(text: string, ctx: GoEconContext): string | null {
   if (/<[^<>\n]{1,120}>/.test(text)) return 'GO_PLACEHOLDER_LEFT';
   let go: GoEconV1; try { go = JSON.parse(text) as GoEconV1; } catch { return 'GO_FILE_INVALID'; }
@@ -92,7 +120,14 @@ export function validateGoEconV1(text: string, ctx: GoEconContext): string | nul
   return null;
 }
 
-/** Por tentativa (o GO já validado): a tentativa está no escopo e o orçamento de tentativas não acabou. */
+/**
+ * Por tentativa (o GO já validado): a tentativa está no escopo e o orçamento de tentativas não acabou.
+ *
+ * @param go - A GO already accepted by {@link validateGoEconV1}.
+ * @param a - The attempt: schedule position, provider, model and attempts already sent in this scope.
+ * @returns `null` when covered; otherwise `GO_SEQ_NOT_IN_SCOPE`, `GO_PROVIDER_OR_MODEL_NOT_IN_SCOPE` or
+ *   `GO_MAX_ATTEMPTS_REACHED`.
+ */
 export function goEconCoversAttempt(go: GoEconV1, a: { seq: number; provider: Provider; model: string; attemptsSentInScope: number }): string | null {
   const s = go.scope;
   if (a.seq < s.seqFrom || a.seq > s.seqTo) return 'GO_SEQ_NOT_IN_SCOPE';

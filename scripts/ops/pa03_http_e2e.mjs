@@ -11,7 +11,16 @@
  * Usage:
  *   node scripts/ops/pa03_http_e2e.mjs [evdDir]
  *
+ * Needs the ZK build artifacts (zk/build/metering_v1_js/metering_v1.wasm and zk/build/metering_v1_final.zkey,
+ * the latter not in git), tools/hardhat dependencies and free ports 8545, 3001 and 8787. It spawns the Hardhat
+ * node, the ProverDaemon and the API server as child processes and stops them at the end. The signer key is
+ * derived from a fixed test string, so it is a throwaway key for the local chain. Evidence files go to
+ * `evdDir` (default docs/_ops/startup/PA03O_HTTP_<epoch ms>/).
+ * Exit codes: 0 = loop closed (proof proved and on-chain event found); 1 = loop not closed; 2 = setup or
+ * runtime error (logs and error.txt are still written).
+ *
  * @since PA-03O (2026-03-12)
+ * @module scripts/ops/pa03_http_e2e
  */
 
 import { ethers } from '../../node_modules/ethers/lib.esm/index.js';

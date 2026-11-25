@@ -14,7 +14,13 @@
  *
  * Usage: node scripts/ops/generate_manifest.js
  *
+ * Side effects: writes the two manifest files above (overwriting them) and runs read-only git commands.
+ * Missing data never stops it: git failures give 'unknown' or an empty list, and an unknown test count is
+ * `null`. When run directly it generates the manifest; when imported it only exports the helpers.
+ * Tested by test/unit/wave1_pack12_ci_manifest.test.ts.
+ *
  * @since A6.6 + A11.1 + A11.3 — Wave 1 Pack 12
+ * @module scripts/ops/generate_manifest
  */
 
 import fs from 'fs';
@@ -30,6 +36,7 @@ const ROADMAP_CSV = path.join(ROOT, 'docs/CANONICAL_ROADMAP_TABLE.csv');
 
 // ─── Helpers ───────────────────────────────────────────────────────────
 
+// Runs a shell command at the repository root; any failure gives '' (callers turn that into 'unknown').
 function run(cmd) {
   try {
     return execSync(cmd, { cwd: ROOT, encoding: 'utf8' }).trim();
@@ -38,6 +45,11 @@ function run(cmd) {
   }
 }
 
+/**
+ * Reads the short hash of the current commit.
+ *
+ * @returns The short hash, or 'unknown' when git fails.
+ */
 function getCommitHash() {
   return run('git rev-parse --short HEAD') || 'unknown';
 }
@@ -46,15 +58,32 @@ function getFullCommitHash() {
   return run('git rev-parse HEAD') || 'unknown';
 }
 
+/**
+ * Reads the current branch name.
+ *
+ * @returns The branch name ('HEAD' when detached), or 'unknown' when git fails.
+ */
 function getBranch() {
   return run('git rev-parse --abbrev-ref HEAD') || 'unknown';
 }
 
+/**
+ * Lists the files changed between the previous commit and the working tree (`git diff --name-only HEAD~1`).
+ *
+ * @returns Repo-relative paths; empty when there is no previous commit or git fails.
+ */
 function getTouchedFiles() {
   const raw = run('git diff --name-only HEAD~1');
   return raw ? raw.split('\n').filter(Boolean) : [];
 }
 
+/**
+ * Reads the passing-test count from the newest docs/_ops/revalidation/REVALIDATION_* folder that has 05_tests.txt.
+ *
+ * It does not run the tests. The count is the first number matched by a few "N tests pass"-style patterns.
+ *
+ * @returns The count, or `null` when no evidence file or no match is found.
+ */
 function getTestCount() {
   // Try to read from the last Gate R0 evidence or estimate from package.json test script
   const gateFiles = [];
@@ -89,6 +118,14 @@ function getTestCount() {
   return null; // unknown
 }
 
+/**
+ * Reads the status of each roadmap phase from docs/CANONICAL_ROADMAP_TABLE.csv.
+ *
+ * Simple comma split (quoted commas are not supported); the first row of each phase wins.
+ *
+ * @returns Map from phase to status ('UNKNOWN' when the cell is empty); `{}` when the file or the
+ *   Phase/Status columns are missing.
+ */
 function parsePhaseStatuses() {
   if (!fs.existsSync(ROADMAP_CSV)) return {};
 
@@ -122,6 +159,11 @@ function parsePhaseStatuses() {
 
 // ─── Main ──────────────────────────────────────────────────────────────
 
+/**
+ * Builds the repository manifest and writes it to MANIFEST_<shortHash>.json and MANIFEST_LATEST.json.
+ *
+ * @returns The manifest object that was written.
+ */
 function generateManifest() {
   const commitHash = getCommitHash();
   const fullHash = getFullCommitHash();

@@ -2,6 +2,18 @@
 // COPIA NOVA de mk_opening_r5.mts (que cita a C156 secao 3.3 e NUNCA deve ser reusada para esta abertura): so o signedBy muda; a logica de heranca e identica.
 // Uso (cwd = worktree do executor): tsx scripts/h2eval/tools/mk_opening_c157.mts --from-dir <pasta anterior fechada> --label "<texto>" --closed-utc <UTC> --out <pasta nova>/LEDGER_OPENING.json
 // Herda TODO o comprometido da pasta anterior: (abertura anterior settled+uncertain, nas suas categorias) + liquidado + incerto da propria pasta. Recusa se houver reserva aberta.
+/**
+ * One-off command-line tool that writes the `LEDGER_OPENING.json` of a new batch folder for the Sonnet/Opus pilots,
+ * carrying over everything already committed in the previous, closed folder: the previous opening's settled and
+ * uncertain amounts plus what that folder's own ledger settled or left uncertain, per provider (in USD).
+ *
+ * Arguments: `--from-dir` (closed previous folder with `LEDGER_OPENING.json` and `ledger.jsonl`), `--label`,
+ * `--closed-utc` and `--out` (new file). Exit codes: 2 missing argument, 3 output already exists (never overwritten),
+ * 4 the previous folder still has an open reservation. The `signedBy` text is a fixed literal of the authorisation
+ * it materialises, so this copy must not be reused for another opening. Reads no environment variables, no network.
+ *
+ * @module scripts/h2eval/tools/mk_opening_c157
+ */
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { sha256Canon } from '../core/canon.js';

@@ -10,6 +10,14 @@
  *     `priceTableFromModal`: null stays null (never 0); the tier is chosen by the prompt-length hint (cap: input upper bound; cost: U);
  *   - modelDeprecation / exploratoryFormulaEstimate come from modal/contract_r2 (requested-model based; served id outside the matrix ⇒ UNKNOWN);
  *   - Google stays NOT_RUN_BRANCH_LOCKED (core default) until its own GO.
+ *
+ * In plain terms: this is the public entry point of the evaluation harness. It combines the core runner
+ * (`core/runner.ts`), the per-API adapters and price table (`modal/`) and the hash-addressed content store (`cache/`)
+ * into one executor, and re-exports the pieces other modules need. Used by `cli/run.ts`, `cli/plan.ts` and
+ * `econ/econ.ts`. It reads only the price table files; no environment variables (it re-exports the NAMES list
+ * `H2EVAL_ENV_NAMES`), and no network by itself (only the egress, in REAL mode with a valid GO, sends anything).
+ *
+ * @module scripts/h2eval/index
  */
 import type { UsageApi } from '../../src/types/d1d8/index.js';
 import { createExecutor, EXECUTOR_VERSION, DEFAULT_MAX_BATCH_CALLS, type Executor, type ExecutorConfig, type CapPolicy } from './core/runner.js';
@@ -31,7 +39,9 @@ export { readSnapshot } from './record/snapshot.js';
 export { contentOf, renderCall, renderDialog, buildDialogs, planArm, classifyCache, resolveArm, costInterval } from './cache/index.js';
 export type { Executor, ExecutorConfig, CapPolicy, PriceTable, ContentStore, CacheContentStore };
 
+/** Version string of this integration layer, attached to every executor it creates. */
 export const H2EVAL_INTEGRATION_VERSION = 'otk.h2eval.integration.v0';
+/** Models of the evaluation matrix; each is accepted only when the provider serves the same id. */
 export const MATRIX_MODELS: readonly MatrixModel[] = Object.freeze(['gpt-4o-mini-2024-07-18', 'claude-haiku-4-5-20251001', 'claude-haiku-5-5', 'claude-sonnet-5-5', 'claude-opus-5-5', 'gemini-3.5-flash-lite']);
 const isMatrixModel = (m: string): m is MatrixModel => (MATRIX_MODELS as readonly string[]).includes(m);
 /** E3G: arm models accept only their own id as served (outside ⇒ EXCL_MODEL_MISMATCH, as for the matrix). They stay OUT of MATRIX_MODELS (deprecation UNKNOWN, no S1 corpus). */
@@ -49,7 +59,13 @@ const CATEGORY_TO_MODAL: Record<PriceCategory, PriceKey[]> = {
   input: ['input'], output: ['output'], input_cache_read: ['cacheRead'], input_cache_write: ['cacheWrite5m', 'cacheWrite'], input_cache_write_1h: ['cacheWrite1h'],
   output_reasoning: ['reasoning'], input_image: ['imageTokens'], input_audio: ['audioTokens'],
 };
-/** Tier threshold from the tier id (`prompt_le_100k` / `prompt_gt_100k`); flat tiers (`standard`) have none. REFERENCE_ONLY tiers are never used. */
+/**
+ * Tier threshold from the tier id (`prompt_le_100k` / `prompt_gt_100k`); flat tiers (`standard`) have none. REFERENCE_ONLY tiers are never used.
+ *
+ * @param model - Model entry of the modal price table.
+ * @param hint - Prompt length in tokens used to choose the tier, if known.
+ * @returns The tier, or `null` when no usable tier covers the hint.
+ */
 function tierFor(model: PriceTableH2['models'][string], hint: number | undefined) {
   const usable = model.tiers.filter((t) => !/REFERENCE_ONLY/i.test(t.id));
   if (usable.length === 0) return null;
@@ -62,6 +78,14 @@ function tierFor(model: PriceTableH2['models'][string], hint: number | undefined
   return gt?.t ?? null; // above every documented tier: unknown (never guessed)
 }
 
+/**
+ * Adapts a modal price table (tiers by prompt length) to the core `PriceTable` interface.
+ *
+ * @param loaded - The table and the SHA-256 of its file (default: the modal table loaded from `PRICE_TABLE_PATH`).
+ * @returns A price table whose `micro` gives micro-USD per million tokens, or `null` (never 0) when the model, provider,
+ *   tier or category price is unknown or listed as `"0"`.
+ * @throws {TypeError} When the schema is not `otk.h2eval.price_table.v1` or the currency is not USD.
+ */
 export function priceTableFromModal(loaded: { table: PriceTableH2; sha256: string } = loadModalPriceTable()): PriceTable {
   const t = loaded.table;
   if (t.schema !== 'otk.h2eval.price_table.v1' || t.currency !== 'USD') throw new TypeError('modal price table: unexpected schema/currency');
@@ -79,6 +103,14 @@ export function priceTableFromModal(loaded: { table: PriceTableH2; sha256: strin
 // ---------------------------------------------------------------------------------------------------------------------------------
 // Content: resolve binary bytes by hash right before the pure adapter builds the request
 // ---------------------------------------------------------------------------------------------------------------------------------
+/**
+ * Wraps a content store so that `get` fills `bytesBase64` of every binary part from the store by hash.
+ *
+ * The bytes are added only in the returned content object (journal, snapshot and records keep hashes only).
+ *
+ * @param store - Underlying store (not changed).
+ * @returns A store with the same `getBytes` and a `get` that returns content with inline binary bytes.
+ */
 export function withResolvedBinaries(store: ContentStore): ContentStore {
   return {
     async get(sha) {
@@ -94,7 +126,14 @@ export function withResolvedBinaries(store: ContentStore): ContentStore {
   };
 }
 
-/** R2 item 7: EXPERIMENTAL image formula (MET-02) for the first image part; never replaces L0. Google ⇒ null (formula declared rough). */
+/**
+ * R2 item 7: EXPERIMENTAL image formula (MET-02) for the first image part; never replaces L0. Google ⇒ null (formula declared rough).
+ *
+ * @param plan - Operation plan; only image operations of matrix models get an estimate.
+ * @param _req - Built request (unused).
+ * @param content - Resolved content holding the image part with its width and height.
+ * @returns The token estimate with its formula and numeric inputs, or `null` when not applicable.
+ */
 export function exploratoryFormulaFor(plan: OperationPlan, _req: unknown, content: ResolvedContent): ExploratoryFormulaEstimate | null {
   if (plan.modality !== 'image' || !isMatrixModel(plan.modelRequested)) return null;
   const img = content.messages.flatMap((m) => m.parts).find((p): p is Extract<ResolvedContent['messages'][number]['parts'][number], { type: 'image' }> => p.type === 'image');
@@ -105,18 +144,28 @@ export function exploratoryFormulaFor(plan: OperationPlan, _req: unknown, conten
   return { tokens: e.tokens, formula: e.formula, rawInputs };
 }
 
-/** R10 R2 reasoning allowance per matrix model (MET-02 constant: 0 / 0 / 1 024 / 2 048); non-matrix ⇒ 0 (Gemini API then refuses, fail-closed). E3G arm models: their own constants (pricing.ts). */
+/**
+ * R10 R2 reasoning allowance per matrix model (MET-02 constant: 0 / 0 / 1 024 / 2 048); non-matrix ⇒ 0 (Gemini API then refuses, fail-closed). E3G arm models: their own constants (pricing.ts).
+ *
+ * @param plan - Operation plan.
+ * @returns Reasoning allowance in tokens reserved by the cost cap.
+ */
 export const defaultReasoningAllowance = (plan: OperationPlan): number => Number(isMatrixModel(plan.modelRequested) ? REASONING_ALLOWANCE_TOKENS[plan.modelRequested] : isArmModel(plan.modelRequested) ? REASONING_ALLOWANCE_TOKENS[plan.modelRequested] : 0n);
 
 /**
  * E3G (C160 BRACO-GO): the ATTESTED arm price table (gemini-3.1-flash-lite, gpt-6-luna), validated for provenance (core/e3gArm.ts A1) and adapted to the core PriceTable.
  * `armAttestedModels` is what the runner checks before reserving for an arm model. Never the default table: the Anthropic path keeps price_table_h2eval_v3.json.
+ *
+ * @param p - Path of the attested arm price table (default `E3G_PRICE_TABLE_PATH`).
+ * @returns The adapted, frozen table plus the list of attested models.
+ * @throws {Error} When the file cannot be read or fails the provenance checks of `validateArmPriceTable`.
  */
 export function loadE3GPriceTable(p: string = E3G_PRICE_TABLE_PATH): PriceTable & { armAttestedModels: readonly string[] } {
   const v = validateArmPriceTable(readFileSync(p));
   return Object.freeze({ ...priceTableFromModal({ table: v.table as unknown as PriceTableH2, sha256: v.sha256 }), armAttestedModels: Object.freeze([...v.attestedModels]) });
 }
 
+/** Options of {@link createH2EvalExecutor}: the core executor config, with content, prices and adapters optional. */
 export interface H2EvalExecutorOptions extends Omit<ExecutorConfig, 'adapters' | 'contentStore' | 'prices' | 'capPolicy' | 'exploratoryFormula'> {
   /** Where `content/<sha256>` lives (default: batchDir). Ignored when `contentStore` is given. */
   contentDir?: string;
@@ -127,8 +176,20 @@ export interface H2EvalExecutorOptions extends Omit<ExecutorConfig, 'adapters' |
   adapters?: Partial<Record<UsageApi, ProviderAdapter>>;
 }
 
+/** The core executor plus the wrapped content store, the raw store, the price table and the integration version. */
 export interface H2EvalExecutor extends Executor { contentStore: ContentStore; rawContentStore: ContentStore | CacheContentStore; prices: PriceTable; integrationVersion: string }
 
+/**
+ * Creates an evaluation executor with the matrix adapters, the modal price table and the content store wired in.
+ *
+ * Defaults: content from `content/` under `contentDir` (or `batchDir`), prices from the modal table, the reasoning
+ * allowance from {@link defaultReasoningAllowance}, and each matrix or arm model accepted only as its own served id.
+ * The core executor opens its ledger and journal files; in REAL mode it spends through the egress.
+ *
+ * @param o - Options; `capPolicy.inputUpperBoundTokens` is required (never defaulted here).
+ * @returns The executor.
+ * @throws {TypeError} When the default modal price table has an unexpected schema; errors of the core `createExecutor`.
+ */
 export function createH2EvalExecutor(o: H2EvalExecutorOptions): H2EvalExecutor {
   const raw = o.contentStore ?? createCacheContentStore(o.contentDir ?? o.batchDir);
   const contentStore = withResolvedBinaries(raw as ContentStore);

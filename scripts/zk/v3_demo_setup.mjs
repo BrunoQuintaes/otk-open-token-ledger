@@ -18,6 +18,13 @@
  *   manifest zk/v3/MANIFEST.json (sha256 of every artifact, tool versions, commands)
  *
  *   CIRCOM=<path to circom 2.1.6> node scripts/zk/v3_demo_setup.mjs [stage...]
+ *
+ * Environment: `CIRCOM` (path of the circom 2.1.6 binary; used by the compile stage). OVERWRITES the artifacts
+ * listed above and the committed verifier contract; check them afterwards with `scripts/zk/v3_verify_manifest.mjs`.
+ * Text artifacts are hashed after CRLF→LF normalization so a Windows checkout gives the same manifest. Any failing
+ * step throws (non-zero exit); exit code 0 when every requested stage finished.
+ *
+ * @module scripts/zk/v3_demo_setup
  */
 import { execFileSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';

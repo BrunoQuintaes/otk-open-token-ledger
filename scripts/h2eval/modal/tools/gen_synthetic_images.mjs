@@ -2,6 +2,16 @@
 // Deterministic synthetic PNGs (no third-party content, no image library): RGB gradients + a few rectangles,
 // 8-bit, no timestamps, so the bytes and the sha256 are stable across runs.
 // Uso: node gen_synthetic_images.mjs --out <dir>   (writes <dim>.png, MANIFEST.json, SHA256SUMS)
+/**
+ * Command-line generator of the synthetic image test inputs.
+ *
+ * Usage: `node scripts/h2eval/modal/tools/gen_synthetic_images.mjs --out <dir>`. It creates `<dir>` and writes one PNG
+ * per entry of `SPECS` (named `synthetic_<w>x<h>_<complexity>.png`), `MANIFEST.json` and `SHA256SUMS`; prints a short
+ * summary as JSON. Exit code 2 when `--out` is missing. Run by `test/h2eval/modal/synthetic_media.test.ts`.
+ * No network, no environment variables.
+ *
+ * @module scripts/h2eval/modal/tools/gen_synthetic_images
+ */
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { deflateSync } from 'node:zlib';
@@ -12,6 +22,7 @@ const OUT = arg('out'); if (!OUT) { console.error('uso: --out <dir>'); process.e
 mkdirSync(OUT, { recursive: true });
 
 // dimensions: the documented Anthropic table values, OpenAI tile boundaries, the Google example, and R07's "2 dimensions x 2 complexities"
+/** Images to generate: width and height in pixels, and `flat` (gradient) or `pattern` (gradient with checks and lines). */
 export const SPECS = [
   { w: 200, h: 200, complexity: 'flat' }, { w: 384, h: 384, complexity: 'flat' }, { w: 512, h: 512, complexity: 'pattern' },
   { w: 960, h: 540, complexity: 'pattern' }, { w: 1000, h: 1000, complexity: 'flat' }, { w: 1024, h: 768, complexity: 'pattern' },
@@ -22,6 +33,14 @@ const CRC_TABLE = new Uint32Array(256).map((_, n) => { let c = n; for (let k = 0
 const crc32 = (buf) => { let c = 0xffffffff; for (const b of buf) c = CRC_TABLE[(c ^ b) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
 const chunk = (type, data) => { const len = Buffer.alloc(4); len.writeUInt32BE(data.length); const td = Buffer.concat([Buffer.from(type, 'ascii'), data]); const crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(td)); return Buffer.concat([len, td, crc]); };
 
+/**
+ * Encodes a deterministic 8-bit RGB PNG (no timestamps, so the bytes are stable).
+ *
+ * @param w - Width in pixels.
+ * @param h - Height in pixels.
+ * @param complexity - `flat` or `pattern`.
+ * @returns The PNG file bytes.
+ */
 export function png(w, h, complexity) {
   const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4); ihdr[8] = 8; ihdr[9] = 2; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0; // 8-bit RGB
   const raw = Buffer.alloc((w * 3 + 1) * h);

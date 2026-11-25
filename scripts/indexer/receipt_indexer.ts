@@ -29,7 +29,13 @@
  *     "indexedAt": "2026-02-21T22:00:00.000Z"
  *   }
  *
- * @module receipt_indexer
+ * Runs until interrupted, polling for new blocks. Progress (last indexed block, total) is kept in
+ * `<INDEXER_OUT without .jsonl>_state.json`, so a restart resumes where it stopped. Without `CONTRACT_ADDRESS` it
+ * reads the address from `tools/hardhat/deployments/local/ReceiptRegistry.json`, and exits with code 1 when neither
+ * exists. Read-only on the chain: it sends no transaction. `scripts/indexer/export_dashboard_csv.ts` turns the JSONL
+ * into CSV.
+ *
+ * @module scripts/indexer/receipt_indexer
  * @since U10.1
  */
 
@@ -57,15 +63,22 @@ const RECEIPT_REGISTRY_ABI = [
 // ---------------------------------------------------------------------------
 // IndexedReceipt schema
 // ---------------------------------------------------------------------------
+/** One ReceiptSubmitted event as written to the JSONL file (one object per line). */
 export interface IndexedReceipt {
   blockNumber: number;
+  /** Block time, Unix seconds. */
   blockTimestamp: number;
   txHash: string;
+  /** Receipt commitment (bytes32, 0x-prefixed hex). */
   commitment: string;
+  /** uint256 values are kept as decimal strings so they never lose precision. */
   userId: string;
+  /** Cost units of the receipt, decimal string. */
   costUnits: string;
   epoch: string;
+  /** Address that submitted the receipt. */
   submitter: string;
+  /** ISO 8601 time the indexer recorded the event. */
   indexedAt: string;
 }
 

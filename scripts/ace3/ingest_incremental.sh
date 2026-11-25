@@ -7,6 +7,12 @@
 # A análise de gaps é feita manualmente por Claude após a coleta.
 #
 # --full: força análise de toda a história (ignora last_analyzed_commit)
+#
+# English summary: collects evidence for an incremental code review of the commits made since the last
+# reviewed commit (read from the "commit:" line of docs/ace3/INDEX.md; full history with --full or when that
+# commit is missing). Writes 00_context.txt, 01_diff.patch, 02_new_files.txt, 03_test_status.txt (runs
+# "npm test") and 04_gate_r0.txt (runs scripts/ops/gate_r0_revalidate.sh) into a new timestamped folder under
+# docs/_ops/analysis/. The review itself is done by hand afterwards. Needs git; reads no environment variables.
 
 set -e
 set -o pipefail

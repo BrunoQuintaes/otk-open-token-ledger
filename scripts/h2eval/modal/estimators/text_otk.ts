@@ -5,6 +5,8 @@
  * audio, tools) makes the counter report 'incomplete' and this estimator returns UNSUPPORTED_FOR_ESTIMATION: no L0 is invented.
  * claude-haiku-5-5 is not in the H1 catalog; the catalog falls back to the provider approximation (cl100k_base) and the
  * official page says this model's tokenizer yields ~30% more tokens than Haiku 4.5: flagged, uncalibrated.
+ *
+ * @module scripts/h2eval/modal/estimators/text_otk
  */
 import { createLocalCounter, COUNTER_VERSION } from '../../../../src/tokenization/localCounter.js';
 import { resolveModelSupport } from '../../../../src/providers/catalog/modelCatalog.js';
@@ -13,6 +15,15 @@ import type { Api, ExAnteEstimate, MatrixModel } from '../types.js';
 
 const PROVIDER_OF: Record<MatrixModel, string> = { 'gpt-4o-mini-2024-07-18': 'openai', 'claude-haiku-4-5-20251001': 'anthropic', 'claude-haiku-5-5': 'anthropic', 'claude-sonnet-5-5': 'anthropic', 'claude-opus-5-5': 'anthropic', 'gemini-3.5-flash-lite': 'gemini' };
 
+/**
+ * Counts the input text tokens of a request body with the local counter.
+ *
+ * @param model - Matrix model (selects provider and tokenizer).
+ * @param api - Provider API of the body.
+ * @param requestBody - The request body as it will be sent (not mutated); text up to 4 MiB is counted.
+ * @returns `ESTIMATED` with the input token count, or `UNSUPPORTED_FOR_ESTIMATION` when the counter could not cover
+ *   the input; both carry the counter identity and reasons.
+ */
 export function estimateTextTokens(model: MatrixModel, api: Api, requestBody: unknown): ExAnteEstimate {
   const support = resolveModelSupport(PROVIDER_OF[model], api as UsageApi, model);
   const counter = createLocalCounter(support, { maxTextBytes: 1 << 22 });

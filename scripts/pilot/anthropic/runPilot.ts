@@ -20,6 +20,12 @@
  * one call at a time, SDK retries disabled; the run stops on the first divergence,
  * uncertain outcome or budget refusal. Exit: 0 all calls consistent; 1 divergence or
  * uncertain outcome; 2 budget refusal; 3 no credential (nothing called); 4 usage error.
+ *
+ * Environment read: `ANTHROPIC_API_KEY` (live mode) and `OTK_PILOT_LEDGER` (live ledger path; the default is a
+ * placeholder path). It SETS, for the in-process gateway, `OTK_TENANTS`, `OTK_RECEIPT_LOG`, `OTK_DB_URL` (empty) and
+ * `PROVER_URL` (`disabled`), and in dry mode a stand-in `ANTHROPIC_API_KEY`. Live mode MAKES PAID CALLS.
+ *
+ * @module scripts/pilot/anthropic/runPilot
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -43,7 +49,12 @@ function arg(name: string): string | undefined {
   return a?.slice(name.length + 3);
 }
 
-/** Deterministic synthetic text (no personal data). */
+/**
+ * Deterministic synthetic text (no personal data).
+ *
+ * @param sentences - Number of numbered Portuguese sentences.
+ * @returns The sentences joined by spaces.
+ */
 function syntheticText(sentences: number): string {
   const parts: string[] = [];
   for (let i = 1; i <= sentences; i++) {
@@ -69,7 +80,12 @@ function plan(phase: Phase): Planned[] {
   return out;
 }
 
-/** round-half-up, as CU_MODEL_v1 documents */
+/**
+ * round-half-up, as CU_MODEL_v1 documents
+ *
+ * @param x - Non-negative number.
+ * @returns x rounded to the nearest integer, halves up.
+ */
 const roundHalfUp = (x: number) => Math.floor(x + 0.5);
 
 function independentCU(inp: number, out: number): { raw: number; published: number } {

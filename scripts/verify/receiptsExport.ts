@@ -5,30 +5,66 @@
  *
  * Os objetos saem como estão no banco (JSONB, bigint já como texto decimal): o exportador não decodifica
  * nem recalcula nada, para que a verificação continue independente. Filtro por timing.admittedAt.
+ *
+ * English summary: exports v3 receipts and their conference reports from OTK's PostgreSQL tables
+ * (`otk_receipts_v3`, `otk_conferences`) to a JSONL file that `otk verify` and the verifier web page accept, plus a
+ * manifest with counts and the file's sha256. Rows are copied as stored (nothing decoded or recomputed), so the
+ * verification stays independent of this exporter. Used by the `receipts export` command of `otk.ts`; it only
+ * runs two read-only queries and returns the text (the caller writes the files).
+ *
+ * @module scripts/verify/receiptsExport
  */
 import { ethers } from 'ethers';
 import type { PgQueryable } from '../../src/operations/schema.js';
 
+/** Schema id written into the export manifest. */
 export const EXPORT_MANIFEST_SCHEMA = 'otk.receipts_export_manifest.v1' as const;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
+/**
+ * Export window and optional tenant filter. `since` and `until` are UTC calendar days (YYYY-MM-DD), both inclusive;
+ * `tenant` null/undefined means every tenant.
+ */
 export interface ExportOptions { since: string; until: string; tenant?: string | null }
 
+/** Export output, ready to be written by the caller. */
 export interface ExportResult {
+  /** `recibos_<since>_<until>[_<tenant>].jsonl` (tenant sanitized to `[A-Za-z0-9._-]`). */
   fileName: string;
+  /** One JSON object per line (receipts first, then conferences); empty string when nothing matched. */
   jsonl: string;
+  /** `MANIFEST_<since>_<until>[_<tenant>].json`. */
   manifestName: string;
+  /** Manifest JSON text: window, tenant, file name, sha256 (hex) of `jsonl`, counts. */
   manifest: string;
+  /** Number of receipt lines. */
   receipts: number;
+  /** Number of conference lines. */
   conferences: number;
 }
 
+/**
+ * Next UTC calendar day of a date.
+ *
+ * @param d - Day as YYYY-MM-DD.
+ * @returns The following day as YYYY-MM-DD.
+ * @throws {Error} On an impossible date such as 2026-02-30.
+ */
 function nextDay(d: string): string {
   const t = new Date(`${d}T00:00:00.000Z`);
   if (Number.isNaN(t.getTime()) || t.toISOString().slice(0, 10) !== d) throw new Error(`data inválida: ${d}`);
   return new Date(t.getTime() + 86_400_000).toISOString().slice(0, 10);
 }
 
+/**
+ * Reads the receipts admitted in the window (by `receipt.timing.admittedAt`, UTC) and their conferences.
+ *
+ * @param pool - Open PostgreSQL connection or pool (only read; not closed here).
+ * @param o - Window and tenant filter.
+ * @returns File names, file contents and counts.
+ * @throws {Error} When `since`/`until` are not YYYY-MM-DD, `since` is after `until`, `until` is not a real date,
+ *   or a query fails (the driver error is passed on; `otk.ts` hides its message).
+ */
 export async function exportReceipts(pool: PgQueryable, o: ExportOptions): Promise<ExportResult> {
   if (!DAY.test(o.since) || !DAY.test(o.until)) throw new Error('--since e --until devem ser AAAA-MM-DD');
   if (o.since > o.until) throw new Error('--since depois de --until');

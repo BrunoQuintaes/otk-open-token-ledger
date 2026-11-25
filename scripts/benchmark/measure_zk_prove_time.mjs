@@ -1,3 +1,16 @@
+/**
+ * Measures how long one Groth16 proof of the metering_v1 circuit takes to generate (5 runs, snarkjs fullProve).
+ *
+ * Reads the compiled circuit (`zk/build/metering_v1_js/metering_v1.wasm`), the final proving key
+ * (`zk/build/metering_v1_final.zkey`) and an input (`zk/build/metering_input.json`); build them first with
+ * `scripts/zk/zk_build.sh` and the setup scripts. Prints each run and the mean, min, max, standard deviation (ms)
+ * and coefficient of variation to stdout; writes nothing. The platform line it prints is a fixed text, not detected.
+ * Paths come from `URL.pathname`, which on Windows starts with a slash before the drive letter.
+ *
+ * Usage: `node scripts/benchmark/measure_zk_prove_time.mjs`. No arguments, no environment variables, no network.
+ *
+ * @module scripts/benchmark/measure_zk_prove_time
+ */
 import { readFileSync } from 'fs';
 import { groth16 } from 'snarkjs';
 

@@ -17,7 +17,10 @@
  *   npx tsx scripts/demo/u10_demo_e2e.ts
  *   # OR: npm run demo
  *
- * @module u10_demo_e2e
+ * Signs with a test signer (no real key). Writes `docs/_ops/u10/u10_demo_report.json` and prints a summary; it does
+ * not send anything to a chain. Exit code 1 on any error. Reads no environment variables.
+ *
+ * @module scripts/demo/u10_demo_e2e
  * @since U10.1
  */
 

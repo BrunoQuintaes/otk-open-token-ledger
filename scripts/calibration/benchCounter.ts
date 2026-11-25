@@ -5,6 +5,15 @@
  * spends this CPU in the process: these numbers are the cost, not a promise of zero latency.
  *
  *   bash control/bin/heavy_lock.sh B bench -- npx tsx scripts/calibration/benchCounter.ts --out <file>
+ *
+ * Plain form: `npx tsx scripts/calibration/benchCounter.ts [--reps <n>] [--out <file>]` (the lock wrapper above only
+ * keeps heavy jobs from running at the same time on the measuring machine). Builds synthetic OpenAI-style SSE streams
+ * of 1 KiB, 16 KiB and 128 KiB of prose, warms up 5 times, then runs `--reps` (default 40) alternating rounds with and
+ * without the local counter attached to the stream accumulator. Reports p50/p95/max/mean wall time (ms) and CPU time
+ * (microseconds) per size, heap growth and peak RSS (bytes) as JSON to `--out` or stdout. No network, no environment
+ * variables; run with `node --expose-gc` for the heap numbers to start from a collected heap.
+ *
+ * @module scripts/calibration/benchCounter
  */
 import { writeFileSync } from 'node:fs';
 import { cpus, totalmem } from 'node:os';

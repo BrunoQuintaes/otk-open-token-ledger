@@ -9,6 +9,13 @@
  *   A3 tier: served tier must be Standard (openai: response service_tier === "default", absent => STOP; google: usageMetadata.serviceTier absent => Standard by the
  *      author's declaration DR-194, present and not standard => STOP) => STOP_TIER_NOT_STANDARD (latching; the cost is NOT computed at the Standard price: UNKNOWN, possibly charged);
  *   A4 UNKNOWN never becomes 0 (unchanged engine: an unknown count or a null price keeps the cost UNKNOWN and the money possibly charged).
+ *
+ * In short: rules for the two calibration-arm models (one Google, one OpenAI): an attested price table, a separate
+ * ledger file and cap per provider, a check that the served tier is Standard, and two upper-bound settlements for
+ * usage fields those models may omit. Used by the runner (`./runner.ts`), the planner (`../cli/plan.ts`) and
+ * `../cli/run.ts`. Reads only the attested price table file `../modal/pricing/price_table_h2eval_e3g_attested_v1.json`.
+ *
+ * @module scripts/h2eval/core/e3gArm
  */
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -18,14 +25,35 @@ import type { Provider } from '../types.js';
 import type { PriceTable } from '../record/prices.js';
 import { usdToPico } from './ledger.js';
 
+/** Version string of the arm rules, recorded in {@link armSummary}. */
 export const E3G_ARM_VERSION = 'otk.h2eval.e3g_arm.v1';
+/** The arm models and their providers; every rule in this file is a no-op for any other model. */
 export const E3G_ARM_MODELS = Object.freeze({ 'gemini-3.1-flash-lite': 'google', 'gpt-6-luna': 'openai' } as const);
+/** Id of an arm model. */
 export type E3GArmModel = keyof typeof E3G_ARM_MODELS;
+/**
+ * Tells whether a model is one of the arm models.
+ *
+ * @param m - Model id.
+ * @returns `true` for an arm model.
+ */
 export const isArmModel = (m: string): m is E3GArmModel => Object.prototype.hasOwnProperty.call(E3G_ARM_MODELS, m);
+/**
+ * Provider of an arm model.
+ *
+ * @param m - Model id.
+ * @returns The provider, or `null` for a model outside the arm.
+ */
 export const armProviderOf = (m: string): Provider | null => (isArmModel(m) ? E3G_ARM_MODELS[m] : null);
 
 /** DR-205: US$ 1,00 per provider, separate accounting. The only arm profile values the runner accepts (named, never a free number). */
 export const E3G_PROVIDER_CAP_USD = '1';
+/**
+ * Ledger file name of an arm provider.
+ *
+ * @param p - Provider.
+ * @returns `ledger.<provider>.jsonl`.
+ */
 export const E3G_LEDGER_FILE = (p: Provider): string => `ledger.${p}.jsonl`;
 
 /** A3: served-tier rule per arm provider (the request side is fixed in the adapters: openai service_tier="default"; google sends no tier parameter). */
@@ -34,8 +62,18 @@ export const E3G_TIER_RULE = Object.freeze({
   google: Object.freeze({ requested: 'NONE', accepted: Object.freeze(['standard', 'STANDARD']), absent: 'AUTHOR_DECLARATION' as const, basis: 'DR-194 literal C160S item 6 (sha256 d519e5b5...): served only on Standard, risk accepted by the author; generateContent has no tier parameter' }),
 });
 
+/**
+ * Served-tier verdict: `ok`, the served tier (sanitized, `UNKNOWN` when absent), the basis of the decision and the
+ * refusal reason (`SERVICE_TIER_ABSENT`, `SERVICE_TIER_NOT_STANDARD`, or `null`).
+ */
 export interface TierVerdict { ok: boolean; served: string; basis: 'RESPONSE_FIELD' | 'AUTHOR_DECLARATION_DR-194' | 'NOT_ARM'; reason: string | null }
-/** A3. `served` is NormalizedUsageH2.serviceTierServed ('UNKNOWN' when the field is absent). */
+/**
+ * A3. `served` is NormalizedUsageH2.serviceTierServed ('UNKNOWN' when the field is absent).
+ *
+ * @param model - Model id (non-arm models always pass).
+ * @param served - Served tier from the normalized usage.
+ * @returns The verdict.
+ */
 export function servedTierVerdict(model: string, served: string | null | undefined): TierVerdict {
   const p = armProviderOf(model); const s = typeof served === 'string' && served !== '' ? served : 'UNKNOWN';
   if (p === null) return { ok: true, served: s, basis: 'NOT_ARM', reason: null };
@@ -47,13 +85,27 @@ export function servedTierVerdict(model: string, served: string | null | undefin
 // ------------------------------------------------------------------------------------------------------------------------------
 // A1: attested price table (otk.h2eval.price_table.v1 + `attestation` per model)
 // ------------------------------------------------------------------------------------------------------------------------------
+/** Absolute path of the attested arm price table, resolved from this file's location. */
 export const E3G_PRICE_TABLE_PATH = fileURLToPath(new URL('../modal/pricing/price_table_h2eval_e3g_attested_v1.json', import.meta.url));
+/**
+ * Provenance of one model's prices: the human attester (`human:<name>`), the decision records (`DR-<n>`), the source
+ * literals with their SHA-256, and the tier (must be `STANDARD`).
+ */
 export interface ArmAttestation { attestedBy: string; decisionRecords: string[]; literals: Array<{ file: string; sha256: string }>; tier: string; note?: string }
 /** Every price key a usage of the model can need (null = not applicable to that API; never "0"). */
 const REQUIRED_KEYS: Readonly<Record<E3GArmModel, readonly string[]>> = Object.freeze({ 'gemini-3.1-flash-lite': ['input', 'output', 'cacheRead', 'reasoning'], 'gpt-6-luna': ['input', 'output', 'cacheRead', 'cacheWrite', 'reasoning'] });
+/** Error raised when the arm price table is refused; `code` names the failed rule (for example `ARM_PRICE_NOT_ATTESTED`). */
 export class ArmPriceTableError extends Error { constructor(readonly code: string, detail: string) { super(`${code}: ${detail}`); this.name = 'ArmPriceTableError'; } }
 
-/** Validates the provenance of the attested arm table; refuses (throws) a model without attestation or with a missing required price. Returns the parsed table + sha256. */
+/**
+ * Validates the provenance of the attested arm table; refuses (throws) a model without attestation or with a missing required price. Returns the parsed table + sha256.
+ *
+ * @param buf - Bytes of the price table file.
+ * @returns The parsed table, the SHA-256 of the bytes and the attested models.
+ * @throws {@link ArmPriceTableError} For a wrong schema or currency, a model outside the arm, a wrong provider, a
+ *   missing or malformed attestation, more than one tier, or a required price that is not a positive integer string.
+ * @throws {SyntaxError} When the bytes are not JSON.
+ */
 export function validateArmPriceTable(buf: Buffer): { table: { schema: string; version: string; currency: string; capturedUtc: string; models: Record<string, { provider: string; attestation?: ArmAttestation; tiers: Array<{ id: string; prices: Record<string, string | null> }> }> }; sha256: string; attestedModels: E3GArmModel[] } {
   const table = JSON.parse(buf.toString('utf8'));
   if (table?.schema !== 'otk.h2eval.price_table.v1' || table.currency !== 'USD') throw new ArmPriceTableError('ARM_PRICE_TABLE_SCHEMA', 'schema/currency');
@@ -70,7 +122,13 @@ export function validateArmPriceTable(buf: Buffer): { table: { schema: string; v
   return { table, sha256: createHash('sha256').update(buf).digest('hex'), attestedModels: attested };
 }
 
-/** A1 check used by the runner: the table is the attested arm table and covers the model. */
+/**
+ * A1 check used by the runner: the table is the attested arm table and covers the model.
+ *
+ * @param prices - The executor's price table (an attested table carries `armAttestedModels`).
+ * @param model - Model id.
+ * @returns `true` when the model is among the attested models.
+ */
 export function armPriceAttested(prices: PriceTable & { armAttestedModels?: readonly string[] }, model: string): boolean {
   return Array.isArray(prices.armAttestedModels) && prices.armAttestedModels.includes(model);
 }
@@ -78,6 +136,15 @@ export function armPriceAttested(prices: PriceTable & { armAttestedModels?: read
 // ------------------------------------------------------------------------------------------------------------------------------
 // A2: ledger separated per provider
 // ------------------------------------------------------------------------------------------------------------------------------
+/**
+ * A2 check: an arm model must use its provider's own ledger file and the arm caps (campaign and own provider 1 USD,
+ * the other providers 0).
+ *
+ * @param model - Model id (non-arm models always pass).
+ * @param ledger - Ledger caps in USD (decimal text).
+ * @param ledgerPath - Ledger file path (only the file name is checked); default name `ledger.jsonl`.
+ * @returns `null` when compliant, otherwise `LEDGER_FILE_NOT_PER_PROVIDER(<name>)` or `LEDGER_CAPS_NOT_ARM_PROFILE`.
+ */
 export function armLedgerViolation(model: string, ledger: { campaignUsd: string; providersUsd: Record<Provider, string> }, ledgerPath: string | undefined): string | null {
   const p = armProviderOf(model); if (p === null) return null;
   const base = path.basename(ledgerPath ?? 'ledger.jsonl');
@@ -87,7 +154,13 @@ export function armLedgerViolation(model: string, ledger: { campaignUsd: string;
   return ok ? null : 'LEDGER_CAPS_NOT_ARM_PROFILE';
 }
 
-/** Provenance digest of the arm (for the G15 package / terminal). */
+/**
+ * Provenance digest of the arm (for the G15 package / terminal).
+ *
+ * @returns Rules version, arm models, provider cap and the price table path, SHA-256 and attested models.
+ * @throws {@link ArmPriceTableError} When the price table file fails validation.
+ * @throws {Error} When the price table file cannot be read.
+ */
 export function armSummary(): Record<string, unknown> {
   const buf = readFileSync(E3G_PRICE_TABLE_PATH);
   const v = validateArmPriceTable(buf);
@@ -97,12 +170,21 @@ export function armSummary(): Record<string, unknown> {
 // ------------------------------------------------------------------------------------------------------------------------------
 // E3G2 (C160 BRACO-GO, ordem da master): Gemini que OMITE cachedContentTokenCount => liquidação pelo LIMITE SUPERIOR
 // ------------------------------------------------------------------------------------------------------------------------------
+/** Mark recorded when the Google arm usage was settled by the upper bound because the cache-read field was absent. */
 export const CACHE_READ_EVIDENCE_UPPER_BOUND = 'ABSENT_FIELD_UPPER_BOUND' as const;
 /**
  * Só para o modelo Google do braço e só no caso exato: `usageMetadata` presente, `cachedContentTokenCount` AUSENTE (chave inexistente; presente e inválido NÃO entra),
  * `promptTokenCount` inteiro >= 0 e o resto da contagem conhecido. Então toda a entrada vai ao preço CHEIO de entrada (cacheRead = 0 tokens a preço de cache,
  * inputUncached = promptTokenCount): o valor é >= ao real, porque o preço de cache read (0,025) < entrada (0,25). Qualquer outro campo ausente segue UNKNOWN.
  * Devolve a usage limitada (cópia) ou null (nada muda).
+ *
+ * In English: for the Google arm model only, when the response omits the cache-read field, prices the whole prompt at
+ * the full input price, which can only overstate the real cost.
+ *
+ * @param model - Model id.
+ * @param usage - Normalized usage, or `null`; not mutated.
+ * @param responseBody - Raw response body (its `usageMetadata` is inspected).
+ * @returns A bounded copy of the usage, or `null` when the rule does not apply.
  */
 export function googleCacheUpperBound<U extends { inputUncached: unknown; cacheRead: unknown; U: unknown }>(model: string, usage: U | null, responseBody: unknown): U | null {
   if (model !== 'gemini-3.1-flash-lite' || !usage) return null;
@@ -118,6 +200,13 @@ export function googleCacheUpperBound<U extends { inputUncached: unknown; cacheR
  * que o Gemini informa mesmo sem a chave de cache); inputUncached e cacheRead SEGUEM UNKNOWN (a divisao nao e inventada) e a linha leva a marca
  * cacheReadEvidence ABSENT_FIELD_UPPER_BOUND. usageCompleteness vira COMPLETE so se todo o resto da contagem for conhecido; senao fica como estava.
  * O custo continua pelo limite (googleCacheUpperBound). Fora do caso exato (bounded null) nada muda.
+ *
+ * In English: the usage written to the record and dataset when the Google upper bound applies: the measured input U
+ * is kept, the uncached/cached split stays UNKNOWN.
+ *
+ * @param usage - Normalized usage; not mutated.
+ * @param bounded - Result of {@link googleCacheUpperBound}, or `null`.
+ * @returns A copy with `U` set (and completeness COMPLETE when all other counts are known), or `usage` unchanged.
  */
 export function googleUpperBoundRecordUsage<U extends { U: unknown; usageCompleteness: string; cacheWrite5m: unknown; cacheWrite1h: unknown; cacheWrite: unknown; outputVisible: unknown; reasoning: unknown; imageUnits: unknown; audioUnits: unknown; toolTokens: unknown }>(usage: U, bounded: { U: unknown } | null): U {
   if (!bounded || typeof bounded.U !== 'number') return usage;
@@ -128,6 +217,7 @@ export function googleUpperBoundRecordUsage<U extends { U: unknown; usageComplet
 // ------------------------------------------------------------------------------------------------------------------------------
 // EXEC-ECON delta 6 (DECISOES_MASTER_ECON; smoke ECON seq 2): gpt-6-luna que OMITE prompt_tokens_details.cache_write_tokens => LIMITE SUPERIOR
 // ------------------------------------------------------------------------------------------------------------------------------
+/** Mark recorded when the OpenAI arm usage was settled by the upper bound because the cache-write field was absent. */
 export const CACHE_WRITE_EVIDENCE_UPPER_BOUND = 'ABSENT_FIELD_UPPER_BOUND' as const;
 /**
  * Só gpt-6-luna e só no caso exato: `usage` presente com `prompt_tokens` e `completion_tokens` inteiros >= 0 e a chave
@@ -135,6 +225,15 @@ export const CACHE_WRITE_EVIDENCE_UPPER_BOUND = 'ABSENT_FIELD_UPPER_BOUND' as co
  * DR-208), o maior dos preços de entrada; cached/cache_write são subconjuntos de prompt_tokens. Então prompt_tokens INTEIRO ao preço da escrita
  * + completion_tokens ao preço de saída (= raciocínio, 0,50) é >= ao custo real para qualquer divisão. Devolve a usage do LIMITE (cópia, só
  * para o custo) ou null (nada muda). Qualquer outro campo ausente segue UNKNOWN.
+ *
+ * In English: for the OpenAI arm model only, when the response omits the cache-write field, prices the whole prompt
+ * at the cache-write price (its highest input price) and all completion tokens at the output price, which can only
+ * overstate the real cost.
+ *
+ * @param model - Model id.
+ * @param usage - Normalized usage, or `null`; not mutated.
+ * @param responseBody - Raw response body (its `usage` is inspected).
+ * @returns A bounded copy of the usage for costing only, or `null` when the rule does not apply.
  */
 export function openaiCacheWriteUpperBound<U extends { cacheWrite: unknown; inputUncached: unknown; cacheRead: unknown; outputVisible: unknown; reasoning: unknown; U: unknown }>(model: string, usage: U | null, responseBody: unknown): U | null {
   if (model !== 'gpt-6-luna' || !usage) return null;

@@ -3,6 +3,8 @@
 #
 # Prerequisites: circom installed globally (npm i -g circom)
 # Usage: bash scripts/zk/zk_build.sh
+# Writes metering_v1.r1cs, metering_v1.sym and metering_v1_js/ into zk/build (overwritten). Exit code 1 when
+#   circom is missing; otherwise circom's exit code. Reads no environment variables.
 
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

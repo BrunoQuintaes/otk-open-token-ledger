@@ -3,15 +3,29 @@
  * Tudo sai de um gerador com semente: sem dado pessoal, sem texto de terceiros, sem emoji (nenhum surrogate UTF-16 é produzido).
  * `charsTarget` é uma meta de TAMANHO em caracteres (a conversão para tokens é uma estimativa medida nos testes; o gerador não
  * depende de nenhum tokenizador, para o hash não variar com o ambiente).
+ *
+ * In English: seeded synthetic Portuguese texts for the 4 S1 tasks (summary, code fix, analysis, code generation) in two
+ * sizes, with a small rubric per text. No personal data, no third-party text, no emoji. Sizes are character targets;
+ * no tokenizer is used here, so the hash does not depend on the environment. Called by `corpus/s1Corpus.ts`.
+ *
+ * @module scripts/h2eval/corpus/s1Text
  */
 import { int, pick } from './util.js';
 
+/** S1 task kinds. */
 export type Task = 'summary' | 'code_fix' | 'analysis' | 'code_gen';
+/** Prompt size classes: `S` (short) and `L` (long). */
 export type Size = 'S' | 'L';
+/** All task kinds, in cell order. */
 export const TASKS: readonly Task[] = Object.freeze(['summary', 'code_fix', 'analysis', 'code_gen']);
+/** All size classes, in cell order. */
 export const SIZES: readonly Size[] = Object.freeze(['S', 'L']);
 
-/** Metas de caracteres por tarefa e tamanho (S ≈ 700 tokens, L ≈ 5000 tokens de entrada; ver testes de faixa). */
+/**
+ * Metas de caracteres por tarefa e tamanho (S ≈ 700 tokens, L ≈ 5000 tokens de entrada; ver testes de faixa).
+ *
+ * Character targets per task and size (about 700 input tokens for S and 5000 for L).
+ */
 export const CHARS_TARGET: Readonly<Record<Task, Readonly<Record<Size, number>>>> = Object.freeze({
   summary: Object.freeze({ S: 2700, L: 19500 }),
   code_fix: Object.freeze({ S: 2300, L: 15000 }),
@@ -39,6 +53,7 @@ function sentence(r: R): string {
   return `Não houve incidentes relevantes no turno ${int(r, 1, 3)}, exceto o atraso de ${int(r, 2, 70)} minutos na entrega do componente ${pick(r, COMPS)}.`;
 }
 
+/** A generated text and its rubric (task kind plus task-specific facts, such as the requirement count). */
 export interface TextResult { text: string; rubric: Record<string, unknown> }
 
 function summaryText(r: R, charsTarget: number): TextResult {
@@ -120,6 +135,14 @@ function codeGenText(r: R, charsTarget: number): TextResult {
   return { text: head + reqs.join('\n') + '\n', rubric: { kind: 'code_gen', functionName: fname, requirements: reqs.length } };
 }
 
+/**
+ * Generates the base text of one S1 group.
+ *
+ * @param task - Task kind.
+ * @param size - Size class; selects the character target in {@link CHARS_TARGET}.
+ * @param r - Seeded generator (consumed; the same generator state gives the same text).
+ * @returns The text and its rubric.
+ */
 export function makeText(task: Task, size: Size, r: R): TextResult {
   const n = CHARS_TARGET[task][size];
   switch (task) {
@@ -133,6 +156,13 @@ export function makeText(task: Task, size: Size, r: R): TextResult {
 /**
  * Variantes quase duplicadas do texto-base (como na H1, mas SEM operar no meio de pares substitutos UTF-16 e sem alterar a semântica):
  *  v0 = base; v1 = base + quebra de linha final; v2 = primeira ocorrência de um espaço duplicado após a primeira frase, ou quebra inicial.
+ *
+ * Near-duplicate variants of a base text: v0 is the base; v1 adds a final newline; any other value adds one more
+ * newline at the first blank line (or a leading newline when the text has no blank line).
+ *
+ * @param base - Base text.
+ * @param v - Variant index (0, 1 or 2; values above 2 give the same text as 2).
+ * @returns The variant text.
  */
 export function variantOf(base: string, v: number): string {
   if (v === 0) return base;

@@ -6,20 +6,34 @@
  * Usage semantics (contract §4 + R08 §4): prompt_tokens INCLUDES cached tokens; cached_tokens is a subset of input,
  * "rounded down to the nearest multiple of 128"; reasoning_tokens is a subset of completion_tokens.
  * Sources (R08 official_docs): openai/chat-create.html, openai/prompt-caching.html, openai/gpt-4o-mini.html, openai/images-vision.html.
+ *
+ * Pure builder and parser; the per-API adapter in `modal/index.ts` calls them and adds the host and the transport details.
+ *
+ * @module scripts/h2eval/modal/adapters/openai_chat
  */
 import type { ParsedResponse, RequestEnvelope, Modality } from '../types.js';
 import { NA, UNKNOWN, completeness, emptyUsage, intAt, sanitizeNumbers, sub, terms } from '../canonical.js';
 import { stopReasonOf } from './anthropic_messages.js';
 
+/** Request path of Chat Completions. */
 export const OPENAI_CHAT_PATH = '/v1/chat/completions';
+/** Standard service tier value sent and expected back. */
 export const OPENAI_STANDARD_TIER = 'default';
 /** E3G (C160 BRACO-GO; DR-208): arm model, Standard (service_tier "default" in every request), context <= 272k. A reasoning model with a charged cache write. */
 export const OPENAI_ARM_MODEL = 'gpt-6-luna';
 const isArmServed = (served: string): boolean => /^gpt-6-luna(-|$)/.test(served);
 
+/** Image part: a data URL (or URL) and the detail level. */
 export interface OpenAiImagePart { kind: 'image'; dataUrlOrUrl: string; detail: 'low' | 'high' | 'auto' }
+/** One part of a user or assistant message: text or image. */
 export type OpenAiUserPart = { kind: 'text'; text: string } | OpenAiImagePart;
 
+/**
+ * Builds the Chat Completions request body.
+ *
+ * @param args - Model, optional system text, messages, output ceiling in tokens and optional prompt cache key.
+ * @returns The request envelope (path only, no host or credential) with the price-relevant parameters.
+ */
 export function buildOpenAiChatRequest(args: { model: 'gpt-4o-mini-2024-07-18' | 'gpt-6-luna'; system?: string; messages: Array<{ role: 'user' | 'assistant'; parts: OpenAiUserPart[] }>; maxOutputTokens: number; promptCacheKey?: string }): RequestEnvelope {
   const messages: Array<Record<string, unknown>> = [];
   if (args.system !== undefined) messages.push({ role: 'system', content: args.system });
@@ -55,6 +69,14 @@ export function buildOpenAiChatRequest(args: { model: 'gpt-4o-mini-2024-07-18' |
   };
 }
 
+/**
+ * Parses a Chat Completions response into disjoint usage categories, outcome and stop reason.
+ *
+ * @param httpStatus - HTTP status of the response.
+ * @param body - Parsed response body.
+ * @param ctx - Modalities the request carried (decides whether image/audio fields are not applicable).
+ * @returns The parsed response; missing counts stay `'UNKNOWN'`, never 0.
+ */
 export function parseOpenAiChatResponse(httpStatus: number, body: unknown, ctx: { requestModalities: Modality[] }): ParsedResponse {
   const flags: string[] = [];
   const b = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;

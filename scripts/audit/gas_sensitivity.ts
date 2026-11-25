@@ -8,6 +8,14 @@
  *   npx tsx scripts/audit/gas_sensitivity.ts
  *
  * Output: JSON table to stdout + docs/_ops/audit/GAS_SENSITIVITY_<TS>/
+ *
+ * Pure arithmetic over fixed constants (gas per receipt measured for a Groth16 proof verification, an estimated
+ * batch overhead, block gas limit and block time of the test chain) crossed with gas-price, ETH-price and batch-size
+ * scenarios; the target is a settlement cost under US$ 0.01 per receipt. The folder holds `report.json`,
+ * `cost_matrix.csv` and `throughput.csv`; a failure to write it is only a warning. Highlights go to stderr. It does
+ * not query any chain or price feed, takes no arguments and reads no environment variables.
+ *
+ * @module scripts/audit/gas_sensitivity
  */
 
 import { writeFileSync, mkdirSync } from 'fs';

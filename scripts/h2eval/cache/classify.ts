@@ -7,11 +7,35 @@
  * Nunca olha a diretiva do pedido nem o braço planejado para classificar; essas entradas só entram em `diagnose` e `resolveArm`
  * DEPOIS, para explicar e para registrar a mudança de braço. Campo ausente nunca vira 0, exceto a regra documentada do Gemini
  * (campo omitido sem cache, observado nas 3 chamadas da campanha da H1), que é sinalizada e pode ser desligada com `strictAbsent`.
+ *
+ * English summary: classifies one provider call into a cache outcome (HIT, CREATION, NO_HIT or UNKNOWN) using only
+ * the `usage` object the provider returned, so the cache arm of the H2 evaluation is what was observed, not what was
+ * planned. `diagnose` and `resolveArm` then compare the observation with the plan to explain it and to record an arm
+ * change (a call is never discarded). `summarizeDialog` aggregates the calls of one dialog for the planner
+ * (`./planner.ts`). Pure functions: no I/O, no environment variables, inputs are not mutated.
+ *
+ * @module scripts/h2eval/cache/classify
  */
+/** Provider whose `usage` shape is being read (`google` means the Gemini `usageMetadata` object). */
 export type Provider = 'openai' | 'anthropic' | 'google';
+/** Cache outcome observed in one call's usage; `UNKNOWN` when the usage does not allow a decision. */
 export type Observed = 'HIT' | 'CREATION' | 'NO_HIT' | 'UNKNOWN';
+/**
+ * A token count read from usage: a non-negative integer, `'UNKNOWN'` when the field is missing or invalid (never 0),
+ * or `'NOT_APPLICABLE'` when the API does not report that quantity at all.
+ */
 export type Num = number | 'UNKNOWN' | 'NOT_APPLICABLE';
 
+/**
+ * Result of {@link classifyCache}: the observed outcome plus the normalized token counts it was decided from.
+ *
+ * All counts are in input tokens. `totalInput` is the whole prompt (for Anthropic it is `input_tokens` plus cache read
+ * plus cache write, because `input_tokens` excludes both); `inputUncached` is the part not served from cache;
+ * `cacheRead`/`cacheWrite` are the cache read and write counts, and `cacheWrite5m`/`cacheWrite1h` the Anthropic write
+ * breakdown by TTL (`NOT_APPLICABLE` for the other providers). `hitFraction` is `cacheRead / totalInput` in [0, 1],
+ * or `null` when either count is unknown or the total is 0. `evidence` lists the usage fields that were read and
+ * `flags` the anomalies found (for example `CACHED_EXCEEDS_PROMPT`, `USAGE_MISSING`).
+ */
 export interface CacheObservation {
   provider: Provider; observed: Observed;
   /** total de entrada normalizado (semântica por API, CONTRACT_MIN §4) */
@@ -19,6 +43,7 @@ export interface CacheObservation {
   hitFraction: number | null; evidence: string[]; flags: string[];
 }
 
+/** Options of {@link classifyCache}. */
 export interface ClassifyOptions {
   /** Gemini: tratar campo cachedContentTokenCount ausente como UNKNOWN (padrão false = inferência documentada, com sinal) */
   strictAbsent?: boolean;
@@ -37,7 +62,20 @@ function decide(read: Num, write: Num): Observed {
   return 'UNKNOWN';
 }
 
-/** Classifica um objeto de uso cru (o `usage` do provedor, ou `usageMetadata` no Gemini) pelo que foi OBSERVADO. */
+/**
+ * Classifica um objeto de uso cru (o `usage` do provedor, ou `usageMetadata` no Gemini) pelo que foi OBSERVADO.
+ *
+ * Classifies a raw provider usage object by what was observed: a cache read above 0 is HIT; read 0 with a write above 0
+ * is CREATION; read 0 with write 0 or a write the API does not report is NO_HIT; anything else is UNKNOWN. A missing
+ * field is never read as 0, except the documented Gemini rule (no `cachedContentTokenCount` while `promptTokensDetails`
+ * is present means read 0), which raises the flag `READ_INFERRED_FROM_ABSENT_FIELD`.
+ *
+ * @param provider - Which provider's usage shape `rawUsage` follows.
+ * @param rawUsage - The provider's `usage` object (Gemini: `usageMetadata`), as received; not mutated. Anything that is
+ *   not a plain object gives an UNKNOWN observation with the flag `USAGE_MISSING`.
+ * @param opts - Set `strictAbsent` to turn the Gemini absent-field rule off (the read becomes UNKNOWN).
+ * @returns The observation; never throws.
+ */
 export function classifyCache(provider: Provider, rawUsage: unknown, opts: ClassifyOptions = {}): CacheObservation {
   const u = obj(rawUsage); const evidence: string[] = []; const flags: string[] = [];
   const blank = (): CacheObservation => ({ provider, observed: 'UNKNOWN', totalInput: 'UNKNOWN', inputUncached: 'UNKNOWN', cacheRead: 'UNKNOWN', cacheWrite: 'UNKNOWN', cacheWrite5m: 'UNKNOWN', cacheWrite1h: 'UNKNOWN', hitFraction: null, evidence: ['USAGE_MISSING'], flags: ['USAGE_MISSING'] });
@@ -85,9 +123,23 @@ export function classifyCache(provider: Provider, rawUsage: unknown, opts: Class
 
 // ------------------------------------------------------------------ diagnóstico (explica; NÃO classifica)
 
+/**
+ * What the plan said about one call, used only to explain an observation: the cache directive sent, the estimated
+ * prefix size and the documented minimum prefix (tokens; `null`/absent = unknown), and the tolerance in tokens below
+ * which a smaller read still counts as a full hit (default 128).
+ */
 export interface DiagnoseInput { cacheDirective: 'cache_control' | 'automatic' | 'none'; estimatedPrefixTokens?: number; minPrefixTokens?: number | null; partialToleranceTokens?: number }
 
-/** Sinais extras a partir do plano + observado: marcação ignorada, prefixo abaixo do mínimo documentado, hit parcial. */
+/**
+ * Sinais extras a partir do plano + observado: marcação ignorada, prefixo abaixo do mínimo documentado, hit parcial.
+ *
+ * Explains an observation against the plan; it never changes the classification.
+ *
+ * @param plan - The planned directive and prefix sizes for the call.
+ * @param obs - The observation from {@link classifyCache}.
+ * @returns Diagnostic flags (`MARKED_BUT_NOT_APPLIED`, `PREFIX_BELOW_DOCUMENTED_MINIMUM`, `CREATION_WITHOUT_DIRECTIVE`,
+ *   `PARTIAL_HIT`); empty when nothing is notable.
+ */
 export function diagnose(plan: DiagnoseInput, obs: CacheObservation): string[] {
   const f: string[] = [];
   const tol = plan.partialToleranceTokens ?? 128;
@@ -102,12 +154,24 @@ export function diagnose(plan: DiagnoseInput, obs: CacheObservation): string[] {
 
 // ------------------------------------------------------------------ braço final (nunca descarta)
 
+/** Arm a call was planned for: S1 (single-message prompt), S2_NOHIT (control, no cache wanted) or S3_HITATTEMPT (cache hit wanted). */
 export type PlannedArm = 'S1' | 'S2_NOHIT' | 'S3_HITATTEMPT';
+/**
+ * Final arm of one call: `finalArm` names the observed arm (for example `S3_NO_HIT`, `S2_HIT_CONTAMINATED`),
+ * `changedFromPlan` is true when it differs from the plan, `controlContaminated` is true when an S2 control read from
+ * cache, and `kept` is always true because calls are never discarded.
+ */
 export interface ArmResolution { planned: PlannedArm; observed: Observed; finalArm: string; changedFromPlan: boolean; controlContaminated: boolean; kept: true }
 
 /**
  * O braço é o OBSERVADO. Chamada planejada com hit que não teve hit MUDA de braço (S3_NO_HIT/S3_CREATION); não é descartada.
  * Controle S2 com leitura de cache > 0 está CONTAMINADO: é registrado como tal e relatado, nunca reclassificado em silêncio.
+ *
+ * Resolves the final arm from the plan and the observation; the observation wins.
+ *
+ * @param planned - The arm the call was planned for.
+ * @param observed - The observed cache outcome.
+ * @returns The resolution, with `kept: true` always.
  */
 export function resolveArm(planned: PlannedArm, observed: Observed): ArmResolution {
   if (planned === 'S1') return { planned, observed, finalArm: observed === 'HIT' ? 'S1_HIT' : observed === 'CREATION' ? 'S1_CREATION' : observed === 'UNKNOWN' ? 'S1_UNKNOWN' : 'S1', changedFromPlan: observed === 'HIT' || observed === 'CREATION', controlContaminated: false, kept: true };
@@ -121,9 +185,22 @@ export function resolveArm(planned: PlannedArm, observed: Observed): ArmResoluti
 
 // ------------------------------------------------------------------ resumo por diálogo (entrada do planejador)
 
+/**
+ * Per-dialog summary for the planner: number of calls, observed outcome per call, calls eligible for a hit (calls 2 and
+ * 3 that are not UNKNOWN), hits among them, UNKNOWN count, the first call's outcome (`null` for an empty dialog) and
+ * the sorted union of all flags.
+ */
 export interface DialogCacheSummary { calls: number; observed: Observed[]; hitEligibleCalls: number; hits: number; unknowns: number; firstCallObserved: Observed | null; mixedFlags: string[] }
 
-/** Chamadas 2 e 3 são as elegíveis a hit (no máximo 2 por diálogo, R07). UNKNOWN fica fora da taxa e é contado à parte. */
+/**
+ * Chamadas 2 e 3 são as elegíveis a hit (no máximo 2 por diálogo, R07). UNKNOWN fica fora da taxa e é contado à parte.
+ *
+ * Summarizes the observations of one dialog, in call order. Calls 2 and 3 are the only ones eligible for a hit;
+ * UNKNOWN calls are left out of the hit rate and counted separately.
+ *
+ * @param observations - The dialog's observations in call order; not mutated.
+ * @returns The dialog summary.
+ */
 export function summarizeDialog(observations: readonly CacheObservation[]): DialogCacheSummary {
   const el = observations.slice(1, 3);
   return { calls: observations.length, observed: observations.map((o) => o.observed), hitEligibleCalls: el.filter((o) => o.observed !== 'UNKNOWN').length, hits: el.filter((o) => o.observed === 'HIT').length, unknowns: observations.filter((o) => o.observed === 'UNKNOWN').length, firstCallObserved: observations[0]?.observed ?? null, mixedFlags: [...new Set(observations.flatMap((o) => o.flags))].sort() };

@@ -3,6 +3,8 @@
 #
 # Prerequisites: snarkjs installed (npm i -g snarkjs)
 # Usage: bash scripts/zk/zk_verify.sh [verification_key.json] [public.json] [proof.json]
+# Exit codes: 0 the proof is valid; non-zero when a file or snarkjs is missing or the proof is invalid
+#   (snarkjs' own exit code, because set -e stops the script there). Read-only.
 
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

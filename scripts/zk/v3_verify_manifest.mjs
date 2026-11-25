@@ -11,6 +11,11 @@
  * the zkey == committed contract; optional recompilation reproduces r1cs/wasm/sym.
  * A valid chain shows the artifacts are mutually consistent. It says nothing about who held the
  * contribution randomness (see MANIFEST.label). Exit 1 on any mismatch.
+ *
+ * Read-only on the checkout (the optional recompilation goes to a temporary folder that is removed). Environment:
+ * `CIRCOM` (optional, path of the circom 2.1.6 binary). Exit code 0 when every check passed. No network.
+ *
+ * @module scripts/zk/v3_verify_manifest
  */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';

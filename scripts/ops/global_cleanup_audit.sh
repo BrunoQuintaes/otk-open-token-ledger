@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# Historical one-shot repository cleanup script (see the scope block below), kept as a record. It moves
+# files with `git mv`, deletes listed untracked files, runs `npm test` and gate_r0_revalidate.sh, and
+# commits when the gate prints GO. The `cd <HOME>/...` line is a redacted placeholder, so the script
+# does not run as published; it is not part of any test or build.
+# Usage: bash scripts/ops/global_cleanup_audit.sh   (only after replacing the placeholder path)
 # ============================================================
 # GLOBAL REPO CLEANUP + STRUCTURAL AUDIT (NO U8.5)
 # ============================================================

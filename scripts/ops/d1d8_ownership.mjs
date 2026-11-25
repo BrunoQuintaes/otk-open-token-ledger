@@ -13,6 +13,12 @@
  *   node scripts/ops/d1d8_ownership.mjs summary                 count of tracked paths per owner
  *   node scripts/ops/d1d8_ownership.mjs check --role A [--base <sha>]
  *        changed paths since base (commits + index + worktree + untracked) not owned by role → exit 1
+ *
+ * Reads the rules file only; it never changes files. Without `--base` the base is HEAD, so only
+ * uncommitted and untracked changes are checked. Exit codes: 0 = no violation; 1 = violations;
+ * 2 = usage error. Tested by test/unit/d1d8_s0_contract.test.ts.
+ *
+ * @module scripts/ops/d1d8_ownership
  */
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -23,7 +29,12 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 const rulesFile = path.join(root, 'scripts', 'ops', 'd1d8_ownership_rules.json');
 const { rules } = JSON.parse(readFileSync(rulesFile, 'utf8'));
 
-/** Glob → RegExp: `**` any depth (also zero dirs when followed by /), `*` within one segment. */
+/**
+ * Glob → RegExp: `**` any depth (also zero dirs when followed by /), `*` within one segment.
+ *
+ * @param glob - A rule glob with forward slashes, matched against the whole repo-relative path.
+ * @returns An anchored regular expression; every other character is matched literally.
+ */
 function globToRegExp(glob) {
   let re = '';
   for (let i = 0; i < glob.length; i++) {
@@ -38,6 +49,13 @@ function globToRegExp(glob) {
 
 const compiled = rules.map(([glob, owner, note]) => ({ glob, owner, note, re: globToRegExp(glob) }));
 
+/**
+ * Finds the owner of a repository path: the first rule (in file order) whose glob matches.
+ *
+ * @param p - Repo-relative path; backslashes are accepted and normalised to forward slashes.
+ * @returns The matching rule as `{ glob, owner, note, re }`, or `{ glob: '(none)', owner: 'S0', note: 'no rule' }`
+ *   when no rule matches.
+ */
 export function ownerOf(p) {
   const norm = p.replace(/\\/g, '/');
   for (const r of compiled) if (r.re.test(norm)) return r;

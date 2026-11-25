@@ -10,6 +10,13 @@
  * tsc exit status: 0 = no diagnostics; 1/2 = diagnostics reported.
  *
  * Usage: node scripts/ops/typecheck-gate.mjs [--timeout-ms=N]
+ *
+ * The timeout applies to each compiler run, in milliseconds (default 10 minutes). Known entries are matched by
+ * prefix with positions removed, and each entry absorbs at most one diagnostic. Exit codes: 0 = only known
+ * diagnostics; 1 = an unexpected diagnostic or an unusable compiler run. Tested by
+ * test/unit/typecheck_gate_r28.test.ts.
+ *
+ * @module scripts/ops/typecheck-gate
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
@@ -26,7 +33,12 @@ function fail(reason, detail = '') {
   process.exit(1);
 }
 
-/** Why a spawnSync result is not a usable compiler run, or null when it is. */
+/**
+ * Why a spawnSync result is not a usable compiler run, or null when it is.
+ *
+ * @param run - Result of `spawnSync`.
+ * @returns `[reason, detail]` for a spawn error or a kill by signal; `null` otherwise.
+ */
 function runProblem(run) {
   if (run.error) return ['spawn_failed', run.error.message];
   if (run.signal) return ['killed_by_signal', run.signal];

@@ -12,6 +12,11 @@
  * Target = provider input total as the conference compares it: Anthropic input_tokens + cache_creation + cache_read;
  * OpenAI prompt_tokens (cached tokens are inside it); Gemini promptTokenCount (cache inside it). A record without
  * client-side usage (OpenAI after the deliberate disconnect) is excluded with its reason.
+ *
+ * Called by `buildProfiles.ts --pilot <dir>`. The pilot run folder is not part of this repository; the function
+ * reads whatever folder it is given. No network, no environment variables.
+ *
+ * @module scripts/calibration/pilotPairs
  */
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -21,9 +26,12 @@ import { resolveModelSupport } from '../../src/providers/catalog/modelCatalog.js
 import { localCountsOf, type Split } from './messageCorpus.js';
 import type { CalibrationPair } from './fitProfile.js';
 
+/** Version tag of the extraction; also salts the split hash. */
 export const PILOT_PAIRS_VERSION = 'otk.calibration_pairs.pilot_v3.v1';
 
+/** One provider of the pilot: its sub-folder under the pilot directory and the API/model it called. */
 export interface PilotSource { dir: string; provider: string; api: UsageApi; model: string }
+/** The three providers of the pilot, in extraction order. */
 export const PILOT_SOURCES: PilotSource[] = [
   { dir: 'live', provider: 'anthropic', api: 'anthropic.messages', model: 'claude-haiku-4-5-20251001' },
   { dir: 'live_openai', provider: 'openai', api: 'openai.chat_completions', model: 'gpt-4o-mini' },
@@ -38,6 +46,13 @@ function syntheticText(sentences: number): string {
   for (let i = 1; i <= sentences; i++) parts.push(`Frase ${i}: o medidor registra ${i * 7} unidades no lote ${100 + i}, sem dados pessoais.`);
   return parts.join(' ');
 }
+/**
+ * Rebuilds the prompt the pilot sent for a call label.
+ *
+ * @param label - Call label from the run records (`minimal`, `stream`, `besu`, `disconnect`,
+ *   `sample-curto|medio-stream|nostream`).
+ * @returns The exact prompt text, or `null` for an unknown label.
+ */
 export function pilotPrompt(label: string): string | null {
   if (label === 'minimal' || label === 'stream' || label === 'besu') return ASK;
   if (label === 'disconnect') return DISCONNECT;
@@ -47,11 +62,26 @@ export function pilotPrompt(label: string): string | null {
 }
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 
+/**
+ * Split of a pilot prompt: sha256(version:provider:promptSha256) mod 100 → <60 train, <80 validation, else holdout.
+ *
+ * @param provider - Provider name.
+ * @param promptSha - sha256 (hex) of the prompt; repeated calls of the same prompt share a split.
+ * @returns The split.
+ */
 export function pilotSplit(provider: string, promptSha: string): Split {
   const h = parseInt(sha(`${PILOT_PAIRS_VERSION}:${provider}:${promptSha}`).slice(0, 8), 16) % 100;
   return h < 60 ? 'train' : h < 80 ? 'validation' : 'holdout';
 }
 
+/**
+ * Provider-declared input total as the conference compares it (see the module comment).
+ *
+ * @param provider - `anthropic`, `openai` or `gemini`.
+ * @param u - Usage object recorded on the client side, or `null`.
+ * @returns Tokens; `null` when usage is missing, a needed field is not a non-negative safe integer, or the provider
+ *   is unknown.
+ */
 function providerInputTotal(provider: string, u: Record<string, unknown> | null): number | null {
   if (!u) return null;
   const n = (v: unknown) => (typeof v === 'number' && Number.isSafeInteger(v) && v >= 0 ? v : null);
@@ -64,14 +94,21 @@ function providerInputTotal(provider: string, u: Record<string, unknown> | null)
   return null;
 }
 
+/**
+ * One usable pilot call: `local` is OTK's input count and `target` the provider-declared input total, both in
+ * tokens; `group` is `<provider>:<first 16 hex of promptSha256>`; `returnedModel` is `null` when not recorded.
+ */
 export interface PilotRow {
   runId: string; label: string; provider: string; api: UsageApi; model: string; returnedModel: string | null; stream: boolean;
   promptSha256: string; group: string; split: Split; local: number; target: number;
 }
+/** Result of {@link extractPilotPairs}: usable rows, excluded calls with a reason code, and the counter version. */
 export interface PilotExtraction {
   version: string;
   rows: PilotRow[];
+  /** Calls left out; `reason` is `unknown_label`, `http_<status>`, `no_client_usage_recorded` or `local_input_uncovered`. */
   excluded: Array<{ runId: string; label: string; provider: string; reason: string }>;
+  /** Version of the local counter used; `null` when no call was counted. */
   counterVersion: string | null;
 }
 
@@ -79,7 +116,16 @@ function walk(d: string): string[] {
   return readdirSync(d).flatMap((f) => { const p = join(d, f); return statSync(p).isDirectory() ? walk(p) : [p]; });
 }
 
-/** Extracts input pairs from a PILOTO_V3 directory (read-only). */
+/**
+ * Extracts input pairs from a PILOTO_V3 directory (read-only).
+ *
+ * @param pilotDir - Pilot run folder holding the `live`, `live_openai` and `live_gemini35` sub-folders with
+ *   `*_manifest.json` and `*_calls.jsonl` files.
+ * @returns Rows, exclusions and counter version.
+ * @throws {Error} When a call's label has no promptSha256 in the manifests, or the rebuilt prompt's sha256 differs
+ *   from the recorded one (the extraction stops instead of producing wrong pairs); also on unreadable files or
+ *   invalid JSON.
+ */
 export function extractPilotPairs(pilotDir: string): PilotExtraction {
   const rows: PilotRow[] = [];
   const excluded: PilotExtraction['excluded'] = [];
@@ -117,6 +163,12 @@ export function extractPilotPairs(pilotDir: string): PilotExtraction {
   return { version: PILOT_PAIRS_VERSION, rows, excluded, counterVersion };
 }
 
+/**
+ * Converts pilot rows to calibration pairs of the `input` category.
+ *
+ * @param rows - Pilot rows.
+ * @returns One pair per row, with id `<runId>:<label>`.
+ */
 export function pilotRowsToPairs(rows: PilotRow[]): CalibrationPair[] {
   return rows.map((r) => ({ id: `${r.runId}:${r.label}`, group: r.group, split: r.split, category: 'input', local: r.local, target: r.target }));
 }

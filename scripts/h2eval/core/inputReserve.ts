@@ -8,13 +8,23 @@
  *
  * NOT active by default (no policy configured => behaviour identical to before). It can only make the executor stop EARLIER, never spend more. H1 is untouched.
  * Pure integer arithmetic (no floating rounding surprises). Offline; no I/O.
+ *
+ * In short: the local tokenizer under-counts the newest Anthropic models, so an operation's planned input bound may
+ * be too small. When a policy is chosen, an operation is refused before sending if its planned bound is below
+ * ceil(margin * (1.815 * L0 + 14)) tokens (minimum 37), where L0 is the local count. Used by the runner
+ * (`./runner.ts`) and the model probe (`./modelProbe.ts`).
+ *
+ * @module scripts/h2eval/core/inputReserve
  */
+/** Policy ids: the reserve curve times a margin of 1.03 or 1.05. */
 export type InputReservePolicyId = 'R-A-1.03' | 'R-A-1.05';
+/** A configured input reserve policy. */
 export interface InputReservePolicy {
   id: InputReservePolicyId;
   /** what to do when L0 is outside the MEASURED range of the model (ECON-02 A3/A4: extrapolation): STOP (default) or ALLOW (explicit human choice, e.g. with a probe-first batch) */
   outsideMeasuredRange?: 'STOP' | 'ALLOW';
 }
+/** All accepted policy ids. */
 export const POLICY_ID_LIST: readonly InputReservePolicyId[] = ['R-A-1.03', 'R-A-1.05'];
 
 const K_MILLI = 1815n; const C_TOKENS = 14n; const FLOOR_TOKENS = 37; // reserve of R-A x1.03 at L0 = 12 (ECON-02 §3 rule 2)
@@ -26,18 +36,46 @@ const MEASURED_L0: Record<string, { min: number; max: number }> = {
   'claude-opus-5-5': { min: 12, max: 810 },
 };
 
-/** ceil(margin * (1.815*L0 + 14)) with the floor of 37 tokens; integers only */
+/**
+ * ceil(margin * (1.815*L0 + 14)) with the floor of 37 tokens; integers only
+ *
+ * @param id - Policy id (sets the margin).
+ * @param L0 - Local input token count, a non-negative integer.
+ * @returns The minimum input bound in tokens.
+ * @throws {RangeError} When `L0` is not a non-negative integer.
+ * @example
+ * policyBoundTokens('R-A-1.03', 100); // ceil(1.03 * (181.5 + 14)) = 202
+ */
 export function policyBoundTokens(id: InputReservePolicyId, L0: number): number {
   if (!Number.isInteger(L0) || L0 < 0) throw new RangeError('L0 must be a non-negative integer');
   const num = MARGIN_CENTI[id] * (K_MILLI * BigInt(L0) + C_TOKENS * 1000n); // x 100 x 1000
   const den = 100_000n; const ceil = (num + den - 1n) / den;
   return Math.max(FLOOR_TOKENS, Number(ceil));
 }
+/**
+ * Tells whether a model is in the measured table of the policy.
+ *
+ * @param model - Model id.
+ * @returns `true` for the measured models.
+ */
 export function isPolicyModel(model: string): boolean { return model in MEASURED_L0; }
-/** the measured L0 range of a table model, or null (used by the model probe) */
+/**
+ * the measured L0 range of a table model, or null (used by the model probe)
+ *
+ * @param model - Model id.
+ * @returns Minimum and maximum measured local counts in tokens, or `null` for a model outside the table.
+ */
 export function measuredRangeOf(model: string): { min: number; max: number } | null { return isPolicyModel(model) ? MEASURED_L0[model]! : null; }
 /** BOT-01 P09/P15 (allowlist, not a pattern list): with the policy on, EVERY anthropic model outside the measured table is refused unless it is in this explicit exemption list (the 4.5 generation of the matrix). Aliases, snapshots, other separators/case, unknown families: all STOP. */
 const EXEMPT_ANTHROPIC_MODELS: ReadonlySet<string> = new Set(['claude-haiku-4-5-20251001']);
+/**
+ * Tells whether a model is outside the scope of the policy: every non-Anthropic model, and the listed older
+ * Anthropic model.
+ *
+ * @param provider - Provider id.
+ * @param model - Model id (exact match; no aliases).
+ * @returns `true` when the policy does not apply.
+ */
 export function isExemptFromPolicy(provider: string, model: string): boolean { return provider !== 'anthropic' || EXEMPT_ANTHROPIC_MODELS.has(model); }
 
 /** the explicit choice of a run: a policy, or the deliberate `none` (registered in every RESERVED line as reservePolicy: 'none') */
@@ -45,6 +83,10 @@ export type InputReserveChoice = InputReservePolicy | 'none';
 /**
  * MET-02 R4(a): a policy that is only an optional flag is silently off when forgotten. In a REAL campaign the choice must be explicit (a policy or a deliberate `none`), and every RESERVED line of the
  * batch journal must carry it: declared `none` => 'none'; declared policy => the policy id for the 5.5 models and 'NOT_APPLICABLE' for the exempt ones. Returns the offending operation ids.
+ *
+ * @param lines - Journal lines of the batch (PLANNED lines give the model of each operation).
+ * @param declared - The choice declared for this run.
+ * @returns Operation ids of RESERVED lines whose `reservePolicy` differs from the expected value.
  */
 export function reservePolicyMismatches(lines: ReadonlyArray<{ kind: string; operationId: string; body: Record<string, unknown> }>, declared: InputReserveChoice): string[] {
   const model = new Map<string, string>(); for (const l of lines) if (l.kind === 'PLANNED') model.set(l.operationId, String(l.body['modelRequested'] ?? ''));
@@ -57,11 +99,22 @@ export function reservePolicyMismatches(lines: ReadonlyArray<{ kind: string; ope
   return bad;
 }
 
+/**
+ * Gate decision for one operation: go ahead (with whether the policy applied, its bound in tokens and whether L0 was
+ * outside the measured range), or stop with a reason, the bound when computed, and a detail text.
+ */
 export type ReserveGateDecision =
   | { stop: false; applicable: boolean; policyBoundTokens?: number; extrapolated?: boolean }
   | { stop: true; reason: 'MODEL_NOT_IN_POLICY_TABLE' | 'L0_UNKNOWN' | 'TOOLS_PRESENT' | 'RESERVE_BELOW_POLICY' | 'OUTSIDE_MEASURED_RANGE'; policyBoundTokens?: number; detail: string };
 
-/** the gate decision for ONE operation (pure). `plannedBound` is the input upper bound the reservation will be priced with. */
+/**
+ * the gate decision for ONE operation (pure). `plannedBound` is the input upper bound the reservation will be priced with.
+ *
+ * @param policy - The configured policy, or `undefined` (gate not active: always go ahead).
+ * @param o - Provider, model, local count L0 (`UNKNOWN` stops), planned input bound in tokens, whether the request
+ *   has tools, and whether a configured model probe covers the operation.
+ * @returns The decision.
+ */
 export function evaluateInputReserve(policy: InputReservePolicy | undefined, o: { provider: string; model: string; L0: number | 'UNKNOWN'; plannedBound: number; hasTools: boolean; /** a configured model probe covers the unmeasured model / the outside-range length: they are judged by the probe instead of being refused here */ probeCovers?: boolean }): ReserveGateDecision {
   if (!policy) return { stop: false, applicable: false };
   if (!isPolicyModel(o.model)) {

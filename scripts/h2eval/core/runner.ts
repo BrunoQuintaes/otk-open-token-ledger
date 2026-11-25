@@ -3,6 +3,15 @@
  * no retry, no fallback, stop by file / budget / cap violation / unknown price / persistence / watchdog.
  * Crash semantics (contract §0.2): anything after the SENT line without a terminal line is UNCERTAIN on replay (isolated,
  * possibly charged, never resent). A reservation without SENT is released on replay and the operation is ABORTED_BEFORE_SEND.
+ *
+ * In short: {@link createExecutor} opens one batch folder (journal, ledger, snapshots, records, lock) and returns an
+ * executor whose `run(plan)` takes one operation through the whole path: replay check, stops and gates, request
+ * build, pre-call snapshot, ledger reservation, egress send, usage parsing, cost and settlement. Created through
+ * `../index.ts` by the CLI (`../cli/run.ts`). Side effects: files under the batch folder and the shared ledger file;
+ * in REAL mode, provider calls that spend money within the ledger caps. Environment: none directly (the egress reads
+ * the credential at send time).
+ *
+ * @module scripts/h2eval/core/runner
  */
 import { mkdirSync, closeSync, fsyncSync, openSync, writeSync, existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
@@ -24,15 +33,24 @@ import { validateUsage, UsageInvalid } from '../record/usage.js';
 import { buildForecast, type ForecastFrozen } from '../record/forecast.js';
 import type { PriceTable } from '../record/prices.js';
 
+/** Version string of this executor; a GO must name it. */
 export const EXECUTOR_VERSION = 'otk.h2eval.executor.v0';
 /** C158 §3 + BOT-01 M19: blocking stops (HALT_ALL) that are journaled after the money is settled/isolated; once present, NO new operation is sent from this batch journal, restart included. */
 import { evaluateInputReserve, type InputReserveChoice } from './inputReserve.js';
 import { measuredRangeOf } from './inputReserve.js';
 import { isArmModel, armPriceAttested, armLedgerViolation, servedTierVerdict, E3G_TIER_RULE, googleCacheUpperBound, googleUpperBoundRecordUsage, CACHE_READ_EVIDENCE_UPPER_BOUND, openaiCacheWriteUpperBound, CACHE_WRITE_EVIDENCE_UPPER_BOUND } from './e3gArm.js';
 import { aboveRangeBand, probeRegionOf, probeKeyOf, probeStateOf, judgeProbe, validateModelProbeConfig, type ModelProbeConfig } from './modelProbe.js';
+/** Human acknowledgement of one uncertain operation: its id (hex), the signer (`human:<name>`) and the authorising text. */
 export interface UncertainAck { operationId: string; acknowledgedBy: string; authority: string }
+/** Error raised for an invalid acknowledgement; `code` starts with `UNCERTAIN_ACK_`. */
 export class UncertainAckError extends Error { constructor(readonly code: string, detail: string) { super(`${code}: ${detail}`); this.name = 'UncertainAckError'; } }
-/** The ack is a HUMAN act of the author/designated operator: signature "human:<name>", the operation id and the text/order that authorises it. Pure format check (also used by the CLI). */
+/**
+ * The ack is a HUMAN act of the author/designated operator: signature "human:<name>", the operation id and the text/order that authorises it. Pure format check (also used by the CLI).
+ *
+ * @param a - The acknowledgement.
+ * @throws {@link UncertainAckError} `UNCERTAIN_ACK_NOT_HUMAN`, `UNCERTAIN_ACK_NO_OPERATION` (id not hex, under 8
+ *   characters) or `UNCERTAIN_ACK_NO_AUTHORITY` (text under 8 characters).
+ */
 export function validateUncertainAckShape(a: UncertainAck): void {
   if (!/^human:\S/.test(a.acknowledgedBy ?? '')) throw new UncertainAckError('UNCERTAIN_ACK_NOT_HUMAN', 'acknowledgedBy must be "human:<name>"');
   if (!/^[0-9a-f]{8,}$/i.test(a.operationId ?? '')) throw new UncertainAckError('UNCERTAIN_ACK_NO_OPERATION', 'operationId (hex) is required');
@@ -43,6 +61,10 @@ const LATCHING_STOPS: ReadonlySet<string> = new Set(['STOP_INPUT_ABOVE_RESERVATI
  * C158 cycle 2 (BOT-01 R01): the blocking state is DERIVED from the journal facts, not only from a STOP line that may never have been written (a crash between SETTLED and that line).
  * Blocking: a latching STOP_GLOBAL; any UNCERTAIN_ISOLATED / TIMEOUT_UNCERTAIN (possibly charged, never resend: timeout, incomplete response, network error, crash after send);
  * USAGE_PARSED.U above the input upper bound journaled with the RESERVED line. Journals written before the bound was recorded cannot be judged by the third rule (no bound => no decision).
+ *
+ * @param lines - All lines of the batch journal.
+ * @param opts - `stopReasonRequired` adds the rule "response with usage but unknown stop reason".
+ * @returns The blocking stop, the operation that caused it and the rule, or `null` when the batch may continue.
  */
 function blockingStop(lines: readonly JournalLine[], opts: { stopReasonRequired?: boolean } = {}): { stop: StopReason; by: string; kind: 'STOP_LINE' | 'UNCERTAIN' | 'USAGE_ABOVE_BOUND' | 'STOP_REASON_UNKNOWN' | 'PROBE_UNRESOLVED' } | null {
   const bound = new Map<string, number>();
@@ -66,12 +88,18 @@ function blockingStop(lines: readonly JournalLine[], opts: { stopReasonRequired?
   return uncertain ?? derived ?? probeUnresolved;
 }
 const TERMINAL: ReadonlySet<string> = new Set(['SETTLED', 'ABORTED_BEFORE_SEND', 'STOP_BUDGET', 'STOP_GLOBAL', 'UNSUPPORTED_FOR_ESTIMATION', 'NOT_SUPPORTED', 'UNCERTAIN_ISOLATED', 'REPLAY_SKIPPED', 'NOT_RUN_BRANCH_LOCKED']);
+/** Default maximum number of operations in one batch. */
 export const DEFAULT_MAX_BATCH_CALLS = 60;
 
 /** Policy injected by the caller (R10 R2, parametrizable, not fixed here): input upper bound by size bucket; reasoning allowance per model (Haiku 5.5: 1 024, Gemini: 2 048, others 0). */
 export interface CapPolicy { inputUpperBoundTokens: (plan: OperationPlan, L0: Count) => number; reasoningAllowanceTokens: (plan: OperationPlan) => number;
   /** EXEC-ECON C160 (delta v3.1 item 9): true only when the G-7b established that maxOutputTokens bounds the Gemini thoughts (allowance 0 accepted). Absent => fail-closed as before. */
   thoughtsBoundedByMaxOutput?: (plan: OperationPlan) => boolean }
+/**
+ * Configuration of {@link createExecutor}: the batch folder, adapters per API, content store, price table, ledger
+ * caps, egress settings, cap policy and executor commit, plus the optional hooks and policies documented per field.
+ * `clock` returns ISO-8601 UTC.
+ */
 export interface ExecutorConfig {
   batchDir: string;
   adapters: Partial<Record<UsageApi, ProviderAdapter>>;
@@ -141,16 +169,27 @@ export interface ExecutorConfig {
   econ?: { study: string };
 }
 
+/** Signed acknowledgement to continue past 80% of a provider sub-ledger: who signed (`human:<name>`), where it came from and a reference. */
 export interface PauseAck { provider: Provider; acknowledgedBy: string; source: 'go' | 'operator'; reference: string }
+/** An open batch executor: `run` executes one operation, `journal` and `ledger` are the open files, `close` releases the lock. */
 export interface Executor { run(plan: OperationPlan): Promise<RunnerResult>; journal: Journal; ledger: Ledger; readonly mode: 'OFFLINE' | 'REAL'; /** releases the batchDir lock (R15-M2) */ close(): void }
 
+/** Error raised when the batch folder lock is held by a busy holder in this process, by a live process, or was lost. */
 export class BatchLockedError extends Error { constructor(public readonly code: 'LOCK_HELD_IN_PROCESS' | 'LOCK_HELD_BY_PID' | 'LOCK_LOST', public readonly lockPath: string, detail = '') { super(`batch locked (${code}) ${lockPath} ${detail}`); this.name = 'BatchLockedError'; } }
+/** Error raised when the ledger totals differ from the totals derived from the journals; `detail` shows both. */
 export class LedgerReconciliationError extends Error { constructor(public readonly detail: Record<string, unknown>) { super(`ledger does not reconcile with the journal: ${JSON.stringify(detail)}`); this.name = 'LedgerReconciliationError'; } }
 /** In-process holders: a holder that is mid-operation is refused; an idle one is superseded (same-process reopen = restart) and its later run() throws LOCK_LOST. */
 const LIVE_LOCKS = new Map<string, { busy: () => boolean; invalidate: () => void }>();
 const pidAlive = (pid: number): boolean => { try { process.kill(pid, 0); return true; } catch (e) { return (e as NodeJS.ErrnoException).code === 'EPERM'; } };
 
-/** R15-M2: exclusive <batchDir>/.lock (wx). Refuses a busy holder in this process or a live holder in another pid; takes over a stale lock. */
+/**
+ * R15-M2: exclusive <batchDir>/.lock (wx). Refuses a busy holder in this process or a live holder in another pid; takes over a stale lock.
+ *
+ * @param batchDir - Batch folder.
+ * @param holder - Callbacks telling whether the new holder is busy and invalidating it when superseded.
+ * @returns The lock file path.
+ * @throws {@link BatchLockedError} `LOCK_HELD_IN_PROCESS` or `LOCK_HELD_BY_PID`.
+ */
 function acquireLock(batchDir: string, holder: { busy: () => boolean; invalidate: () => void }): string {
   const lockPath = path.join(batchDir, '.lock'); const key = path.resolve(lockPath);
   const prev = LIVE_LOCKS.get(key);
@@ -165,7 +204,13 @@ function acquireLock(batchDir: string, holder: { busy: () => boolean; invalidate
   return lockPath;
 }
 
-/** R15-M3: the committed money per provider must be re-derivable from the journal; any divergence refuses to open the batch. */
+/**
+ * R15-M3: the committed money per provider must be re-derivable from the journal; any divergence refuses to open the batch.
+ *
+ * @param lines - Journal lines of every batch that shares the ledger.
+ * @param ledger - The open ledger.
+ * @throws {@link LedgerReconciliationError} When spent, possibly charged or reserved pico-USD differ for a provider.
+ */
 export function reconcileLedgerWithJournal(lines: readonly JournalLine[], ledger: Ledger): void {
   const byOp = new Map<string, JournalLine[]>();
   for (const l of lines) { if (l.operationId === 'NONE') continue; const a = byOp.get(l.operationId) ?? []; a.push(l); byOp.set(l.operationId, a); }
@@ -188,7 +233,14 @@ export function reconcileLedgerWithJournal(lines: readonly JournalLine[], ledger
   }
 }
 
-/** EXEC-ECON item 3: <batchDir>/responses/<sha256>.json, bytes = JSON.stringify(body) (so the file sha256 IS responseSha256), created with wx and fsync'd; an existing file must hold the same bytes. */
+/**
+ * EXEC-ECON item 3: <batchDir>/responses/<sha256>.json, bytes = JSON.stringify(body) (so the file sha256 IS responseSha256), created with wx and fsync'd; an existing file must hold the same bytes.
+ *
+ * @param batchDir - Batch folder.
+ * @param body - Parsed response body.
+ * @returns SHA-256 (hex) of the stored bytes.
+ * @throws {Error} When the file exists with other bytes, or the write fails.
+ */
 export function persistResponse(batchDir: string, body: unknown): string {
   const bytes = Buffer.from(JSON.stringify(body), 'utf8'); const sha = sha256Hex(bytes);
   const dir = path.join(batchDir, 'responses'); mkdirSync(dir, { recursive: true });
@@ -200,6 +252,18 @@ export function persistResponse(batchDir: string, body: unknown): string {
   return sha;
 }
 
+/**
+ * Opens a batch executor: validates the probe settings, creates the batch folders, takes the lock, opens and verifies
+ * the journal, opens the ledger, journals the uncertain-operation acknowledgements and reconciles the ledger with
+ * every journal that shares it.
+ *
+ * @param cfg - Executor configuration.
+ * @returns The executor; call `close()` when done.
+ * @throws {@link BatchLockedError} When the batch folder is locked.
+ * @throws {@link UncertainAckError} For an invalid acknowledgement or one for an operation that is not uncertain.
+ * @throws {@link LedgerReconciliationError} When the ledger does not match the journals.
+ * @throws {RangeError} When the model probe settings are invalid.
+ */
 export function createExecutor(cfg: ExecutorConfig): Executor {
   if (cfg.modelProbe) validateModelProbeConfig(cfg.modelProbe); // refused before any lock or file
   mkdirSync(path.join(cfg.batchDir, 'snapshots'), { recursive: true });
@@ -231,10 +295,21 @@ export function createExecutor(cfg: ExecutorConfig): Executor {
   const failures: Record<string, number> = {};
   const locked = new Set<Provider>(cfg.lockedProviders ?? ['google']);
 
-  /** Batch composition from the journal (survives restarts): calls planned and models used per batch. */
+  /**
+   * Batch composition from the journal (survives restarts): calls planned and models used per batch.
+   *
+   * @param batchId - Batch id.
+   * @returns Number of PLANNED lines and the set of models requested.
+   */
   const batchStats = (batchId: string) => { const planned = journal.lines().filter((l) => l.kind === 'PLANNED' && (l.body as { batchId?: string }).batchId === batchId); return { calls: planned.length, models: new Set(planned.map((l) => (l.body as { modelRequested?: string }).modelRequested)) }; };
 
-  /** E3: cacheable (stable-prefix) tokens and S2 nonce tokens, by the injected local counter; UNKNOWN without it (never 0). */
+  /**
+   * E3: cacheable (stable-prefix) tokens and S2 nonce tokens, by the injected local counter; UNKNOWN without it (never 0).
+   *
+   * @param plan - Operation plan.
+   * @param content - Resolved content of the operation.
+   * @returns Both estimates in tokens, or `UNKNOWN` / `NOT_APPLICABLE`.
+   */
   const cacheEstimates = (plan: OperationPlan, content: ResolvedContent): { cacheableTokens: Count; nonceTokensDeclared: Count } => {
     const count = cfg.textTokenCounter;
     const textOf = (ms: ResolvedContent['messages']) => ms.flatMap((m) => m.parts).map((p) => (p.type === 'text' ? p.text : '')).join('\n');
@@ -248,7 +323,12 @@ export function createExecutor(cfg: ExecutorConfig): Executor {
 
   const writeRecord = (r: PostcallRecord) => { const p = path.join(cfg.batchDir, 'records', `${r.operationId}.json`); const fd = openSync(p, 'w'); try { writeSync(fd, JSON.stringify(r)); fsyncSync(fd); } finally { closeSync(fd); } };
 
-  /** Replay: decide from the journal what happened to a known operation. */
+  /**
+   * Replay: decide from the journal what happened to a known operation.
+   *
+   * @param id - Operation id.
+   * @returns The result to report without resending, or `null` when the operation has no history and may run.
+   */
   const replayDecision = (id: string): RunnerResult | null => {
     // VNEXT-F: PAUSE_REVIEW / PAUSE_PREAUTHORIZED lines are NOT a history of the operation (nothing was reserved or sent): a paused operation is run again
     // after the human act (80 % ack in the GO, P1 gate). Before this, a paused operation was aborted on resume (crash_before_reserve) and lost.

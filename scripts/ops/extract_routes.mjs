@@ -17,6 +17,14 @@
  *   - a module regex constant used as the router (`const ROUTE = /re/` + `ROUTE.exec(pathname)`), methods taken from
  *     the `method !== '…'` tests of the file (D1-D8 operation and attribution routes served by the gateway);
  *   - a catch-all flag (`const isMitmPath = url.pathname !== '/a' && …; if (isMitmPath)`), kind `except`.
+ *
+ * In short: it reads the router files listed in FILES as plain text, line by line (it does not parse TypeScript),
+ * and prints one entry per route with server, methods, match kind, path or regex, file:line and the guard calls
+ * found on the line and in the indented body below it (up to 60 lines). Duplicate entries are merged.
+ * It is run by the route-surface and API-contract tests under test/security and test/unit, which compare its JSON
+ * output with committed inventories; changing what it reports changes those tests. It only reads files.
+ *
+ * @module scripts/ops/extract_routes
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -51,7 +59,14 @@ const GUARDS = [
   ['platformCaller', /isPlatformCaller\(/g],
 ];
 
-/** H1R2 C1: reads the regex literal that starts at src[i] === '/' (escapes and character classes balanced). */
+/**
+ * H1R2 C1: reads the regex literal that starts at src[i] === '/' (escapes and character classes balanced).
+ *
+ * @param src - Text to read from (one source line in practice).
+ * @param i - Index of the opening slash.
+ * @returns The literal with its flags and the index just after it, or `null` when no closing slash is found
+ *   before the end of the line.
+ */
 function readRegexLiteral(src, i) {
   let j = i + 1; let inClass = false;
   for (; j < src.length; j++) {
@@ -66,7 +81,12 @@ function readRegexLiteral(src, i) {
   let k = j + 1; while (k < src.length && /[a-z]/.test(src[k])) k++;
   return { text: src.slice(i, k), end: k };
 }
-/** Regex literals tested against a path variable on a line: `x.match(/re/)` and `/re/.test(x)` / `.exec(x)`. */
+/**
+ * Regex literals tested against a path variable on a line: `x.match(/re/)` and `/re/.test(x)` / `.exec(x)`.
+ *
+ * @param l - One source line.
+ * @returns The regex literals found, as source text with flags, in line order.
+ */
 function regexesOn(l) {
   const out = [];
   for (const m of l.matchAll(PATH_MATCH_CALL)) {

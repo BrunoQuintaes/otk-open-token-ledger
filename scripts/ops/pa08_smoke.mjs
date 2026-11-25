@@ -12,6 +12,12 @@
  * Exit codes:
  *   0 — all checks passed
  *   1 — one or more checks failed
+ *
+ * Environment: API_URL, PROVER_URL and OTK_ADMIN_KEY (admin key of the stack under test; the built-in default
+ * is only a placeholder). It sends real requests, including a test receipt with a
+ * `smoke-pa08-<epoch ms>` request id, so run it against a test stack only.
+ *
+ * @module scripts/ops/pa08_smoke
  */
 
 const API_URL = process.env['API_URL'] ?? 'http://localhost:8787';

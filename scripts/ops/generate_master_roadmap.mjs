@@ -16,21 +16,36 @@
  *   node scripts/ops/generate_master_roadmap.mjs --check    # valida, confere determinismo e se as saídas estão em dia
  *
  * Determinístico: nenhuma data do relógio; ordenação por ID; dois runs geram bytes idênticos.
+ *
+ * In English: generates the project's master roadmap documents (Markdown tables, Gantt, dependency graph and
+ * an HTML page) from one authoritative JSON file, after validating it (field contract, enums, sorted lists,
+ * evidence paths, dates not after `as_of`). `--check` also confirms that every evidence SHA exists in git,
+ * that two generations are byte-identical and that the committed outputs are up to date; it writes nothing.
+ * Without `--check` it overwrites the six output files. Exit codes: 0 = OK; 1 = validation or check errors.
+ * The validation and error messages are in Portuguese. Imported by test/governance/master_roadmap.test.ts,
+ * which uses the exported functions without running `main`.
+ *
+ * @module scripts/ops/generate_master_roadmap
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
+/** Absolute path of the repository root (two levels above this file). */
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+/** Repo-relative path of the authoritative roadmap JSON (the only file to edit by hand). */
 export const JSON_REL = 'docs/governance/OTK_MASTER_ROADMAP_CURRENT.json';
+/** Exact set of fields every roadmap item must have; a missing or extra field is a validation error. */
 export const ITEM_FIELDS = [
   'ID', 'TITLE', 'ORIGIN_SOURCE', 'SOURCE_COMMIT', 'LEGACY_IDS', 'HORIZON', 'MILESTONE', 'PRIORITY', 'PREDECESSORS', 'SUCCESSORS',
   'STATUS', 'EVIDENCE', 'EVIDENCE_SHA', 'GATE', 'HUMAN_DECISION', 'THESIS_RELEVANCE', 'FUTURE_WORK_CLASS', 'PARALLEL_RESOURCE_LOCK',
   'LAST_REVIEWED', 'NEXT_ACTION', 'ACTUAL_START', 'ACTUAL_FINISH', 'PROPOSED_START', 'PROPOSED_FINISH', 'ESTIMATE_UNVERIFIED',
 ];
+/** Allowed item STATUS values. */
 export const STATUSES = ['VERIFIED_COMPLETE', 'IMPLEMENTED_WITH_LIMITATION', 'VERIFIED_OPEN', 'DESIGN_ONLY', 'BLOCKED_HUMAN', 'BLOCKED_EXTERNAL',
   'BLOCKED_LOCAL', 'NOT_STARTED', 'SUPERSEDED_WITH_EVIDENCE', 'EXCLUDED_WITH_REASON', 'SOURCE_NOT_AVAILABLE'];
+/** Allowed item HORIZON values (H1-* are the items of the current horizon; the others are later or excluded). */
 export const HORIZONS = ['H1-CORE', 'H1-HUMAN', 'H1-OPTIONAL', 'M2', 'M3', 'H3', 'EXCLUDED'];
 const DECISION_STATES = ['PENDING', 'DECIDED_RECORDED', 'DECIDED_SCOPED_RECORDED'];
 const MS_STATUSES = ['NOT_STARTED', 'OPEN', 'BLOCKED_HUMAN', 'MET_WITH_LIMITATION', 'MET'];
@@ -41,6 +56,7 @@ const H1_HZ = new Set(['H1-CORE', 'H1-HUMAN', 'H1-OPTIONAL']);
 const H1_REQ = new Set(['H1-CORE', 'H1-HUMAN']);
 const LATER_HZ = new Set(['M2', 'M3', 'H3', 'EXCLUDED']);
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+/** Repo-relative paths of the generated files, in generation order. */
 export const OUTPUT_FILES = [
   'docs/governance/OTK_MASTER_ROADMAP_CURRENT.md',
   'docs/governance/OTK_DECISION_REGISTER_CURRENT.md',
@@ -55,11 +71,29 @@ const cmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 const isLegacy = (i) => i.ID.startsWith('LEG-');
 const statusCat = (s) => (DONE.has(s) ? 'done' : s === 'SUPERSEDED_WITH_EVIDENCE' || s === 'EXCLUDED_WITH_REASON' ? 'closed' : s.startsWith('BLOCKED') || s === 'SOURCE_NOT_AVAILABLE' ? 'blocked' : 'open');
 
+/**
+ * Reads and parses the roadmap JSON.
+ *
+ * @param root - Repository root; defaults to {@link ROOT}.
+ * @returns The parsed roadmap object.
+ * @throws {Error} When the file is missing or is not valid JSON.
+ */
 export function load(root = ROOT) {
   return JSON.parse(fs.readFileSync(path.join(root, JSON_REL), 'utf8'));
 }
 
 // ───────────────────────────── análise ─────────────────────────────
+/**
+ * Derives the views used by validation and rendering: items sorted by ID, topological order of items and
+ * milestones (with levels and cycles), the critical path of open H1 items ending at the MS-H1-DEFENSE
+ * milestone, status counts per horizon, legacy-item statistics and the items affected by each decision.
+ *
+ * Pure: reads `rm` and does not modify it.
+ *
+ * @param rm - Parsed roadmap (see {@link load}).
+ * @returns An object with `items`, `byId`, `msById`, `topo`, `cyclic` (IDs left in a cycle), `level`, `msTopo`,
+ *   `msLevel`, `msMembers`, `dist`, `critical`, `criticalItems`, `counts`, `legacyStats`, `affected` and `endDist`.
+ */
 export function analyze(rm) {
   const items = [...rm.items].sort((a, b) => cmp(a.ID, b.ID));
   const byId = new Map(items.map((i) => [i.ID, i]));
@@ -137,6 +171,15 @@ export function analyze(rm) {
 }
 
 // ───────────────────────────── validação ─────────────────────────────
+/**
+ * Validates the roadmap against its contract and collects errors and warnings (messages in Portuguese).
+ *
+ * Reads the file system only to check that evidence paths exist under the repository root.
+ *
+ * @param rm - Parsed roadmap.
+ * @param opts - Options; `opts.root` is the repository root used for evidence paths (default {@link ROOT}).
+ * @returns `{ errors, warnings, stats, analysis }`; the roadmap is valid when `errors` is empty.
+ */
 export function validate(rm, opts = {}) {
   const root = opts.root || ROOT;
   const errors = []; const warnings = [];
@@ -613,6 +656,12 @@ render();
 `;
 }
 
+/**
+ * Renders every output file in memory.
+ *
+ * @param rm - Parsed roadmap.
+ * @returns Map from repo-relative output path to its full text content (LF line endings); nothing is written.
+ */
 export function generateAll(rm) {
   const A = analyze(rm);
   return new Map([
@@ -625,6 +674,13 @@ export function generateAll(rm) {
   ]);
 }
 
+/**
+ * Compares the committed output files with a fresh in-memory generation, ignoring CRLF/LF differences.
+ *
+ * @param rm - Parsed roadmap.
+ * @param root - Repository root; defaults to {@link ROOT}.
+ * @returns One message per missing or outdated file; empty when everything is up to date.
+ */
 export function checkOutputsUpToDate(rm, root = ROOT) {
   const out = []; const gen = generateAll(rm);
   for (const [rel, content] of gen) {
@@ -638,6 +694,12 @@ export function checkOutputsUpToDate(rm, root = ROOT) {
   return out;
 }
 
+/**
+ * Generates the outputs twice from deep copies of the roadmap and lists the files whose text differs.
+ *
+ * @param rm - Parsed roadmap (not modified).
+ * @returns Paths of the non-deterministic outputs; empty when both runs are identical.
+ */
 export function checkDeterminism(rm) {
   const a = generateAll(JSON.parse(JSON.stringify(rm))); const b = generateAll(JSON.parse(JSON.stringify(rm)));
   const diff = [];

@@ -8,7 +8,12 @@
  *
  * Usage: node scripts/ops/hash_proof.js [path/to/proof.json]
  *
+ * The timestamp is the time of the run, so two runs differ only in `timestamp`. `proofPath` in the output is
+ * relative to the repository root. Exit codes: 0 = JSON printed; 1 = proof file missing or unreadable.
+ * Tested by test/unit/wave1_pack12_ci_manifest.test.ts.
+ *
  * @since A6.7 — Wave 1 Pack 12
+ * @module scripts/ops/hash_proof
  */
 
 import fs from 'fs';
@@ -26,8 +31,10 @@ const DEFAULT_PROOF_PATH = path.join(ROOT, 'zk/build/proof.json');
 
 /**
  * Compute SHA-256 of a file's contents.
- * @param {string} filePath Absolute path to the file
- * @returns {string} Hex-encoded SHA-256 hash
+ *
+ * @param filePath - Absolute path to the file (string).
+ * @returns Hex-encoded SHA-256 hash (string).
+ * @throws {Error} When the file cannot be read.
  */
 function sha256File(filePath) {
   const content = fs.readFileSync(filePath);
@@ -37,8 +44,10 @@ function sha256File(filePath) {
 /**
  * Detect circuit version from proof.json or nearby public.json.
  * Heuristic: check for v2 signals (minUsageBucket/maxUsageBucket) in public.json.
- * @param {string} proofDir Directory containing proof.json
- * @returns {string} 'v1' | 'v2' | 'unknown'
+ * In practice it counts the public signals in public.json: 4 means v2, 3 means v1.
+ *
+ * @param proofDir - Directory containing proof.json (string).
+ * @returns 'v1' | 'v2' | 'unknown' (unknown when public.json is missing, unparseable or has another length).
  */
 function detectCircuitVersion(proofDir) {
   const publicPath = path.join(proofDir, 'public.json');
@@ -61,8 +70,10 @@ function detectCircuitVersion(proofDir) {
 
 /**
  * Generate a proof hash record.
- * @param {string} [proofPath] Path to proof.json (default: zk/build/proof.json)
- * @returns {{ proofHash: string, timestamp: string, circuitVersion: string, proofPath: string }}
+ *
+ * @param proofPath - Path to proof.json (optional string; default: zk/build/proof.json).
+ * @returns The record `{ proofHash: string, timestamp: string, circuitVersion: string, proofPath: string }`.
+ * @throws {Error} When the proof file does not exist ("Proof file not found: ...") or cannot be read.
  */
 function hashProof(proofPath = DEFAULT_PROOF_PATH) {
   if (!fs.existsSync(proofPath)) {

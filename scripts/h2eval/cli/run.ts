@@ -5,6 +5,15 @@
  *            valid for THIS batch/model/executor sha/ratified hash/window, credential env var PRESENT (never read here), forbidden env
  *            absent. Any miss ⇒ exit 6 with a code, no executor, no socket. Google is NOT_RUN_BRANCH_LOCKED unless its own GO opens it.
  * Serial loop over the batch; the first stop reason ends the batch (R10 R2 §5: STOP/ISOLATE, never retry).
+ *
+ * Also implements the authorized multi-batch command ({@link runAuthorized}): several batches of one plan under one multi-batch GO, in
+ * series, with the campaign lock, nonce registry, signed gates and the stop policy {@link STOP_POLICY}. Called by the
+ * CLI entry point (`./main.ts`). Side effects: in real mode it sends provider calls and spends money (within the
+ * ledger caps); in both modes it writes the batch journal, ledger, snapshots and records through the executor, plus
+ * `run_summary.<ms>.json` and `authorized_run.<ms>.json`. Environment: reads only variable names and the path-like
+ * settings listed in `H2EVAL_ENV_NAMES` (`../core/egress.ts`), through `envPresence` in `./common.ts`.
+ *
+ * @module scripts/h2eval/cli/run
  */
 import path from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
@@ -31,6 +40,11 @@ import type { PrecallSnapshot } from '../types.js';
 import { readdirSync } from 'node:fs';
 import { envFingerprint, preflightGate } from './preflight.js';
 
+/**
+ * Options of {@link runBatch}: the plan file, batch id and batch folder, optional corpus folder (default: the plan's),
+ * mode, the `--real` flag and GO file for real runs, the executor commit, and the campaign-level hooks described per
+ * field below. `now` returns milliseconds since the epoch.
+ */
 export interface RunOptions {
   planFile: string; batchId: string; batchDir: string; corpusDir?: string; mode: 'offline' | 'real'; realFlag?: boolean; goFile?: string;
   executorCodeSha: string; /** R15-P2-1: git identity of the checkout (default: read from REPO_ROOT); REAL requires sha == executorCodeSha and a clean tree */ identity?: { sha: string; clean: boolean }; offline?: OfflineProviderConfig; /** OFFLINE only: operator's signed acknowledgement of the 80 % pause (`human:<name>`); REAL takes it from the GO */ ackBy?: string; stopFile?: string; now?: () => number;
@@ -58,17 +72,48 @@ export interface RunOptions {
   /** C158: automatic probe of a new model / unmeasured length region (default: none = not active). Only ever stops earlier. */
   modelProbe?: ModelProbeConfig;
 }
+/** File name of the signed opening balance inside a campaign folder. */
 export const LEDGER_OPENING_FILE = 'LEDGER_OPENING.json';
-/** VNEXT-5: the signed opening balance of the study, if the campaign directory carries one (validated: schema, human signature, digest). */
+/**
+ * VNEXT-5: the signed opening balance of the study, if the campaign directory carries one (validated: schema, human signature, digest).
+ *
+ * @param campaignDir - Campaign folder, or `undefined`.
+ * @returns The validated opening, or `undefined` when there is no folder or no file.
+ * @throws {@link CliError} REFUSED_BY_POLICY when the file exists but is invalid (the validator's code, or
+ *   `LEDGER_OPENING_INVALID`).
+ */
 export function readLedgerOpening(campaignDir: string | undefined): LedgerOpening | undefined {
   if (!campaignDir) return undefined; const p = path.join(campaignDir, LEDGER_OPENING_FILE); if (!existsSync(p)) return undefined;
   try { return validateLedgerOpening(JSON.parse(readFileSync(p, 'utf8'))); } catch (e) { throw new CliError(EXIT.REFUSED_BY_POLICY, e instanceof LedgerOpeningError ? e.code : 'LEDGER_OPENING_INVALID', p); }
 }
+/**
+ * Summary of one batch run: mode, planned and executed counts (replayed operations not counted as executed), one
+ * result per operation reached, the stop reason (`null` when the batch finished), the ledger state, the executor
+ * version and commit, and the simulated provider's log in offline mode.
+ */
 export interface RunSummary { schema: 'h2eval.run_summary.v0'; batchId: string; mode: 'OFFLINE' | 'REAL'; planned: number; executed: number; results: Array<RunnerResult & { model: string }>; stoppedBy: string | null; ledger: unknown; executorVersion: string; executorCodeSha: string; offlineLog?: unknown }
 
+/**
+ * Finds a batch in a plan.
+ *
+ * @param plan - The plan.
+ * @param batchId - Batch id.
+ * @returns The batch.
+ * @throws {@link CliError} USAGE `BATCH_NOT_IN_PLAN` when the id is not in the plan.
+ */
 export function selectBatch(plan: BatchPlan, batchId: string): PlannedBatch { const b = plan.batches.find((x) => x.batchId === batchId); if (!b) throw new CliError(EXIT.USAGE, 'BATCH_NOT_IN_PLAN', batchId); return b; }
 
-/** REAL preconditions, evaluated BEFORE any executor exists. Returns the list of failing codes (empty = may proceed to the executor's own preflight). */
+/**
+ * REAL preconditions, evaluated BEFORE any executor exists. Returns the list of failing codes (empty = may proceed to the executor's own preflight).
+ *
+ * Reads the GO file and, with a campaign folder, the campaign journal; never reads a credential value.
+ *
+ * @param plan - The plan.
+ * @param batch - The batch about to run (its provider and model are checked against the GO).
+ * @param o - The `--real` flag, GO file (default from the environment), executor commit, environment, clock in
+ *   milliseconds, git identity, campaign folder and the instant the preflight age is judged at.
+ * @returns Failing codes such as `REAL_FLAG_MISSING`, `PLAN_NOT_RATIFIED`, `GO_FILE_MISSING`; empty when all hold.
+ */
 export function realPreconditions(plan: BatchPlan, batch: PlannedBatch, o: { realFlag?: boolean; goFile?: string; executorCodeSha: string; env?: NodeJS.ProcessEnv; nowMs?: number; identity?: { sha: string; clean: boolean }; /** CYCLE2-B: when given, the credential-less preflight of the batch provider must be PASS, fresh and from the same env shape */ campaignDir?: string; /** VNEXT-8 (B06 R17-C2-1): the instant the preflight age is judged against — run-authorized passes its START time so a long series never goes STALE mid-campaign */ preflightNowMs?: number }): string[] {
   const codes: string[] = [];
   const env = envPresence(o.env);
@@ -96,12 +141,30 @@ export function realPreconditions(plan: BatchPlan, batch: PlannedBatch, o: { rea
 }
 
 /** C158 cycle 2: shape check (refuses without a "human:" signature, the operation id and the authorising text) + only the acknowledgements that belong to this batch. */
+/**
+ * Validates every uncertain-operation acknowledgement and keeps those of this batch.
+ *
+ * @param o - Run options (acknowledgements and strict flag).
+ * @param ops - Operations of the batch, keyed by operation id.
+ * @returns The acknowledgements whose operation is in this batch.
+ * @throws {@link CliError} REFUSED_BY_POLICY for a malformed acknowledgement, or (strict mode) one for another batch.
+ */
 function uncertainAckFor(o: RunOptions, ops: ReadonlyMap<string, unknown>): UncertainAck[] {
   const all = o.ackUncertain ?? [];
   for (const a of all) { try { validateUncertainAckShape(a); } catch (e) { throw new CliError(EXIT.REFUSED_BY_POLICY, e instanceof UncertainAckError ? e.code : 'UNCERTAIN_ACK_INVALID', e instanceof Error ? e.message : String(e)); } }
   if (o.ackUncertainStrict) for (const a of all) if (!ops.has(a.operationId)) throw new CliError(EXIT.REFUSED_BY_POLICY, 'UNCERTAIN_ACK_NOT_IN_BATCH', a.operationId.slice(0, 12));
   return all.filter((a) => ops.has(a.operationId));
 }
+/**
+ * Runs one batch of a plan, operation by operation, until it ends or a stop reason appears.
+ *
+ * @param o - Run options.
+ * @returns The run summary, also written to `<batchDir>/run_summary.<ms>.json`.
+ * @throws {@link CliError} USAGE when the batch, campaign folder or corpus content is missing; REFUSED_BY_POLICY when
+ *   a split gate refuses the batch, an uncertain-operation acknowledgement is invalid, the ledger opening is invalid
+ *   or the input reserve policy is undeclared in real mode; REAL_PRECONDITIONS when a real-run precondition fails;
+ *   PLAN_INVALID when an operation is not in the batch.
+ */
 export async function runBatch(o: RunOptions): Promise<RunSummary> {
   const plan = readPlan(o.planFile);
   const batch = selectBatch(plan, o.batchId);
@@ -172,6 +235,14 @@ const picoToUsd = (pico: string): string => { const p = BigInt(pico); const PICO
  * --ack-uncertain <operationId> --ack-uncertain-by human:<name> --ack-uncertain-ref "<text/order that authorises>". The uncertain operation is NEVER resent; the ack only releases the next ones.
  */
 /** C158 §3.2: --input-reserve-policy R-A-1.03|R-A-1.05 [--input-reserve-outside STOP|ALLOW]. Absent => no policy (not active). Anything else is refused. */
+/**
+ * Reads the input reserve policy from `--input-reserve-policy` and `--input-reserve-outside`.
+ *
+ * @param get - Reads a string option by name.
+ * @returns The policy choice (`none`, or an id with the outside-range behaviour, default STOP), or `undefined` when
+ *   no policy flag was given.
+ * @throws {@link CliError} USAGE for an unknown policy, an invalid outside value, or the outside flag without a policy.
+ */
 export function inputReservePolicyFromArgs(get: (k: string) => string | undefined): InputReserveChoice | undefined {
   const id = get('input-reserve-policy'); const outside = get('input-reserve-outside');
   if (id === 'none') { if (outside) throw new CliError(EXIT.USAGE, 'INPUT_RESERVE_OUTSIDE_WITHOUT_POLICY', '--input-reserve-outside is meaningless with --input-reserve-policy none'); return 'none'; }
@@ -180,23 +251,53 @@ export function inputReservePolicyFromArgs(get: (k: string) => string | undefine
   if (outside && outside !== 'STOP' && outside !== 'ALLOW') throw new CliError(EXIT.USAGE, 'INPUT_RESERVE_OUTSIDE', '--input-reserve-outside STOP|ALLOW');
   return { id: id as InputReservePolicyId, outsideMeasuredRange: (outside as 'STOP' | 'ALLOW' | undefined) ?? 'STOP' };
 }
-/** MET-02 R4(a): in REAL the choice is explicit: a policy or a deliberate `none` (journaled in every RESERVED). Forgetting the flag is refused, never a silent off. */
+/**
+ * MET-02 R4(a): in REAL the choice is explicit: a policy or a deliberate `none` (journaled in every RESERVED). Forgetting the flag is refused, never a silent off.
+ *
+ * @param choice - The parsed choice, or `undefined` when the flag was not given.
+ * @throws {@link CliError} REFUSED_BY_POLICY `INPUT_RESERVE_POLICY_UNDECLARED` when `choice` is `undefined`.
+ */
 export function requireDeclaredReservePolicy(choice: InputReserveChoice | undefined): void {
   if (choice === undefined) throw new CliError(EXIT.REFUSED_BY_POLICY, 'INPUT_RESERVE_POLICY_UNDECLARED', 'REAL needs an explicit --input-reserve-policy R-A-1.03|R-A-1.05 or a deliberate none (journaled as reservePolicy in every RESERVED)');
 }
 /** C158: --model-probe-max-ratio <n> (n in [1,10]). Absent => the probe is not active. No default: the limit is the operator's number. */
+/**
+ * Reads the model probe limit from `--model-probe-max-ratio`.
+ *
+ * @param get - Reads a string option by name.
+ * @returns The probe configuration, or `undefined` when the flag is absent.
+ * @throws {@link CliError} USAGE `MODEL_PROBE_RATIO` when the value is empty or outside the accepted range.
+ */
 export function modelProbeFromArgs(get: (k: string) => string | undefined): ModelProbeConfig | undefined {
   const v = get('model-probe-max-ratio'); if (v === undefined) return undefined;
   const n = Number(v); const cfg = { maxMeasuredToEstimatedRatio: n };
   try { if (v.trim() === '') throw new RangeError('empty'); validateModelProbeConfig(cfg); } catch (e) { throw new CliError(EXIT.USAGE, 'MODEL_PROBE_RATIO', `--model-probe-max-ratio <number between 1 and 10>: ${e instanceof Error ? e.message : String(e)}`); }
   return cfg;
 }
+/**
+ * Reads the human acknowledgement of an uncertain operation from `--ack-uncertain`, `--ack-uncertain-by` and
+ * `--ack-uncertain-ref` (all three or none). The acknowledged operation is never resent; the acknowledgement only
+ * lets the following operations run.
+ *
+ * @param get - Reads a string option by name.
+ * @returns One acknowledgement, or an empty list when none of the three flags is given.
+ * @throws {@link CliError} REFUSED_BY_POLICY `UNCERTAIN_ACK_INCOMPLETE` when only some of the flags are given.
+ */
 export function uncertainAckFromArgs(get: (k: string) => string | undefined): UncertainAck[] {
   const op = get('ack-uncertain'); const by = get('ack-uncertain-by'); const ref = get('ack-uncertain-ref');
   if (!op && !by && !ref) return [];
   if (!op || !by || !ref) throw new CliError(EXIT.REFUSED_BY_POLICY, 'UNCERTAIN_ACK_INCOMPLETE', '--ack-uncertain <operationId> --ack-uncertain-by human:<name> --ack-uncertain-ref "<text/order that authorises>"');
   return [{ operationId: op, acknowledgedBy: by, authority: ref }];
 }
+/**
+ * Runs the `run` command from parsed arguments; the batch folder, GO file and stop file fall back to the environment
+ * settings when the flags are absent.
+ *
+ * @param a - Parsed arguments.
+ * @param opts - The executor commit (already checked against git HEAD).
+ * @returns The run summary.
+ * @throws {@link CliError} USAGE when the mode or a required argument is missing; otherwise as {@link runBatch}.
+ */
 export function runFromArgs(a: Args, opts: { executorCodeSha: string }): Promise<RunSummary> {
   const get = (k: string) => (typeof a.opts[k] === 'string' ? (a.opts[k] as string) : undefined);
   const mode = get('mode'); if (mode !== 'offline' && mode !== 'real') throw new CliError(EXIT.USAGE, 'MODE', '--mode offline|real');
@@ -215,7 +316,9 @@ export function runFromArgs(a: Args, opts: { executorCodeSha: string }): Promise
  * uncertain-state / integrity stop halts everything. In doubt: halt. maxAttempts of the GO bounds the sends of the whole scope.
  * OFFLINE and REAL share the same path; REAL additionally needs the usual preconditions (clean tree, env, forbidden vars, ratified plan).
  */
+/** What a stop does to an authorized series: halt everything, isolate the model's arm, or isolate one condition of the model. */
 export type StopDisposition = 'HALT_ALL' | 'ISOLATE_ARM' | 'ISOLATE_CONDITION';
+/** Disposition of each known stop reason in an authorized series; any reason not listed halts everything. */
 export const STOP_POLICY: Readonly<Record<string, StopDisposition>> = Object.freeze({
   // budget / ledger / cap / integrity / uncertain state / persistence / operator stop / attempts => everything stops
   STOP_FILE: 'HALT_ALL', STOP_BUDGET_CAMPAIGN: 'HALT_ALL', STOP_BUDGET_PROVIDER: 'HALT_ALL', STOP_BUDGET_BATCH: 'HALT_ALL', STOP_BUDGET_OPERATION: 'HALT_ALL',
@@ -227,14 +330,38 @@ export const STOP_POLICY: Readonly<Record<string, StopDisposition>> = Object.fre
   // VNEXT-F (R17-V-5): a 400 to a thinking-disabled request isolates the OFF CONDITION of that model (its ON operations continue); on the P1 probe it halts everything
   STOP_THINKING_DISABLED_REJECTED: 'ISOLATE_CONDITION',
 });
+/**
+ * Disposition of a stop reason.
+ *
+ * @param stop - Stop reason code.
+ * @returns Its disposition from {@link STOP_POLICY}, or `HALT_ALL` when unknown.
+ */
 export const dispositionOf = (stop: string): StopDisposition => STOP_POLICY[stop] ?? 'HALT_ALL';
 
+/**
+ * Summary of an authorized series: GO and plan identity, mode, one row per batch in scope with its outcome, the probe
+ * and isolated conditions, attempt counts (prior, this run, used, maximum), where and why it halted (`null` when it
+ * did not), isolated models, the last ledger state and the campaign identity hash.
+ */
 export interface AuthorizedRunSummary {
   schema: 'h2eval.authorized_run.v1'; goDigestSha256: string; planProtocolHash: string; mode: 'OFFLINE' | 'REAL';
   executed: Array<{ batchId: string; model: string; provider: string; block: string; outcome: 'DONE' | 'STOPPED' | 'SKIPPED_GATE' | 'HALTED_BEFORE' | 'NOT_REACHED'; stoppedBy: string | null; disposition: StopDisposition | null; planned: number; executed: number; reason?: string }>;
   /** VNEXT-F: OFF conditions isolated after STOP_THINKING_DISABLED_REJECTED (`<model>|OFF`) */ isolatedConditions: string[]; /** VNEXT-F: P1 probe state seen by this run */ probe: { operationId: string; model: string; gate: string } | null;
   attemptsUsed: number; /** VNEXT-3 R15-G-4: SENT lines already present in the scoped journals before this process (attemptsUsed starts from it) */ attemptsPrior: number; /** sends made by THIS process */ attemptsThisRun: number; maxAttempts: number; haltedAt: string | null; haltReason: string | null; isolatedModels: string[]; ledger: unknown; /** VNEXT-3 R15-G-1 */ campaignIdentitySha256: string | null;
 }
+/**
+ * Runs every batch listed in a multi-batch GO, in plan order, under the campaign lock (rules in the comment above
+ * {@link StopDisposition}).
+ *
+ * @param o - Plan, GO and campaign folder; optional corpus folder, mode and `--real` flag, executor commit and git
+ *   identity, offline simulation settings, environment, clock in milliseconds, pilot protocol hash, control registry
+ *   folder, uncertain-operation acknowledgements, input reserve policy and model probe.
+ * @returns The series summary, also written to `<campaignDir>/authorized_run.<ms>.json`.
+ * @throws {@link CliError} REFUSED_BY_POLICY when the GO, the control registry, the ledger opening or the pilot hash
+ *   refuses the series; REAL_PRECONDITIONS when a real-run precondition fails. A refusal inside a batch does not
+ *   throw: it halts the series and is reported in the summary.
+ * @throws {@link DirLockedError} When another live process holds the campaign lock.
+ */
 export async function runAuthorized(o: { planFile: string; goFile: string; campaignDir: string; corpusDir?: string; mode: 'offline' | 'real'; realFlag?: boolean; executorCodeSha: string; identity?: { sha: string; clean: boolean }; offline?: OfflineProviderConfig; env?: NodeJS.ProcessEnv; nowMs?: number; pilotProtocolHash?: string; /** VNEXT-F (R17-V-1): control registry directory (default H2EVAL_CONTROL_DIR or ~/.otk-h2eval/control) */ controlDir?: string; /** C158 cycle 2: human acknowledgements of uncertain operations (each applies to the batch that owns the operation) */ ackUncertain?: readonly UncertainAck[]; /** C158 §3.2: conservative input reserve policy (pre-send gate; default none) */ inputReservePolicy?: InputReserveChoice; /** C158: automatic model probe (default none) */ modelProbe?: ModelProbeConfig }): Promise<AuthorizedRunSummary> {
   const plan = readPlan(o.planFile);
   const text = readFileSync(o.goFile, 'utf8');

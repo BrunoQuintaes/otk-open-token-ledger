@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 # OVERNIGHT 2 — real campaign phases, strictly serial, through runPilotV3.ts (same safety rules as run_live_pv3.sh).
+# Usage: as on the next lines. It makes PAID provider API calls, capped per provider by the canonical budget
+#   ledger. Needs a .env file (read only by Node), the operator's ledger and an environment script under
+#   docs/_ops that are not in this repository, so it is kept as a record of how the 2026-10-06 campaign ran.
+#   Exit codes: 0 ok or already done; 1 STOP, lock held or blocked; 3 no credential; 4 usage error;
+#   otherwise the runner's exit code.
 #   bash scripts/pilot/campaign/run_campaign_ovn2.sh --provider=anthropic|openai|gemini35 <phase> [runner args...]
 #   phases: campaign | cacheprobe | besu | minimal
 # Output root: docs/_ops/OVERNIGHT2_20261006/campaign/<provider>/<phase>[_<slice>]; canonical cumulative ledger per provider

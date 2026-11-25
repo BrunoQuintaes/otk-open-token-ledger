@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # =============================================================================
 # OTK MPC Ceremony — Step 3: Apply Final Beacon (Public Randomness)
+# Usage: BEACON_HASH=<64 hex chars> BEACON_SOURCE=<text> bash scripts/ceremony/03_beacon.sh
+# Reads the environment variables BEACON_HASH and BEACON_SOURCE (both required). Writes the beacon zkey,
+# the final zkey, the verification key and the generated Solidity verifier, and updates state.json.
 #
 # The beacon is a public, unpredictable value that is applied AFTER all
 # human contributions, ensuring the setup cannot be compromised even if

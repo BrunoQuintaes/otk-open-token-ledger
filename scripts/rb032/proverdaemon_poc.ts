@@ -17,7 +17,13 @@
  *   <out>/params.json     — inputs + metadata
  *   <out>/verify.json     — resultado da verificação local
  *
- * @module rb032/proverdaemon_poc
+ * English summary: proof of concept that generates one Groth16 proof of the metering_v2 circuit with the
+ * ceremony's final proving key (fixed sample inputs: usage 750 inside the public bucket [500, 1000]) and verifies it
+ * locally. Needs `zk/build/metering_v2_js/metering_v2.wasm` and the keys in `zk/keys/`; exits with code 1 when any
+ * is missing or the proof fails. Default output folder: `docs/_ops/rb032/_poc_out`. No network, no chain, no
+ * environment variables.
+ *
+ * @module scripts/rb032/proverdaemon_poc
  * @since RB-032 (2026-03-03)
  */
 

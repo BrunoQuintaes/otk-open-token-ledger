@@ -9,7 +9,12 @@
  *
  * Output: structured pass/fail report to stdout (capture for EVD).
  *
+ * The server runs on port 18787 with fixed throwaway tokens defined below (one per role, tenant "acme").
+ * When `evdDir` is given, the role matrix is also written to <evdDir>/03_role_matrix_runtime.txt.
+ * Exit codes: 0 = every check passed; 1 = at least one failed.
+ *
  * @since S1.3 (2026-03-14)
+ * @module scripts/ops/s1_3_rbac_validate
  */
 
 import { spawn } from 'node:child_process';

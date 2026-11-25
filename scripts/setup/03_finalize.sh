@@ -16,6 +16,11 @@
 #   <CIRCUIT_DIR>/metering_v1_final.zkey  — finalized zkey (after Phase 2 contribution)
 #   <CIRCUIT_DIR>/verification_key.json   — exported verification key for Solidity
 #   <CIRCUIT_DIR>/MeteringVerifier.sol    — Solidity verifier contract
+#
+# Environment: CEREMONY_BEACON (hex beacon for the Phase 1 finalize; a fixed, public development value when
+#   unset) and PHASE2_ENTROPY (Phase 2 entropy; read from /dev/urandom when unset). Development setup only:
+#   a single Phase 2 participant. The Solidity verifier is written as MeteringVerifier_generated.sol.
+#   Requires git and snarkjs. Exit code 1 when no Phase 1 contribution or the R1CS file is found.
 # =============================================================================
 
 set -euo pipefail

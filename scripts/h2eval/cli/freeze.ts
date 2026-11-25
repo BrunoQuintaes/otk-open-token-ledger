@@ -3,15 +3,42 @@
  * parameter, seed-usage scan over the git refs, byte-level text collision, manifest with sha256 — and wraps the result in a
  * FREEZE_CANDIDATE.json. It does NOT freeze the study: the candidate waits for the author's ratification (G10); the block below is
  * left blank on purpose. No network; the only reads outside the output dir are git refs of the clone (read-only).
+ *
+ * The generator runs through the local `tsx` CLI (`node_modules/tsx/dist/cli.mjs` unless `tsxCli` is given) with the
+ * repository root as working folder. Called by the CLI entry point (`./main.ts`).
+ *
+ * @module scripts/h2eval/cli/freeze
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { CliError, EXIT, REPO_ROOT, readJson, sha256File, writeJson } from './common.js';
 
+/**
+ * Options of {@link freezeCorpus}, passed to the corpus generator as flags: output folder (must not exist), seed,
+ * repository to scan for used seeds, S2/S3 dialog counts, prefix length in characters, the per-split plan file and
+ * repeats; `noRepoScan` skips the seed scan, `h1CampaignCorpus` adds a reference corpus for the collision check and
+ * `tsxCli` overrides the tsx path.
+ */
 export interface FreezeOptions { out: string; seed?: number; repo?: string; s2?: number; s3?: number; prefixChars?: number; /** C154: groups per S1 cell (generator default 8); 12 gives a holdout 1.5x larger with the same design */ groupsPerCell?: number; /** C154 (R5): arquivo JSON {cells:{<cellId>:{train,validation,holdout}}, dialogs:{S2_NOHIT|S3_HITATTEMPT:{...}}, pilotGroupsPerCell?} */ splitPlanFile?: string; /** C154 (R5): repeticoes por celula (padrao do gerador 3; 0 = sem repeticoes) */ repeatsPerCell?: number; noRepoScan?: boolean; h1CampaignCorpus?: string; tsxCli?: string; /** rehearsal only: accept a collision report with references that could not be compared (never for a freeze) */ allowNotCompared?: boolean }
+/**
+ * Content of `FREEZE_CANDIDATE.json`: status, generator code hash, corpus and manifest hashes, the SHA-256 of every
+ * output file (the `content` folder excluded), the seed and collision verdicts, and an empty ratification block that
+ * only the author fills in.
+ */
 export interface FreezeCandidate { schema: 'h2eval.freeze_candidate.v0'; /** E4: sha256 of the generator code files (manifest.generator.codeSha256) so a stale candidate is visible */ generatorCodeSha256: string; status: 'CANDIDATE_NOT_RATIFIED' | 'CANDIDATE_NOT_RATIFIED_INCOMPLETE_REFERENCES' | 'REJECTED_INCOMPLETE_REFERENCES'; notCompared: string[]; out: string; seed: number; corpusSha256: string; manifestSha256: string; files: Record<string, string>; seedVerdict: string; collisionVerdict: string; counts: unknown; generatorStdout: unknown; ratification: { ratified: null; ratifiedBy: null; ratifiedUtc: null; ratifiedHash: null; note: string } }
 
+/**
+ * Generates the corpus into `o.out` and writes `FREEZE_CANDIDATE.json` there.
+ *
+ * The candidate is written even when it is rejected, so the reason stays on disk.
+ *
+ * @param o - Freeze options.
+ * @returns The candidate (not ratified).
+ * @throws {@link CliError} USAGE `DIR_EXISTS` when `o.out` exists; `GENERATOR_FAILED` (REFUSED_BY_POLICY for generator
+ *   exit 3 or 4, INTERNAL otherwise); REFUSED_BY_POLICY `COLLISION_REFS_INCOMPLETE` when a reference corpus could not
+ *   be compared and `allowNotCompared` is not set.
+ */
 export function freezeCorpus(o: FreezeOptions): FreezeCandidate {
   if (existsSync(o.out)) throw new CliError(EXIT.USAGE, 'DIR_EXISTS', o.out);
   const tsx = o.tsxCli ?? path.join(REPO_ROOT, 'node_modules', 'tsx', 'dist', 'cli.mjs');

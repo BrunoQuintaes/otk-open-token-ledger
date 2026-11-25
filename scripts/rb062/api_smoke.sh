@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 # RB-062 — API smoke test (curl)
 # Usage: API_PORT=8787 bash scripts/rb062/api_smoke.sh
+#
+# Starts the OTK HTTP API (src/api/server.ts, through the local tsx) in the background on the loopback port
+# API_PORT (default 8787), waits up to 5 s for its health route, then prints the answers of the health,
+# version, ping and an unknown route (which should answer 404). The server is killed on exit.
+# Prints responses only: it does not compare them, so "SMOKE OK" means the script ran, not that every
+# answer was right. Run from the repository root after "npm ci".
 set -euo pipefail
 
 PORT="${API_PORT:-8787}"

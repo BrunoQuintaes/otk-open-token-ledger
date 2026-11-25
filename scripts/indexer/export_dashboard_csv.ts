@@ -9,7 +9,11 @@
  * Usage:
  *   npx tsx scripts/indexer/export_dashboard_csv.ts [INPUT_JSONL] [OUTPUT_CSV]
  *
- * @module export_dashboard_csv
+ * Defaults: input `docs/_ops/indexer/receipts.jsonl` (written by `receipt_indexer.ts`) and output
+ * `docs/_ops/indexer/receipts_dashboard.csv`, both under the repository root. Overwrites the output file. No
+ * network, no environment variables.
+ *
+ * @module scripts/indexer/export_dashboard_csv
  * @since U10.2
  */
 

@@ -8,6 +8,13 @@
  * the legacy development CU the receipt carries, the computed cost (frozen public table; not an invoice), and the
  * calibration pair (provider input count vs local counter) with the split fixed by 07_CALIBRATION_PROTOCOL.md.
  * Then the calibration profile is fitted per model with the unchanged fitter and acceptance policy.
+ *
+ * Reads every `*_calls.jsonl` under `--root` (sub-folders whose name starts with `synthetic` are skipped) and the
+ * candidate CU reference profile in `config/cu_reference/`. Writes `campaign_ops.jsonl`, one
+ * `calibration_profile_<provider>_<model>.json` per model and `campaign_summary.json` into `--out`. Exit code 4
+ * when an argument is missing, otherwise 0. No network, no environment variables.
+ *
+ * @module scripts/pilot/campaign/analyzeCampaign
  */
 import fs from 'node:fs';
 import path from 'node:path';

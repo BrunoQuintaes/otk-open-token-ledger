@@ -1,6 +1,13 @@
 /**
  * H2-EVAL / R13 — pontos de integração da frente de cache/diálogos/corpus (scripts/h2eval/INTERFACES.md §9, dono E2E-01).
  * `createContentStore(dir)` e `planArm(...)` são os nomes pedidos pela integradora; o resto é a API de apoio.
+ *
+ * English summary: barrel module of the H2 evaluation's cache, dialog and corpus front. It only re-exports: the content
+ * store (`./contentStore`), the cache-arm planner (`./planner`, `planArm` is an alias of `planCacheArm`), the usage
+ * classifier (`./classify`), the cost interval (`./costInterval`), the dialog builder (`./dialogs`) and the corpus
+ * builders and seed guards from `../corpus/`. It has no logic and no side effects of its own.
+ *
+ * @module scripts/h2eval/cache/index
  */
 export { createContentStore, contentOfS1, contentHash, ContentStoreError } from './contentStore.js';
 export type { ContentStore, ContentStoreLike, ResolvedContentLike, StorableContent } from './contentStore.js';

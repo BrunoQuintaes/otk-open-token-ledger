@@ -16,7 +16,10 @@
  *   npx tsx scripts/demo/e5_enterprise_demo.ts --out <dir>
  *   # OR: npm run demo:e5 -- --out <dir>
  *
- * @module e5_enterprise_demo
+ * `--out` is resolved against the repository root and created when missing; without it the files go to the current
+ * working directory. Reads no environment variables.
+ *
+ * @module scripts/demo/e5_enterprise_demo
  * @since E5
  */
 

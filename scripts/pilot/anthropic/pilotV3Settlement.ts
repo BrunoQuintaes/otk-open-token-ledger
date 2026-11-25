@@ -16,25 +16,44 @@
  * thoughts (thinking billed as output). The API omits zero-valued counts (proto3 JSON), so an omitted cached/thoughts
  * count is 0 and an omitted candidatesTokenCount is total − prompt − thoughts; anything malformed or inconsistent with
  * the documented total leaves the usage unknown (geminiRaw in runPilotV3.ts applies the same rule to the oracle).
+ *
+ * Pure functions (no I/O). Used by `runPilotV3.ts`; the result is passed to `BudgetLedger.settle` in
+ * `budgetLedger.ts`. Covered by `test/unit/pilot_v3_settlement.test.ts`.
+ *
+ * @module scripts/pilot/anthropic/pilotV3Settlement
  */
 import type { ProviderUsage } from './budgetLedger.js';
 
+/** Provider whose usage shape is being mapped. */
 export type SettlementProvider = 'anthropic' | 'openai' | 'gemini';
 
+/** What is known about one pilot call when it is settled. */
 export interface SettlementInput {
   /** default anthropic (Messages usage shape) */
   provider?: SettlementProvider;
+  /** HTTP status the client observed; `undefined` when no response arrived. */
   httpStatus: number | undefined;
   /** the client saw the whole response and did not disconnect on purpose */
   clientComplete: boolean;
+  /** Provider usage object as the client received it, in the provider's own field names; null/undefined if none. */
   clientUsage: Record<string, unknown> | null | undefined;
+  /** OTK's measurement state for the operation (only `'final'` is used). */
   otkMeasurement: string | null;
+  /** OTK's money state for the operation (only `'settled'` is used). */
   otkMoneyState: string | null;
+  /** OTK token categories with decimal-string counts; a null/undefined count means "not measured". */
   otkCategories: ReadonlyArray<{ name: string; count: string | null | undefined }> | null;
 }
 
+/** Where the settlement usage came from; `'none'` means nothing settles and the reservation stays uncertain. */
 export type SettlementSource = 'provider_response' | 'otk_final_measurement' | 'none';
 
+/**
+ * Decides which usage (if any) may settle the ledger reservation of one call (rules in the module comment).
+ *
+ * @param s - What the client and OTK observed.
+ * @returns The observed HTTP status, the usage in ledger (Anthropic) field names or `null`, and its source.
+ */
 export function settlementFor(s: SettlementInput): { httpStatus: number | undefined; usage: ProviderUsage | null; source: SettlementSource } {
   if (s.httpStatus !== 200) return { httpStatus: s.httpStatus, usage: null, source: 'none' };
   const openai = s.provider === 'openai';
@@ -71,7 +90,13 @@ export function settlementFor(s: SettlementInput): { httpStatus: number | undefi
   };
 }
 
-/** OpenAI Chat Completions usage → disjoint ledger categories (cached tokens are a subset of prompt_tokens). */
+/**
+ * OpenAI Chat Completions usage → disjoint ledger categories (cached tokens are a subset of prompt_tokens).
+ *
+ * @param u - OpenAI `usage` object.
+ * @returns Ledger usage; input is `undefined` (unknown) when `prompt_tokens` or `cached_tokens` is missing or cached
+ *   exceeds the prompt; cache creation is always 0.
+ */
 export function fromOpenAiUsage(u: Record<string, unknown>): ProviderUsage {
   const num = (v: unknown) => (typeof v === 'number' ? v : undefined);
   const prompt = num(u['prompt_tokens']);
@@ -85,7 +110,13 @@ export function fromOpenAiUsage(u: Record<string, unknown>): ProviderUsage {
   };
 }
 
-/** Gemini usageMetadata → disjoint ledger categories (rule in the header; unknown fields stay undefined). */
+/**
+ * Gemini usageMetadata → disjoint ledger categories (rule in the header; unknown fields stay undefined).
+ *
+ * @param u - Gemini `usageMetadata` object.
+ * @returns Ledger usage; every count except cache creation is `undefined` when a field is malformed, tool-use
+ *   prompt tokens are present, or the parts do not add up to `totalTokenCount`.
+ */
 export function fromGeminiUsage(u: Record<string, unknown>): ProviderUsage {
   const n = (v: unknown): number | null | undefined => (v === undefined ? undefined : typeof v === 'number' && Number.isSafeInteger(v) && v >= 0 ? v : null);
   const unknown: ProviderUsage = { input_tokens: undefined, output_tokens: undefined, cache_creation_input_tokens: 0, cache_read_input_tokens: undefined };
@@ -98,7 +129,13 @@ export function fromGeminiUsage(u: Record<string, unknown>): ProviderUsage {
   return { input_tokens: prompt - c0, output_tokens: cand + t0, cache_creation_input_tokens: 0, cache_read_input_tokens: c0 };
 }
 
-/** prompt − cached, or unknown when either is missing or cached exceeds the prompt (malformed usage) */
+/**
+ * prompt − cached, or unknown when either is missing or cached exceeds the prompt (malformed usage)
+ *
+ * @param prompt - Prompt tokens including cached ones.
+ * @param cached - Cached prompt tokens.
+ * @returns Uncached input tokens, or `undefined`.
+ */
 function carve(prompt: number | undefined, cached: number | undefined): number | undefined {
   return prompt !== undefined && cached !== undefined && cached <= prompt ? prompt - cached : undefined;
 }

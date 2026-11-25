@@ -9,21 +9,41 @@
  * promptTokensDetails[modality] gives the image/audio token units. Implicit caching cannot be disabled.
  * Sources (R08 official_docs): google/generate-content.html, google/pricing.html, google/caching.html, google/thinking.html,
  * google/image-understanding.html, google/audio.html, google/model_gemini-3.5-flash-lite.html.
+ *
+ * Pure builder and parser; the per-API adapter in `modal/index.ts` calls them and sets the reasoning configuration.
+ *
+ * @module scripts/h2eval/modal/adapters/google_generate_content
  */
 import type { ParsedResponse, RequestEnvelope, Modality } from '../types.js';
 import { NA, UNKNOWN, completeness, emptyUsage, intAt, sanitizeNumbers, sub, terms, toCount } from '../canonical.js';
 import { stopReasonOf } from './anthropic_messages.js';
 import type { Count } from '../types.js';
 
+/** Matrix model id of the Gemini adapter. */
 export const GOOGLE_MODEL = 'gemini-3.5-flash-lite';
+/** Request path for {@link GOOGLE_MODEL}. */
 export const GOOGLE_GENERATE_CONTENT_PATH = `/v1beta/models/${GOOGLE_MODEL}:generateContent`;
 /** E3G (C160 BRACO-GO): arm model (DR-187 id, DR-168 prices, DR-194 tier). Same API and parser; only the path carries the model id. */
 export const GOOGLE_ARM_MODEL = 'gemini-3.1-flash-lite';
+/** Gemini model ids this adapter accepts. */
 export type GoogleModel = typeof GOOGLE_MODEL | typeof GOOGLE_ARM_MODEL;
+/**
+ * Request path of generateContent for a model.
+ *
+ * @param model - Gemini model id.
+ * @returns `/v1beta/models/<model>:generateContent`.
+ */
 export const googlePathFor = (model: GoogleModel): string => `/v1beta/models/${model}:generateContent`;
 
+/** One message part: text, image or audio (base64 bytes with MIME type). */
 export type GoogleUserPart = { kind: 'text'; text: string } | { kind: 'image'; mimeType: 'image/png' | 'image/jpeg' | 'image/webp'; base64: string } | { kind: 'audio'; mimeType: 'audio/wav' | 'audio/mp3' | 'audio/flac' | 'audio/ogg'; base64: string };
 
+/**
+ * Builds the generateContent request body.
+ *
+ * @param args - Model, optional system text, contents and output ceiling in tokens.
+ * @returns The request envelope (path only, no host or credential) with the price-relevant parameters.
+ */
 export function buildGoogleGenerateContentRequest(args: { model: GoogleModel; system?: string; contents: Array<{ role: 'user' | 'model'; parts: GoogleUserPart[] }>; maxOutputTokens: number }): RequestEnvelope {
   const modalities = new Set<Modality>(['text']);
   const contents = args.contents.map((c) => ({
@@ -59,6 +79,14 @@ function modalityTokens(details: unknown, modality: 'TEXT' | 'IMAGE' | 'AUDIO' |
   return s;
 }
 
+/**
+ * Parses a generateContent response into disjoint usage categories, outcome and stop reason.
+ *
+ * @param httpStatus - HTTP status of the response.
+ * @param body - Parsed response body.
+ * @param ctx - Modalities the request carried (decides whether image/audio fields are not applicable).
+ * @returns The parsed response; missing counts stay `'UNKNOWN'`, never 0.
+ */
 export function parseGoogleGenerateContentResponse(httpStatus: number, body: unknown, ctx: { requestModalities: Modality[] }): ParsedResponse {
   const flags: string[] = [];
   const b = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;

@@ -6,6 +6,14 @@
  *
  * Default witness_calculator dir:
  *   zk/build/metering_v1_js
+ *
+ * The package is an ES module project, but circom generates `witness_calculator.js` in CommonJS; this `.cjs` file
+ * loads it with `require` from its own folder. Reads the circuit `.wasm` and the input JSON, writes the binary
+ * witness (`.wtns`). The default calculator folder is relative to the current directory (run from the repository
+ * root). Called by `zk_prove.sh` and `verify_binding.sh`. Exit code 1 on missing arguments, a missing calculator or a
+ * failed computation (for example an input that breaks a circuit constraint).
+ *
+ * @module scripts/zk/generate_witness
  */
 const fs = require("fs");
 const path = require("path");

@@ -3,6 +3,13 @@
  *   status: last journal kind per operation, ledger state, journal integrity (verified on read), presence of STOP.
  *   stop  : creates the STOP file (presence is enough; read before every operation). Never deletes it.
  *   export: dataset per operation for R25 (ex ante snapshot + declared usage + table cost; billing = NA), JSONL + summary.
+ *
+ * Commands `status`, `stop` and `export` of the CLI entry point (`./main.ts`). They read a batch folder
+ * (`journal.jsonl`, `ledger.jsonl`, `snapshots/`, `records/`); `stop` writes only the STOP file and `export` only the
+ * dataset and its summary. No network and no credentials. The dataset never contains billing figures: billing is
+ * reconciled in a separate step.
+ *
+ * @module scripts/h2eval/cli/status
  */
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -12,8 +19,25 @@ import { readSnapshot } from '../record/snapshot.js';
 import type { JournalLine, PostcallRecord } from '../types.js';
 import { writeJson } from './common.js';
 
+/**
+ * Status of a batch folder: journal line count, `journalIntegrity` (`OK` or the verification error message), the
+ * journal kinds per operation and the last one, whether the STOP file exists, and the ledger state (`null` when no
+ * ledger configuration was given or the ledger file is missing).
+ */
 export interface Status { batchDir: string; journalLines: number; journalIntegrity: 'OK' | string; operations: Record<string, { last: string; kinds: string[] }>; stopFilePresent: boolean; ledger: unknown | null }
 
+/**
+ * Reads the status of a batch folder. Read-only.
+ *
+ * A broken journal does not throw: its error message is returned in `journalIntegrity`. A `LEDGER_OPENING.json` next
+ * to the ledger is used when present and valid.
+ *
+ * @param batchDir - Batch folder.
+ * @param ledgerCfg - Caps used to open the ledger; without it the ledger is not read.
+ * @param stopFile - STOP file path; default `<batchDir>/STOP`.
+ * @param ledgerPath - Ledger file; default `<batchDir>/ledger.jsonl`.
+ * @returns The batch status.
+ */
 export function status(batchDir: string, ledgerCfg?: LedgerConfig, stopFile = path.join(batchDir, 'STOP'), ledgerPath?: string): Status {
   const jp = path.join(batchDir, 'journal.jsonl');
   let lines: JournalLine[] = []; let integrity = 'OK';
@@ -27,12 +51,27 @@ export function status(batchDir: string, ledgerCfg?: LedgerConfig, stopFile = pa
   return { batchDir, journalLines: lines.length, journalIntegrity: integrity, operations: ops, stopFilePresent: existsSync(stopFile), ledger };
 }
 
+/**
+ * Creates the STOP file of a batch (timestamp and reason), unless it already exists; the runner checks it before every
+ * operation. It never deletes it.
+ *
+ * @param batchDir - Batch folder.
+ * @param stopFile - STOP file path; default `<batchDir>/STOP`.
+ * @param reason - Text written after the timestamp.
+ * @returns The STOP file path.
+ */
 export function stop(batchDir: string, stopFile = path.join(batchDir, 'STOP'), reason = 'stop requested by operator'): string {
   if (!existsSync(stopFile)) writeFileSync(stopFile, `${new Date().toISOString()} ${reason}\n`, { flag: 'wx' });
   return stopFile;
 }
 
+/** Origin of a dataset row: simulated offline call (not evidence), real provider call, or never sent. */
 export type DataLabel = 'SYNTHETIC_NOT_EVIDENCE' | 'REAL' | 'NOT_SENT';
+/**
+ * One exported dataset row per operation: identity fields from the journal PLANNED line (`UNKNOWN`/-1 when missing),
+ * the ex-ante estimate from the pre-call snapshot, the usage declared by the provider (`null` without a post-call
+ * record), the list-price cost (`null` without a record; pico-USD as text) and the final state.
+ */
 export interface DatasetRow {
   operationId: string; /** VNEXT-F (R17-V-7): SC1 condition from the PLANNED line */ condition: string | null; probe: string | null; /** E3: OFFLINE (simulated provider) rows are SYNTHETIC_NOT_EVIDENCE; REAL only when the SENT line says mode REAL */ dataLabel: DataLabel; model: string; provider: string; api: string; phase: string; cellId: string; groupId: string; promptId: string; rep: number; split: string; structure: string; plannedCacheArm: string; modality: string;
   /** E3: local estimate of the stable-prefix tokens (cacheable) and of the S2 nonce tokens, from the pre-call snapshot */
@@ -43,6 +82,15 @@ export interface DatasetRow {
   finalState: string;
 }
 
+/**
+ * Exports one row per pre-call snapshot of a batch to a JSONL file, sorted by operation id, plus `<name>_summary.json`.
+ * Overwrites both files.
+ *
+ * @param batchDir - Batch folder.
+ * @param outFile - Output JSONL; default `<batchDir>/dataset.jsonl`.
+ * @returns Row count, output path and the count per final state.
+ * @throws {Error} When the journal fails verification or a snapshot/record cannot be read or parsed.
+ */
 export function exportDataset(batchDir: string, outFile = path.join(batchDir, 'dataset.jsonl')): { rows: number; file: string; summary: Record<string, number> } {
   const snapDir = path.join(batchDir, 'snapshots'); const recDir = path.join(batchDir, 'records');
   const ids = existsSync(snapDir) ? readdirSync(snapDir).filter((f) => f.endsWith('.json')).map((f) => f.slice(0, -5)) : [];

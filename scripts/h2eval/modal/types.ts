@@ -8,14 +8,24 @@
  *  - categories are DISJOINT (input without cache, cache read, cache write 5m/1h, visible output, reasoning,
  *    image/audio units when the API reports them, tool tokens);
  *  - no "error" is ever computed against an estimator that does not exist (UNSUPPORTED_FOR_ESTIMATION).
+ *
+ * This file holds the shared types and constants of the `modal/` layer (adapters, estimators, pricing). Note that
+ * counts here are `bigint`, while the core types in `scripts/h2eval/types.ts` use `number`.
+ *
+ * @module scripts/h2eval/modal/types
  */
 
+/** Version string of the modal layer. */
 export const H2EVAL_MODAL_VERSION = 'otk.h2eval.modal.v0@2026-11-10';
 
+/** Token count (`bigint`), or `'UNKNOWN'` / `'NOT_APPLICABLE'`; an absent number is never 0. */
 export type Count = bigint | 'UNKNOWN' | 'NOT_APPLICABLE';
 
+/** Provider. */
 export type Provider = 'openai' | 'anthropic' | 'google';
+/** Provider API supported by the modal adapters. */
 export type Api = 'openai.chat_completions' | 'anthropic.messages' | 'gemini.generate_content';
+/** Input modality. */
 export type Modality = 'text' | 'image' | 'audio';
 
 /** Models of the R07 matrix (IDs exactly as the R08 compatibility matrix lists them). */
@@ -25,23 +35,33 @@ export type MatrixModel = 'gpt-4o-mini-2024-07-18' | 'claude-haiku-4-5-20251001'
 
 /** §4 of the contract: disjoint canonical categories. Unit of imageUnits/audioUnits = provider tokens (the only unit the APIs report). */
 export interface CanonicalUsage {
+  /** Input tokens not read from or written to the cache. */
   inputUncached: Count;
+  /** Input tokens read from the cache. */
   cacheRead: Count;
   /** Anthropic separates 5m/1h; other APIs report at most one write figure (cacheWrite). */
   cacheWrite5m: Count;
   cacheWrite1h: Count;
   cacheWrite: Count;
+  /** Output tokens of the visible answer (reasoning excluded). */
   outputVisible: Count;
+  /** Reasoning ("thinking") tokens, disjoint from `outputVisible`. */
   reasoning: Count;
+  /** Image input tokens when the API reports them separately. */
   imageUnits: Count;
+  /** Audio input tokens when the API reports them separately. */
   audioUnits: Count;
+  /** Tokens attributed to tool use, when reported. */
   toolTokens: Count;
   /** Totals exactly as the provider reported them (needed for cost when a subdivision is unknown). */
   providerTotals: { inputTotal: Count; outputTotal: Count };
+  /** `COMPLETE` when every category is known, `PARTIAL` when some are unknown, `MISSING` when there is no usage. */
   usageCompleteness: 'COMPLETE' | 'PARTIAL' | 'MISSING';
+  /** `provider_response` when usage came from the response body, `none` otherwise. */
   usageSource: 'provider_response' | 'none';
   /** Only numbers, copied from the response; never text. */
   rawUsageSanitized: Record<string, number | null>;
+  /** Machine-readable notes from the parser. */
   notes: string[];
   /** Contract rev. 2 item 8 (Gemini): usageMetadata.promptTokensDetails by modality (TEXT/IMAGE/AUDIO/VIDEO -> tokens). */
   promptTokensDetailsByModality?: Record<string, number>;
@@ -49,6 +69,7 @@ export interface CanonicalUsage {
   cacheRoundingNote?: 'openai_128';
 }
 
+/** Outcome of a parsed response. */
 export type Outcome =
   | 'OK'
   | 'REFUSED_WITH_USAGE'
@@ -66,6 +87,7 @@ export interface PricingTermsObserved {
   nonStandardReasons: string[];
 }
 
+/** Result of parsing one provider response: outcome, served model, usage, pricing terms and stop information. */
 export interface ParsedResponse {
   api: Api;
   outcome: Outcome;
@@ -84,6 +106,7 @@ export interface ParsedResponse {
   truncated: boolean | 'UNKNOWN';
 }
 
+/** Request built by a modal adapter: route, JSON body and the price-relevant parameters, without host or credential. */
 export interface RequestEnvelope {
   provider: Provider;
   api: Api;
@@ -105,8 +128,10 @@ export interface RequestEnvelope {
   requestModalities: Modality[];
 }
 
+/** Status of an ex-ante estimate: exact estimate, upper bound only, or no estimator for this input. */
 export type EstimateStatus = 'ESTIMATED' | 'ESTIMATED_UPPER_BOUND' | 'UNSUPPORTED_FOR_ESTIMATION';
 
+/** Ex-ante (before the call) input token estimate for one modality, with its source and citation. */
 export interface ExAnteEstimate {
   status: EstimateStatus;
   modality: Modality;
@@ -122,4 +147,10 @@ export interface ExAnteEstimate {
   counter?: { version: string; encoding: string | null; support: string; exact: boolean };
 }
 
+/**
+ * Tells whether a count is a number.
+ *
+ * @param c - Count.
+ * @returns `true` when `c` is a `bigint` (not `'UNKNOWN'` or `'NOT_APPLICABLE'`).
+ */
 export const isKnown = (c: Count): c is bigint => typeof c === 'bigint';

@@ -1,6 +1,13 @@
 /**
  * H2-EVAL / R13 — leitura SOMENTE LEITURA dos corpora de referência (H1 e CAL-ANTH) para a verificação de colisão de texto.
  * `git show <ref>:<caminho>` (sem checkout); o arquivo local da campanha H1 (R03) entra por caminho. Sem rede.
+ *
+ * In English: read-only loading of the reference corpora used by earlier evaluations (the first-phase calibration and
+ * campaign corpora and the two Anthropic calibration corpora), for the text-collision check in `collision.ts`. Git
+ * files are read with `git show <ref>:<path>` (no checkout); the campaign corpus comes from a local JSONL path. No
+ * network. Called by `corpus/build.ts`.
+ *
+ * @module scripts/h2eval/corpus/refCorpora
  */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -9,18 +16,46 @@ import type { RefCorpus } from './collision.js';
 
 const parse = (jsonl: string): Array<{ id: string; text: string }> => jsonl.split('\n').filter(Boolean).map((l, i) => { const o = JSON.parse(l) as { id?: string; text?: string }; return { id: o.id ?? String(i), text: String(o.text ?? '') }; });
 
+/**
+ * Reads one JSONL corpus from a git object with `git show` (read-only, no checkout).
+ *
+ * @param repo - Path of the git clone to read from.
+ * @param ref - Commit, tag or branch name.
+ * @param path - File path inside the repository at that ref.
+ * @param name - Label used in the collision report.
+ * @param expectedCount - Expected number of texts, or `null` when unknown.
+ * @returns The corpus; each JSONL line's `id` (or its line index) and `text` (empty when missing).
+ * @throws {Error} When `git show` exits non-zero (ref or path not found); invalid JSON lines also throw.
+ */
 export function loadFromGit(repo: string, ref: string, path: string, name: string, expectedCount: number | null): RefCorpus {
   const r = spawnSync('git', ['-C', repo, 'show', `${ref}:${path}`], { encoding: 'buffer', maxBuffer: 256 * 1024 * 1024 });
   if (r.status !== 0) throw new Error(`não consegui ler ${ref}:${path}`);
   return { name, source: `git:${ref}:${path}`, fileSha256: sha256Hex((r.stdout as Buffer).toString('utf8')), expectedCount, texts: parse((r.stdout as Buffer).toString('utf8')) };
 }
 
+/**
+ * Reads one JSONL corpus from a local file.
+ *
+ * @param path - File path.
+ * @param name - Label used in the collision report.
+ * @param expectedCount - Expected number of texts, or `null` when unknown.
+ * @returns The corpus, with `source` set to `file:<path>` using forward slashes.
+ * @throws {Error} When the file cannot be read or a line is not valid JSON.
+ */
 export function loadFromFile(path: string, name: string, expectedCount: number | null): RefCorpus {
   const s = fs.readFileSync(path, 'utf8');
   return { name, source: `file:${path.split(String.fromCharCode(92)).join('/')}`, fileSha256: sha256Hex(s), expectedCount, texts: parse(s) };
 }
 
-/** Corpora exigidos pelo R09 R2 §1 (contagens esperadas: CAL-01 288, CAL-02 dev 720, CAL-02 holdout 192) mais os da H1. */
+/**
+ * Corpora exigidos pelo R09 R2 §1 (contagens esperadas: CAL-01 288, CAL-02 dev 720, CAL-02 holdout 192) mais os da H1.
+ *
+ * Loads every default reference corpus; a corpus that cannot be read is listed in `notCompared` instead of throwing.
+ *
+ * @param repo - Path of the git clone that holds the reference refs.
+ * @param h1CampaignCorpusFile - Local JSONL of the first-phase campaign corpus, or `null` (then listed as not compared).
+ * @returns The loaded corpora and one reason line per corpus that could not be compared.
+ */
 export function loadDefaultReferences(repo: string, h1CampaignCorpusFile: string | null): { refs: RefCorpus[]; notCompared: string[] } {
   const refs: RefCorpus[] = []; const notCompared: string[] = [];
   const CAL2 = 'origin/experiment/otk-cal-anth-02-20261015';

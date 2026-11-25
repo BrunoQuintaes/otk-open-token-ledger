@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # =============================================================================
 # OTK MPC Ceremony — Step 1: Initialize Phase 2 (Circuit-Specific Setup)
+# Usage: bash scripts/ceremony/01_phase2_init.sh   (no arguments; reads no environment variables)
+# Exit code 1 when a prerequisite file is missing. Overwrites state.json (starts a new ceremony state).
 #
 # Creates the initial contribution_0000.zkey from:
 #   - The Hermez Phase 1 ptau (public, 176+ contributors)

@@ -4,6 +4,11 @@
  * UNKNOWN whenever a needed price is null, a needed count is UNKNOWN, or the pricing terms are not the standard ones.
  * ESTIMATED_UPPER_BOUND only when the provider total is known but its cache split is not (all input at the dearest
  * applicable input price): it is a bound, never a calculated cost.
+ *
+ * Also loads the tiered price table file (`price_table_h2eval_v3.json` next to this module by default) and computes
+ * the pre-call cap. The executor adapts this table to the core interface in `scripts/h2eval/index.ts`.
+ *
+ * @module scripts/h2eval/modal/pricing/pricing
  */
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -11,14 +16,26 @@ import { fileURLToPath } from 'node:url';
 import type { CanonicalUsage, Count, MatrixModel, PricingTermsObserved } from '../types.js';
 import { NA, UNKNOWN } from '../canonical.js';
 
+/** Price key of a tier (one per token category). */
 export type PriceKey = 'input' | 'cacheRead' | 'cacheWrite5m' | 'cacheWrite1h' | 'cacheWrite' | 'output' | 'reasoning' | 'imageTokens' | 'audioTokens';
+/** One price tier: prices in micro-USD per million tokens as integer strings (`null` = not published, never 0). */
 export interface PriceTier { id: string; appliesWhen: string; prices: Record<PriceKey, string | null>; citation: string }
+/** Prices of one model: provider, API, availability, standard terms and tiers (ids ending in `_REFERENCE_ONLY` are never used). */
 export interface PriceModel { provider: string; api: string; availability: string; standardTerms: Record<string, string>; promptLengthRule?: string; tiers: PriceTier[]; notes: string[] }
+/** Tiered price table file (`otk.h2eval.price_table.v1`). */
 export interface PriceTableH2 { schema: 'otk.h2eval.price_table.v1'; version: string; currency: 'USD'; unit: string; capturedUtc: string; source: unknown; models: Record<string, PriceModel> }
 
 /** C159C E-1: v3 = v2 + the published CACHE prices of Sonnet/Opus 5.5 (R08 pricing.html 96b086ac); v1 and v2 stay on disk unchanged */
 export const PRICE_TABLE_PATH = fileURLToPath(new URL('./price_table_h2eval_v3.json', import.meta.url));
 
+/**
+ * Reads and checks a tiered price table file.
+ *
+ * @param path - File path (default {@link PRICE_TABLE_PATH}).
+ * @returns The table, the SHA-256 of the file bytes and the path.
+ * @throws {Error} When the schema is wrong, a price is not an integer string or `null`, or a price is `"0"`.
+ * @throws {SyntaxError} When the file is not JSON.
+ */
 export function loadPriceTable(path: string = PRICE_TABLE_PATH): { table: PriceTableH2; sha256: string; path: string } {
   const buf = readFileSync(path);
   const table = JSON.parse(buf.toString('utf8')) as PriceTableH2;
@@ -30,7 +47,9 @@ export function loadPriceTable(path: string = PRICE_TABLE_PATH): { table: PriceT
   return { table, sha256: createHash('sha256').update(buf).digest('hex'), path };
 }
 
+/** State of a computed cost: exact, an upper bound only, or unknown. */
 export type CostState = 'CALCULATED' | 'ESTIMATED_UPPER_BOUND' | 'UNKNOWN';
+/** Cost of one operation by the tiered table, with per-category lines and the reasons for any unknown part. */
 export interface CostResult {
   state: CostState;
   /** pico-USD (10^-12 USD) as a decimal string; null when UNKNOWN */
@@ -47,6 +66,13 @@ export interface CostResult {
 
 const picoToUsd = (p: bigint) => { const s = p.toString().padStart(13, '0'); return `${s.slice(0, -12)}.${s.slice(-12)}`.replace(/(\.\d*?[1-9])0+$|\.0+$/, '$1'); };
 
+/**
+ * Picks the price tier by the observed prompt length (input + cache read + cache writes), when the model has tiers.
+ *
+ * @param model - Model prices.
+ * @param u - Usage.
+ * @returns The tier, or `null` with a reason when the length is unknown or no tier matches.
+ */
 function selectTier(model: PriceModel, u: CanonicalUsage): { tier: PriceTier | null; reason: string | null } {
   const usable = model.tiers.filter((t) => !t.id.endsWith('_REFERENCE_ONLY'));
   if (usable.length === 1) return { tier: usable[0]!, reason: null };
@@ -61,6 +87,12 @@ function selectTier(model: PriceModel, u: CanonicalUsage): { tier: PriceTier | n
 /**
  * Computes the cost of one operation. `modality` tells which price applies to the input units (the APIs bill image/audio
  * tokens inside the input at the input price; the keys exist so a future table with distinct media prices still works).
+ *
+ * @param model - Matrix model.
+ * @param u - Canonical usage of the response.
+ * @param termsObs - Pricing terms observed in the response; non-standard terms make the cost unknown and stop the runner.
+ * @param loaded - The loaded table and its SHA-256.
+ * @returns The cost; `stopRunner` is `true` when a needed price is missing or the terms are not standard.
  */
 export function computeCost(model: MatrixModel, u: CanonicalUsage, termsObs: PricingTermsObserved, loaded: { table: PriceTableH2; sha256: string }): CostResult {
   const base: CostResult = { state: 'UNKNOWN', picoUsd: null, usd: null, byCategory: {}, tierId: null, priceTableVersion: loaded.table.version, priceTableSha256: loaded.sha256, reasons: [], stopRunner: false };
@@ -123,11 +155,22 @@ export const REASONING_ALLOWANCE_TOKENS: Readonly<Record<MatrixModel, bigint>> =
   // gpt-6-luna 0: max_completion_tokens "including visible output tokens and reasoning tokens" (openai/chat-create.html, quoted in openai_chat.ts) bounds the reasoning
   'gemini-3.1-flash-lite': 2048n, 'gpt-6-luna': 0n });
 
+/** Pre-call cap in pico-USD (and USD text) with the tier, the reasoning allowance and the prices used. */
 export interface CostCapResult { picoUsd: string; usd: string; basis: string; tierId: string; reasoningAllowanceTokens: string; capBasis: { inputUpperBoundTokens: string; inputPriceUsedMicroPerMTok: string; inputPriceSource: 'input' | 'cacheWrite5m' | 'cacheWrite1h' | 'cacheWrite'; maxOutputTokens: string; outputPriceMicroPerMTok: string; reasoningAllowanceTokens: string; reasoningPriceMicroPerMTok: string; tierId: string } }
 
 /**
  * Pre-call worst case (contract §3 costCap, rev. 2 item 6): input upper bound at max(input, cache write at the DEAREST TTL)
  * + (max output + reasoning allowance) at the output price, on the dearest tier. Pico-USD, exact (no rounding needed).
+ *
+ * Note: the reasoning allowance is priced with the table's `reasoning` key, which equals the output price in the
+ * current tables.
+ *
+ * @param model - Matrix model.
+ * @param inputUpperBoundTokens - Worst-case input tokens.
+ * @param maxOutputTokens - Output ceiling in tokens.
+ * @param loaded - The loaded table and its SHA-256.
+ * @param reasoningAllowanceTokens - Extra reasoning tokens to reserve (default from {@link REASONING_ALLOWANCE_TOKENS}).
+ * @returns The cap, or `{ error }` when the model is not in the table or the input, output or reasoning price is null.
  */
 export function costCap(model: MatrixModel, inputUpperBoundTokens: bigint, maxOutputTokens: bigint, loaded: { table: PriceTableH2; sha256: string }, reasoningAllowanceTokens: bigint = REASONING_ALLOWANCE_TOKENS[model] ?? 0n): CostCapResult | { error: string } {
   const pm = loaded.table.models[model]; if (!pm) return { error: 'model not in table' };
@@ -143,7 +186,13 @@ export function costCap(model: MatrixModel, inputUpperBoundTokens: bigint, maxOu
     capBasis: { inputUpperBoundTokens: inputUpperBoundTokens.toString(), inputPriceUsedMicroPerMTok: best.p.toString(), inputPriceSource: best.k, maxOutputTokens: maxOutputTokens.toString(), outputPriceMicroPerMTok: pout.toString(), reasoningAllowanceTokens: reasoningAllowanceTokens.toString(), reasoningPriceMicroPerMTok: preas.toString(), tierId: tier.id } };
 }
 
-/** Contract §5 / rev. 2: table cost above the pre-call cap is a safety failure => global STOP. UNKNOWN cost cannot be checked (capCovered UNKNOWN, no stop here; the runner keeps it possiblyCharged). */
+/**
+ * Contract §5 / rev. 2: table cost above the pre-call cap is a safety failure => global STOP. UNKNOWN cost cannot be checked (capCovered UNKNOWN, no stop here; the runner keeps it possiblyCharged).
+ *
+ * @param cost - Computed cost.
+ * @param cap - Pre-call cap.
+ * @returns Whether the cap covered the cost, and `STOP_CAP_VIOLATION` when it did not.
+ */
 export function capCovered(cost: CostResult, cap: CostCapResult): { capCovered: boolean | 'UNKNOWN'; stop: 'STOP_CAP_VIOLATION' | null } {
   if (cost.picoUsd === null) return { capCovered: 'UNKNOWN', stop: null };
   const ok = BigInt(cost.picoUsd) <= BigInt(cap.picoUsd);

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # =============================================================================
 # OTK MPC Ceremony — Step 4: Verify Full Ceremony
+# Usage: bash scripts/ceremony/04_verify.sh   (no arguments; reads no environment variables)
+# Exit code: the number of failed checks (0 means the whole ceremony verified). Read-only except for the report.
 #
 # Verifies the complete chain of contributions:
 #   contribution_0000.zkey (initial)

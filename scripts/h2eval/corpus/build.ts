@@ -7,6 +7,17 @@
  * CAL-ANTH (`text_collision_report.json`) PARA a geração (exit 4): nada é ajustado. Nada aqui lê chave, rede ou relógio.
  * Saídas: s1_prompts.jsonl, dialogs.jsonl, manifest.json, seed_verification.json, text_collision_report.json,
  *         s1_operations.<modelo>.jsonl, content/<sha256> (ContentStore).
+ *
+ * In English: command-line entry point that freezes a new evaluation corpus (S1 prompts and multi-turn dialogs) into a
+ * new output folder. It refuses an existing folder (exit 1), a seed already used (exit 3, via `seedGuard` and the
+ * read-only git scan in `seedVerify`) and an exact text collision with earlier corpora (exit 4, via `collision` and
+ * `refCorpora`; only the two reports are written then). Token counts use `js-tiktoken` when it is installed; without it
+ * the manifest records `'UNKNOWN'`, never zero. Spawned by `freezeCorpus` in `scripts/h2eval/cli/freeze.ts`.
+ * It reads no keys, no network and no clock. Note: the SHA-256 of every generator source file (this folder plus
+ * `cache/dialogs.ts` and `cache/contentStore.ts`) is recorded in the manifest as provenance, so editing those files
+ * changes that list (not `corpusSha256`).
+ *
+ * @module scripts/h2eval/corpus/build
  */
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';

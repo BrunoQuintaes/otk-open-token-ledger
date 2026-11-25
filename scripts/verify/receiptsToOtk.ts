@@ -5,14 +5,38 @@
  *
  * O recibo v3 traz uma cotação de preço, não dinheiro confirmado: confirmedMoney fica null (nunca
  * um valor inventado) e a nota diz isso. A comparação de quantidades por categoria funciona normalmente.
+ *
+ * English summary: turns verified v3 receipts into the OTK side of a reconciliation. Only receipts the verifier
+ * counted (green or yellow) become records; red receipts, duplicates, other providers, other tenants and receipts
+ * outside the window are listed in `excluded` with a reason (in Portuguese). Confirmed money is always `null`
+ * because a receipt carries a price quote, not settled money. Used by `scripts/reconciliation/reconcile.ts`
+ * (`--otk-receipts`). Pure computation over the given bytes: no files, no network.
+ *
+ * @module scripts/verify/receiptsToOtk
  */
 import { quantitiesFromNormalizedUsage, type OtkLoadResult } from '../../src/reconciliation/otkSource.js';
 import type { OtkRecord, ReconProvider } from '../../src/reconciliation/types.js';
 import { toJsonValue } from '../../src/operations/codec.js';
 import { reportSha256, verifyBundleDetailed, type InputFile, type VerifyOptions } from '../../src/verifier/index.js';
 
+/**
+ * Reconciliation window: provider to keep, `start` (inclusive) and `end` (exclusive) as ISO 8601 UTC strings, and an
+ * optional tenant (null/undefined = every tenant).
+ */
 export interface ReceiptsWindow { provider: ReconProvider; start: string; end: string; tenantId?: string | null }
 
+/**
+ * Verifies the receipts and converts the counted ones into reconciliation records.
+ *
+ * A receipt's time is its usage `observedAt`, or its admission time when that is absent.
+ *
+ * @param input - Receipt files (as from `collectInputs` in `otk.ts`).
+ * @param keyRing - The operator's public keyring file.
+ * @param opts - Verifier options (fingerprint, since, until).
+ * @param w - Window, provider and tenant filter.
+ * @returns Records, exclusions with reasons, the verifier report's sha256 (also in `digests`), the number of red
+ *   receipts and a one-line description.
+ */
 export function loadOtkFromVerifiedReceipts(input: InputFile[], keyRing: InputFile, opts: VerifyOptions, w: ReceiptsWindow): OtkLoadResult & { verificationSha256: string; red: number } {
   const { report, receipts } = verifyBundleDetailed(input, keyRing, opts);
   const records: OtkRecord[] = [];

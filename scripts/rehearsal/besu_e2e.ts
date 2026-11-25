@@ -18,6 +18,13 @@
  * X16/X21 "succeeding" means the known defect is reproduced on Besu, not that anything is safe.
  *
  *   npx tsx scripts/rehearsal/besu_e2e.ts --out=<dir>
+ *
+ * Environment: `OTK_BESU_FUNDER_KEY_FILE` (required), `OTK_TEST_BESU_RPC` (default local test port), and with
+ * `--daemon-redis` also `OTK_TEST_REDIS_URL`. Sends real transactions to the local test chain (no paid provider).
+ * Writes one JSON result per run into `--out`. Exit: 0 every case matched; 1 at least one did not; 2 usage or
+ * setup error.
+ *
+ * @module scripts/rehearsal/besu_e2e
  */
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { createHash } from 'node:crypto';

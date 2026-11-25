@@ -18,6 +18,12 @@
  * Exit codes:
  *   0 — p99 target met (PASS)
  *   1 — p99 target exceeded (FAIL)
+ *
+ * Environment: OTK_LOAD_TEST_TOKEN (optional API token, sent only when set; its value is never printed).
+ * Side effects: it writes real receipts to the target server, so point it at a test stack only. Payloads
+ * are synthetic (random token counts, fake user ids).
+ *
+ * @module scripts/ops/load_test
  */
 
 // ─── Configuration ────────────────────────────────────────────────────────────
@@ -48,6 +54,10 @@ const buildPayload = (i) => JSON.stringify({
 /**
  * Send one request and return latency in milliseconds.
  * Returns null on network error (counted as error, not latency sample).
+ * (As written it never returns null: a network error gives `status: 0` and an `error` message.)
+ *
+ * @param index - Sequence number of the request, used in the request id and the synthetic user id.
+ * @returns `{ latencyMs, status }`, plus `error` when the request failed before a response.
  */
 async function sendRequest(index) {
   const url    = `${BASE_URL}${ENDPOINT}`;
@@ -72,6 +82,9 @@ async function sendRequest(index) {
 
 /**
  * Run a batch of CONCURRENCY requests concurrently.
+ *
+ * @param batchIndex - Zero-based batch number; request indexes are batchIndex * CONCURRENCY + i.
+ * @returns The results of {@link sendRequest} for the batch, in request order.
  */
 async function runBatch(batchIndex) {
   const promises = [];

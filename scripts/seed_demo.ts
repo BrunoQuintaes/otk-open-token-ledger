@@ -1,6 +1,14 @@
 /**
  * Demo Seed Script — popula o dashboard com dados realistas de AI usage
  * Uso: tsx scripts/seed_demo.ts
+ *
+ * English summary: fills a locally running OTK API (fixed base URL on local port 8787) with demo receipts for the
+ * last 7 days (fixed daily counts, three fake tenants, five provider/model profiles with random jitter). It first
+ * promotes the tenants and `default` to the PRO plan through the admin route, using the `OTK_ADMIN_KEY` variable
+ * (default: a public demo value). Writes only through the API; exits with code 1 when the server's health route
+ * does not answer. Demo data only: every token and tenant here is fake.
+ *
+ * @module scripts/seed_demo
  */
 
 const BASE = 'http://localhost:8787';

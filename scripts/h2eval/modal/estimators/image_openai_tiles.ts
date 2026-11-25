@@ -12,12 +12,25 @@
  *   "Floating-point rounding in billing can make the final count differ from the estimate by one token."
  * The page gives no worked example for gpt-4o-mini itself; the tests use the formula's own arithmetic plus the rule text.
  * Scope: one image, detail low/high/auto; "original" detail is not covered by the tile table => UNSUPPORTED.
+ *
+ * Called by `estimators/index.ts`; the table and resize rule are also used by `modal/contract_r2.ts`.
+ *
+ * @module scripts/h2eval/modal/estimators/image_openai_tiles
  */
 import type { ExAnteEstimate } from '../types.js';
 
+/** Base and per-tile image tokens by model, as published. */
 export const OPENAI_TILE_TABLE = Object.freeze({ 'gpt-4o-mini': { base: 2833n, tile: 5667n } });
+/** Citation stored with every estimate from this module. */
 export const OPENAI_IMAGE_CITATION = 'openai/images-vision.html sha256 25aa452d...: "gpt-4o-mini | 2833 | 5667"; low = base only; high/auto: fit 2048x2048 (no enlarging), shortest side > 768 -> 768 (other side rounded down), count 512px squares x tile tokens + base tokens; billing may differ by one token';
 
+/**
+ * Applies the published resize rule (fit in 2048×2048 without enlarging, then shortest side down to 768).
+ *
+ * @param width - Width in pixels.
+ * @param height - Height in pixels.
+ * @returns The resized width and height in pixels (rounded down).
+ */
 export function openAiResizedDims(width: number, height: number): { w: number; h: number } {
   let w = width; let h = height;
   if (w > 2048 || h > 2048) { const s = 2048 / Math.max(w, h); w = Math.floor(w * s); h = Math.floor(h * s); } // fit in the square, aspect kept, no enlarging
@@ -25,6 +38,13 @@ export function openAiResizedDims(width: number, height: number): { w: number; h
   return { w, h };
 }
 
+/**
+ * Estimates the image tokens of one image for gpt-4o-mini.
+ *
+ * @param args - Width and height in pixels (positive integers), detail level and model.
+ * @returns `ESTIMATED` (base tokens for `low`; base + tiles × tile tokens for `high`/`auto`), or
+ *   `UNSUPPORTED_FOR_ESTIMATION` for invalid dimensions or `original` detail.
+ */
 export function estimateOpenAiImageTokens(args: { width: number; height: number; detail: 'low' | 'high' | 'auto' | 'original'; model: 'gpt-4o-mini-2024-07-18' }): ExAnteEstimate {
   const t = OPENAI_TILE_TABLE['gpt-4o-mini'];
   const id = 'h2eval.image.openai_tiles.v0 (EXPERIMENTAL)';

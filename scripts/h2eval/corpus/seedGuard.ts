@@ -3,9 +3,17 @@
  * A lista fixa vem de SEED_VERIFICATION_R2.json (`seedsAlreadyUsedFound`, varredura só por leitura dos refs H1, CAL-ANTH-01/02,
  * integração H1+CAL, night01 e bot-realuse) mais as sementes lidas diretamente nos manifestos. Qualquer outra semente usada por rodada
  * que não esteja aqui entra em `extraForbidden` (arquivo `--forbidden-seeds`) e é re-verificada por `verifySeedUnused` (seedVerify.ts).
+ *
+ * In English: refuses a corpus seed that was already used by an earlier corpus (fixed list below plus an operator file
+ * given with `--forbidden-seeds`), so a new corpus never repeats old texts. Called by `corpus/build.ts`,
+ * `corpus/s1Corpus.ts` and `cache/dialogs.ts`. The git scan of other refs is in `seedVerify.ts`.
+ *
+ * @module scripts/h2eval/corpus/seedGuard
  */
+/** Default seed (the pre-registration date); a different seed may be passed with `--seed`. */
 export const DEFAULT_SEED = 20261110; // data do pré-registro (R09 R2 §1); é só o PADRÃO, o Bruno pode passar outra
 
+/** Seeds already used by earlier corpora, each with the reason (where it was found). */
 export const FORBIDDEN_SEEDS: Readonly<Record<number, string>> = Object.freeze({
   1103515245: 'SEED_VERIFICATION_R2: valor encontrado nos refs varridos (constante de gerador congruencial); tratado como usado',
   20260930: 'H1: CORPUS_SEED padrão de scripts/calibration/corpus.ts (corpus de desenvolvimento)',
@@ -18,12 +26,20 @@ export const FORBIDDEN_SEEDS: Readonly<Record<number, string>> = Object.freeze({
   211920641: 'CAL-ANTH-01: splitSeed (0x0ca1a701)',
 });
 
+/** Raised when a seed is not acceptable; `code` says why (not an integer, out of range, or already used). */
 export class SeedRejectedError extends Error {
   readonly code: 'SEED_NOT_INTEGER' | 'SEED_OUT_OF_RANGE' | 'SEED_ALREADY_USED';
   constructor(code: SeedRejectedError['code'], message: string) { super(message); this.name = 'SeedRejectedError'; this.code = code; }
 }
 
-/** Lança se a semente não for inteira em [1, 2^32-1] ou se já foi usada (lista fixa + `extraForbidden`). */
+/**
+ * Lança se a semente não for inteira em [1, 2^32-1] ou se já foi usada (lista fixa + `extraForbidden`).
+ *
+ * @param seed - Candidate seed.
+ * @param extraForbidden - More forbidden seeds (from the operator's `--forbidden-seeds` file).
+ * @returns The seed, typed as a number, when it is acceptable.
+ * @throws {SeedRejectedError} `SEED_NOT_INTEGER`, `SEED_OUT_OF_RANGE` (outside [1, 4294967295]) or `SEED_ALREADY_USED`.
+ */
 export function assertFreshSeed(seed: unknown, extraForbidden: readonly number[] = []): number {
   if (typeof seed !== 'number' || !Number.isInteger(seed)) throw new SeedRejectedError('SEED_NOT_INTEGER', 'a semente tem de ser um número inteiro');
   if (seed < 1 || seed > 0xffffffff) throw new SeedRejectedError('SEED_OUT_OF_RANGE', 'a semente tem de estar em [1, 4294967295]');

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Usage: bash scripts/ops/session_secret_scan.sh [file...]   (details below)
 # session_secret_scan.sh — detects HTTP session cookies in tracked files (RV2-03, fechamento pós-S5).
 # Prints ONLY "path:line" for each hit, never the matched content, so evidence files cannot re-expose
 # the secret. Exit 0 = no hit, 1 = hits.

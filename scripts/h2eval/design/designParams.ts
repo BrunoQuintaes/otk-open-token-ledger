@@ -7,6 +7,14 @@
  * combination is refused by `plan` with exit 3 (DESIGN_THINKING_UNDOCUMENTED) — never silently mapped to "the nearest thing".
  * R4_DESIGN_PARAMS.json (ECON-02, runs/B1/R4) is expected in this schema; until it exists, R3_2_DESIGN_PARAMS.json reproduces the
  * R3.2 constants (256 for every task; Haiku 5.5 adaptive effort low; Haiku 4.5 off; GPT-4o mini off; Gemini minimal).
+ *
+ * Where it sits: `scripts/h2eval/cli/plan.ts` loads the design file with {@link loadDesignParams} and uses
+ * {@link armOf}, {@link resolveArmDesign}, {@link armEnabled} and {@link thinkingParamsOf} to build each operation's
+ * parameters. Errors are {@link CliError}s carrying the CLI exit code (`EXIT.USAGE` 2, `EXIT.REFUSED_BY_POLICY` 3,
+ * `EXIT.PLAN_INVALID` 4). It reads only the design file given (default `R3_2_DESIGN_PARAMS.json` next to this module);
+ * no environment variables, no network.
+ *
+ * @module scripts/h2eval/design/designParams
  */
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -15,14 +23,22 @@ import type { MatrixModel } from '../modal/types.js';
 import type { ThinkingParams } from '../types.js';
 import { CliError, EXIT } from '../cli/common.js';
 
+/** Schema id every design file must declare. */
 export const DESIGN_PARAMS_SCHEMA = 'h2eval.design_params.v1';
 /** C157 §9.2 (pilots): Sonnet 5.5 and Opus 5.5 are OPTIONAL in a design file (files frozen before them remain valid byte for byte); declaring them is what lets `plan` emit operations for them. */
 /** C160 E3G3 (B2 of PROTO-GO): the arm models gemini-3.1-flash-lite and gpt-6-luna are OPTIONAL design models too: older design files stay valid byte for byte; when declared they are VALIDATED like any other model (support rows in thinkingSupport). */
 export type OptionalDesignModel = 'claude-sonnet-5-5' | 'claude-opus-5-5' | 'gemini-3.1-flash-lite' | 'gpt-6-luna';
+/** Models a design file may omit (see {@link OptionalDesignModel}). */
 export const OPTIONAL_DESIGN_MODELS: readonly OptionalDesignModel[] = Object.freeze(['claude-sonnet-5-5', 'claude-opus-5-5', 'gemini-3.1-flash-lite', 'gpt-6-luna']);
+/** Every model a design file can declare; the ones not in {@link OPTIONAL_DESIGN_MODELS} are required. */
 export const DESIGN_MODELS: readonly MatrixModel[] = Object.freeze(['gpt-4o-mini-2024-07-18', 'claude-haiku-4-5-20251001', 'claude-haiku-5-5', 'claude-sonnet-5-5', 'claude-opus-5-5', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gpt-6-luna']);
+/** Absolute path of the default design file, `R3_2_DESIGN_PARAMS.json` in this module's folder. */
 export const DEFAULT_DESIGN_PARAMS_FILE = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), 'R3_2_DESIGN_PARAMS.json');
 
+/**
+ * Reasoning ("thinking") policy of a model or arm: off, adaptive with an effort level, a manual budget in tokens
+ * (integer >= 1024 and below `maxTokens`), or a minimal thinking level.
+ */
 export type ThinkingPolicy =
   | { policy: 'OFF' }
   | { policy: 'ADAPTIVE'; effort: 'low' | 'medium' | 'high' }
@@ -33,30 +49,67 @@ export type ThinkingPolicy =
  * provider without that slack (OpenAI) a 1.5x tokenizer ratio can violate the cap (STOP_CAP_VIOLATION). The design file is where this is fixed. */
 /** VNEXT-F (R17-V-7): CONDITIONS — the same prompt is planned once per condition (distinct cellId ⇒ distinct operationId), in list order (block B1, B2, …); `probe` marks the FIRST operation of that condition as the P1 probe (R17-V-8). */
 export interface DesignCondition { conditionId: string; maxTokens: number; thinking: ThinkingPolicy; reasoningAllowanceTokens: number }
+/** The conditions of one model: which arms they apply to, the ordered list and the optional first-operation probe. */
 export interface DesignConditions { appliesToArms: Arm[]; list: DesignCondition[]; probe?: { conditionId: string; rule: 'P1' } }
 /** C153 (P4 option C): per-arm switch. `enabled: false` ⇒ `plan` emits NO operation of this arm for this model (S1 via armOf(structure, task); T4/T5 dialogues likewise) and records the exclusion in notPlanned / policy.design.disabledArms; default true. `reason` is free text copied into that record. Designs without the field produce byte-identical plans. */
 export interface ArmSwitch { enabled?: boolean; reason?: string }
+/**
+ * Design of one model: output ceiling `maxTokens` (tokens, 1..128000), thinking policy, `reasoningAllowanceTokens`
+ * (tokens reserved for reasoning by the cost cap, 0..128000; must be 0 when the policy is OFF), optional input bound,
+ * optional per-arm overrides and switches, and optional conditions.
+ */
 export interface ModelDesign { maxTokens: number; thinking: ThinkingPolicy; reasoningAllowanceTokens: number; inputBound?: { factor: number; extraTokens: number }; /** VNEXT-8: per-ARM overrides (R4: T1 summary, T2 code, T3 analysis, T4 S2 dialogue, T5 S3 dialogue) */ arms?: Partial<Record<Arm, Partial<Pick<ModelDesign, 'maxTokens' | 'thinking' | 'reasoningAllowanceTokens' | 'inputBound'>> & ArmSwitch>>; conditions?: DesignConditions }
 /** R4 arms mapped to corpus cells (R4_DESIGN_PARAMS.json armToCorpusCell): T1 = S1 summary (S and L); T2 = S1 code_gen|code_fix; T3 = S1 analysis; T4 = S2 dialogue (no cache); T5 = S3 dialogue (cache, D7 option A). */
 export type Arm = 'T1' | 'T2' | 'T3' | 'T4' | 'T5';
+/** All arms in order. */
 export const ARMS: readonly Arm[] = Object.freeze(['T1', 'T2', 'T3', 'T4', 'T5']);
+/**
+ * Maps an operation's structure and task to its arm.
+ *
+ * @param structure - `S1`, `S2` or `S3`.
+ * @param task - S1 task kind (ignored for S2/S3).
+ * @returns The arm (T1 summary, T2 code, T3 analysis, T4 S2 dialog, T5 S3 dialog).
+ * @throws {CliError} `DESIGN_ARM_UNKNOWN` (exit `PLAN_INVALID`) when no arm matches.
+ */
 export function armOf(structure: string, task: string): Arm {
   if (structure === 'S2') return 'T4'; if (structure === 'S3') return 'T5';
   if (task === 'summary') return 'T1'; if (task === 'code_gen' || task === 'code_fix') return 'T2'; if (task === 'analysis') return 'T3';
   throw new CliError(EXIT.PLAN_INVALID, 'DESIGN_ARM_UNKNOWN', `no arm for structure ${structure} / task ${task}`);
 }
-/** Effective design of one operation: the model's defaults overridden by its arm. */
+/**
+ * Effective design of one operation: the model's defaults overridden by its arm.
+ *
+ * @param md - The model's design (not mutated).
+ * @param arm - The operation's arm.
+ * @returns `maxTokens`, `thinking`, `reasoningAllowanceTokens` and `inputBound`, each from the arm when set there.
+ */
 export function resolveArmDesign(md: ModelDesign, arm: Arm): Required<Pick<ModelDesign, 'maxTokens' | 'thinking' | 'reasoningAllowanceTokens'>> & { inputBound?: ModelDesign['inputBound'] } {
   const o = md.arms?.[arm] ?? {};
   return { maxTokens: o.maxTokens ?? md.maxTokens, thinking: o.thinking ?? md.thinking, reasoningAllowanceTokens: o.reasoningAllowanceTokens ?? md.reasoningAllowanceTokens, inputBound: o.inputBound ?? md.inputBound };
 }
 /** C153: an arm is planned unless the design says `arms.<arm>.enabled: false`. */
+/**
+ * Tells whether an arm is planned for a model.
+ *
+ * @param md - The model's design.
+ * @param arm - Arm to check.
+ * @returns `false` only when the arm is explicitly disabled.
+ */
 export function armEnabled(md: ModelDesign, arm: Arm): boolean { return md.arms?.[arm]?.enabled !== false; }
+/** Content of a validated design file (`h2eval.design_params.v1`); `d7` fixes the cache option and eligible call positions. */
 export interface DesignParams { schema: typeof DESIGN_PARAMS_SCHEMA; designId: string; source: string; perModel: Record<Exclude<MatrixModel, OptionalDesignModel>, ModelDesign> & Partial<Record<OptionalDesignModel, ModelDesign>>; d7: { option: 'A'; eligibleCalls: number[] }; /** VNEXT-8 (R4 stops): integrity rules the executor enforces per response */ integrity?: { stopReasonRequired?: boolean; thinkingDisabledRejectedStops?: boolean }; /** VNEXT-8: expected operations per arm and split (R4 opsPerSplit), reported by `plan` against the corpus-derived counts (never silently reconciled) */ expectedOpsPerSplit?: Partial<Record<MatrixModel, Partial<Record<Arm, Partial<Record<'train' | 'comparative' | 'validation' | 'holdout', number>>>>>>; notes?: string[] }
+/** A loaded design: validated params, SHA-256 of the file bytes (folded into the protocol hash) and the file path. */
 export interface LoadedDesign { params: DesignParams; sha256: string; file: string }
 
 /** Documented support of each model × policy (the plan refuses anything not listed). Citations: R08 archive or runs/R17_REAL/H2_DIAG/docs. */
 export type SupportRow = { ok: true; basis: string; doc: string } | { ok: false; reason: string; doc: string };
+/**
+ * Looks up whether a model × thinking policy combination is documented.
+ *
+ * @param model - Design model.
+ * @param t - Requested policy.
+ * @returns A row with `ok: true` and the documented basis, or `ok: false` with the reason; both cite the archived page.
+ */
 export function thinkingSupport(model: MatrixModel, t: ThinkingPolicy): SupportRow {
   switch (model) {
     case 'gpt-4o-mini-2024-07-18':
@@ -86,7 +139,12 @@ export function thinkingSupport(model: MatrixModel, t: ThinkingPolicy): SupportR
   }
 }
 
-/** Plan-level `params.thinking` (contract rev. 2 item 4) derived from the policy. */
+/**
+ * Plan-level `params.thinking` (contract rev. 2 item 4) derived from the policy.
+ *
+ * @param t - Thinking policy.
+ * @returns `{mode: 'none'}`, `'adaptive'` with effort, `'manual'` with budget, or `'minimal'` with level.
+ */
 export function thinkingParamsOf(t: ThinkingPolicy): ThinkingParams {
   if (t.policy === 'OFF') return { mode: 'none' };
   if (t.policy === 'ADAPTIVE') return { mode: 'adaptive', effort: t.effort };
@@ -108,6 +166,15 @@ function validatePolicy(model: MatrixModel, d: ModelDesign): void {
   if (t.policy !== 'OFF' && model !== 'gpt-4o-mini-2024-07-18' && d.reasoningAllowanceTokens <= 0) throw new CliError(EXIT.PLAN_INVALID, 'DESIGN_PARAMS_INVALID', `${model}: a reasoning policy needs reasoningAllowanceTokens > 0 for the cap`);
 }
 
+/**
+ * Checks a parsed design file against the schema, the value ranges and the documented support matrix.
+ *
+ * @param p - Parsed JSON (not mutated).
+ * @returns The same object, typed as {@link DesignParams}.
+ * @throws {CliError} `DESIGN_PARAMS_SCHEMA` or `DESIGN_PARAMS_INVALID` (exit `PLAN_INVALID`) for a wrong schema, a missing
+ *   required model, an out-of-range value, bad conditions, arms or `d7`; `DESIGN_THINKING_UNDOCUMENTED` (exit
+ *   `REFUSED_BY_POLICY`) for an undocumented model × policy combination.
+ */
 export function validateDesignParams(p: unknown): DesignParams {
   const d = p as DesignParams;
   if (!d || typeof d !== 'object' || d.schema !== DESIGN_PARAMS_SCHEMA) throw new CliError(EXIT.PLAN_INVALID, 'DESIGN_PARAMS_SCHEMA', `expected ${DESIGN_PARAMS_SCHEMA}`);
@@ -147,6 +214,14 @@ export function validateDesignParams(p: unknown): DesignParams {
   return d;
 }
 
+/**
+ * Reads, parses and validates a design file.
+ *
+ * @param file - Path of the design file (default {@link DEFAULT_DESIGN_PARAMS_FILE}).
+ * @returns The validated params, the SHA-256 of the file bytes and the path.
+ * @throws {CliError} `DESIGN_PARAMS_MISSING` (exit `USAGE`) when the file does not exist; `DESIGN_PARAMS_INVALID` when
+ *   it is not JSON; any error of {@link validateDesignParams}.
+ */
 export function loadDesignParams(file: string = DEFAULT_DESIGN_PARAMS_FILE): LoadedDesign {
   if (!existsSync(file)) throw new CliError(EXIT.USAGE, 'DESIGN_PARAMS_MISSING', file);
   const buf = readFileSync(file);
@@ -163,6 +238,15 @@ export function loadDesignParams(file: string = DEFAULT_DESIGN_PARAMS_FILE): Loa
  * ECON-02 confirms the transcription (the v0 sha256 is recorded in `source`).
  */
 export interface R4DesignV0 { schema: 'h2eval.r4_design_params.v0'; label: string; models: Record<string, { provider: string; maxTokensDeclared?: Partial<Record<Arm, number>>; reasoningAllowanceInPlan?: number; opsPerSplit?: Record<string, Record<string, number | Record<string, number>>> }> }
+/**
+ * Converts the v0 proposal file into a candidate design (see the comment on {@link R4DesignV0}).
+ *
+ * @param v0 - Parsed v0 file (not mutated).
+ * @param o - `v0Sha256`: SHA-256 of the v0 file, recorded in `source`; `haiku55ArmThinking`: the per-arm Haiku 5.5
+ *   policy transcribed by hand; `inputBound`: optional input bound applied to the four base models.
+ * @returns A validated candidate design with `designId` `R4-candidate-from-v0`.
+ * @throws {CliError} `DESIGN_PARAMS_SCHEMA` when `v0.schema` is wrong; any error of {@link validateDesignParams}.
+ */
 export function convertR4DesignV0(v0: R4DesignV0, o: { v0Sha256: string; haiku55ArmThinking: Record<Arm, { thinking: ThinkingPolicy; reasoningAllowanceTokens: number }>; inputBound?: { factor: number; extraTokens: number } }): DesignParams {
   if (v0.schema !== 'h2eval.r4_design_params.v0') throw new CliError(EXIT.PLAN_INVALID, 'DESIGN_PARAMS_SCHEMA', 'expected h2eval.r4_design_params.v0');
   const armsMax = (m: string): Partial<Record<Arm, { maxTokens: number }>> => Object.fromEntries(Object.entries(v0.models[m]?.maxTokensDeclared ?? {}).map(([a, t]) => [a, { maxTokens: t as number }]));
@@ -188,6 +272,7 @@ export const R4_V0_HAIKU55_ARM_THINKING: Record<Arm, { thinking: ThinkingPolicy;
 });
 /** Vendored copy of the ECON-02 v0 file and the candidate produced from it (both committed; the test keeps them in sync). */
 export const R4_V0_VENDORED_FILE = path.resolve(path.dirname(DEFAULT_DESIGN_PARAMS_FILE), 'R4_DESIGN_PARAMS.v0.econ02.json');
+/** Path of the committed candidate design converted from {@link R4_V0_VENDORED_FILE}. */
 export const R4_CANDIDATE_FILE = path.resolve(path.dirname(DEFAULT_DESIGN_PARAMS_FILE), 'R4_DESIGN_PARAMS.candidate.json');
 /** R17 lesson (vnext_e2e): U/L0 1.45-1.58 ⇒ the input bound of the cap must cover a 1.6x tokenizer ratio on every provider. */
 export const R4_INPUT_BOUND = Object.freeze({ factor: 1.6, extraTokens: 64 });

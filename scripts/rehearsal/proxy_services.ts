@@ -13,6 +13,12 @@
  *       back), the receipt is NOT stored and the loss is counted (persistence_failed).
  *
  *   npx tsx scripts/rehearsal/proxy_services.ts --out=<dir>
+ *
+ * Environment: `OTK_TEST_PG_URL` and `OTK_TEST_REDIS_URL` (defaults point at the local test containers with
+ * test-only passwords). P3 runs `docker stop` / `docker start` on the PostgreSQL test container (also restarted if
+ * the script fails). Exit: 0 every check matched; 1 at least one did not; 2 usage or setup error.
+ *
+ * @module scripts/rehearsal/proxy_services
  */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';

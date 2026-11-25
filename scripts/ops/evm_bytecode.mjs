@@ -7,9 +7,16 @@
  * when the declared length fits and the first trailer byte is a CBOR map header (0xa0–0xbf); otherwise
  * the whole code is scanned, as before. Limitation: trailers of contracts embedded by `new X()` sit in
  * the middle of the creation code and are still scanned (conservative: can only over-report).
+ *
+ * @module scripts/ops/evm_bytecode
  */
 
-/** End offset (exclusive) of the executable part of `bytes`, excluding a well-formed metadata trailer. */
+/**
+ * End offset (exclusive) of the executable part of `bytes`, excluding a well-formed metadata trailer.
+ *
+ * @param bytes - Raw bytecode as a Node.js Buffer (read with `readUInt16BE`); not modified.
+ * @returns Byte offset; `bytes.length` when there is no well-formed trailer.
+ */
 export function executableEnd(bytes) {
   if (bytes.length < 2) return bytes.length;
   const metaLen = bytes.readUInt16BE(bytes.length - 2);
@@ -23,6 +30,9 @@ export function executableEnd(bytes) {
 /**
  * Offsets where 0x5f appears as an OPCODE in the executable part of `hex`.
  * PUSH1..PUSH32 operand bytes are skipped; the metadata trailer is not scanned.
+ *
+ * @param hex - Bytecode as a hex string, with or without `0x`; non-strings, empty and `0x` give `[]`.
+ * @returns Byte offsets of each PUSH0 opcode, in increasing order.
  */
 export function findPush0Opcodes(hex) {
   if (!hex || typeof hex !== 'string' || hex === '0x') return [];

@@ -35,7 +35,9 @@
  * Usage:
  *   npx tsx scripts/ops/defense_pack.ts [--no-zk]
  *
- * @module defense_pack
+ * It only writes the files listed above, under a new timestamped folder; exit code 1 on any uncaught error.
+ *
+ * @module scripts/ops/defense_pack
  * @since U12-defense
  */
 

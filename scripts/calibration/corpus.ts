@@ -6,25 +6,48 @@
  * almost identical texts). Families vary language, format and size, and include empty and
  * one-word texts for the small/zero cases. All text is generated here: no personal, banking or
  * third-party content.
+ *
+ * Used by the calibration scripts in this folder (offline experiment, profile builder, external run, counter
+ * benchmark), by the pilot runner `scripts/pilot/anthropic/runPilotV3.ts`, and by the calibration unit tests. The
+ * evaluation harness seed guard (`scripts/h2eval/corpus/seedGuard.ts`) lists {@link CORPUS_SEED} as a known seed.
+ * Pure functions: no files, no network, no environment variables.
+ *
+ * @module scripts/calibration/corpus
  */
 import { createHash } from 'node:crypto';
 
+/** Version tag of the corpus generator; part of the split hash, so changing it reshuffles every split. */
 export const CORPUS_VERSION = 'otk.calibration_corpus.synthetic.v1';
+/** Default seed of the committed corpus (v1). */
 export const CORPUS_SEED = 20260930;
 
+/** Text family of a corpus document (language and format kind). */
 export type Family = 'pt_prose' | 'en_prose' | 'code_ts' | 'json' | 'markdown_table' | 'mixed_unicode' | 'numeric' | 'tiny';
 
+/** One synthetic calibration document. */
 export interface CorpusDoc {
+  /** Unique id, `<group>-v<variant>`. */
   id: string;
+  /** Group id, `<family>-<NNN>`: a base text and its near-duplicate variants; splits are made per group. */
   group: string;
+  /** 0 for the base text, 1.. for near-duplicate variants. */
   variant: number;
   family: Family;
+  /** Main language of the text; `'none'` for numbers only. */
   lang: 'pt' | 'en' | 'mixed' | 'none';
   format: 'prose' | 'code' | 'json' | 'markdown' | 'numbers' | 'short';
+  /** Size class by length in UTF-16 code units: zero = 0, xs < 64, s < 512, m < 2048, l otherwise. */
   sizeBucket: 'zero' | 'xs' | 's' | 'm' | 'l';
+  /** The document text (may be empty). */
   text: string;
 }
 
+/**
+ * Creates the Mulberry32 pseudo-random generator: small, fast and deterministic for a given seed (not secure).
+ *
+ * @param seed - Any number; only its low 32 bits are used.
+ * @returns A function that returns the next value in [0, 1) on each call.
+ */
 export function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
@@ -111,7 +134,14 @@ function bucket(len: number): CorpusDoc['sizeBucket'] {
   return 'l';
 }
 
-/** Small edit that keeps the text recognisably the same document (near-duplicate). */
+/**
+ * Small edit that keeps the text recognisably the same document (near-duplicate).
+ *
+ * @param r - Random generator (advanced by this call).
+ * @param text - Base text.
+ * @param v - Variant number (1..); selects which edit is applied.
+ * @returns The edited text.
+ */
 function variantOf(r: () => number, text: string, v: number): string {
   if (text.length === 0) return v === 1 ? ' ' : '\n';
   const ops = [
@@ -134,7 +164,15 @@ const FAMILY_SPECS: Array<{ family: Family; lang: CorpusDoc['lang']; format: Cor
   { family: 'tiny', lang: 'mixed', format: 'short', make: (r) => pick(r, ['', 'ok', 'Sim.', 'hello', '?', '42', 'obrigado!', 'a b']) },
 ];
 
-/** Generates the corpus: groupsPerFamily groups × (1 base + variantsPerGroup variants). */
+/**
+ * Generates the corpus: groupsPerFamily groups × (1 base + variantsPerGroup variants).
+ *
+ * Deterministic: the same options always give the same documents in the same order (families in a fixed order).
+ *
+ * @param opts - `seed` (default {@link CORPUS_SEED}), `groupsPerFamily` (default 15) and `variantsPerGroup`
+ *   (default 2).
+ * @returns 8 families × groupsPerFamily × (1 + variantsPerGroup) documents.
+ */
 export function generateCorpus(opts: { seed?: number; groupsPerFamily?: number; variantsPerGroup?: number } = {}): CorpusDoc[] {
   const r = mulberry32(opts.seed ?? CORPUS_SEED);
   const groups = opts.groupsPerFamily ?? 15;
@@ -153,15 +191,32 @@ export function generateCorpus(opts: { seed?: number; groupsPerFamily?: number; 
   return docs;
 }
 
+/**
+ * Serializes documents as JSON Lines (one JSON object per line, LF endings, trailing newline).
+ *
+ * @param docs - Documents in the order to write.
+ * @returns The JSONL text; its sha256 is the corpus digest.
+ */
 export function corpusToJsonl(docs: CorpusDoc[]): string {
   return docs.map((d) => JSON.stringify(d)).join('\n') + '\n';
 }
 
+/**
+ * Hashes a string as UTF-8 with SHA-256.
+ *
+ * @param text - Text to hash.
+ * @returns Lowercase hex digest (64 characters).
+ */
 export function sha256(text: string): string {
   return createHash('sha256').update(text, 'utf8').digest('hex');
 }
 
-/** Split by group: sha256(`${CORPUS_VERSION}:${group}`) mod 100 → <60 train, <80 validation, else test. */
+/**
+ * Split by group: sha256(`${CORPUS_VERSION}:${group}`) mod 100 → <60 train, <80 validation, else test.
+ *
+ * @param group - Group id of the document (all variants of a group land in the same split).
+ * @returns The split name; roughly 60 / 20 / 20 % of groups.
+ */
 export function splitOf(group: string): 'train' | 'validation' | 'test' {
   const h = parseInt(sha256(`${CORPUS_VERSION}:${group}`).slice(0, 8), 16) % 100;
   return h < 60 ? 'train' : h < 80 ? 'validation' : 'test';

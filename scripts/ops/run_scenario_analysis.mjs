@@ -10,7 +10,12 @@
  *
  * Defaults: 10000 users, $5000 fixed cost/month, R$ 5.80/USD, 40% markup
  *
+ * Prices in the table below are USD per 1,000 tokens (input / output) and are a static copy, not read from
+ * src/pricing; a month is 30 days. A missing, zero or non-numeric argument falls back to its default.
+ * It only prints to stdout and writes no file.
+ *
  * @since U3.5
+ * @module scripts/ops/run_scenario_analysis
  */
 
 const users        = Number(process.argv[2]) || 10_000;

@@ -2,6 +2,14 @@
  * H2-EVAL / R13 — manifesto do corpus novo (`otk.h2eval_corpus.v1`): hash de cada prompt, de cada diálogo e do corpus inteiro,
  * gravado ANTES de qualquer chamada (R09 §1). A semente é parâmetro (escolha do Bruno, D-3). Função pura: o que vem de fora
  * (contadores de tokens, hash do código) entra por parâmetro, para o `corpusSha256` depender só do conteúdo.
+ *
+ * In English: builds the whole corpus (S1 prompts via `s1Corpus.ts`, dialogs via `cache/dialogs.ts`) and its manifest:
+ * a hash per prompt and per dialog and one `corpusSha256` for the corpus, recorded before any provider call. Pure
+ * function: token counters, generator file hashes, the seed scan and the collision report come in as parameters and
+ * appear in the manifest, but `corpusSha256` depends only on the version, seed, parameters, content and designs.
+ * Called by `corpus/build.ts` and by tests.
+ *
+ * @module scripts/h2eval/corpus/manifest
  */
 import { auditNonceTokens, buildDialogs, contentOf, type Dialog, type DialogOptions } from '../cache/dialogs.js';
 import { contentOfS1 } from '../cache/contentStore.js';
@@ -17,6 +25,13 @@ import type { Arm } from '../cache/dialogs.js';
 /** C154 (R5): composicao explicita do corpus. Presente => entra em params (logo no corpusSha256); ausente => params e bytes identicos aos de antes. */
 export interface SplitPlan { cells?: Readonly<Record<string, SplitCounts>>; dialogs?: Readonly<Partial<Record<Arm, SplitCounts>>>; pilotGroupsPerCell?: number }
 /** C154: um split plan e aceito so com celulas conhecidas, bracos de dialogo conhecidos e contagens inteiras >= 0. */
+/**
+ * Validates an explicit split plan (how many groups or dialogs go to train, validation and holdout).
+ *
+ * @param sp - The plan to check (not mutated).
+ * @throws {RangeError} When a cell id is not in `CELL_IDS`, a dialog arm is not `S2_NOHIT`/`S3_HITATTEMPT`, a
+ *   `train`/`validation`/`holdout` count is not an integer >= 0, or `pilotGroupsPerCell` is not an integer >= 1.
+ */
 export function validateSplitPlan(sp: SplitPlan): void {
   const okCounts = (c: unknown, where: string) => { const x = c as Record<string, unknown>; for (const k of ['train', 'validation', 'holdout']) if (!x || !Number.isInteger(x[k]) || (x[k] as number) < 0) throw new RangeError(`split plan: ${where}.${k} tem de ser inteiro >= 0`); };
   if (sp.cells) for (const [cell, c] of Object.entries(sp.cells)) { if (!CELL_IDS.includes(cell)) throw new RangeError(`split plan: celula desconhecida ${cell}`); okCounts(c, cell); }
@@ -24,14 +39,18 @@ export function validateSplitPlan(sp: SplitPlan): void {
   if (sp.pilotGroupsPerCell !== undefined && (!Number.isInteger(sp.pilotGroupsPerCell) || sp.pilotGroupsPerCell < 1)) throw new RangeError('split plan: pilotGroupsPerCell');
 }
 
+/** Local token counter for one tokenizer encoding: text in, token count out (an estimate, not the provider's count). */
 export type Counter = (text: string) => number;
+/** Optional local counters by encoding name; a missing counter makes the manifest record `'UNKNOWN'`, never zero. */
 export interface Counters { o200k_base?: Counter; cl100k_base?: Counter }
 
+/** Result of `buildCorpus`: the generated content, its JSONL serialisations and the manifest. */
 export interface CorpusBuild {
   s1: ReturnType<typeof buildS1>; dialogs: Dialog[];
   s1Jsonl: string; dialogsJsonl: string; manifest: Record<string, unknown>;
 }
 
+/** Parameters of the corpus; every value that changes content also enters `params` and therefore `corpusSha256`. */
 export interface BuildOptions extends Pick<S1Options, 'groupsPerCell' | 'variantsPerGroup' | 'repeatsPerCell' | 'pilotCells'>, Pick<DialogOptions, 's2Dialogs' | 's3Dialogs' | 'pilotS2' | 'pilotS3' | 'prefixChars'> {
   seed: number; extraForbiddenSeeds?: readonly number[]; /** C154 (R5) */ splitPlan?: SplitPlan;
   /** desenho do S1 por modelo (padrão: Haiku 4.5 na opção B recomendada pelo R07 R2; os demais completos) */
@@ -40,6 +59,16 @@ export interface BuildOptions extends Pick<S1Options, 'groupsPerCell' | 'variant
 
 const est = (c: Counter | undefined, t: string): number | 'UNKNOWN' => (c ? c(t) : 'UNKNOWN');
 
+/**
+ * Generates the S1 prompts and the dialogs for a seed and builds the corpus manifest.
+ *
+ * @param o - Corpus parameters (seed, sizes, optional split plan and designs).
+ * @param ctx - Outside facts recorded in the manifest only: token counters, generator file hashes, tokenizer version,
+ *   seed scan result and collision report. Missing values are recorded as `'UNKNOWN'` / `NOT_SCANNED` / `NOT_COMPARED`.
+ * @returns The content, the JSONL texts and the manifest (no file is written here).
+ * @throws {RangeError} When `o.splitPlan` is invalid (see {@link validateSplitPlan}), or errors from the S1 and dialog
+ *   generators for invalid sizes or forbidden seeds.
+ */
 export function buildCorpus(o: BuildOptions, ctx: { counters?: Counters; generatorFiles?: Array<{ path: string; sha256: string }>; tokenizerVersion?: string | null; seedVerification?: SeedVerification | null; collision?: CollisionReport | null } = {}): CorpusBuild {
   const sp = o.splitPlan; if (sp !== undefined) validateSplitPlan(sp);
   const s1 = buildS1({ seed: o.seed, groupsPerCell: o.groupsPerCell, variantsPerGroup: o.variantsPerGroup, repeatsPerCell: o.repeatsPerCell, pilotCells: o.pilotCells, extraForbiddenSeeds: o.extraForbiddenSeeds, ...(sp?.cells ? { splitPlanCells: sp.cells } : {}), ...(sp?.pilotGroupsPerCell !== undefined ? { pilotGroupsPerCell: sp.pilotGroupsPerCell } : {}) });
