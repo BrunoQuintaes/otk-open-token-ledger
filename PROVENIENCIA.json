@@ -19,7 +19,7 @@
   ]
  },
  "totalArquivos": 3259,
- "totalBytes": 68777792,
+ "totalBytes": 68798369,
  "porOrigem": {
   "H1 7606bc9b (= b0ec6f24)": 1052,
   "b0ec6f24 com mudança": 17,
@@ -95,14 +95,14 @@
   },
   {
    "arquivo": "README.en.md",
-   "bytes": 86998,
-   "sha256": "f1a537217477d942b7d8d15530a4c9e0b41649e13e481ef3d4aeea91dbcfb493",
+   "bytes": 97419,
+   "sha256": "59edca37563735e7f2ac0fc1e5b8aadd94e5d3a99547988506ff69ef7e625bd2",
    "origem": "novo (README bilíngue e imagens, 25/11/2026)"
   },
   {
    "arquivo": "README.md",
-   "bytes": 85377,
-   "sha256": "a1b759b135e9290fbb4ab5b4b5a8109c71fee49b14b618eda79017fd3e98c6a9",
+   "bytes": 95533,
+   "sha256": "601bacc898f093c3e17b116a864edd34f7f547cdc4f84bda6bf6804881d2f6a5",
    "origem": "novo (REPO_PUBLICO, C160)",
    "mudanca": "substitui o README.md do repositório interno"
   },

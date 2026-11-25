@@ -35,7 +35,7 @@ Os detalhes de cada passo, o que deve aparecer e o que fazer se der erro estão 
 | Você quer… | Leia |
 |---|---|
 | só conferir os números da dissertação | o caminho rápido acima (detalhes nas seções 1 a 6) |
-| rodar os testes automáticos | seção 7 |
+| rodar os testes automáticos | seção 7 (são opcionais; o começo da seção diz em que eles diferem da seção 6) |
 | conferir um recibo | seção 8 |
 | ver o OTK funcionando, sem chave | seção 9.2 (precisa do Docker) |
 | saber o que o OTK prova e o que não prova | o resumo abaixo e a seção 11 |
@@ -306,6 +306,8 @@ To address all issues (including breaking changes), run:
 Run `npm audit` for details.
 ```
 
+Nessa saída, *added 187 packages* diz quantas bibliotecas foram instaladas, *looking for funding* só avisa que alguns autores aceitam doações, e *vulnerabilities* conta os avisos de segurança conhecidos dessas bibliotecas, separados por gravidade.
+
 O tempo, o número de *vulnerabilities* e, no Mac, o número de pacotes podem ser outros, pois o npm consulta uma lista de avisos que muda com o tempo e alguns pacotes são só de um sistema, e por isso o que importa é não aparecer `npm error`.
 
 As linhas finais, que mandam rodar `npm audit fix` ou `npm audit fix --force` (e as linhas `npm warn deprecated ...`, que podem aparecer), são avisos sobre as bibliotecas da versão avaliada e **não** são erro. Ainda assim, **não rode nenhum dos dois**, pois eles trocam as versões das bibliotecas, e com isso deixa de rodar exatamente a versão avaliada.
@@ -356,6 +358,32 @@ TUDO OK: 13 de 13 itens. Detalhes em saida-reproducao\...\RESULTADO_REPRODUCAO.j
 
 Na linha do registro gravado antes do envio, o *1720 de 1720* conta os envios que têm esse registro prévio, e em 1.505 deles o registro já traz a contagem do OTK. Nos 215 do gpt-6-luna, porém, o registro diz que o OTK não sabe contar esse modelo, pois o contador da versão avaliada não conhece a família gpt-6, e por conta disso a contagem desse modelo foi refeita depois da coleta, por fora deste comando.
 
+#### Como ler a saída, linha por linha
+
+Antes dos 13 itens, o npm escreve duas linhas iniciadas por `>`, em que a primeira traz o nome e a versão do pacote (`otk-zk-metering@0.1.0`) junto do atalho rodado, e a segunda, o comando chamado por esse atalho, com a trava de rede (`sem_rede.mjs`) carregada antes do programa. Além disso, a linha *Reprodução sem rede* informa em qual subpasta de `saida-reproducao` ficam os arquivos desta rodada, identificada pela data e pela hora.
+
+Em seguida vêm os 13 itens, de cima para baixo, cada um com a parte (A a D), o que foi conferido e, depois do travessão, o detalhe (um sha256, uma contagem ou a lista de etapas):
+
+| Linha da saída | O que o comando conferiu | O que o OK quer dizer | Onde aparece na dissertação | Se aparecer FALHOU |
+|---|---|---|---|---|
+| `OK      A. ZIP do pacote da banca...` | o sha256 do arquivo `reproducao/otk-banca-pack-20261111.zip` | o pacote da coleta de 7 de outubro é, byte a byte, o mesmo que foi auditado | Apêndice C, quadro dos itens conferidos pelo comando (parte A) | o ZIP mudou ou veio incompleto; baixe de novo (seção 4) |
+| `OK      A. Pacote: hashes, sanitização, H1 de 7/10...` | as cinco etapas do pacote, marcadas com ✓: a lista `SHA256SUMS` confere cada arquivo; o scanner não acha caminho pessoal, e-mail, telefone nem outro dado sensível; o controle negativo exige que o scanner ache exemplos falsos plantados de propósito; a coleta de 7 de outubro (H1) é refeita, com 30 de 30 arquivos idênticos; e o recálculo CAL-ANTH acerta 19 de 20 números | os números da H1 e do primeiro experimento da Anthropic saem dos dados do pacote | Apêndice C, mesmo quadro, e a nota que explica o 20º número | a etapa com ✗ é a que falhou; o detalhe está em `A_pacote_banca.log.txt` |
+| `OK      B. Tabela dos 8 modelos (CMP8): .tex...` | refaz a tabela dos 8 modelos a partir de `reproducao/cmp8/dados` e compara o arquivo `.tex` com o guardado | a tabela sai dos dados publicados, letra por letra | Apêndice D, tabela dos tokens de entrada declarados por modelo e tipo de texto | o detalhe está em `B_tabela_cmp8.log.txt`; use a seção 13 |
+| `OK      B. Tabela dos 8 modelos (CMP8): JSON...` | os números da mesma tabela, no arquivo JSON, fora a data de geração e os caminhos | os números batem com os auditados | Apêndice D, a mesma tabela | idem |
+| `OK      C. Estimado × declarado: as 1.720 linhas...` | recalcula, texto a texto e modelo a modelo, a contagem do OTK e o número declarado | as 1.720 linhas (215 textos × 8 modelos) são as auditadas | Apêndice C, quadro dos itens (parte C) | o detalhe está em `C_estimado.log.txt` |
+| `OK      C. Estimado × declarado: .tex...` | a primeira versão da tabela *estimado × declarado* | a tabela sai dessas linhas, letra por letra | Capítulo 4, tabela por modelo da coleta de 23 de novembro, nas partes ditas em *Onde comparar* | idem |
+| `OK      C. Estimado × declarado: JSON...` | os números da mesma tabela, fora a data e os caminhos | os números batem com os auditados | Capítulo 4, a mesma tabela | idem |
+| `OK      C. Registro da contagem gravado ANTES...` | a corrente do *journal* e quantos envios têm o registro gravado antes | 1720 de 1720 envios têm o registro prévio, e 1505 deles trazem a contagem do OTK | Capítulo 4, texto da coleta de 23 de novembro, e Apêndice C | o detalhe está em `C_prova_previsao_antes.log.txt` |
+| `OK      D. Verificador: os recibos de exemplo no disco...` | regenera os 19 arquivos de exemplo e compara com os do disco | os exemplos do verificador são os que o código gera | Apêndice C, quadro dos itens (parte D) | o detalhe está em `D_vetores_check.log.txt` |
+| `OK      D. Verificador: relatório ... com a impressão digital...` | roda o verificador nos exemplos com a impressão digital e compara o sha256 do relatório e o código de saída | o verificador dá exatamente o veredito esperado; o código 20 quer dizer que há vermelho, o que nos exemplos é o certo | Apêndice C, mesmo quadro | o detalhe está em `D_verify_comImpressaoDigital.log.txt` |
+| `OK      D. Verificador: relatório ... sem a impressão digital...` | o mesmo, sem a impressão digital | idem, com os vereditos de quem não confirmou o chaveiro | Apêndice C, mesmo quadro | o detalhe está em `D_verify_semImpressaoDigital.log.txt` |
+| `OK      D. Chaveiro do operador...` | o sha256 de `chaveiro/chaveiro_operador_otk.json` | é o chaveiro cuja impressão digital está publicada | Apêndice E, seção do chaveiro e da impressão digital | o fim de linha foi convertido ao baixar; baixe de novo (seção 4) |
+| `OK      D. Página do verificador...` | o sha256 de `web/verificador/verificador-otk.html` | é a página registrada | Apêndice C, mesmo quadro | idem |
+
+A última linha soma os itens com OK, e caso algum tenha falhado, ela começa por `ALGO FALHOU`, com o total abaixo de 13. Além disso, o caminho escrito depois de *Detalhes em* é o do arquivo `RESULTADO_REPRODUCAO.json` desta rodada.
+
+A pasta `saida-reproducao`, dentro de `C:\otk`, ganha uma subpasta por rodada, com a data e a hora no nome. Nela ficam um arquivo `.log.txt` por etapa, com o comando rodado e tudo o que ele escreveu, as tabelas refeitas (nas pastas `A_pacote_banca`, `B_tabela_cmp8` e `C_estimado`) e o `RESULTADO_REPRODUCAO.json`, que repete os 13 itens, cada um com a parte, o nome, se deu OK e o detalhe. Para abrir qualquer um deles, dê dois cliques no arquivo no Explorador de Arquivos, e caso o Windows pergunte com que programa, escolha o Bloco de Notas.
+
 **O que cada parte refaz:**
 
 | Parte | O que é na dissertação | De onde vêm os dados |
@@ -381,6 +409,10 @@ Esses arquivos foram gravados durante o trabalho e por isso ainda guardam rótul
 
 ## 7. Rodar os testes automáticos
 
+Para quem só quer conferir os números da dissertação, os testes desta seção são **opcionais**, pois esse é o papel da seção 6. Ainda assim, as duas seções conferem coisas diferentes, já que a seção 6 confere os **resultados**, em 13 conferências mostrando que as tabelas saem dos dados publicados, enquanto esta seção confere o **programa**, peça por peça, em 3.587 testes.
+
+Por exemplo, há testes de que o contador de tokens dá a mesma contagem com o texto inteiro ou cortado em pedaços (`test/unit/d1d8_b_counter.test.ts`), de que um recibo alterado sai vermelho no verificador (`test/verifier/verificador.test.ts`) e de que um pedido de várias respostas numa só chamada é recusado antes de sair (`test/services/d1d8_c_review_fixes.test.ts`). Além disso, os testes cobrem casos que as coletas nunca testaram, como adulteração, erros do provedor e falta de rede, e por isso uma queda da conexão com o provedor deixa a operação como incerta, sem reenviá-la (`test/services/d1d8_c_proxy_durable.test.ts`).
+
 A bateria tem cerca de 3.600 testes automáticos, que também rodam **sem internet**.
 
 #### Para rodar os testes
@@ -404,6 +436,12 @@ Resultado: 3587 testes — 3579 passaram, 0 falharam, 0 cancelados, 5 pulados, 3
 ```
 
 seguido da lista dos testes deixados de fora de propósito e de `TESTES OK`. O total de testes pode ser um pouco diferente no seu computador, e o que importa é `0 falharam` e a última linha `TESTES OK`.
+
+#### Como ler a saída
+
+A linha *Resultado* soma os 3587 testes executados e os divide em cinco grupos, em que os *passaram* (3579) deram certo e os *falharam* (0) deram errado, sendo esse o único número obrigatoriamente zero, já os *cancelados* (0) pararam no meio, por exemplo por tempo esgotado. Além disso, os *pulados* (5) e os marcados como `todo` (3) estão explicados logo abaixo, e somados, 3579 + 0 + 0 + 5 + 3 dão exatamente os 3587.
+
+Depois da linha *Resultado*, o comando lista os testes deixados de fora, cada um com o motivo, e termina em `TESTES OK` quando nada falhou, ou em `HOUVE FALHA` quando algum teste falhou. Nesse caso, o detalhe de cada falha fica nas linhas que começam com `✖`, no fim da tela ou no arquivo `testes-banca-saida.txt`, dentro de `C:\otk`.
 
 - Os **pulados (5)** renderizam a configuração de produção com o Helm e precisam da imagem Docker `alpine/helm:3.16.4` já baixada, o que este comando não faz, e por isso o próprio teste se pula e avisa `alpine/helm:3.16.4 not present locally`, sem que esse aviso seja defeito. Num computador sem o Docker, outros 6 testes (de `docker compose`) também se pulam, com o aviso `docker CLI not available`, e o total de pulados passa a 11. Já os grupos que avisam `SKIPPED — set OTK_TEST_PG_URL`, que precisam de um PostgreSQL de teste ligado, também ficam de fora, mas o Node não os soma nos pulados.
 - Os **todo (3)** são testes marcados como *a decidir* desde a versão avaliada (na dissertação, os *3 pendentes*), que são decisões de produto em aberto, e não defeitos, e aparecem com `⚠` na saída completa.
@@ -477,7 +515,17 @@ Resultado: [FALHOU] (código de saída 20)
 sha256 do relatório JSON: bbcfeed1d0cfb3beb9685eb8157331ca3bd21d8186985f22676a0a18e5d19f01
 ```
 
-O *FALHOU* aqui está certo, pois o conjunto de exemplo tem recibos adulterados de propósito. A linha *Itens* é a mesma conta dos cartões da página, já a linha seguinte, *Recibos* (8, 9 e 31), conta só os recibos, e o sha256 do relatório é o mesmo que a página mostra para os mesmos arquivos. Logo depois, o npm ainda pode escrever linhas `npm error ... code 20` ou `command failed`, que são só o npm repetindo que o verificador terminou com o código 20 (há vermelho), e por isso não são um defeito.
+#### Como ler a saída
+
+A saída começa com as duas linhas `>` do npm e, logo depois, com a linha *Chaveiro*, que diz se a impressão digital colada confere com o chaveiro carregado.
+
+Em seguida vem um bloco por recibo, na ordem dos arquivos, e a primeira linha de cada bloco traz o veredito entre colchetes (`[OK]`, `[ATENÇÃO]` ou `[FALHOU]`), a operação, o arquivo e a linha de origem do recibo (por exemplo `recibos/b_alterados.jsonl:1`) e o motivo em português. Já as linhas abaixo dela, quando existem, começam por *Significa*, com a explicação desse veredito, ou por `+`, com uma checagem adicional do mesmo recibo.
+
+O *Resumo* traz a linha *Itens*, com a mesma conta dos cartões da página, e a linha *Recibos*, contando cada recibo uma vez só, e por conta disso os números dela são menores. Depois aparecem os tokens e a CU somados, apenas dos recibos com assinatura conferida, separados por mês e por modelo. Além disso, *Vermelhos (fora das somas)* lista os recibos excluídos desses totais, e *O que isto NÃO garante* repete, em sete linhas, as limitações do verificador (seção 11).
+
+Por último, *Resultado: [FALHOU] (código de saída 20)* é o veredito do conjunto, em que o código 0 quer dizer tudo verde, o 10 que há amarelo e o 20 que há vermelho, e o *sha256 do relatório JSON* é o resumo do relatório completo.
+
+O *FALHOU* aqui está certo, pois o conjunto de exemplo tem recibos adulterados de propósito, e um verificador que desse OK neles estaria errado. A linha *Itens* é a mesma conta dos cartões da página, já a linha seguinte, *Recibos* (8, 9 e 31), conta só os recibos, e o sha256 do relatório é o mesmo que a página mostra para os mesmos arquivos. Logo depois, o npm ainda pode escrever linhas `npm error ... code 20` ou `command failed`, que são só o npm repetindo que o verificador terminou com o código 20 (há vermelho), e por isso não são um defeito.
 
 ### 8.3 O chaveiro do operador citado na dissertação
 
@@ -575,9 +623,13 @@ DEU CERTO: o recibo está íntegro e assinado pela chave desta instalação ([OK
 
 Essa saída se lê assim:
 
+- Nos passos [1] a [4], cada passo é confirmado por *PostgreSQL pronto*, pelos endereços do provedor sintético e do proxy em `127.0.0.1` (o próprio computador) e por *resposta HTTP 200*, quando a chamada volta sem erro.
+- No passo [5], o **modelo pedido / devolvido** traz o nome que o programa pediu (`gpt-4o-mini`) e o nome com data que o provedor devolveu, e a **régua** `o200k_base (exata)` é a que o OTK usou para contar (seção 12.1).
 - No **uso declarado 20 e contagem própria 9**, o provedor sintético declara sempre 20 tokens de entrada, qualquer que seja o texto, enquanto a contagem do OTK (9) é a do texto de verdade. A diferença (11) fica dentro do limite de alerta (16 tokens), e por isso a comparação dá `within_threshold`, já com o provedor real o gpt-4o-mini declara 7 tokens a mais do que o OTK conta, que são o envelope da mensagem (ver 12.1).
 - Na **CU**, a versão avaliada usa **pesos de teste**, já que a escolha dos pesos definitivos ficou em aberto na dissertação, que chama essa de *CU antiga*, e a CU com os pesos-base do Capítulo 3 não é a que aparece neste recibo.
 - No **verificador**, o recibo é **[OK] na assinatura**, e o **amarelo** vem só do aviso *Perfil de desenvolvimento*, em que *perfil* é o conjunto de pesos da CU, e não a correção da contagem da seção 12, e por isso o `Resultado: [ATENÇÃO] (código de saída 10)` não é um erro.
+- O **custo** é calculado pela tabela pública de preços do gpt-4o-mini e aqui é fictício, pois nada foi cobrado, e a linha *recibo completo salvo em* diz onde ficou o recibo.
+- No passo [6], a linha *chaveiro* traz o arquivo do chaveiro desta instalação e a impressão digital dele, que muda a cada vez, e as linhas seguintes são os vereditos do verificador sobre o recibo.
 
 Os arquivos da demonstração ficam em `C:\otk\demo-saida\<data-hora>`, que guarda o recibo (`recibos\recibo_....json`), `chaveiro_desta_instalacao.json`, `operacao.json`, `verificacao.txt` e `RESUMO_DEMO.json`.
 
@@ -622,6 +674,8 @@ Esse comando desliga o PostgreSQL de teste e apaga a caixa e os dados dele, que 
 ![Saída do comando que desliga e apaga o PostgreSQL de teste](docs/imagens/09b_desligar_postgres.png)
 
 *Saída real do comando, com o PostgreSQL de teste parado e removido.*
+
+Nessa saída, cada linha diz o que foi parado ou removido, que são o contêiner do banco (*Container*), o volume com os dados (*Volume*) e a rede interna da demonstração (*Network*).
 
 Ou, no Docker Desktop, em **Containers**, apague o grupo `otk-banca-demo`.
 

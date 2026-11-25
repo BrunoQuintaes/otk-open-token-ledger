@@ -37,7 +37,7 @@ The details of each step, what you should see and what to do if there is an erro
 | You want to… | Read |
 |---|---|
 | only check the dissertation numbers | the quick path above (details in sections 1 to 6) |
-| run the automated tests | section 7 |
+| run the automated tests | section 7 (they are optional; the start of the section says how they differ from section 6) |
 | check a receipt | section 8 |
 | see the OTK working, with no key | section 9.2 (needs Docker) |
 | know what the OTK proves and what it does not | the summary below and section 11 |
@@ -308,6 +308,8 @@ To address all issues (including breaking changes), run:
 Run `npm audit` for details.
 ```
 
+In that output, *added 187 packages* says how many libraries were installed, *looking for funding* only notes that some authors accept donations, and *vulnerabilities* counts the known security advisories of those libraries, split by severity.
+
 The time, the number of *vulnerabilities* and, on a Mac, the number of packages may differ, because npm checks a list of advisories that changes over time and some packages belong to one system only, so what matters is that `npm error` does not appear.
 
 The last lines, which tell you to run `npm audit fix` or `npm audit fix --force` (and the lines `npm warn deprecated ...`, which may appear), are warnings about the libraries of the evaluated version and are **not** errors. Even so, **run neither of them**, because they change the library versions, and then you are no longer running exactly the evaluated version.
@@ -358,6 +360,32 @@ TUDO OK: 13 de 13 itens. Detalhes em saida-reproducao\...\RESULTADO_REPRODUCAO.j
 
 In the line about the entry written before the send, *1720 de 1720* (1,720 of 1,720) counts the sends that have that prior entry, and in 1,505 of them the entry already carries the OTK count. In the 215 of gpt-6-luna, however, the entry says the OTK cannot count that model, because the counter of the evaluated version does not know the gpt-6 family, and for that reason the count for that model was redone after the collection, outside this command.
 
+#### How to read the output, line by line
+
+Before the 13 items, npm writes two lines starting with `>`: the first has the package name and version (`otk-zk-metering@0.1.0`) with the shortcut that was run, and the second, the command that shortcut calls, with the network lock (`sem_rede.mjs`) loaded before the program. Besides, the line *Reprodução sem rede* (offline reproduction) says in which subfolder of `saida-reproducao` the files of this run are, named by the date and time.
+
+Then come the 13 items, from top to bottom, each with the part (A to D), what was checked and, after the dash, the detail (a sha256, a count or the list of steps):
+
+| Output line | What the command checked | What OK means | Where it appears in the dissertation | If FALHOU (failed) appears |
+|---|---|---|---|---|
+| `OK      A. ZIP do pacote da banca...` | the sha256 of the file `reproducao/otk-banca-pack-20261111.zip` | the October 7 collection package is, byte for byte, the one that was audited | Appendix C, table of the items checked by the command (part A) | the ZIP changed or came incomplete; download again (section 4) |
+| `OK      A. Pacote: hashes, sanitização, H1 de 7/10...` | the five steps of the package, marked with ✓: the `SHA256SUMS` list checks each file; the scanner finds no personal path, e-mail, phone or other sensitive data; the negative control requires the scanner to find fake examples planted on purpose; the October 7 collection (H1) is redone, with 30 of 30 identical files; and the CAL-ANTH recomputation matches 19 of 20 numbers | the numbers of H1 and of the first Anthropic experiment come from the package data | Appendix C, same table, and the note that explains the 20th number | the step with ✗ is the one that failed; the detail is in `A_pacote_banca.log.txt` |
+| `OK      B. Tabela dos 8 modelos (CMP8): .tex...` | redoes the 8-model table from `reproducao/cmp8/dados` and compares the `.tex` file with the stored one | the table comes from the published data, letter by letter | Appendix D, table of declared input tokens by model and kind of text | the detail is in `B_tabela_cmp8.log.txt`; use section 13 |
+| `OK      B. Tabela dos 8 modelos (CMP8): JSON...` | the numbers of the same table, in the JSON file, apart from the generation date and the paths | the numbers match the audited ones | Appendix D, the same table | same |
+| `OK      C. Estimado × declarado: as 1.720 linhas...` | recomputes, text by text and model by model, the OTK count and the declared number | the 1,720 lines (215 texts × 8 models) are the audited ones | Appendix C, table of the items (part C) | the detail is in `C_estimado.log.txt` |
+| `OK      C. Estimado × declarado: .tex...` | the first version of the *estimated × declared* table | the table comes from those lines, letter by letter | Chapter 4, per-model table of the November 23 collection, in the parts listed in *Where to compare* | same |
+| `OK      C. Estimado × declarado: JSON...` | the numbers of the same table, apart from the date and the paths | the numbers match the audited ones | Chapter 4, the same table | same |
+| `OK      C. Registro da contagem gravado ANTES...` | the *journal* chain and how many sends have the entry written before | 1720 of 1720 sends have the prior entry, and 1505 of them carry the OTK count | Chapter 4, text of the November 23 collection, and Appendix C | the detail is in `C_prova_previsao_antes.log.txt` |
+| `OK      D. Verificador: os recibos de exemplo no disco...` | regenerates the 19 example files and compares them with the ones on disk | the verifier examples are the ones the code generates | Appendix C, table of the items (part D) | the detail is in `D_vetores_check.log.txt` |
+| `OK      D. Verificador: relatório ... com a impressão digital...` | runs the verifier on the examples with the fingerprint and compares the sha256 of the report and the exit code | the verifier gives exactly the expected verdict; code 20 means there is red, which is right for the examples | Appendix C, same table | the detail is in `D_verify_comImpressaoDigital.log.txt` |
+| `OK      D. Verificador: relatório ... sem a impressão digital...` | the same, without the fingerprint | same, with the verdicts of someone who did not confirm the keyring | Appendix C, same table | the detail is in `D_verify_semImpressaoDigital.log.txt` |
+| `OK      D. Chaveiro do operador...` | the sha256 of `chaveiro/chaveiro_operador_otk.json` | it is the keyring whose fingerprint is published | Appendix E, section on the keyring and the fingerprint | the line ending was converted when downloading; download again (section 4) |
+| `OK      D. Página do verificador...` | the sha256 of `web/verificador/verificador-otk.html` | it is the registered page | Appendix C, same table | same |
+
+The last line adds up the items with OK, and if any failed, it starts with `ALGO FALHOU` (something failed), with a total below 13. Besides, the path written after *Detalhes em* (details in) is the one of the `RESULTADO_REPRODUCAO.json` file of this run.
+
+The folder `saida-reproducao`, inside `C:\otk`, gets one subfolder per run, with the date and time in the name. It holds one `.log.txt` file per step, with the command that was run and everything it wrote, the redone tables (in the folders `A_pacote_banca`, `B_tabela_cmp8` and `C_estimado`) and `RESULTADO_REPRODUCAO.json`, which repeats the 13 items, each with the part, the name, whether it was OK and the detail. To open any of them, double-click the file in File Explorer, and if Windows asks which program to use, choose Notepad.
+
 **What each part redoes:**
 
 | Part | What it is in the dissertation | Where the data come from |
@@ -383,6 +411,10 @@ These files were written during the work and so still carry internal project lab
 
 ## 7. Run the automated tests
 
+For those who only want to check the dissertation numbers, the tests in this section are **optional**, because that is the role of section 6. Even so, the two sections check different things, since section 6 checks the **results**, in 13 checks showing that the tables come from the published data, while this section checks the **program**, piece by piece, in 3,587 tests.
+
+For example, there are tests that the token counter gives the same count with the whole text or with the text cut into pieces (`test/unit/d1d8_b_counter.test.ts`), that an altered receipt comes out red in the verifier (`test/verifier/verificador.test.ts`) and that a request for several answers in one call is refused before it leaves (`test/services/d1d8_c_review_fixes.test.ts`). Besides, the tests cover cases the collections never tested, such as tampering, provider errors and loss of network, and so a dropped connection to the provider leaves the operation as uncertain, without resending it (`test/services/d1d8_c_proxy_durable.test.ts`).
+
 The suite has about 3,600 automated tests, which also run **offline**.
 
 #### To run the tests
@@ -406,6 +438,12 @@ Resultado: 3587 testes — 3579 passaram, 0 falharam, 0 cancelados, 5 pulados, 3
 ```
 
 followed by the list of tests left out on purpose and by `TESTES OK`. The total number of tests may be slightly different on your computer, and what matters is `0 falharam` (0 failed) and the last line `TESTES OK`.
+
+#### How to read the output
+
+The line *Resultado* adds up the 3587 tests that ran and splits them into five groups, in which *passaram* (passed, 3579) went right and *falharam* (failed, 0) went wrong, and that is the only number that must be zero, while *cancelados* (cancelled, 0) stopped midway, for example because time ran out. Besides, the *pulados* (skipped, 5) and the ones marked `todo` (3) are explained below, and added up, 3579 + 0 + 0 + 5 + 3 give exactly the 3587.
+
+After the line *Resultado*, the command lists the tests left out, each with the reason, and ends in `TESTES OK` when nothing failed, or in `HOUVE FALHA` (there was a failure) when some test failed. In that case, the detail of each failure is in the lines that start with `✖`, at the end of the screen or in the file `testes-banca-saida.txt`, inside `C:\otk`.
 
 - The **skipped (5)** ("pulados") render the production configuration with Helm and need the Docker image `alpine/helm:3.16.4` already downloaded, which this command does not do, so the test skips itself and warns `alpine/helm:3.16.4 not present locally`, and this warning is not a defect. On a computer without Docker, another 6 tests (of `docker compose`) also skip themselves, with the warning `docker CLI not available`, and the number of skipped tests goes up to 11. The groups that warn `SKIPPED — set OTK_TEST_PG_URL`, which need a test PostgreSQL running, are also left out, but Node does not add them to the skipped count.
 - The **todo (3)** are tests marked as *to be decided* since the evaluated version (in the dissertation, the *3 pendentes*, 3 pending), which are open product decisions, not defects, and they appear with `⚠` in the full output.
@@ -479,7 +517,17 @@ Resultado: [FALHOU] (código de saída 20)
 sha256 do relatório JSON: bbcfeed1d0cfb3beb9685eb8157331ca3bd21d8186985f22676a0a18e5d19f01
 ```
 
-*FALHOU* is right here, because the example set has receipts tampered with on purpose. The line *Itens* (items) is the same count as the cards on the page, while the next line, *Recibos* (receipts; 8, 9 and 31), counts only the receipts, and the sha256 of the report is the same one the page shows for the same files. Right after, npm may still write lines `npm error ... code 20` or `command failed`, which are only npm repeating that the verifier ended with code 20 (there is red), and so they are not a defect.
+#### How to read the output
+
+The output starts with the two `>` lines of npm and, right after, with the line *Chaveiro* (keyring), which says whether the pasted fingerprint matches the loaded keyring.
+
+Then comes one block per receipt, in the order of the files, and the first line of each block has the verdict in brackets (`[OK]`, `[ATENÇÃO]` or `[FALHOU]`), the operation, the file and the line the receipt came from (for example `recibos/b_alterados.jsonl:1`) and the reason in Portuguese. The lines below it, when there are any, start with *Significa* (means), with the explanation of that verdict, or with `+`, with an extra check of the same receipt.
+
+The *Resumo* (summary) has the line *Itens* (items), with the same count as the cards on the page, and the line *Recibos* (receipts), counting each receipt only once, and so its numbers are smaller. Then come the tokens and the CU added up, only from receipts with a checked signature, split by month and by model. Besides, *Vermelhos (fora das somas)* (reds, left out of the sums) lists the receipts excluded from those totals, and *O que isto NÃO garante* (what this does NOT guarantee) repeats, in seven lines, the limits of the verifier (section 11).
+
+Finally, *Resultado: [FALHOU] (código de saída 20)* is the verdict of the whole set, in which code 0 means all green, 10 that there is yellow and 20 that there is red, and the *sha256 do relatório JSON* is the digest of the full report.
+
+*FALHOU* is right here, because the example set has receipts tampered with on purpose, and a verifier that said OK to them would be wrong. The line *Itens* (items) is the same count as the cards on the page, while the next line, *Recibos* (receipts; 8, 9 and 31), counts only the receipts, and the sha256 of the report is the same one the page shows for the same files. Right after, npm may still write lines `npm error ... code 20` or `command failed`, which are only npm repeating that the verifier ended with code 20 (there is red), and so they are not a defect.
 
 ### 8.3 The operator keyring cited in the dissertation
 
@@ -577,9 +625,13 @@ DEU CERTO: o recibo está íntegro e assinado pela chave desta instalação ([OK
 
 This output reads as follows:
 
+- In steps [1] to [4], each step is confirmed by *PostgreSQL pronto* (PostgreSQL ready), by the addresses of the synthetic provider and of the proxy at `127.0.0.1` (your own computer) and by *resposta HTTP 200* (HTTP response 200), when the call comes back without error.
+- In step [5], the **requested / returned model** ("modelo pedido / devolvido") has the name the program asked for (`gpt-4o-mini`) and the dated name the provider returned, and the **ruler** `o200k_base (exata)` is the one the OTK used to count (section 12.1).
 - In **declared usage 20 and own count 9** ("uso declarado" and "contagem própria"), the synthetic provider always declares 20 input tokens, whatever the text, while the OTK count (9) is that of the actual text. The difference (11) is within the alert limit (16 tokens), and so the comparison gives `within_threshold`, while with the real provider gpt-4o-mini declares 7 tokens more than the OTK counts, which are the message envelope (see 12.1).
 - In the **CU**, the evaluated version uses **test weights**, since the choice of the final weights was left open in the dissertation, which calls this one the *old CU*, and the CU with the base weights of Chapter 3 is not the one shown in this receipt.
 - In the **verifier**, the receipt is **[OK] on the signature**, and the **yellow** comes only from the warning *Perfil de desenvolvimento* (development profile), in which *profile* is the set of CU weights, and not the count correction of section 12, and so `Resultado: [ATENÇÃO] (código de saída 10)` is not an error.
+- The **cost** is computed from the public price table of gpt-4o-mini and is fictitious here, because nothing was charged, and the line *recibo completo salvo em* (full receipt saved in) says where the receipt is.
+- In step [6], the line *chaveiro* has the file of this installation's keyring and its fingerprint, which changes each time, and the following lines are the verifier's verdicts on the receipt.
 
 The demonstration files are in `C:\otk\demo-saida\<data-hora>`, which holds the receipt (`recibos\recibo_....json`), `chaveiro_desta_instalacao.json`, `operacao.json`, `verificacao.txt` and `RESUMO_DEMO.json`.
 
@@ -624,6 +676,8 @@ This command stops the test PostgreSQL and deletes its box and its data, which e
 ![Output of the command that stops and deletes the test PostgreSQL](docs/imagens/09b_desligar_postgres.png)
 
 *Real output of the command, with the test PostgreSQL stopped and removed.*
+
+In that output, each line says what was stopped or removed: the database container (*Container*), the volume with the data (*Volume*) and the demonstration's internal network (*Network*).
 
 Or, in Docker Desktop, under **Containers**, delete the group `otk-banca-demo`.
 
