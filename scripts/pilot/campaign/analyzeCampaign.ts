@@ -4,7 +4,7 @@
  *   node node_modules/tsx/dist/cli.mjs scripts/pilot/campaign/analyzeCampaign.ts --root=<campaign dir> --out=<dir>
  *
  * For every real operation: disjoint quantities per canonical category, CU under the 2026-10 CANDIDATE reference
- * profile (normalization NOT chosen by Bruno: computed under two explicit references, labelled CU_REFERENCE_CANDIDATE),
+ * profile (normalization NOT chosen by the author: computed under two explicit references, labelled CU_REFERENCE_CANDIDATE),
  * the legacy development CU the receipt carries, the computed cost (frozen public table; not an invoice), and the
  * calibration pair (provider input count vs local counter) with the split fixed by 07_CALIBRATION_PROTOCOL.md.
  * Then the calibration profile is fitted per model with the unchanged fitter and acceptance policy.

@@ -3,7 +3,7 @@
  * 8 células × 24 prompts + 24 repetições = 216. Haiku 4.5, opção B (recomendada no R07 R2): perfil formal só em correção de código, análise e
  * geração de código (6 células: 144 + 18 repetições) e resumo vira COMPARATIVO pareado (2 grupos por célula de resumo, 3 variantes = 12
  * prompts, `split = COMPARATIVE`, fora de treino/validação/holdout) => 174. Opção A = completo (216). A opção C (só comparativo) não é
- * implementada aqui (NOT_IMPLEMENTED: a decisão é do Bruno e a recomendada é B). O mesmo prompt (hash) vai a todos os modelos: pareável.
+ * implementada aqui (NOT_IMPLEMENTED: a decisão é do autor e a recomendada é B). O mesmo prompt (hash) vai a todos os modelos: pareável.
  *
  * In English: turns the S1 corpus into the per-model list of S1 operations (one line of `s1_operations.<model>.jsonl`
  * per call). `FULL` sends every confirmatory prompt plus the repeats. `B_REDUZIDO` (reduced design) keeps the profile

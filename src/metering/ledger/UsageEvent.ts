@@ -29,5 +29,5 @@ export type UsageEvent = {
   currency?: string;                      // optional (e.g., "USD")
   cost?: number;                          // optional monetary cost
   requestId?: string;                     // provider-assigned request ID (safe, not a secret)
-  sessionTag?: string;                    // optional grouping label (e.g., "bruno_thesis_week1")
+  sessionTag?: string;                    // optional grouping label (e.g., "thesis_week1")
 };

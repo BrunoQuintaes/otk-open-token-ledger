@@ -2,7 +2,7 @@
  * H2-EVAL / R13 — CLI do corpus novo. OFFLINE; escreve só no diretório de saída novo (recusa se existir).
  *   tsx scripts/h2eval/corpus/build.ts --out <dir novo> [--seed N] [--repo <clone da H1>] [--h1-campaign-corpus <jsonl>] [--s2 15] [--s3 30]
  *                                     [--prefix-chars N] [--forbidden-seeds arquivo.json] [--no-repo-scan]
- * Semente: padrão 20261110 (R09 R2 §1), o Bruno pode passar outra; semente já usada é recusada (exit 3) e, no congelamento, a varredura
+ * Semente: padrão 20261110 (R09 R2 §1), o autor pode passar outra; semente já usada é recusada (exit 3) e, no congelamento, a varredura
  * somente leitura dos refs (`seed_verification.json`) tem de dar "NOT_FOUND_IN_SCANNED_REFS". Colisão exata de texto contra a H1 e a
  * CAL-ANTH (`text_collision_report.json`) PARA a geração (exit 4): nada é ajustado. Nada aqui lê chave, rede ou relógio.
  * Saídas: s1_prompts.jsonl, dialogs.jsonl, manifest.json, seed_verification.json, text_collision_report.json,

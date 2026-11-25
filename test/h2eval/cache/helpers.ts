@@ -13,7 +13,7 @@
 import { createRequire } from 'node:module';
 import { buildCorpus, type CorpusBuild, type Counters } from '../../../scripts/h2eval/corpus/manifest.js';
 
-/** Semente SÓ de teste (≠ H1/CAL-ANTH). A semente real é do Bruno (D-3). */
+/** Semente SÓ de teste (≠ H1/CAL-ANTH). A semente real é do autor (D-3). */
 export const TEST_SEED = 424242;
 
 const req = createRequire(import.meta.url);

@@ -2,7 +2,7 @@
  * AUD-FC-06..11 (FINAL CLOSURE re-audit sweep, 2026-10-07): routes that take a tenant or a resource id from the path
  * act only inside the caller's tenant. Another tenant's vault, GDPR export/erasure, export job, webhook endpoint or
  * team is refused without effect (403 cross_tenant_forbidden for a tenant named in the path, 404 for a resource id);
- * feature flags are platform configuration (no tenant role). Bruno's rule: tenant roles administer only their own
+ * feature flags are platform configuration (no tenant role). The author's rule: tenant roles administer only their own
  * tenant; no platform role exists in this version.
  *
  * Note: the vault and webhook routers match `routePath` against a `/v1/...` prefix after the `/v1` strip, so they are

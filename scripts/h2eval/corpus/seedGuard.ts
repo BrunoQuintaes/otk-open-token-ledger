@@ -11,7 +11,7 @@
  * @module scripts/h2eval/corpus/seedGuard
  */
 /** Default seed (the pre-registration date); a different seed may be passed with `--seed`. */
-export const DEFAULT_SEED = 20261110; // data do pré-registro (R09 R2 §1); é só o PADRÃO, o Bruno pode passar outra
+export const DEFAULT_SEED = 20261110; // data do pré-registro (R09 R2 §1); é só o PADRÃO, o autor pode passar outra
 
 /** Seeds already used by earlier corpora, each with the reason (where it was found). */
 export const FORBIDDEN_SEEDS: Readonly<Record<number, string>> = Object.freeze({

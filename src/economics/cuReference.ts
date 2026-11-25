@@ -4,7 +4,7 @@
  *
  *   CU_o^(b) = scale × Σ_c q_(o,m,c) × p_(m,c)^(b) / p_ref^(b)
  *
- * CU = normalized quantity of AI-service consumption (Bruno's definition). The weights p/p_ref are relative
+ * CU = normalized quantity of AI-service consumption (the author's definition). The weights p/p_ref are relative
  * prices of the FROZEN reference structure of the base period, never current prices: this module does not
  * read any current price table, so a price change after the base period cannot change a CU computed here.
  * Not computable is never 0: an unknown model, a category without a profile price or an undefined reference

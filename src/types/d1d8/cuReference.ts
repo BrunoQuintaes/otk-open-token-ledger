@@ -1,7 +1,7 @@
 /**
  * CU reference framework (OVERNIGHT 2, 2026-10-07): contract types.
  *
- * Definition chosen by Bruno: Cost Unit (CU) = unit of NORMALIZED QUANTITY of AI-service consumption.
+ * Definition chosen by the author: Cost Unit (CU) = unit of NORMALIZED QUANTITY of AI-service consumption.
  * Tokens and the other usage categories are observed quantities that feed the CU; they are not the CU.
  *
  *   CU_o^(b) = scale × Σ_c q_(o,m,c) × w_(m,c)^(b),   w_(m,c)^(b) = p_(m,c)^(b) / p_ref^(b)
@@ -43,7 +43,7 @@ export interface CuReferencePriceEntry {
 
 /**
  * Normalization reference p_ref. Changing it only rescales every CU by the same factor: relative CU between
- * operations does not change. Which one is THE reference is Bruno's decision (DN-01), not the code's.
+ * operations does not change. Which one is THE reference is the author's decision (DN-01), not the code's.
  *  - model_category: p_ref = base price of one real (provider, model, category) of the profile;
  *  - abstract_price: p_ref = a fixed abstract price (micro-USD per MTok), not tied to any model.
  */

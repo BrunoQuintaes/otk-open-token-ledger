@@ -42,7 +42,7 @@ export class StatementImportError extends Error {
 export interface ImportOptions {
   /** Origin the caller declares for the provider data. A synthetic marker in the file forces FIXTURE (and conflicts with REAL). */
   declaredOrigin: DataOrigin;
-  /** Overrides mapping.timestamps.declaredTimezone (e.g. the timezone Bruno read in the console). */
+  /** Overrides mapping.timestamps.declaredTimezone (e.g. the timezone the operator read in the console). */
   declaredTimezone?: string | null;
   aliasTable?: AliasTable;
   /** Extra exact aliases (alias → canonical), e.g. from the price tables. */

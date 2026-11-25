@@ -1,6 +1,6 @@
 /**
  * H2-EVAL / R13 — manifesto do corpus novo (`otk.h2eval_corpus.v1`): hash de cada prompt, de cada diálogo e do corpus inteiro,
- * gravado ANTES de qualquer chamada (R09 §1). A semente é parâmetro (escolha do Bruno, D-3). Função pura: o que vem de fora
+ * gravado ANTES de qualquer chamada (R09 §1). A semente é parâmetro (escolha do autor, D-3). Função pura: o que vem de fora
  * (contadores de tokens, hash do código) entra por parâmetro, para o `corpusSha256` depender só do conteúdo.
  *
  * In English: builds the whole corpus (S1 prompts via `s1Corpus.ts`, dialogs via `cache/dialogs.ts`) and its manifest:
