@@ -68,7 +68,7 @@ npm install --no-save eslint@10.15.0 typescript-eslint@8.74.0 eslint-plugin-jsdo
 npx eslint --config eslint.docs.config.mjs src
 ```
 
-O primeiro comando instala, só para esta conferência e sem mudar o `package.json`, as ferramentas de lint. O segundo confere os comentários de `src/`. O mesmo roda no GitHub a cada pull request (`.github/workflows/documentacao.yml`), só nos arquivos que mudaram.
+O primeiro comando instala, só para esta conferência e sem mudar o `package.json`, as ferramentas de lint. O segundo confere os comentários de `src/`. Por enquanto, essa conferência não roda automaticamente no GitHub: é só local.
 
 O que deve aparecer: nenhuma linha de erro.
 
