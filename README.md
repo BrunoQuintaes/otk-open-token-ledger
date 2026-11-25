@@ -65,7 +65,7 @@ Os detalhes de cada passo, o que deve aparecer e o que fazer se der erro estão 
 
 1. [O que instalar antes](#1-o-que-instalar-antes)
 2. [Como abrir o terminal e colar um comando](#2-como-abrir-o-terminal-e-colar-um-comando)
-3. [Conferir se ficou tudo instalado](#3-conferir-se-ficou-tudo-instalado)
+3. [Conferir se o Node.js, o npm e o Git estão instalados](#3-conferir-se-o-nodejs-o-npm-e-o-git-estão-instalados)
 4. [Baixar este repositório](#4-baixar-este-repositório)
 5. [Instalar as dependências](#5-instalar-as-dependências)
 6. [Refazer os números da dissertação (sem internet)](#6-refazer-os-números-da-dissertação-sem-internet)
@@ -86,7 +86,7 @@ São necessários **dois programas**, o Git e o Node.js, e ainda um terceiro, o 
 
 | Programa | Para quê | Versão | Windows | Mac |
 |---|---|---|---|---|
-| **Git** | baixar o repositório | qualquer 2.x (testado com 2.51) | https://git-scm.com/download/win, com o instalador "64-bit Git for Windows Setup" e **Next** em todas as telas (as opções padrão servem; se o Windows perguntar "Deseja permitir que este aplicativo faça alterações?", clique em **Sim**) | abra o Terminal (seção 2) e digite `git --version`, e se o Mac oferecer instalar as "ferramentas de linha de comando", aceite. Ou use https://git-scm.com/download/mac |
+| **Git** | baixar o repositório | qualquer 2.x (as capturas deste guia usam a 2.56) | https://git-scm.com/download/win, com o instalador "64-bit Git for Windows Setup" e **Next** em todas as telas (as opções padrão servem; se o Windows perguntar "Deseja permitir que este aplicativo faça alterações?", clique em **Sim**) | abra o Terminal (seção 2) e digite `git --version`, e se o Mac oferecer instalar as "ferramentas de linha de comando", aceite. Ou use https://git-scm.com/download/mac |
 | **Node.js** (já traz o **npm**) | rodar o OTK, os testes e a reprodução | **24 LTS** (testado com 24.22.2, com o npm 11 que vem junto) | https://nodejs.org/pt/download, em "LTS", versão **24**, "Windows Installer (.msi)", e **Next** em todas as telas | mesma página, "macOS Installer (.pkg)" da versão **24 LTS** |
 | **Docker Desktop** (só para a seção 9) | ligar o banco de dados do OTK numa caixa isolada | qualquer versão atual (testado com 29.x) | https://www.docker.com/products/docker-desktop/, em "Download for Windows". Ele pede para ativar o **WSL 2**, um recurso do Windows que exige ser administrador do computador; aceite e reinicie se ele pedir | mesma página, "Download for Mac" (escolha Apple Silicon ou Intel conforme o seu Mac) |
 
@@ -102,7 +102,7 @@ O terminal é uma janela onde você cola comandos de texto.
 
 **Mac:** aperte **Command + Espaço**, digite `Terminal` e aperte **Enter**.
 
-Cada bloco cinza deste guia é **um comando**, e os blocos são colados um de cada vez, na ordem. Para cada um:
+Cada comando vem num bloco cinza, abaixo de um subtítulo que diz para que ele serve, e os outros blocos cinza mostram o que deve aparecer. Cole um comando por vez, na ordem, e para cada um:
 
 1. clique no botão de copiar no canto do bloco cinza (ou selecione o texto e use **Ctrl + C** no Windows, **Command + C** no Mac);
 2. clique dentro da janela do terminal;
@@ -111,11 +111,21 @@ Cada bloco cinza deste guia é **um comando**, e os blocos são colados um de ca
 
 A partir da seção 5, o começo da linha deve mostrar `PS C:\otk>` (no Mac, `otk %`), e se não mostrar (por exemplo, porque o terminal foi fechado e aberto de novo), rode antes `cd C:\otk` (no Mac, `cd ~/otk`).
 
-## 3. Conferir se ficou tudo instalado
+## 3. Conferir se o Node.js, o npm e o Git estão instalados
+
+Esta seção confere, um por um, os três programas da seção 1, pois sem eles nenhum dos passos seguintes funciona. Cada comando só mostra a versão instalada e não muda nada no computador.
+
+#### Para verificar o Node.js
 
 ```
 node -v
 ```
+
+Esse comando pede ao Node.js que diga a sua versão, o que serve para saber se ele foi instalado e se é a 24, que é a versão que os programas deste repositório pedem.
+
+![Saída do comando node -v no PowerShell, mostrando v24.22.2](docs/imagens/03a_node.png)
+
+*Saída real do comando, com o Node.js 24.22.2.*
 
 **O que deve aparecer:** `v24.` seguido de números, por exemplo `v24.22.2`.
 
@@ -123,33 +133,53 @@ node -v
 
 **Se aparecer** `v20.` ou `v22.`, instale a 24 LTS (seção 1) antes de seguir, pois os programas que refazem a coleta de 7 de outubro (parte A da seção 6) foram feitos para o Node 24 ou mais novo, e numa versão anterior essa parte pode dar `FALHOU`.
 
+#### Para verificar o npm
+
 ```
 npm -v
 ```
 
+Esse comando mostra a versão do npm, o programa que vem junto com o Node.js e que baixa as bibliotecas do OTK na seção 5.
+
+![Saída do comando npm -v no PowerShell, mostrando 11.8.0](docs/imagens/03b_npm.png)
+
+*Saída real do comando, com o npm 11.8.0.*
+
 **O que deve aparecer:** um número como `11.8.0` (qualquer `10.` ou `11.` serve).
 
-**Se aparecer** (só no Windows) `npm.ps1 não pode ser carregado porque a execução de scripts foi desabilitada`, cole o comando abaixo, aperte Enter, responda `S` (ou `Y`) caso ele pergunte e repita o `npm -v`. Esse comando permite que o seu usuário rode scripts que já estão no computador, como o do npm, enquanto scripts baixados da internet ainda precisam de assinatura. Como a mudança vale só para o seu usuário (`-Scope CurrentUser`), nada muda para os outros usuários do computador.
+**Se aparecer** (só no Windows) `npm.ps1 não pode ser carregado porque a execução de scripts foi desabilitada`, rode o comando do bloco seguinte, responda `S` (ou `Y`) caso ele pergunte e repita o `npm -v`.
+
+#### Para liberar o npm no PowerShell (só se aparecer o erro acima)
 
 ```
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
+Esse comando permite que o seu usuário rode scripts que já estão no computador, como o do npm, enquanto scripts baixados da internet ainda precisam de assinatura. Como a mudança vale só para o seu usuário (`-Scope CurrentUser`), nada muda para os outros usuários do computador. Ele não tem imagem, pois muda uma configuração do sistema e não foi rodado no ensaio.
+
+#### Para verificar o Git
+
 ```
 git --version
 ```
 
+Esse comando mostra a versão do Git, o programa que baixa o repositório na seção 4.
+
+![Saída do comando git --version no PowerShell, mostrando git version 2.56.0.windows.1](docs/imagens/03c_git.png)
+
+*Saída real do comando, com o Git 2.56.*
+
 **O que deve aparecer:** `git version 2.` seguido de números.
 
 **Se aparecer** "não é reconhecido" ou "command not found", instale o Git (seção 1), feche e abra o terminal.
-
-![Conferindo as versões no PowerShell](docs/imagens/01_versoes.png)
 
 ## 4. Baixar este repositório
 
 Os exemplos usam a pasta **`C:\otk`** no Windows e **`otk`** dentro da sua pasta pessoal no Mac.
 
 > **No Windows, use uma pasta de nome curto, como `C:\otk`.** O caminho mais longo dentro do pacote da banca tem 198 caracteres, e o Windows recusa caminhos com mais de 260, contando a pasta onde o repositório foi baixado, de modo que essa pasta não pode passar de uns 60 caracteres. Numa pasta funda (por exemplo uma pasta temporária, ou `Documentos\GitHub\...` com nome de usuário comprido), o Git mostra `Filename too long`, o download fica incompleto e a seção 6 dá `FALHOU`.
+
+#### Para baixar o repositório
 
 **Windows:**
 
@@ -163,6 +193,12 @@ git clone https://github.com/BrunoQuintaes/otk-open-token-ledger.git C:\otk
 git clone https://github.com/BrunoQuintaes/otk-open-token-ledger.git ~/otk
 ```
 
+Esse comando copia o repositório inteiro do GitHub para a pasta `C:\otk` (no Mac, `~/otk`), que ele mesmo cria, e por isso só precisa ser rodado uma vez.
+
+![Saída do download do repositório no PowerShell, terminando em done.](docs/imagens/04a_git_clone.png)
+
+*Saída real do download, com a pasta mostrada como `C:\otk`.*
+
 **O que deve aparecer:** `Cloning into 'C:\otk'...` e, depois de alguns segundos, linhas terminando em `done.`, sem nenhum pedido de login, pois o repositório é **público**.
 
 **Se aparecer** `Repository not found`, o endereço foi digitado errado (copie o comando de novo) ou o computador está sem internet.
@@ -171,21 +207,25 @@ git clone https://github.com/BrunoQuintaes/otk-open-token-ledger.git ~/otk
 
 **Se aparecer** `Filename too long` ou `Clone succeeded, but checkout failed`, a pasta escolhida é funda demais (veja o aviso acima), e por isso apague a pasta e baixe de novo em `C:\otk`.
 
-**Só para quem vai além das seções 6 a 8 (pode pular):**
+**Só para quem vai além das seções 6 a 8 (pode pular os dois blocos seguintes).**
 
-- No Windows, o Git troca o *fim de linha* (o caractere invisível que encerra cada linha) de cerca de mil arquivos de texto, e com isso o sha256 deles fica diferente do registrado em `PROVENIENCIA.json`. Essa troca **não afeta as seções 6 a 8**, pois os arquivos que o comando e o verificador conferem estão protegidos contra ela, e por conta disso só quem quiser conferir o `PROVENIENCIA.json` arquivo por arquivo precisa baixar com o comando abaixo, no lugar do anterior.
+#### Para baixar sem a troca do fim de linha (opcional)
 
-  ```
-  git -c core.autocrlf=false clone https://github.com/BrunoQuintaes/otk-open-token-ledger.git C:\otk
-  ```
+```
+git -c core.autocrlf=false clone https://github.com/BrunoQuintaes/otk-open-token-ledger.git C:\otk
+```
 
-- Se precisar mesmo de uma pasta funda, baixe com o Git autorizado a usar caminhos longos, trocando `C:\caminho\da\sua\pasta` pela pasta que você quer:
+No Windows, o Git troca o *fim de linha* (o caractere invisível que encerra cada linha) de cerca de mil arquivos de texto, e com isso o sha256 deles fica diferente do registrado em `PROVENIENCIA.json`. Essa troca **não afeta as seções 6 a 8**, pois os arquivos que o comando e o verificador conferem estão protegidos contra ela, e por conta disso só quem quiser conferir o `PROVENIENCIA.json` arquivo por arquivo precisa baixar com este comando, no lugar do anterior. Esse comando não tem imagem, pois a saída é a mesma do download normal, mostrada acima.
 
-  ```
-  git -c core.longpaths=true clone https://github.com/BrunoQuintaes/otk-open-token-ledger.git C:\caminho\da\sua\pasta
-  ```
+#### Para baixar numa pasta funda (opcional)
 
-Agora entre na pasta, pois todos os comandos seguintes são colados **dentro dela**.
+```
+git -c core.longpaths=true clone https://github.com/BrunoQuintaes/otk-open-token-ledger.git C:\caminho\da\sua\pasta
+```
+
+Esse comando autoriza o Git a usar caminhos longos, e nele `C:\caminho\da\sua\pasta` deve ser trocado pela pasta que você quer. Esse comando não tem imagem, pois a saída é a mesma do download normal, mostrada acima, só com a sua pasta no lugar de `C:\otk`.
+
+#### Para entrar na pasta
 
 **Windows:**
 
@@ -199,30 +239,52 @@ cd C:\otk
 cd ~/otk
 ```
 
+Esse comando faz o terminal entrar na pasta do repositório, pois todos os comandos seguintes são colados **dentro dela**.
+
+![O PowerShell depois de entrar na pasta, com o começo da linha em PS C:\otk>](docs/imagens/04b_cd.png)
+
+*Saída real do comando, com a pasta mostrada como `C:\otk`.*
+
 **O que deve aparecer:** o começo da linha muda para `PS C:\otk>` (no Mac, `otk %`).
 
 ## 5. Instalar as dependências
 
 Este passo baixa as bibliotecas que o OTK usa, nas versões exatas guardadas no arquivo `package-lock.json`, e **usa a internet** uma vez, só para o registro público do npm.
 
+#### Para instalar as dependências
+
 ```
 npm ci
 ```
 
+Esse comando instala as bibliotecas exatamente nas versões do `package-lock.json`, sem trocar nenhuma, e com isso o que roda nas seções seguintes é a mesma versão avaliada.
+
+![Saída do comando npm ci no PowerShell, com added 187 packages](docs/imagens/05_npm_ci.png)
+
+*Saída real do comando, que levou 20 segundos.*
+
 **O que deve aparecer** (em 10 segundos a 2 minutos):
 
 ```
-added 187 packages, and audited 188 packages in 1m
+added 187 packages, and audited 188 packages in 20s
 
 44 packages are looking for funding
   run `npm fund` for details
 
 18 vulnerabilities (16 low, 1 moderate, 1 high)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
 ```
 
 O tempo, o número de *vulnerabilities* e, no Mac, o número de pacotes podem ser outros, pois o npm consulta uma lista de avisos que muda com o tempo e alguns pacotes são só de um sistema, e por isso o que importa é não aparecer `npm error`.
 
-No fim aparecem também as linhas `To address issues that do not require attention, run: npm audit fix` e `To address all issues (including breaking changes), run: npm audit fix --force` (e podem aparecer linhas `npm warn deprecated ...`), que são avisos sobre as bibliotecas da versão avaliada e **não** são erro. Ainda assim, **não rode nenhum dos dois** (`npm audit fix` nem `npm audit fix --force`), pois eles trocam as versões das bibliotecas, e com isso deixa de rodar exatamente a versão avaliada.
+As linhas finais, que mandam rodar `npm audit fix` ou `npm audit fix --force` (e as linhas `npm warn deprecated ...`, que podem aparecer), são avisos sobre as bibliotecas da versão avaliada e **não** são erro. Ainda assim, **não rode nenhum dos dois**, pois eles trocam as versões das bibliotecas, e com isso deixa de rodar exatamente a versão avaliada.
 
 **Se aparecer** `npm error code EUSAGE` ou `npm ci can only install packages when your package.json and package-lock.json are in sync`, o terminal não está dentro da pasta `C:\otk`, e por isso rode o `cd C:\otk` da seção 4 e repita.
 
@@ -234,9 +296,17 @@ Um comando confere os arquivos e **recalcula, sem internet e sem chave de API**,
 
 > **O que este comando não refaz.** Da coleta de 23 de novembro, ele refaz a **primeira versão** da tabela *estimado × declarado*, que aplica só as retas de correção de claude-sonnet-5-5, claude-opus-5-5 e gemini-3.1-flash-lite (para o Sonnet e o Gemini 3.1, a reta do estudo à parte, que depois não se confirmou; ver 12.3). Aplicar uma reta a esses 215 textos só descreve o que aconteceu, e por isso não aprova nem reprova a correção. Já a tabela do Capítulo 4 acrescenta as correções dos dois Haiku, a recontagem do gpt-6-luna e os intervalos de 95 %, que este comando não refaz, e o resto do que fica de fora está na seção 11.
 
+#### Para refazer os números
+
 ```
 npm run reproduzir-tudo
 ```
+
+Esse comando roda, um depois do outro, os programas que refazem as partes A a D da tabela abaixo e compara cada resultado com o valor guardado no repositório, dizendo OK ou FALHOU para cada item.
+
+![Saída do comando reproduzir-tudo](docs/imagens/02_reproduzir_tudo.png)
+
+*Saída real do comando, com os 13 itens OK.*
 
 Leva de 20 segundos a 3 minutos, conforme o computador. **O que deve aparecer** no fim (cada linha começa com `OK`):
 
@@ -259,8 +329,6 @@ TUDO OK: 13 de 13 itens. Detalhes em saida-reproducao\...\RESULTADO_REPRODUCAO.j
 ```
 
 Na linha do registro gravado antes do envio, o *1720 de 1720* conta os envios que têm esse registro prévio, e em 1.505 deles o registro já traz a contagem do OTK. Nos 215 do gpt-6-luna, porém, o registro diz que o OTK não sabe contar esse modelo, pois o contador da versão avaliada não conhece a família gpt-6, e por conta disso a contagem desse modelo foi refeita depois da coleta, por fora deste comando.
-
-![Saída do comando reproduzir-tudo](docs/imagens/02_reproduzir_tudo.png)
 
 **O que cada parte refaz:**
 
@@ -289,9 +357,17 @@ Esses arquivos foram gravados durante o trabalho e por isso ainda guardam rótul
 
 A bateria tem cerca de 3.600 testes automáticos, que também rodam **sem internet**.
 
+#### Para rodar os testes
+
 ```
 npm run testes-banca
 ```
+
+Esse comando roda, sem internet, a bateria de testes da versão avaliada e do verificador, e diz no fim se algum teste falhou.
+
+![Saída do comando testes-banca](docs/imagens/03_testes_banca.png)
+
+*Saída real do comando, terminando em TESTES OK.*
 
 Leva de 2 a 6 minutos. **O que deve aparecer** no fim:
 
@@ -300,8 +376,6 @@ Resultado: 3587 testes — 3579 passaram, 0 falharam, 0 cancelados, 5 pulados, 3
 ```
 
 seguido da lista dos testes deixados de fora de propósito e de `TESTES OK`. O total de testes pode ser um pouco diferente no seu computador, e o que importa é `0 falharam` e a última linha `TESTES OK`.
-
-![Saída do comando testes-banca](docs/imagens/03_testes_banca.png)
 
 - Os **pulados (5)** renderizam a configuração de produção com o Helm e precisam da imagem Docker `alpine/helm:3.16.4` já baixada, o que este comando não faz, e por isso o próprio teste se pula e avisa `alpine/helm:3.16.4 not present locally`, sem que esse aviso seja defeito. Num computador sem o Docker, outros 6 testes (de `docker compose`) também se pulam, com o aviso `docker CLI not available`, e o total de pulados passa a 11. Já os grupos que avisam `SKIPPED — set OTK_TEST_PG_URL`, que precisam de um PostgreSQL de teste ligado, também ficam de fora, mas o Node não os soma nos pulados.
 - Os **todo (3)** são testes marcados como *a decidir* desde a versão avaliada (na dissertação, os *3 pendentes*), que são decisões de produto em aberto, e não defeitos, e aparecem com `⚠` na saída completa.
@@ -351,11 +425,17 @@ Caso a impressão digital não seja colada, nenhum recibo fica verde, e o melhor
 
 ### 8.2 Pelo terminal
 
-Dentro da pasta `C:\otk`:
+#### Para conferir os recibos de exemplo pelo terminal
 
 ```
 npm run otk -- verify test/verifier/vetores/recibos --keyring test/verifier/vetores/chaveiro.json --fingerprint ef9d1aeb4f6ef0b412fad87dfba256cfcc7aa49c6b00f1dc27674d6351bbba24
 ```
+
+Esse comando, rodado dentro da pasta `C:\otk`, faz a mesma conferência da página, com a mesma pasta de recibos, o mesmo chaveiro e a mesma impressão digital, e por isso tem de dar a mesma conta dos cartões.
+
+![Trecho da saída do verificador no terminal](docs/imagens/08b_verificador_terminal.png)
+
+*Trecho da saída real: a saída é longa, e as reticências marcam o corte.*
 
 **O que deve aparecer** no fim:
 
@@ -377,7 +457,7 @@ O arquivo **`chaveiro/chaveiro_operador_otk.json`** é o chaveiro público do op
 c9dcbb90ec0b9fd79a1da4764821e11f5a46f9073a3c991f00c1daa000f72fdc
 ```
 
-Para conferir que o arquivo é esse mesmo:
+#### Para conferir a impressão digital do chaveiro do operador
 
 **Windows (PowerShell, dentro de `C:\otk`):**
 
@@ -385,13 +465,19 @@ Para conferir que o arquivo é esse mesmo:
 (Get-FileHash chaveiro\chaveiro_operador_otk.json).Hash
 ```
 
-**O que deve aparecer:** `C9DCBB90EC0B9FD79A1DA4764821E11F5A46F9073A3C991F00C1DAA000F72FDC` (o PowerShell mostra em maiúsculas, e maiúsculas ou minúsculas não importam).
-
 **Mac:**
 
 ```
 shasum -a 256 chaveiro/chaveiro_operador_otk.json
 ```
+
+Esse comando calcula o sha256 do arquivo do chaveiro, que tem de ser igual à impressão digital publicada na dissertação e mostrada acima, e com isso confirma que o arquivo é esse mesmo.
+
+![Saída do cálculo do sha256 do chaveiro no PowerShell](docs/imagens/08c_hash_chaveiro.png)
+
+*Saída real no PowerShell, em maiúsculas.*
+
+**O que deve aparecer:** `C9DCBB90EC0B9FD79A1DA4764821E11F5A46F9073A3C991F00C1DAA000F72FDC` (o PowerShell mostra em maiúsculas, e maiúsculas ou minúsculas não importam).
 
 **Cuidado com o fim de linha.** A impressão digital é calculada sobre os bytes exatos do arquivo, e por isso muda caso ele passe por um programa que troca o fim de linha (o Git com conversão automática, um editor que salva com CRLF, um e-mail que reformata o anexo). Nesse caso, o verificador mostra vermelho, com o aviso *impressão digital não confere*, mesmo sem nenhum recibo alterado. Para evitar essa troca, este repositório marca a pasta `chaveiro/` e a página como `-text` no `.gitattributes`, de modo que o Git não mexe neles, e além disso esse arquivo não deve ser aberto e salvo num editor.
 
@@ -412,9 +498,17 @@ Caso ele peça login ou conta, clique em **Skip**/Pular, pois não é preciso co
 
 Neste modo, o provedor de IA é **sintético**, um programa na sua própria máquina que responde como o `gpt-4o-mini` e declara 20 tokens de entrada e 5 de saída, e por isso nenhuma chamada sai do seu computador.
 
+#### Para rodar a demonstração
+
 ```
 npm run demo-banca
 ```
+
+Esse comando liga tudo o que a demonstração precisa, manda uma chamada ao provedor sintético e confere o recibo no fim, sem que nenhuma chamada saia do computador.
+
+![Saída do modo demonstração](docs/imagens/05_demo_banca.png)
+
+*Saída real do comando, com o recibo conferido no fim.*
 
 **O que acontece**, item a item, na tela:
 
@@ -445,8 +539,6 @@ DEU CERTO: o recibo está íntegro e assinado pela chave desta instalação ([OK
 é esperado: a versão avaliada calcula a CU com pesos de teste (os mesmos da coleta de 7/10), e o verificador avisa isso.
 ```
 
-![Saída do modo demonstração](docs/imagens/05_demo_banca.png)
-
 Essa saída se lê assim:
 
 - No **uso declarado 20 e contagem própria 9**, o provedor sintético declara sempre 20 tokens de entrada, qualquer que seja o texto, enquanto a contagem do OTK (9) é a do texto de verdade. A diferença (11) fica dentro do limite de alerta (16 tokens), e por isso a comparação dá `within_threshold`, já com o provedor real o gpt-4o-mini declara 7 tokens a mais do que o OTK conta, que são o envelope da mensagem (ver 12.1).
@@ -465,13 +557,33 @@ No fim, o comando desliga e apaga o PostgreSQL de teste, e para deixá-lo ligado
 
 Se a porta 55432 (o número pelo qual o OTK fala com o banco dentro do computador) estiver ocupada ou reservada pelo Windows, o comando escolhe sozinho outra porta livre e avisa na tela.
 
-**Se aparecer** `PAROU: ... porta ... already allocated`, `ports are not available` ou `porta ocupada`, rode no PowerShell `$env:OTK_DEMO_PG_PORT="15432"` e depois `npm run demo-banca` de novo (no Mac, `OTK_DEMO_PG_PORT=15432 npm run demo-banca`).
+**Se aparecer** `PAROU: ... porta ... already allocated`, `ports are not available` ou `porta ocupada`, use os dois comandos abaixo.
 
-**Se o comando parar com `PAROU:` depois do item [1]**, o PostgreSQL de teste pode ter ficado ligado, e para desligá-lo e apagá-lo, cole dentro da pasta `C:\otk`:
+#### Para usar outra porta (só se aparecer o erro de porta ocupada)
+
+```
+$env:OTK_DEMO_PG_PORT="15432"
+```
+
+```
+npm run demo-banca
+```
+
+Esses comandos mandam a demonstração usar a porta 15432 para o banco de teste, no lugar da 55432, já ocupada por outro programa. No Mac, a alternativa é `OTK_DEMO_PG_PORT=15432 npm run demo-banca`. Além disso, eles não têm imagem, pois o erro de porta não aconteceu durante a preparação deste guia.
+
+**Se o comando parar com `PAROU:` depois do item [1]**, o PostgreSQL de teste pode ter ficado ligado, e para desligá-lo e apagá-lo, use o comando do bloco seguinte, dentro da pasta `C:\otk`.
+
+#### Para desligar e apagar o PostgreSQL de teste
 
 ```
 docker compose -p otk-banca-demo -f infra/test/docker-compose.services.yml down -v
 ```
+
+Esse comando desliga o PostgreSQL de teste e apaga a caixa e os dados dele, que só existiam para a demonstração.
+
+![Saída do comando que desliga e apaga o PostgreSQL de teste](docs/imagens/09b_desligar_postgres.png)
+
+*Saída real do comando, com o PostgreSQL de teste parado e removido.*
 
 Ou, no Docker Desktop, em **Containers**, apague o grupo `otk-banca-demo`.
 
@@ -483,35 +595,49 @@ Com uma chave de API sua, esse mesmo comando manda **uma** chamada real, de no m
 
 > **Atenção:** este modo **não** foi testado com chave real na preparação deste repositório, pois nenhuma chamada paga foi feita para isso, mas ele usa o mesmo caminho de código da coleta de 7 de outubro.
 
-1. Crie a chave no site do provedor (OpenAI: https://platform.openai.com/api-keys ; Anthropic: https://console.anthropic.com/settings/keys ; Google: https://aistudio.google.com/apikey), sabendo que o provedor cobra do seu cartão.
-2. Na pasta `C:\otk`, crie um arquivo chamado exatamente **`.env`** (com o ponto na frente e sem `.txt` no fim). No PowerShell:
+Primeiro, crie a chave no site do provedor (OpenAI: https://platform.openai.com/api-keys ; Anthropic: https://console.anthropic.com/settings/keys ; Google: https://aistudio.google.com/apikey), sabendo que o provedor cobra do seu cartão.
+
+#### Para criar o arquivo .env
 
 ```
 notepad .env
 ```
 
-   O Bloco de Notas pergunta se quer criar o arquivo, e a resposta é **Sim**.
+Esse comando abre o Bloco de Notas num arquivo chamado exatamente **`.env`** (com o ponto na frente e sem `.txt` no fim), na pasta `C:\otk`, e é nesse arquivo que fica a sua chave.
 
-   Escreva **uma** linha, conforme o provedor, com a sua chave depois do `=`, e salve com Ctrl+S (caso abra a janela **Salvar como**, escolha **Todos os arquivos** em **Tipo** e mantenha o nome `.env`):
+Esse comando não tem imagem, pois só abre a janela do Bloco de Notas.
+
+O Bloco de Notas pergunta se quer criar o arquivo, e a resposta é **Sim**.
+
+Escreva **uma** linha, conforme o provedor, com a sua chave depois do `=`, e salve com Ctrl+S (caso abra a janela **Salvar como**, escolha **Todos os arquivos** em **Tipo** e mantenha o nome `.env`):
 
 ```
 OPENAI_API_KEY=cole-aqui-a-sua-chave
 ```
 
-   Para os outros provedores, a linha é `ANTHROPIC_API_KEY=...` ou `GEMINI_API_KEY=...`. No Mac, use `nano .env`, escreva a linha, aperte Control+O, Enter e Control+X.
+Para os outros provedores, a linha é `ANTHROPIC_API_KEY=...` ou `GEMINI_API_KEY=...`. No Mac, use `nano .env`, escreva a linha, aperte Control+O, Enter e Control+X.
 
-3. O arquivo `.env` **nunca vai para o Git**, pois o `.gitignore` deste repositório o exclui e o comando confere isso antes de ler a chave, e esse arquivo não deve ser mandado para ninguém.
-4. Antes de gastar, confira a configuração, sem fazer nenhuma chamada:
+O arquivo `.env` **nunca vai para o Git**, pois o `.gitignore` deste repositório o exclui e o comando confere isso antes de ler a chave, e esse arquivo não deve ser mandado para ninguém.
+
+#### Para conferir a configuração sem gastar
 
 ```
 npm run demo-banca -- --real openai --so-conferir
 ```
 
-   **O que deve aparecer:** `achei OPENAI_API_KEY (... caracteres)` e, no fim, `CONFIGURAÇÃO OK: a chave OPENAI_API_KEY está no .env, o .env está fora do git e o Docker responde. Nenhuma chamada foi feita (--so-conferir).`
+Esse comando confere, antes de gastar e sem fazer nenhuma chamada, se a chave está no `.env`, se o `.env` está fora do Git e se o Docker responde. Para outro provedor, troque `openai` por `anthropic` ou `gemini`.
 
-   **Se aparecer** `PAROU: não achei OPENAI_API_KEY=... no arquivo .env`, o arquivo não foi salvo com o nome `.env` (o Bloco de Notas às vezes salva `.env.txt`) ou a linha está escrita diferente, e por isso vale rodar `notepad .env` de novo e conferir.
+**O que deve aparecer:** `achei OPENAI_API_KEY (... caracteres)` e, no fim, `CONFIGURAÇÃO OK: a chave OPENAI_API_KEY está no .env, o .env está fora do git e o Docker responde. Nenhuma chamada foi feita (--so-conferir).`
 
-5. Rode de verdade, escolhendo um dos três comandos abaixo, e se for o caso troque `openai` por `anthropic` ou `gemini` também no passo 4 desta lista:
+**Se aparecer** `PAROU: não achei OPENAI_API_KEY=... no arquivo .env`, o arquivo não foi salvo com o nome `.env` (o Bloco de Notas às vezes salva `.env.txt`) ou a linha está escrita diferente, e por isso vale rodar `notepad .env` de novo e conferir.
+
+![Saída do comando quando ainda não há arquivo .env](docs/imagens/09c_so_conferir_sem_chave.png)
+
+*O que aparece sem o `.env`, numa rodada real feita sem chave.*
+
+#### Para fazer a chamada real
+
+Escolha um dos três comandos abaixo, com o mesmo provedor que você usou na conferência:
 
 ```
 npm run demo-banca -- --real openai
@@ -524,6 +650,8 @@ npm run demo-banca -- --real anthropic
 ```
 npm run demo-banca -- --real gemini
 ```
+
+Esse comando faz a mesma demonstração da 9.2, mas com o provedor real e a sua chave. Ele não tem imagem, pois é uma chamada paga, e nenhuma foi feita para este guia.
 
 O comando mostra que achou a chave (só o tamanho, nunca o valor), o **custo aproximado** da chamada (menos de US$ 0,0001 no gpt-4o-mini e no gemini-3.5-flash-lite e cerca de US$ 0,0001 no claude-haiku-4-5) e, depois, os mesmos itens [4] a [6] do modo demonstração, agora com o uso que o provedor real declarou. O orçamento do OTK para essa execução é de US$ 1, que é um teto, e não o valor cobrado.
 
@@ -632,11 +760,17 @@ O que isso quer dizer na prática:
 - **Nome do modelo com data.** A correção vale para o nome exato gravado no arquivo e para os apelidos dele (outros nomes do mesmo modelo), e por isso um pedido com `gpt-4o-mini` cai no limite de alerta, já que o arquivo traz só `gpt-4o-mini-2024-07-18`.
 - **Sem veredito para Anthropic e Google, hoje.** Nenhuma correção desses provedores está no formato do proxy, e por isso cada chamada a eles sai sem veredito (`incomplete` / `not_applicable`), mas com o uso declarado, o custo e o recibo assinado.
 
-Para ver o que o OTK sabe de um modelo, dentro da pasta `C:\otk`, troque os três últimos valores pelo provedor (`openai`, `anthropic` ou `gemini`), pelo tipo de chamada (`openai.chat_completions`, `anthropic.messages` ou `gemini.generate_content`) e pelo modelo:
+#### Para ver o que o OTK sabe de um modelo
 
 ```
 npx tsx -e 'import(`./src/providers/catalog/modelCatalog.ts`).then(m => { const [p, a, id] = process.argv.slice(-3); const s = m.resolveModelSupport(p, a, id); console.log(id, s.support, s.tokenizer ? s.tokenizer.encoding : `sem régua`) })' anthropic anthropic.messages claude-opus-5-5
 ```
+
+Esse comando pergunta ao catálogo do OTK qual régua ele usa para um modelo. Para outro modelo, dentro da pasta `C:\otk`, troque os três últimos valores pelo provedor (`openai`, `anthropic` ou `gemini`), pelo tipo de chamada (`openai.chat_completions`, `anthropic.messages` ou `gemini.generate_content`) e pelo modelo.
+
+![Saída do comando que consulta o catálogo do OTK](docs/imagens/12_catalogo.png)
+
+*Saída real do comando, que na imagem aparece abreviado como `npx tsx -e '...'`.*
 
 **O que deve aparecer:** `claude-opus-5-5 generic_fallback cl100k_base`.
 
@@ -728,8 +862,8 @@ Para copiar a saída do terminal no Windows, selecione o texto com o mouse (arra
 
 **De propósito, não estão aqui** a pasta interna de coordenação (`docs/_ops`, com cartas, terminais e decisões), os dados brutos das coletas (com as respostas dos provedores), os segredos e arquivos `.env` e o texto da dissertação. Além disso, os caminhos de pastas pessoais que apareciam em comentários e valores padrão de alguns scripts operacionais foram trocados por `<HOME>` (lista em `PROVENIENCIA.json`).
 
-**As imagens deste README** (`docs/imagens/`), fora o diagrama do começo, são capturas da saída real dos comandos, que foram rodados seguindo este guia num clone limpo em Windows 11 (Node 24.22.2, npm 11.8.0).
+**As imagens deste README** (`docs/imagens/`), fora o diagrama do começo, são capturas da saída real dos comandos, que foram rodados seguindo este guia num clone novo do GitHub, em Windows 11 (Node 24.22.2, npm 11.8.0 e Git 2.56).
 
-Dessas capturas, as de terminal foram desenhadas numa janela de terminal a partir do texto real, com a pasta mostrada como `C:\otk`, já as da página são a própria página do verificador, aberta sem internet.
+Dessas capturas, as de terminal foram desenhadas numa janela de terminal a partir da saída real, com a pasta mostrada como `C:\otk`, já as da página são a própria página do verificador, aberta sem internet.
 
 **Licença:** MIT (arquivo `LICENSE`). **Como citar:** arquivo `CITATION.cff` (o GitHub mostra o botão "Cite this repository").

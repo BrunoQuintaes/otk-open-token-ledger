@@ -18,10 +18,10 @@
    "src/verifier/types.ts"
   ]
  },
- "totalArquivos": 3248,
- "totalBytes": 68626058,
+ "totalArquivos": 3259,
+ "totalBytes": 68768505,
  "porOrigem": {
-  "H1 7606bc9b (= b0ec6f24)": 1053,
+  "H1 7606bc9b (= b0ec6f24)": 1052,
   "b0ec6f24 com mudança": 17,
   "novo (REPO_PUBLICO": 15,
   "runs/C160/VERIFICADOR_REAL/entradas/chaveiro_convertido/chaveiro.json": 1,
@@ -33,7 +33,8 @@
   "pacote da banca 20261111 (ZIP sha256 3943637b…)": 166,
   "executor b0ec6f24": 188,
   "verificador 535ac19c (feat/verificador-f4-20261123)": 59,
-  "novo (README bilíngue e imagens, 25/11/2026)": 3
+  "novo (README bilíngue e imagens, 25/11/2026)": 14,
+  "H1 7606bc9b com mudança (só o link do repositório)": 1
  },
  "arquivos": [
   {
@@ -94,14 +95,14 @@
   },
   {
    "arquivo": "README.en.md",
-   "bytes": 76656,
-   "sha256": "d244bedfe9d676cbc6ec817130f41ace26a6d7f0ea27a60e5f478afa5aa18c6c",
+   "bytes": 82321,
+   "sha256": "9e57c12159abdf4b76e8cdf5b3cc51b4eb7f83e1609bd6d36cf9e3a69d99e1ed",
    "origem": "novo (README bilíngue e imagens, 25/11/2026)"
   },
   {
    "arquivo": "README.md",
-   "bytes": 74969,
-   "sha256": "73ab66879adacfaf13e654e457ccc020d2667601c51f15b8489ddfb9a6c42af7",
+   "bytes": 80767,
+   "sha256": "a328363670d98b32a5ee2a943c6eedc80bf2092ce01492cdc80f05ce8d1cdeba",
    "origem": "novo (REPO_PUBLICO, C160)",
    "mudanca": "substitui o README.md do repositório interno"
   },
@@ -244,10 +245,40 @@
    "origem": "novo (REPO_PUBLICO, C160)"
   },
   {
+   "arquivo": "docs/imagens/03a_node.png",
+   "bytes": 3864,
+   "sha256": "644a0a553302d1c409703dc1ea0bf04a57c2af0eb10cff48e261b5af70aefcd6",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
+   "arquivo": "docs/imagens/03b_npm.png",
+   "bytes": 3666,
+   "sha256": "def38d00f6d22bba905789f445616fe7061b770d1957ce077313f1938af311bd",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
+   "arquivo": "docs/imagens/03c_git.png",
+   "bytes": 5193,
+   "sha256": "405720f6fd895acc922c620f46b167ff7c76d6a24078c6ba3543105bafb7a497",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
    "arquivo": "docs/imagens/04_verificador_pagina.png",
    "bytes": 100962,
    "sha256": "cb0d9af37fff96a7e2ff83b8d1e8fb67d906bbe63ac946074037050258a7d3a3",
    "origem": "novo (REPO_PUBLICO, C160)"
+  },
+  {
+   "arquivo": "docs/imagens/04a_git_clone.png",
+   "bytes": 9514,
+   "sha256": "81e1cc35740925c85cb2d5e731a5f955521e087a774f90d816e41b5c9e71a388",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
+   "arquivo": "docs/imagens/04b_cd.png",
+   "bytes": 3644,
+   "sha256": "2e65d904f35718183214c3bb12a639829e1c47dd59d3027af91a33a482838c3f",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
   },
   {
    "arquivo": "docs/imagens/05_demo_banca.png",
@@ -256,10 +287,46 @@
    "origem": "novo (REPO_PUBLICO, C160)"
   },
   {
+   "arquivo": "docs/imagens/05_npm_ci.png",
+   "bytes": 18727,
+   "sha256": "81a1ad6973b709d8589fd025b49fa7686c04d1d62200665ad96f9d6e804a46a7",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
    "arquivo": "docs/imagens/06_verificador_recibo_demo.png",
    "bytes": 103906,
    "sha256": "6e186e1e593f6ed16d7a6bf125ab6891e083143e7346d067e003e858654d6505",
    "origem": "novo (REPO_PUBLICO, C160)"
+  },
+  {
+   "arquivo": "docs/imagens/08b_verificador_terminal.png",
+   "bytes": 22706,
+   "sha256": "5eb9becedb3fbc776835a93a32769a4016e35a13ff273034d6786c157a8a44bd",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
+   "arquivo": "docs/imagens/08c_hash_chaveiro.png",
+   "bytes": 8914,
+   "sha256": "0de4a3d0c08045e9c6bdda2d48087122db939aed0c4d41b4b2d2ceebd1d285de",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
+   "arquivo": "docs/imagens/09b_desligar_postgres.png",
+   "bytes": 21924,
+   "sha256": "101048f900286c500d87e6800016cb9b74bf7ff8fd546b1ec84159cc51fe9ca5",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
+   "arquivo": "docs/imagens/09c_so_conferir_sem_chave.png",
+   "bytes": 25296,
+   "sha256": "0aeafc3e67711b8efa483a369a3d4bbb8e40936da953e91e9e2eee78ad7d0aec",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
+  },
+  {
+   "arquivo": "docs/imagens/12_catalogo.png",
+   "bytes": 7526,
+   "sha256": "bec17c2d1aa2e4f7bb15f33fa134fe16dfcbeeb5a1abc72b0882d858f564f243",
+   "origem": "novo (README bilíngue e imagens, 25/11/2026)"
   },
   {
    "arquivo": "docs/quickstart.md",
@@ -498,9 +565,9 @@
   },
   {
    "arquivo": "python/pyproject.toml",
-   "bytes": 402,
-   "sha256": "5ca291871be163ad696afbe61b437d3f5ff3f48306e452fa79cebd7df73780a9",
-   "origem": "H1 7606bc9b (= b0ec6f24)"
+   "bytes": 412,
+   "sha256": "5bf5fe6885220f4c79191bbce1b69052850b5fb27b88353a362fefd4a084f30b",
+   "origem": "H1 7606bc9b com mudança (só o link do repositório)"
   },
   {
    "arquivo": "reproducao/cmp8/PROVENIENCIA_CMP8.json",

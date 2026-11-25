@@ -67,7 +67,7 @@ The details of each step, what you should see and what to do if there is an erro
 
 1. [What to install first](#1-what-to-install-first)
 2. [How to open the terminal and paste a command](#2-how-to-open-the-terminal-and-paste-a-command)
-3. [Check that everything is installed](#3-check-that-everything-is-installed)
+3. [Check that Node.js, npm and Git are installed](#3-check-that-nodejs-npm-and-git-are-installed)
 4. [Download this repository](#4-download-this-repository)
 5. [Install the dependencies](#5-install-the-dependencies)
 6. [Recompute the dissertation numbers (offline)](#6-recompute-the-dissertation-numbers-offline)
@@ -88,7 +88,7 @@ You need **two programs**, Git and Node.js, plus a third one, Docker, only for s
 
 | Program | What for | Version | Windows | Mac |
 |---|---|---|---|---|
-| **Git** | download the repository | any 2.x (tested with 2.51) | https://git-scm.com/download/win, with the "64-bit Git for Windows Setup" installer and **Next** on every screen (the default options are fine; if Windows asks "Do you want to allow this app to make changes?", click **Yes**) | open the Terminal (section 2) and type `git --version`, and if the Mac offers to install the "command line developer tools", accept. Or use https://git-scm.com/download/mac |
+| **Git** | download the repository | any 2.x (the screenshots in this guide use 2.56) | https://git-scm.com/download/win, with the "64-bit Git for Windows Setup" installer and **Next** on every screen (the default options are fine; if Windows asks "Do you want to allow this app to make changes?", click **Yes**) | open the Terminal (section 2) and type `git --version`, and if the Mac offers to install the "command line developer tools", accept. Or use https://git-scm.com/download/mac |
 | **Node.js** (already includes **npm**) | run the OTK, the tests and the reproduction | **24 LTS** (tested with 24.22.2, with the npm 11 that comes with it) | https://nodejs.org/pt/download, under "LTS", version **24**, "Windows Installer (.msi)", and **Next** on every screen | same page, "macOS Installer (.pkg)" of version **24 LTS** |
 | **Docker Desktop** (only for section 9) | run the OTK database in an isolated box | any current version (tested with 29.x) | https://www.docker.com/products/docker-desktop/, under "Download for Windows". It asks you to enable **WSL 2**, a Windows feature that requires being an administrator of the computer; accept and restart if it asks | same page, "Download for Mac" (choose Apple Silicon or Intel according to your Mac) |
 
@@ -104,7 +104,7 @@ The terminal is a window where you paste text commands.
 
 **Mac:** press **Command + Space**, type `Terminal` and press **Enter**.
 
-Each grey block in this guide is **one command**, and the blocks are pasted one at a time, in order. For each one:
+Each command comes in a grey block, below a subheading that says what it is for, and the other grey blocks show what you should see. Paste one command at a time, in order, and for each one:
 
 1. click the copy button in the corner of the grey block (or select the text and use **Ctrl + C** on Windows, **Command + C** on a Mac);
 2. click inside the terminal window;
@@ -113,11 +113,21 @@ Each grey block in this guide is **one command**, and the blocks are pasted one 
 
 From section 5 on, the start of the line should show `PS C:\otk>` (on a Mac, `otk %`), and if it does not (for example, because the terminal was closed and reopened), first run `cd C:\otk` (on a Mac, `cd ~/otk`).
 
-## 3. Check that everything is installed
+## 3. Check that Node.js, npm and Git are installed
+
+This section checks, one by one, the three programs of section 1, because none of the following steps works without them. Each command only shows the installed version and changes nothing on the computer.
+
+#### To check Node.js
 
 ```
 node -v
 ```
+
+This command asks Node.js for its version, which tells you whether it was installed and whether it is version 24, the one the programs in this repository need.
+
+![Output of node -v in PowerShell, showing v24.22.2](docs/imagens/03a_node.png)
+
+*Real output of the command, with Node.js 24.22.2.*
 
 **What you should see:** `v24.` followed by numbers, for example `v24.22.2`.
 
@@ -125,33 +135,53 @@ node -v
 
 **If you see** `v20.` or `v22.`, install 24 LTS (section 1) before going on, because the programs that recompute the October 7 collection (part A of section 6) were made for Node 24 or newer, and on an older version that part may show `FALHOU`.
 
+#### To check npm
+
 ```
 npm -v
 ```
 
+This command shows the version of npm, the program that comes with Node.js and downloads the OTK libraries in section 5.
+
+![Output of npm -v in PowerShell, showing 11.8.0](docs/imagens/03b_npm.png)
+
+*Real output of the command, with npm 11.8.0.*
+
 **What you should see:** a number like `11.8.0` (any `10.` or `11.` is fine).
 
-**If you see** (Windows only) `npm.ps1 não pode ser carregado porque a execução de scripts foi desabilitada` (in English, "npm.ps1 cannot be loaded because running scripts is disabled"), paste the command below, press Enter, answer `S` (or `Y`) if it asks and repeat `npm -v`. This command lets your user run scripts that are already on the computer, such as npm's, while scripts downloaded from the internet still need a signature. Since the change applies only to your user (`-Scope CurrentUser`), nothing changes for the other users of the computer.
+**If you see** (Windows only) `npm.ps1 não pode ser carregado porque a execução de scripts foi desabilitada` (in English, "npm.ps1 cannot be loaded because running scripts is disabled"), run the command in the next block, answer `S` (or `Y`) if it asks and repeat `npm -v`.
+
+#### To allow npm in PowerShell (only if the error above appears)
 
 ```
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
+This command lets your user run scripts that are already on the computer, such as npm's, while scripts downloaded from the internet still need a signature. Since the change applies only to your user (`-Scope CurrentUser`), nothing changes for the other users of the computer. It has no image, because it changes a system setting and was not run in the rehearsal.
+
+#### To check Git
+
 ```
 git --version
 ```
 
+This command shows the version of Git, the program that downloads the repository in section 4.
+
+![Output of git --version in PowerShell, showing git version 2.56.0.windows.1](docs/imagens/03c_git.png)
+
+*Real output of the command, with Git 2.56.*
+
 **What you should see:** `git version 2.` followed by numbers.
 
 **If you see** "is not recognized" (in Portuguese, "não é reconhecido") or "command not found", install Git (section 1), then close and reopen the terminal.
-
-![Checking the versions in PowerShell](docs/imagens/01_versoes.png)
 
 ## 4. Download this repository
 
 The examples use the folder **`C:\otk`** on Windows and **`otk`** inside your home folder on a Mac.
 
 > **On Windows, use a folder with a short name, such as `C:\otk`.** The longest path inside the committee package has 198 characters, and Windows refuses paths longer than 260, counting the folder where the repository was downloaded, so that folder cannot exceed about 60 characters. In a deep folder (for example a temporary folder, or `Documentos\GitHub\...` with a long user name), Git shows `Filename too long`, the download is incomplete and section 6 shows `FALHOU`.
+
+#### To download the repository
 
 **Windows:**
 
@@ -165,6 +195,12 @@ git clone https://github.com/BrunoQuintaes/otk-open-token-ledger.git C:\otk
 git clone https://github.com/BrunoQuintaes/otk-open-token-ledger.git ~/otk
 ```
 
+This command copies the whole repository from GitHub into the folder `C:\otk` (on a Mac, `~/otk`), which it creates itself, so it only needs to be run once.
+
+![Output of the repository download in PowerShell, ending in done.](docs/imagens/04a_git_clone.png)
+
+*Real output of the download, with the folder shown as `C:\otk`.*
+
 **What you should see:** `Cloning into 'C:\otk'...` and, after a few seconds, lines ending in `done.`, with no login request, because the repository is **public**.
 
 **If you see** `Repository not found`, the address was typed wrong (copy the command again) or the computer has no internet.
@@ -173,21 +209,25 @@ git clone https://github.com/BrunoQuintaes/otk-open-token-ledger.git ~/otk
 
 **If you see** `Filename too long` or `Clone succeeded, but checkout failed`, the chosen folder is too deep (see the warning above), so delete the folder and download again into `C:\otk`.
 
-**Only for those going beyond sections 6 to 8 (you can skip this):**
+**Only for those going beyond sections 6 to 8 (you can skip the next two blocks).**
 
-- On Windows, Git changes the *line ending* (the invisible character that ends each line) of about a thousand text files, and so their sha256 differs from the one recorded in `PROVENIENCIA.json`. This change **does not affect sections 6 to 8**, because the files the command and the verifier check are protected against it, so only those who want to check `PROVENIENCIA.json` file by file need to download with the command below, instead of the previous one.
+#### To download without the line-ending change (optional)
 
-  ```
-  git -c core.autocrlf=false clone https://github.com/BrunoQuintaes/otk-open-token-ledger.git C:\otk
-  ```
+```
+git -c core.autocrlf=false clone https://github.com/BrunoQuintaes/otk-open-token-ledger.git C:\otk
+```
 
-- If you really need a deep folder, download with Git allowed to use long paths, replacing `C:\caminho\da\sua\pasta` with the folder you want:
+On Windows, Git changes the *line ending* (the invisible character that ends each line) of about a thousand text files, and so their sha256 differs from the one recorded in `PROVENIENCIA.json`. This change **does not affect sections 6 to 8**, because the files the command and the verifier check are protected against it, so only those who want to check `PROVENIENCIA.json` file by file need to download with this command, instead of the previous one. This command has no image, because its output is the same as the normal download shown above.
 
-  ```
-  git -c core.longpaths=true clone https://github.com/BrunoQuintaes/otk-open-token-ledger.git C:\caminho\da\sua\pasta
-  ```
+#### To download into a deep folder (optional)
 
-Now enter the folder, because all the following commands are pasted **inside it**.
+```
+git -c core.longpaths=true clone https://github.com/BrunoQuintaes/otk-open-token-ledger.git C:\caminho\da\sua\pasta
+```
+
+This command allows Git to use long paths, and in it `C:\caminho\da\sua\pasta` must be replaced with the folder you want. This command has no image, because its output is the same as the normal download shown above, only with your folder instead of `C:\otk`.
+
+#### To enter the folder
 
 **Windows:**
 
@@ -201,30 +241,52 @@ cd C:\otk
 cd ~/otk
 ```
 
+This command makes the terminal enter the repository folder, because all the following commands are pasted **inside it**.
+
+![PowerShell after entering the folder, with the start of the line at PS C:\otk>](docs/imagens/04b_cd.png)
+
+*Real output of the command, with the folder shown as `C:\otk`.*
+
 **What you should see:** the start of the line changes to `PS C:\otk>` (on a Mac, `otk %`).
 
 ## 5. Install the dependencies
 
 This step downloads the libraries the OTK uses, in the exact versions stored in the file `package-lock.json`, and **uses the internet** once, only for the public npm registry.
 
+#### To install the dependencies
+
 ```
 npm ci
 ```
 
+This command installs the libraries exactly in the versions of `package-lock.json`, without changing any, so what runs in the following sections is the same evaluated version.
+
+![Output of npm ci in PowerShell, with added 187 packages](docs/imagens/05_npm_ci.png)
+
+*Real output of the command, which took 20 seconds.*
+
 **What you should see** (in 10 seconds to 2 minutes):
 
 ```
-added 187 packages, and audited 188 packages in 1m
+added 187 packages, and audited 188 packages in 20s
 
 44 packages are looking for funding
   run `npm fund` for details
 
 18 vulnerabilities (16 low, 1 moderate, 1 high)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
 ```
 
 The time, the number of *vulnerabilities* and, on a Mac, the number of packages may differ, because npm checks a list of advisories that changes over time and some packages belong to one system only, so what matters is that `npm error` does not appear.
 
-At the end, the lines `To address issues that do not require attention, run: npm audit fix` and `To address all issues (including breaking changes), run: npm audit fix --force` also appear (and lines `npm warn deprecated ...` may appear), which are warnings about the libraries of the evaluated version and are **not** errors. Even so, **run neither of them** (`npm audit fix` nor `npm audit fix --force`), because they change the library versions, and then you are no longer running exactly the evaluated version.
+The last lines, which tell you to run `npm audit fix` or `npm audit fix --force` (and the lines `npm warn deprecated ...`, which may appear), are warnings about the libraries of the evaluated version and are **not** errors. Even so, **run neither of them**, because they change the library versions, and then you are no longer running exactly the evaluated version.
 
 **If you see** `npm error code EUSAGE` or `npm ci can only install packages when your package.json and package-lock.json are in sync`, the terminal is not inside the folder `C:\otk`, so run the `cd C:\otk` of section 4 and repeat.
 
@@ -236,9 +298,17 @@ One command checks the files and **recomputes, offline and with no API key**, th
 
 > **What this command does not redo.** From the November 23 collection, it redoes the **first version** of the *estimated × declared* table, which applies only the correction lines of claude-sonnet-5-5, claude-opus-5-5 and gemini-3.1-flash-lite (for Sonnet and Gemini 3.1, the line from the side study, which was later not confirmed; see 12.3). Applying a line to these 215 texts only describes what happened, and so it neither approves nor rejects the correction. The Chapter 4 table adds the corrections of the two Haiku models, the recount of gpt-6-luna and the 95% intervals, which this command does not redo, and the rest of what is left out is in section 11.
 
+#### To recompute the numbers
+
 ```
 npm run reproduzir-tudo
 ```
+
+This command runs, one after the other, the programs that redo parts A to D of the table below and compares each result with the value stored in the repository, saying OK or FALHOU (failed) for each item.
+
+![Output of the reproduzir-tudo command](docs/imagens/02_reproduzir_tudo.png)
+
+*Real output of the command, with the 13 items OK.*
 
 It takes 20 seconds to 3 minutes, depending on the computer. **What you should see** at the end (each line starts with `OK`):
 
@@ -261,8 +331,6 @@ TUDO OK: 13 de 13 itens. Detalhes em saida-reproducao\...\RESULTADO_REPRODUCAO.j
 ```
 
 In the line about the entry written before the send, *1720 de 1720* (1,720 of 1,720) counts the sends that have that prior entry, and in 1,505 of them the entry already carries the OTK count. In the 215 of gpt-6-luna, however, the entry says the OTK cannot count that model, because the counter of the evaluated version does not know the gpt-6 family, and for that reason the count for that model was redone after the collection, outside this command.
-
-![Output of the reproduzir-tudo command](docs/imagens/02_reproduzir_tudo.png)
 
 **What each part redoes:**
 
@@ -291,9 +359,17 @@ These files were written during the work and so still carry internal project lab
 
 The suite has about 3,600 automated tests, which also run **offline**.
 
+#### To run the tests
+
 ```
 npm run testes-banca
 ```
+
+This command runs, offline, the test suite of the evaluated version and of the verifier, and says at the end whether any test failed.
+
+![Output of the testes-banca command](docs/imagens/03_testes_banca.png)
+
+*Real output of the command, ending in TESTES OK.*
 
 It takes 2 to 6 minutes. **What you should see** at the end:
 
@@ -302,8 +378,6 @@ Resultado: 3587 testes — 3579 passaram, 0 falharam, 0 cancelados, 5 pulados, 3
 ```
 
 followed by the list of tests left out on purpose and by `TESTES OK`. The total number of tests may be slightly different on your computer, and what matters is `0 falharam` (0 failed) and the last line `TESTES OK`.
-
-![Output of the testes-banca command](docs/imagens/03_testes_banca.png)
 
 - The **skipped (5)** ("pulados") render the production configuration with Helm and need the Docker image `alpine/helm:3.16.4` already downloaded, which this command does not do, so the test skips itself and warns `alpine/helm:3.16.4 not present locally`, and this warning is not a defect. On a computer without Docker, another 6 tests (of `docker compose`) also skip themselves, with the warning `docker CLI not available`, and the number of skipped tests goes up to 11. The groups that warn `SKIPPED — set OTK_TEST_PG_URL`, which need a test PostgreSQL running, are also left out, but Node does not add them to the skipped count.
 - The **todo (3)** are tests marked as *to be decided* since the evaluated version (in the dissertation, the *3 pendentes*, 3 pending), which are open product decisions, not defects, and they appear with `⚠` in the full output.
@@ -353,11 +427,17 @@ If the fingerprint is not pasted, no receipt turns green, and the best result be
 
 ### 8.2 Using the terminal
 
-Inside the folder `C:\otk`:
+#### To check the example receipts from the terminal
 
 ```
 npm run otk -- verify test/verifier/vetores/recibos --keyring test/verifier/vetores/chaveiro.json --fingerprint ef9d1aeb4f6ef0b412fad87dfba256cfcc7aa49c6b00f1dc27674d6351bbba24
 ```
+
+This command, run inside the folder `C:\otk`, does the same check as the page, with the same receipts folder, the same keyring and the same fingerprint, so it must give the same count as the cards.
+
+![Excerpt of the verifier output in the terminal](docs/imagens/08b_verificador_terminal.png)
+
+*Excerpt of the real output: the output is long, and the ellipses mark the cut.*
 
 **What you should see** at the end:
 
@@ -379,7 +459,7 @@ The file **`chaveiro/chaveiro_operador_otk.json`** is the public keyring of the 
 c9dcbb90ec0b9fd79a1da4764821e11f5a46f9073a3c991f00c1daa000f72fdc
 ```
 
-To check that the file is this one:
+#### To check the fingerprint of the operator keyring
 
 **Windows (PowerShell, inside `C:\otk`):**
 
@@ -387,13 +467,19 @@ To check that the file is this one:
 (Get-FileHash chaveiro\chaveiro_operador_otk.json).Hash
 ```
 
-**What you should see:** `C9DCBB90EC0B9FD79A1DA4764821E11F5A46F9073A3C991F00C1DAA000F72FDC` (PowerShell shows it in upper case, and upper or lower case does not matter).
-
 **Mac:**
 
 ```
 shasum -a 256 chaveiro/chaveiro_operador_otk.json
 ```
+
+This command computes the sha256 of the keyring file, which must equal the fingerprint published in the dissertation and shown above, and so it confirms that the file is this one.
+
+![Output of the keyring sha256 computation in PowerShell](docs/imagens/08c_hash_chaveiro.png)
+
+*Real output in PowerShell, in upper case.*
+
+**What you should see:** `C9DCBB90EC0B9FD79A1DA4764821E11F5A46F9073A3C991F00C1DAA000F72FDC` (PowerShell shows it in upper case, and upper or lower case does not matter).
 
 **Watch out for line endings.** The fingerprint is computed over the exact bytes of the file, and so it changes if the file goes through a program that changes the line endings (Git with automatic conversion, an editor that saves with CRLF, an e-mail that reformats the attachment). In that case, the verifier shows red, with the warning *impressão digital não confere* (fingerprint does not match), even with no receipt altered. To avoid that change, this repository marks the folder `chaveiro/` and the page as `-text` in `.gitattributes`, so that Git does not touch them, and besides that the file should not be opened and saved in an editor.
 
@@ -414,9 +500,17 @@ If it asks for a login or an account, click **Skip**, because no account is need
 
 In this mode, the AI provider is **synthetic**, a program on your own machine that answers like `gpt-4o-mini` and declares 20 input tokens and 5 output tokens, and so no call leaves your computer.
 
+#### To run the demonstration
+
 ```
 npm run demo-banca
 ```
+
+This command starts everything the demonstration needs, sends one call to the synthetic provider and checks the receipt at the end, without any call leaving the computer.
+
+![Output of the demonstration mode](docs/imagens/05_demo_banca.png)
+
+*Real output of the command, with the receipt checked at the end.*
 
 **What happens**, item by item, on the screen:
 
@@ -447,8 +541,6 @@ DEU CERTO: o recibo está íntegro e assinado pela chave desta instalação ([OK
 é esperado: a versão avaliada calcula a CU com pesos de teste (os mesmos da coleta de 7/10), e o verificador avisa isso.
 ```
 
-![Output of the demonstration mode](docs/imagens/05_demo_banca.png)
-
 This output reads as follows:
 
 - In **declared usage 20 and own count 9** ("uso declarado" and "contagem própria"), the synthetic provider always declares 20 input tokens, whatever the text, while the OTK count (9) is that of the actual text. The difference (11) is within the alert limit (16 tokens), and so the comparison gives `within_threshold`, while with the real provider gpt-4o-mini declares 7 tokens more than the OTK counts, which are the message envelope (see 12.1).
@@ -467,13 +559,33 @@ At the end, the command stops and deletes the test PostgreSQL, and to keep it ru
 
 If port 55432 (the number through which the OTK talks to the database inside the computer) is busy or reserved by Windows, the command picks another free port by itself and says so on the screen.
 
-**If you see** `PAROU: ... porta ... already allocated`, `ports are not available` or `porta ocupada` (port busy), run in PowerShell `$env:OTK_DEMO_PG_PORT="15432"` and then `npm run demo-banca` again (on a Mac, `OTK_DEMO_PG_PORT=15432 npm run demo-banca`).
+**If you see** `PAROU: ... porta ... already allocated`, `ports are not available` or `porta ocupada` (port busy), use the two commands below.
 
-**If the command stops with `PAROU:` after item [1]**, the test PostgreSQL may have been left running, and to stop and delete it, paste inside the folder `C:\otk`:
+#### To use another port (only if the port-busy error appears)
+
+```
+$env:OTK_DEMO_PG_PORT="15432"
+```
+
+```
+npm run demo-banca
+```
+
+These commands tell the demonstration to use port 15432 for the test database instead of 55432, which is busy. On a Mac, use `OTK_DEMO_PG_PORT=15432 npm run demo-banca`. They have no image, because the port error did not happen while preparing this guide.
+
+**If the command stops with `PAROU:` after item [1]**, the test PostgreSQL may have been left running, and to stop and delete it, use the command in the next block, inside the folder `C:\otk`.
+
+#### To stop and delete the test PostgreSQL
 
 ```
 docker compose -p otk-banca-demo -f infra/test/docker-compose.services.yml down -v
 ```
+
+This command stops the test PostgreSQL and deletes its box and its data, which existed only for the demonstration.
+
+![Output of the command that stops and deletes the test PostgreSQL](docs/imagens/09b_desligar_postgres.png)
+
+*Real output of the command, with the test PostgreSQL stopped and removed.*
 
 Or, in Docker Desktop, under **Containers**, delete the group `otk-banca-demo`.
 
@@ -485,35 +597,49 @@ With an API key of yours, this same command sends **one** real call, of at most 
 
 > **Warning:** this mode was **not** tested with a real key while preparing this repository, because no paid call was made for that, but it uses the same code path as the October 7 collection.
 
-1. Create the key on the provider's site (OpenAI: https://platform.openai.com/api-keys ; Anthropic: https://console.anthropic.com/settings/keys ; Google: https://aistudio.google.com/apikey), knowing that the provider charges your card.
-2. In the folder `C:\otk`, create a file named exactly **`.env`** (with the dot in front and without `.txt` at the end). In PowerShell:
+First, create the key on the provider's site (OpenAI: https://platform.openai.com/api-keys ; Anthropic: https://console.anthropic.com/settings/keys ; Google: https://aistudio.google.com/apikey), knowing that the provider charges your card.
+
+#### To create the .env file
 
 ```
 notepad .env
 ```
 
-   Notepad asks whether you want to create the file, and the answer is **Yes**.
+This command opens Notepad on a file named exactly **`.env`** (with the dot in front and without `.txt` at the end), in the folder `C:\otk`, and that is the file where your key goes.
 
-   Write **one** line, according to the provider, with your key after the `=`, and save with Ctrl+S (if the **Save as** window opens, choose **All files** under **Save as type** and keep the name `.env`):
+This command has no image, because it only opens the Notepad window.
+
+Notepad asks whether you want to create the file, and the answer is **Yes**.
+
+Write **one** line, according to the provider, with your key after the `=`, and save with Ctrl+S (if the **Save as** window opens, choose **All files** under **Save as type** and keep the name `.env`):
 
 ```
 OPENAI_API_KEY=cole-aqui-a-sua-chave
 ```
 
-   For the other providers, the line is `ANTHROPIC_API_KEY=...` or `GEMINI_API_KEY=...`. On a Mac, use `nano .env`, write the line, press Control+O, Enter and Control+X.
+For the other providers, the line is `ANTHROPIC_API_KEY=...` or `GEMINI_API_KEY=...`. On a Mac, use `nano .env`, write the line, press Control+O, Enter and Control+X.
 
-3. The `.env` file **never goes to Git**, because this repository's `.gitignore` excludes it and the command checks that before reading the key, and this file should not be sent to anyone.
-4. Before spending, check the configuration, without making any call:
+The `.env` file **never goes to Git**, because this repository's `.gitignore` excludes it and the command checks that before reading the key, and this file should not be sent to anyone.
+
+#### To check the configuration without spending
 
 ```
 npm run demo-banca -- --real openai --so-conferir
 ```
 
-   **What you should see:** `achei OPENAI_API_KEY (... caracteres)` (found the key, with its length in characters) and, at the end, `CONFIGURAÇÃO OK: a chave OPENAI_API_KEY está no .env, o .env está fora do git e o Docker responde. Nenhuma chamada foi feita (--so-conferir).` (configuration OK; no call was made).
+This command checks, before spending and without making any call, whether the key is in `.env`, whether `.env` is outside Git and whether Docker responds. For another provider, replace `openai` with `anthropic` or `gemini`.
 
-   **If you see** `PAROU: não achei OPENAI_API_KEY=... no arquivo .env` (key not found in the file), the file was not saved with the name `.env` (Notepad sometimes saves `.env.txt`) or the line is written differently, so it is worth running `notepad .env` again and checking.
+**What you should see:** `achei OPENAI_API_KEY (... caracteres)` (found the key, with its length in characters) and, at the end, `CONFIGURAÇÃO OK: a chave OPENAI_API_KEY está no .env, o .env está fora do git e o Docker responde. Nenhuma chamada foi feita (--so-conferir).` (configuration OK; no call was made).
 
-5. Run it for real, choosing one of the three commands below, and if needed replace `openai` with `anthropic` or `gemini` in step 4 of this list too:
+**If you see** `PAROU: não achei OPENAI_API_KEY=... no arquivo .env` (key not found in the file), the file was not saved with the name `.env` (Notepad sometimes saves `.env.txt`) or the line is written differently, so it is worth running `notepad .env` again and checking.
+
+![Output of the command when there is no .env file yet](docs/imagens/09c_so_conferir_sem_chave.png)
+
+*What appears without the `.env`, in a real run made without a key.*
+
+#### To make the real call
+
+Choose one of the three commands below, with the same provider you used in the check:
 
 ```
 npm run demo-banca -- --real openai
@@ -526,6 +652,8 @@ npm run demo-banca -- --real anthropic
 ```
 npm run demo-banca -- --real gemini
 ```
+
+This command runs the same demonstration as 9.2, but with the real provider and your key. It has no image, because it is a paid call, and none was made for this guide.
 
 The command shows that it found the key (only the length, never the value), the **approximate cost** of the call (less than US$ 0.0001 on gpt-4o-mini and gemini-3.5-flash-lite and about US$ 0.0001 on claude-haiku-4-5) and, after that, the same items [4] to [6] of the demonstration mode, now with the usage the real provider declared. The OTK budget for this run is US$ 1, which is a cap, and not the amount charged.
 
@@ -634,11 +762,17 @@ What this means in practice:
 - **Model name with date.** The correction applies to the exact name recorded in the file and to its aliases (other names of the same model), and so a request with `gpt-4o-mini` falls back to the alert limit, since the file carries only `gpt-4o-mini-2024-07-18`.
 - **No verdict for Anthropic and Google, today.** No correction for these providers is in the proxy format, and so each call to them comes out without a verdict (`incomplete` / `not_applicable`), but with the declared usage, the cost and the signed receipt.
 
-To see what the OTK knows about a model, inside the folder `C:\otk`, replace the last three values with the provider (`openai`, `anthropic` or `gemini`), the kind of call (`openai.chat_completions`, `anthropic.messages` or `gemini.generate_content`) and the model:
+#### To see what the OTK knows about a model
 
 ```
 npx tsx -e 'import(`./src/providers/catalog/modelCatalog.ts`).then(m => { const [p, a, id] = process.argv.slice(-3); const s = m.resolveModelSupport(p, a, id); console.log(id, s.support, s.tokenizer ? s.tokenizer.encoding : `sem régua`) })' anthropic anthropic.messages claude-opus-5-5
 ```
+
+This command asks the OTK catalog which ruler it uses for a model. For another model, inside the folder `C:\otk`, replace the last three values with the provider (`openai`, `anthropic` or `gemini`), the kind of call (`openai.chat_completions`, `anthropic.messages` or `gemini.generate_content`) and the model.
+
+![Output of the command that queries the OTK catalog](docs/imagens/12_catalogo.png)
+
+*Real output of the command, which appears shortened in the image as `npx tsx -e '...'`.*
 
 **What you should see:** `claude-opus-5-5 generic_fallback cl100k_base`.
 
@@ -730,8 +864,8 @@ To copy the terminal output on Windows, select the text with the mouse (drag fro
 
 **Not here, on purpose:** the internal coordination folder (`docs/_ops`, with letters, terminals and decisions), the raw data of the collections (with the providers' responses), secrets and `.env` files, and the text of the dissertation. Moreover, the personal folder paths that appeared in comments and default values of some operational scripts were replaced by `<HOME>` (list in `PROVENIENCIA.json`).
 
-**The images in this README** (`docs/imagens/`), apart from the diagram at the top, are screenshots of the real output of the commands, which were run following this guide in a clean clone on Windows 11 (Node 24.22.2, npm 11.8.0).
+**The images in this README** (`docs/imagens/`), apart from the diagram at the top, are screenshots of the real output of the commands, which were run following this guide in a fresh clone from GitHub, on Windows 11 (Node 24.22.2, npm 11.8.0 and Git 2.56).
 
-Of those screenshots, the terminal ones were drawn in a terminal window from the real text, with the folder shown as `C:\otk`, while the page ones are the verifier page itself, opened offline.
+Of those screenshots, the terminal ones were drawn in a terminal window from the real output, with the folder shown as `C:\otk`, while the page ones are the verifier page itself, opened offline.
 
 **License:** MIT (file `LICENSE`). **How to cite:** file `CITATION.cff` (GitHub shows the "Cite this repository" button).
